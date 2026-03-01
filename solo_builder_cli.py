@@ -1586,11 +1586,26 @@ class SoloBuilderCLI:
                 label = val if val else "(none — headless)"
                 print(f"  {GREEN}CLAUDE_ALLOWED_TOOLS = {label}{RESET}")
 
+            elif key == "ANTHROPIC_MAX_TOKENS":
+                self.executor.anthropic.max_tokens = int(val)
+                print(f"  {GREEN}ANTHROPIC_MAX_TOKENS = {val}{RESET}")
+
+            elif key == "ANTHROPIC_MODEL":
+                self.executor.anthropic.model = val
+                print(f"  {GREEN}ANTHROPIC_MODEL = {val}{RESET}")
+
+            elif key == "CLAUDE_SUBPROCESS":
+                enabled = val.lower() not in ("0", "off", "false", "no")
+                self.executor.claude.available = enabled
+                label = "on (subprocess)" if enabled else "off (SDK/dice-roll fallback)"
+                print(f"  {GREEN}CLAUDE_SUBPROCESS = {label}{RESET}")
+
             else:
                 print(f"  {YELLOW}Unknown key '{key}'. "
                       f"Valid: STALL_THRESHOLD, SNAPSHOT_INTERVAL, "
                       f"VERBOSITY, VERIFY_PROB, AUTO_STEP_DELAY, AUTO_SAVE_INTERVAL, "
-                      f"CLAUDE_ALLOWED_TOOLS{RESET}")
+                      f"CLAUDE_ALLOWED_TOOLS, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL, "
+                      f"CLAUDE_SUBPROCESS{RESET}")
         except ValueError:
             print(f"  {RED}Invalid value '{val}' for {key}{RESET}")
 
@@ -1865,6 +1880,9 @@ class SoloBuilderCLI:
             ("  AUTO_STEP_DELAY=0.4",  "Seconds between auto steps"),
             ("  AUTO_SAVE_INTERVAL=5", "Steps between auto-saves"),
             ("  CLAUDE_ALLOWED_TOOLS=", "Default tools for all Claude subtasks"),
+            ("  ANTHROPIC_MAX_TOKENS=","SDK response token limit (default 300)"),
+            ("  ANTHROPIC_MODEL=",     "SDK model (default claude-sonnet-4-6)"),
+            ("  CLAUDE_SUBPROCESS=off","Route all subtasks through SDK instead"),
             ("help",                   "Show this help"),
             ("exit",                   "Quit (auto-saves state)"),
         ]
