@@ -481,6 +481,150 @@ class AnthropicRunner:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# SDK TOOL RUNNER
+# ═══════════════════════════════════════════════════════════════════════════════
+class SdkToolRunner:
+    """Anthropic SDK runner with tool-use protocol (Read, Glob, Grep).
+
+    Replaces ClaudeRunner subprocess for subtasks that declare tools,
+    eliminating the subprocess cold-start penalty (~30 s → ~5 s).
+    Falls back to subprocess via claude_jobs if unavailable.
+    """
+
+    _SCHEMAS = [
+        {
+            "name": "Read",
+            "description": "Read the content of a file from disk.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string",
+                                  "description": "Absolute or relative file path"},
+                },
+                "required": ["file_path"],
+            },
+        },
+        {
+            "name": "Glob",
+            "description": "Find files matching a glob pattern.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string",
+                                "description": "Glob pattern, e.g. '**/*.py'"},
+                    "path":    {"type": "string",
+                                "description": "Root directory (default: project root)"},
+                },
+                "required": ["pattern"],
+            },
+        },
+        {
+            "name": "Grep",
+            "description": "Search file contents for a regex pattern.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string",
+                                "description": "Regex to search for"},
+                    "path":    {"type": "string",
+                                "description": "File or directory to search"},
+                    "glob":    {"type": "string",
+                                "description": "File filter glob when path is a directory"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    ]
+
+    def __init__(self, client, model: str, max_tokens: int) -> None:
+        self.client     = client
+        self.model      = model
+        self.max_tokens = max_tokens
+        self.available  = client is not None
+
+    def run(self, prompt: str, tools_str: str) -> tuple:
+        """Tool-use loop. Returns (success: bool, output: str)."""
+        if not self.available:
+            return False, "SDK unavailable"
+        allowed  = {t.strip() for t in tools_str.split(",") if t.strip()}
+        schemas  = [s for s in self._SCHEMAS if s["name"] in allowed]
+        messages = [{"role": "user", "content": prompt}]
+        try:
+            for _ in range(8):  # max 8 tool-use rounds
+                resp = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    tools=schemas,
+                    messages=messages,
+                )
+                if resp.stop_reason == "end_turn":
+                    text = " ".join(
+                        b.text for b in resp.content if hasattr(b, "text")
+                    ).strip()
+                    return True, text
+                if resp.stop_reason == "tool_use":
+                    messages.append({"role": "assistant", "content": resp.content})
+                    results = []
+                    for block in resp.content:
+                        if block.type == "tool_use":
+                            out = self._exec(block.name, block.input)
+                            results.append({
+                                "type":        "tool_result",
+                                "tool_use_id": block.id,
+                                "content":     str(out)[:8000],
+                            })
+                    messages.append({"role": "user", "content": results})
+                else:
+                    break
+        except Exception as exc:
+            return False, str(exc)[:200]
+        return False, "Tool loop exhausted"
+
+    def _exec(self, name: str, args: dict) -> str:
+        """Execute one tool call; return string result."""
+        try:
+            if name == "Read":
+                path = args.get("file_path", "")
+                if not os.path.isabs(path):
+                    path = os.path.join(_HERE, path)
+                with open(path, encoding="utf-8", errors="ignore") as f:
+                    return f.read()[:12_000]
+            if name == "Glob":
+                import glob as _glob
+                pattern = args.get("pattern", "")
+                base    = args.get("path", _HERE)
+                if not os.path.isabs(str(base)):
+                    base = os.path.join(_HERE, base)
+                hits = _glob.glob(os.path.join(base, pattern), recursive=True)
+                return "\n".join(hits[:100]) or "(no matches)"
+            if name == "Grep":
+                import re as _re, glob as _glob
+                pattern    = args.get("pattern", "")
+                path       = args.get("path", _HERE)
+                file_glob  = args.get("glob", "")
+                if not os.path.isabs(str(path)):
+                    path = os.path.join(_HERE, path)
+                files = (
+                    _glob.glob(os.path.join(path, file_glob), recursive=True)
+                    if file_glob and os.path.isdir(path) else [path]
+                )
+                lines = []
+                for fp in files[:20]:
+                    if not os.path.isfile(fp):
+                        continue
+                    with open(fp, encoding="utf-8", errors="ignore") as f:
+                        for i, line in enumerate(f, 1):
+                            if _re.search(pattern, line):
+                                lines.append(f"{fp}:{i}: {line.rstrip()}")
+                                if len(lines) >= 200:
+                                    break
+                return "\n".join(lines) or "(no matches)"
+        except Exception as exc:
+            return f"Error: {exc}"
+        return f"Unknown tool: {name}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # AGENT: Executor
 # ═══════════════════════════════════════════════════════════════════════════════
 class Executor:
@@ -492,6 +636,12 @@ class Executor:
         self.review_mode  = REVIEW_MODE
         self.claude       = ClaudeRunner(timeout=CLAUDE_TIMEOUT, allowed_tools=CLAUDE_ALLOWED_TOOLS)
         self.anthropic    = AnthropicRunner(model=ANTHROPIC_MODEL, max_tokens=ANTHROPIC_MAX_TOKENS)
+        # SDK tool-use runner — replaces subprocess for tool-bearing subtasks
+        self.sdk_tool = SdkToolRunner(
+            client=self.anthropic.client,
+            model=ANTHROPIC_MODEL,
+            max_tokens=max(ANTHROPIC_MAX_TOKENS, 512),
+        )
 
     def execute_step(
         self,
@@ -506,8 +656,9 @@ class Executor:
         """
         actions: Dict[str, str] = {}
         advanced = 0
-        claude_jobs: list = []
-        sdk_jobs:    list = []
+        sdk_tool_jobs: list = []   # SDK tool-use (preferred for tool-bearing subtasks)
+        claude_jobs:   list = []   # subprocess fallback when SDK unavailable
+        sdk_jobs:      list = []   # SDK direct (no tools)
 
         for task_name, branch_name, st_name, _ in priority_list:
             if advanced >= self.max_per_step:
@@ -528,10 +679,15 @@ class Executor:
             elif status == "Running":
                 st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
-                if st_tools and self.claude.available:
-                    # Has tools — must use subprocess Claude (needs --allowedTools)
-                    claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
-                    advanced += 1
+                if st_tools:
+                    if self.sdk_tool.available:
+                        # SDK tool-use (preferred — no subprocess overhead)
+                        sdk_tool_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
+                        advanced += 1
+                    elif self.claude.available:
+                        # Subprocess fallback when SDK unavailable
+                        claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
+                        advanced += 1
                 elif self.anthropic.available:
                     # No tools — use SDK directly (faster, no subprocess)
                     auto_prompt = (
@@ -549,6 +705,43 @@ class Executor:
                         actions[st_name] = "verified"
                         advanced += 1
                         self._roll_up(dag, task_name, branch_name)
+
+        # ── SDK tool-use jobs (no subprocess) ────────────────────────────────
+        if sdk_tool_jobs:
+            names = ", ".join(j[2] for j in sdk_tool_jobs)
+            print(f"  {BLUE}SDK+tools executing {names}…{RESET}", flush=True)
+            with ThreadPoolExecutor(max_workers=len(sdk_tool_jobs)) as pool:
+                futures = {
+                    pool.submit(self.sdk_tool.run,
+                                st_data.get("description", ""), st_tools):
+                        (task_name, branch_name, st_name, st_data, st_tools)
+                    for task_name, branch_name, st_name, st_data, st_tools
+                    in sdk_tool_jobs
+                }
+                for future in as_completed(futures):
+                    task_name, branch_name, st_name, st_data, st_tools = futures[future]
+                    success, output = future.result()
+                    if success:
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
+                        st_data["shadow"]      = "Done"
+                        st_data["output"]      = output[:400]
+                        st_data["last_update"] = step
+                        add_memory_snapshot(memory_store, branch_name,
+                                            f"{st_name}_sdktool_verified", step)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
+                        _append_journal(
+                            st_name, task_name, branch_name,
+                            st_data.get("description", ""), output, step,
+                        )
+                    else:
+                        # SDK tool run failed — escalate to subprocess
+                        if self.claude.available:
+                            claude_jobs.append(
+                                (task_name, branch_name, st_name, st_data, st_tools)
+                            )
 
         # ── Run Claude jobs in parallel ───────────────────────────────────────
         if claude_jobs:
