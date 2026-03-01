@@ -13,6 +13,7 @@ Agents:
 CLI commands: run | snapshot | status | add_task | set KEY=VALUE | help | exit
 """
 
+import argparse
 import asyncio
 import os
 import sys
@@ -2218,9 +2219,10 @@ class SoloBuilderCLI:
         )
 
     # ── Main loop ────────────────────────────────────────────────────────────
-    def start(self) -> None:
-        """Run the interactive CLI loop, offering to resume saved state."""
-        if os.path.exists(STATE_PATH):
+    def start(self, headless: bool = False, auto_steps: Optional[int] = None,
+              no_resume: bool = False) -> None:
+        """Run the CLI loop.  In headless mode: skip prompts, auto-run, then exit."""
+        if not no_resume and os.path.exists(STATE_PATH):
             try:
                 with open(STATE_PATH, "r", encoding="utf-8") as f:
                     saved = json.load(f)
@@ -2229,12 +2231,17 @@ class SoloBuilderCLI:
                 saved_t    = dag_stats(saved.get("dag", {})).get("total", 0)
                 print(f"  {CYAN}Saved state found: step {saved_step}, "
                       f"{saved_v}/{saved_t} verified.{RESET}")
-                ans = input(f"  {BOLD}Resume? [Y/n]:{RESET} ").strip().lower()
-                if ans in ("", "y", "yes"):
+                if headless:
                     ok = self.load_state()
                     if ok:
                         print(f"  {GREEN}Resumed from step {self.step}.{RESET}")
-                        time.sleep(0.5)
+                else:
+                    ans = input(f"  {BOLD}Resume? [Y/n]:{RESET} ").strip().lower()
+                    if ans in ("", "y", "yes"):
+                        ok = self.load_state()
+                        if ok:
+                            print(f"  {GREEN}Resumed from step {self.step}.{RESET}")
+                            time.sleep(0.5)
             except Exception:
                 pass  # corrupt save → start fresh
 
@@ -2242,6 +2249,12 @@ class SoloBuilderCLI:
             self.dag, self.memory_store, self.step,
             self.alerts, self.meta.forecast(self.dag) if self.step else "N/A",
         )
+
+        if headless:
+            self._cmd_auto(str(auto_steps) if auto_steps is not None else "")
+            self.save_state()
+            return
+
         while self.running:
             try:
                 raw = input(f"\n  {BOLD}{CYAN}solo-builder >{RESET} ")
@@ -2260,7 +2273,7 @@ class SoloBuilderCLI:
 def _splash() -> None:
     lines = [
         "╔══════════════════════════════════════════════════════╗",
-        "║      SOLO BUILDER — AI AGENT CLI  v1.1               ║",
+        "║      SOLO BUILDER — AI AGENT CLI  v2.0               ║",
         "║                                                       ║",
         "║  DAG · Shadow · Self-Heal · Auto-Run · Persistence   ║",
         "╚══════════════════════════════════════════════════════╝",
@@ -2337,13 +2350,32 @@ def _release_lock(lock_path: str) -> None:
 
 def main() -> None:
     """Entry point for `solo-builder` console script (PyPI install)."""
+    parser = argparse.ArgumentParser(prog="solo-builder", add_help=True)
+    parser.add_argument(
+        "--headless", action="store_true",
+        help="Non-interactive mode: auto-run then exit (no prompts).",
+    )
+    parser.add_argument(
+        "--auto", type=int, metavar="N", default=None,
+        help="Steps to run in headless mode (omit for full pipeline).",
+    )
+    parser.add_argument(
+        "--no-resume", action="store_true",
+        help="Ignore saved state and start a fresh pipeline.",
+    )
+    args = parser.parse_args()
+
     _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     _acquire_lock(_LOCK_PATH)
     try:
         _splash()
         cli = SoloBuilderCLI()
-        cli.start()
+        cli.start(
+            headless=args.headless,
+            auto_steps=args.auto,
+            no_resume=args.no_resume,
+        )
     finally:
         _release_lock(_LOCK_PATH)
 
