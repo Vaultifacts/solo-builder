@@ -11,12 +11,13 @@ import json
 import re
 from pathlib import Path
 
-from flask import Flask, jsonify, abort, send_from_directory
+from flask import Flask, jsonify, abort, send_from_directory, request
 
 app = Flask(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH    = _PROJECT_ROOT / "state" / "solo_builder_state.json"
+TRIGGER_PATH  = _PROJECT_ROOT / "state" / "run_trigger"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 
 
@@ -131,6 +132,23 @@ def trigger_task(task_id: str):
         "status": task.get("status"),
         "pending_subtasks": pending, "pending_count": len(pending),
     }), 202
+
+
+@app.post("/run")
+def run_step():
+    """Signal the CLI to execute one step (writes a trigger file the auto loop polls)."""
+    state = _load_state()
+    if state.get("dag") and not any(
+        s.get("status") in ("Pending", "Running")
+        for t in state["dag"].values()
+        for b in t["branches"].values()
+        for s in b["subtasks"].values()
+    ):
+        return jsonify({"ok": False, "reason": "pipeline already complete",
+                        "step": state.get("step", 0)}), 200
+    TRIGGER_PATH.parent.mkdir(exist_ok=True)
+    TRIGGER_PATH.write_text("1")
+    return jsonify({"ok": True, "step": state.get("step", 0)}), 202
 
 
 @app.get("/journal")

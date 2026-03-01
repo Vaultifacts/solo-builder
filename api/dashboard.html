@@ -90,6 +90,13 @@
   .badge-pending    { background: #2a2200; color: var(--yellow); border: 1px solid var(--yellow); }
 
   .step-info { color: var(--dim); font-size: 11px; margin-left: auto; }
+  #btn-run {
+    margin-left: 12px; padding: 4px 14px; font-size: 12px; font-weight: 600;
+    background: #1a3a1a; color: var(--green); border: 1px solid var(--green);
+    border-radius: 4px; cursor: pointer; transition: background 0.15s;
+  }
+  #btn-run:hover { background: #2a5a2a; }
+  #btn-run:disabled { opacity: 0.4; cursor: default; }
 
   /* ── Layout ─────────────────────────────────────────────── */
   .layout {
@@ -268,6 +275,7 @@
   </div>
   <span id="hdr-badge" class="status-badge badge-pending">—</span>
   <span class="step-info" id="hdr-step">Step —</span>
+  <button id="btn-run" onclick="runStep()" title="Signal CLI to run one step">▶ Run Step</button>
 </header>
 
 <div class="layout">
@@ -501,6 +509,22 @@
         tasksCache[selectedTask] = fresh;
         renderDetail(fresh);
       } catch (_) {}
+    }
+  }
+
+  async function runStep() {
+    const btn = document.getElementById("btn-run");
+    btn.disabled = true;
+    btn.textContent = "⏳ Sent…";
+    try {
+      const r = await fetch("/run", { method: "POST" });
+      const d = await r.json();
+      btn.textContent = d.ok ? "✓ Triggered" : "✗ " + (d.reason || "error");
+      setTimeout(() => { btn.textContent = "▶ Run Step"; btn.disabled = false; }, 1500);
+      if (d.ok) setTimeout(tick, 600);
+    } catch (_) {
+      btn.textContent = "✗ Error";
+      setTimeout(() => { btn.textContent = "▶ Run Step"; btn.disabled = false; }, 1500);
     }
   }
 

@@ -1174,6 +1174,7 @@ class SoloBuilderCLI:
         print(f"  {CYAN}Auto-run: {label}  │  delay={AUTO_STEP_DELAY}s  │  Ctrl+C to pause{RESET}")
         time.sleep(0.6)
 
+        _trigger = os.path.join(_HERE, "state", "run_trigger")
         try:
             while True:
                 self.run_step()
@@ -1188,7 +1189,17 @@ class SoloBuilderCLI:
                 if limit is not None and ran >= limit:
                     break
 
-                time.sleep(AUTO_STEP_DELAY)
+                # Honour external trigger (from dashboard Run Step button)
+                _waited = 0.0
+                while _waited < AUTO_STEP_DELAY:
+                    if os.path.exists(_trigger):
+                        try:
+                            os.remove(_trigger)
+                        except OSError:
+                            pass
+                        break
+                    time.sleep(0.05)
+                    _waited += 0.05
 
         except KeyboardInterrupt:
             print(f"\n  {YELLOW}Auto-run paused at step {self.step}.{RESET}")
@@ -1954,7 +1965,35 @@ def _splash() -> None:
     time.sleep(0.6)
 
 
+def _acquire_lock(lock_path: str) -> None:
+    """Write a PID lockfile; exit if another instance is already running."""
+    if os.path.exists(lock_path):
+        try:
+            pid = int(open(lock_path).read().strip())
+            os.kill(pid, 0)          # Raises if process doesn't exist
+            print(f"\n  Solo Builder is already running (PID {pid}).")
+            print(f"  If that process is stale, delete {lock_path} and retry.\n")
+            sys.exit(1)
+        except (ProcessLookupError, PermissionError):
+            os.remove(lock_path)     # Stale lock — clean up
+    with open(lock_path, "w") as f:
+        f.write(str(os.getpid()))
+
+
+def _release_lock(lock_path: str) -> None:
+    try:
+        os.remove(lock_path)
+    except FileNotFoundError:
+        pass
+
+
 if __name__ == "__main__":
-    _splash()
-    cli = SoloBuilderCLI()
-    cli.start()
+    _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
+    os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
+    _acquire_lock(_LOCK_PATH)
+    try:
+        _splash()
+        cli = SoloBuilderCLI()
+        cli.start()
+    finally:
+        _release_lock(_LOCK_PATH)

@@ -1,112 +1,164 @@
 # Solo Builder
 
-> **Build faster. Ship smarter. Solo.**
+> A Python terminal CLI that uses six AI agents and the Anthropic SDK to manage DAG-based project tasks — with a live web dashboard.
 
-Solo Builder is a Python terminal CLI that orchestrates AI agents — Planner, Executor, Verifier, SelfHealer, ShadowAgent, and MetaOptimizer — to manage a DAG-based project task graph, enabling a solo developer to run multi-branch, dependency-aware workflows from a single interactive shell. The system tracks subtask lifecycle (Pending → Running → Verified), detects stalls and DAG inconsistencies automatically, and snapshots state as versioned PDFs with a persistent `journal.md`, giving developers an auditable record of project progress. Built entirely in Python with no external orchestration framework, Solo Builder is a lightweight, self-contained alternative to heavyweight project management tools — designed for one developer operating with the leverage of a coordinated agent team.
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
+[![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
 
-## How It Works
+## Features
 
-Tasks are organized as a **DAG (Directed Acyclic Graph)** of branches and subtasks. Each step runs a six-agent pipeline:
-
-| Agent | Role |
+| Feature | Description |
 |---|---|
-| **Planner** | Priority-ranks subtasks by risk score (staleness, stall age, shadow conflicts) |
-| **Executor** | Advances subtasks: Pending → Running → Verified. Calls `claude -p` for subtasks with descriptions. |
-| **ShadowAgent** | Tracks expected state, detects and resolves status conflicts |
-| **Verifier** | Enforces DAG consistency — rolls up branch and task status when all subtasks verify |
-| **SelfHealer** | Detects subtasks stalled in Running for ≥ `STALL_THRESHOLD` steps and resets them |
-| **MetaOptimizer** | Adapts Planner weights based on heal rate and verify rate over time |
-
-Subtasks with a `description` field are executed by calling the Claude Code CLI headlessly (`claude -p "<description>" --output-format json`). Subtasks without descriptions use a simulated probability roll as a fallback. Parallel subtasks across multiple tasks run concurrently via `ThreadPoolExecutor`.
-
-### Dependency Model
-
-Tasks declare `depends_on` lists. The Planner skips any task whose dependencies are not yet Verified. This enables:
-
-- **Sequential chains**: `Task 0 → Task 1 → Task 2`
-- **Fan-out**: `Task 0 → {Task 1, Task 2, Task 3}` (all run in parallel once Task 0 completes)
-- **Fan-in (diamond)**: `{Task 1…5} → Task 6` (Task 6 waits for all five to finish)
+| **DAG task graph** | Projects decompose into Tasks → Branches → Subtasks with explicit dependencies |
+| **6 AI agents** | Planner, ShadowAgent, SelfHealer, Executor, Verifier, MetaOptimizer coordinate every step |
+| **Anthropic SDK runner** | Subtasks without tools execute via direct `claude-sonnet-4-6` API calls — no subprocess |
+| **Claude subprocess runner** | Subtasks with `tools` (Read, Glob, Grep…) run via `claude -p` headless CLI |
+| **Live web dashboard** | Dark-theme SPA at `http://localhost:5000` polls every 2 s; Run Step button |
+| **Self-healing** | SelfHealer detects stalled subtasks and resets them to Pending automatically |
+| **Shadow state** | ShadowAgent tracks expected vs actual status, resolves conflicts each step |
+| **Human gates** | `verify <subtask> [note]` hard-sets any subtask Verified with an audit note |
+| **Process lockfile** | Prevents two CLI instances from corrupting the shared state file |
+| **Persistence** | State auto-saves every 5 steps; resume on restart |
+| **PDF snapshots** | 4-page matplotlib report at configurable intervals |
+| **Runtime config** | `set KEY=VALUE` changes thresholds, model, tokens, delays without restart |
 
 ---
 
-## Getting Started
+## Install
 
-### Requirements
+```bash
+git clone https://github.com/Vaultifacts/solo-builder.git
+cd solo-builder/solo_builder
+pip install -r requirements.txt
+export ANTHROPIC_API_KEY=sk-ant-...
+```
 
-- Python 3.10+
-- [Claude Code CLI](https://claude.ai/code) installed and authenticated (`claude --version`)
-- `matplotlib` for PDF snapshots (optional): `pip install matplotlib`
+---
 
-### Run
+## Usage
 
+### Terminal 1 — CLI
 ```bash
 cd solo_builder
 python solo_builder_cli.py
 ```
 
-On first run, the default DAG loads automatically. On subsequent runs, you are prompted to resume saved state.
+### Terminal 2 — Dashboard (optional)
+```bash
+python api/app.py
+# Open http://127.0.0.1:5000
+```
 
----
-
-## Commands
+### Key commands
 
 | Command | Description |
 |---|---|
-| `run` | Execute one agent pipeline step |
-| `auto [N]` | Run N steps automatically (default: until all tasks Verified) |
-| `add_task` | Append a new Task — Claude decomposes your spec into subtasks |
-| `add_branch <Task N>` | Add a new branch to an existing task via Claude decomposition |
-| `depends` | Print the full dependency graph |
-| `depends <T> <dep>` | Add a dependency: Task T depends on dep |
-| `undepends <T> <dep>` | Remove a dependency |
-| `describe <ST> <text>` | Attach a Claude prompt to any subtask and re-queue it |
-| `output <ST>` | Print the full Claude output for a subtask |
-| `export` | Write all Claude outputs to `solo_builder_outputs.md` |
-| `snapshot` | Generate a PDF timeline snapshot |
-| `save` / `load` | Persist and restore DAG state |
-| `reset` | Reset to initial DAG, clear saved state |
-| `status` | Show detailed DAG statistics |
-| `set KEY=VALUE` | Tune runtime config (see below) |
-| `help` | Show command reference |
-| `exit` | Quit and auto-save |
+| `auto [N]` | Run N steps automatically (omit N for full run) |
+| `run` | Execute one step manually |
+| `verify <ST> [note]` | Hard-set a subtask Verified (human gate) |
+| `describe <ST> <prompt>` | Assign a custom Claude prompt to a subtask |
+| `tools <ST> <tool,list>` | Give a subtask access to Claude tools (Read, Glob, Grep…) |
+| `add_task` | Append a new task; Claude decomposes spec into subtasks |
+| `add_branch <Task N>` | Add a branch to an existing task |
+| `set KEY=VALUE` | Change runtime settings (see below) |
+| `export` | Dump all subtask outputs to `solo_builder_outputs.md` |
+| `snapshot` | Save a PDF report |
+| `reset` | Clear state and restart the diamond DAG |
+| `save` / `load` | Manual persistence |
+| `exit` | Save and quit |
 
-### Config Keys (`set KEY=VALUE`)
-
-| Key | Default | Description |
-|---|---|---|
-| `STALL_THRESHOLD` | 5 | Steps before SelfHealer resets a stalled subtask |
-| `VERIFY_PROB` | 0.6 | Completion probability for simulated (no-description) subtasks |
-| `AUTO_STEP_DELAY` | 0.4 | Seconds between steps in `auto` mode |
-| `AUTO_SAVE_INTERVAL` | 5 | Steps between auto-saves |
-| `SNAPSHOT_INTERVAL` | 20 | Steps between automatic PDF snapshots |
+### Runtime settings
+```
+set STALL_THRESHOLD=5          # Steps before SelfHealer resets a subtask
+set ANTHROPIC_MAX_TOKENS=1024  # Token budget per SDK call
+set ANTHROPIC_MODEL=claude-sonnet-4-6
+set CLAUDE_SUBPROCESS=off      # Force all subtasks through SDK (disable subprocess)
+set AUTO_STEP_DELAY=0.4        # Seconds between auto steps
+set VERBOSITY=DEBUG            # INFO | DEBUG
+```
 
 ---
 
-## Persistent Outputs
+## Architecture
 
-| File | Contents |
-|---|---|
-| `state/solo_builder_state.json` | Full DAG state, step counter, memory store |
-| `journal.md` | Append-only log of every Claude-verified subtask (prompt + output) |
-| `solo_builder_outputs.md` | On-demand export of all Claude outputs (`export` command) |
-| `snapshots/` | PDF timeline snapshots (requires matplotlib) |
+```
+INITIAL_DAG (diamond fan-out / fan-in)
+
+  Task 0 (seed)
+    ├─ Branch A  ──┐
+    └─ Branch B  ──┤
+                   ├──▶ Task 1 ──▶ Task 2 ──▶ Task 3 ──▶ Task 4 ──▶ Task 5 ──▶ Task 6 (synthesis)
+                         ...           ...           ...         ...         ...
+```
+
+**Per-step pipeline:**
+```
+Planner → ShadowAgent → SelfHealer → Executor → Verifier → ShadowAgent → MetaOptimizer
+```
+
+**Executor routing (per subtask):**
+```
+has tools + claude CLI available  →  ClaudeRunner  (subprocess, --allowedTools)
+no tools + ANTHROPIC_API_KEY set  →  AnthropicRunner  (direct SDK, parallel)
+fallback                          →  dice roll  (probability-based verification)
+```
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 solo_builder/
-├── solo_builder_cli.py          # Main entry point — all six agents
-├── solo_builder_live_multi_snapshot.py  # PDF generation (matplotlib)
+├── solo_builder_cli.py          # Main CLI (~2000 lines) — all 6 agents + 3 runners
+├── api/
+│   ├── app.py                   # Flask REST API (GET /status /tasks /journal, POST /run)
+│   └── dashboard.html           # Dark-theme SPA, live polling, Run Step button
 ├── utils/
-│   └── helper_functions.py     # ANSI codes, bars, DAG stats, validators
+│   └── helper_functions.py      # ANSI codes, bars, DAG stats, validators
 ├── config/
-│   └── settings.json           # Runtime configuration
-├── state/                      # Auto-created — persisted DAG state
-├── snapshots/                  # Auto-created — PDF snapshots
-├── journal.md                  # Auto-created — live Claude output log
-└── README.md                   # This file
+│   └── settings.json            # Runtime config (model, tokens, thresholds…)
+├── solo_builder_live_multi_snapshot.py  # 4-page PDF via matplotlib
+├── solo_builder_outputs.md      # Exported Claude outputs (auto-generated)
+└── requirements.txt
+```
+
+---
+
+## Example run
+
+```
+  SOLO BUILDER — AI AGENT CLI  │  Step: 42  │  ETA: ~28 steps  (60% done)
+
+  ▶ Task 0  [Verified]
+    ├─ Branch A [Verified]  ████████████████████  5/5
+    └─ Branch B [Verified]  ████████████████████  3/3
+
+  ▶ Task 1  [Running]
+    ├─ Branch C [Running]   ████████░░░░░░░░░░░░  2/4
+    └─ Branch D [Verified]  ████████████████████  2/2
+  ...
+
+  SDK executing C3, C4…          ← blue: direct Anthropic API calls
+  Claude executing O1…           ← cyan: subprocess with Read+Glob+Grep tools
+
+  Overall [████████████░░░░░░░░] 42✓ 2▶ 26● / 70  (60.0%)
+```
+
+---
+
+## Configuration (`config/settings.json`)
+
+```json
+{
+  "STALL_THRESHOLD": 5,
+  "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+  "ANTHROPIC_MAX_TOKENS": 300,
+  "CLAUDE_TIMEOUT": 60,
+  "AUTO_STEP_DELAY": 0.4,
+  "EXECUTOR_MAX_PER_STEP": 2,
+  "EXECUTOR_VERIFY_PROBABILITY": 0.6
+}
 ```
