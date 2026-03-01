@@ -2350,6 +2350,28 @@ def _release_lock(lock_path: str) -> None:
 
 def main() -> None:
     """Entry point — interactive or headless."""
+    # ── status subcommand (fast path, no lock needed) ────────────────────────
+    if len(sys.argv) > 1 and sys.argv[1] == "status":
+        _state_path = os.path.join(_HERE, "state", "solo_builder_state.json")
+        if not os.path.exists(_state_path):
+            print(json.dumps({"error": "no state file"}))
+            return
+        with open(_state_path) as _f:
+            _state = json.load(_f)
+        _s    = dag_stats(_state.get("dag", {}))
+        _step = _state.get("step", 0)
+        _pct  = round(_s["verified"] / _s["total"] * 100, 1) if _s["total"] else 0.0
+        print(json.dumps({
+            "step":     _step,
+            "verified": _s["verified"],
+            "running":  _s["running"],
+            "pending":  _s["pending"],
+            "total":    _s["total"],
+            "pct":      _pct,
+            "complete": _s["verified"] == _s["total"],
+        }))
+        return
+
     # ── .env loader (no external dependency) ────────────────────────────────
     _env_path = os.path.join(_HERE, ".env")
     if os.path.exists(_env_path):
@@ -2382,6 +2404,11 @@ def main() -> None:
         "--webhook", metavar="URL", default=None,
         help="POST completion JSON to this URL (overrides WEBHOOK_URL in settings).",
     )
+    parser.add_argument(
+        "--quiet", "-q", action="store_true",
+        help="Suppress all display output (headless only). Combine with --output-format json "
+             "for completely silent runs where only the JSON result reaches stdout.",
+    )
     args = parser.parse_args()
 
     # ── Apply flag overrides ─────────────────────────────────────────────────
@@ -2389,9 +2416,14 @@ def main() -> None:
         global WEBHOOK_URL
         WEBHOOK_URL = args.webhook
 
-    _json_mode = args.headless and args.output_format == "json"
+    _json_mode  = args.headless and args.output_format == "json"
+    _quiet_mode = args.headless and args.quiet
+    _null_fh    = None
+    if _quiet_mode:
+        _null_fh   = open(os.devnull, "w", encoding="utf-8")
+        sys.stderr = _null_fh         # silence stderr first
     if _json_mode:
-        sys.stdout = sys.stderr   # redirect ANSI display to stderr; JSON goes to real stdout
+        sys.stdout = sys.stderr       # ANSI display → (possibly devnull) stderr; JSON → real stdout
 
     # ── Run ──────────────────────────────────────────────────────────────────
     _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
@@ -2408,6 +2440,10 @@ def main() -> None:
         )
     finally:
         _release_lock(_LOCK_PATH)
+        if _quiet_mode:
+            sys.stderr = sys.__stderr__
+            if _null_fh:
+                _null_fh.close()
         if _json_mode:
             sys.stdout = sys.__stdout__
             if cli is not None:
