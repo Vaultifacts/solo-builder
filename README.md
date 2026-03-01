@@ -120,13 +120,14 @@ fallback                          →  dice roll  (probability-based verificatio
 solo_builder/
 ├── solo_builder_cli.py          # Main CLI (~2000 lines) — all 6 agents + 3 runners
 ├── api/
-│   ├── app.py                   # Flask REST API (GET /status /tasks /journal, POST /run)
-│   └── dashboard.html           # Dark-theme SPA, live polling, Run Step button
+│   ├── app.py                   # Flask REST API (GET /status /tasks /journal /export, POST /run)
+│   └── dashboard.html           # Dark-theme SPA, live polling, Run Step + Auto + Export buttons
 ├── utils/
 │   └── helper_functions.py      # ANSI codes, bars, DAG stats, validators
 ├── config/
 │   └── settings.json            # Runtime config (model, tokens, thresholds…)
 ├── solo_builder_live_multi_snapshot.py  # 4-page PDF via matplotlib
+├── profiler_harness.py          # Standalone perf benchmark (patches async + sync paths)
 ├── solo_builder_outputs.md      # Exported Claude outputs (auto-generated)
 └── requirements.txt
 ```
@@ -160,15 +161,15 @@ solo_builder/
 ```json
 {
   "STALL_THRESHOLD": 5,
-  "DAG_UPDATE_INTERVAL": 1,
+  "DAG_UPDATE_INTERVAL": 5,
   "MAX_SUBTASKS_PER_BRANCH": 20,
   "MAX_BRANCHES_PER_TASK": 10,
   "JOURNAL_PATH": "journal.md",
   "ANTHROPIC_MODEL": "claude-sonnet-4-6",
-  "ANTHROPIC_MAX_TOKENS": 300,
+  "ANTHROPIC_MAX_TOKENS": 512,
   "CLAUDE_TIMEOUT": 60,
   "AUTO_STEP_DELAY": 0.4,
-  "EXECUTOR_MAX_PER_STEP": 2,
+  "EXECUTOR_MAX_PER_STEP": 6,
   "EXECUTOR_VERIFY_PROBABILITY": 0.6,
   "REVIEW_MODE": false,
   "WEBHOOK_URL": ""

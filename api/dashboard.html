@@ -104,6 +104,21 @@
     text-decoration: none;
   }
   #btn-export:hover { background: #1a3a55; }
+  .auto-wrap {
+    display: flex; align-items: center; gap: 4px; margin-left: 8px;
+  }
+  #btn-auto {
+    padding: 4px 14px; font-size: 12px; font-weight: 600;
+    background: #1e1433; color: #ce93d8; border: 1px solid #9c27b0;
+    border-radius: 4px; cursor: pointer; transition: background 0.15s;
+  }
+  #btn-auto:hover { background: #2e1f4a; }
+  #btn-auto:disabled { opacity: 0.4; cursor: default; }
+  #auto-n {
+    width: 42px; padding: 3px 5px; font-size: 12px; text-align: center;
+    background: #1a1a1a; color: var(--text); border: 1px solid #9c27b0;
+    border-radius: 4px; font-family: var(--font);
+  }
 
   /* ── Layout ─────────────────────────────────────────────── */
   .layout {
@@ -284,6 +299,10 @@
   <span class="step-info" id="hdr-step">Step —</span>
   <button id="btn-run" onclick="runStep()" title="Signal CLI to run one step">▶ Run Step</button>
   <button id="btn-export" onclick="exportOutputs()" title="Download all subtask outputs as Markdown">⬇ Export</button>
+  <div class="auto-wrap">
+    <input id="auto-n" type="number" value="10" min="1" max="300" title="Steps to run automatically">
+    <button id="btn-auto" onclick="runAuto()" title="Run N steps automatically">⏩ Auto</button>
+  </div>
 </header>
 
 <div class="layout">
@@ -518,6 +537,35 @@
         renderDetail(fresh);
       } catch (_) {}
     }
+  }
+
+  async function runAuto() {
+    const n = Math.max(1, parseInt(document.getElementById("auto-n").value || "10", 10));
+    const btn = document.getElementById("btn-auto");
+    btn.disabled = true;
+    let prevStep = -1;
+    for (let i = 0; i < n; i++) {
+      btn.textContent = `⏳ ${i}/${n}`;
+      try {
+        const r = await fetch("/run", { method: "POST" });
+        const d = await r.json();
+        if (!d.ok) { toast("⏩ " + (d.reason || "Pipeline complete")); break; }
+        prevStep = d.step;
+        // Poll until step count advances or 45s timeout
+        const deadline = Date.now() + 45000;
+        while (Date.now() < deadline) {
+          await new Promise(res => setTimeout(res, 900));
+          try {
+            const s = await api("/status");
+            if (s.complete) { await tick(); i = n; break; }
+            if (s.step > prevStep) { prevStep = s.step; break; }
+          } catch (_) {}
+        }
+        await tick();
+      } catch (_) { break; }
+    }
+    btn.textContent = "⏩ Auto";
+    btn.disabled = false;
   }
 
   async function exportOutputs() {

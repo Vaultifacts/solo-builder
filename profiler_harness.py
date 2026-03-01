@@ -1,12 +1,14 @@
 """
 profiler_harness.py — Solo Builder performance profiler (reusable).
 Run against any settings; reports structured metrics.
+
+Patches both sync (.run) and async (.arun) methods so timing is captured
+regardless of which execution path is active.
 """
-import os, sys, copy, json, time, tracemalloc, contextlib, statistics
+import os, sys, time, tracemalloc, contextlib, statistics
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 tracemalloc.start()
-_mem_baseline = tracemalloc.get_traced_memory()[0]
 
 import solo_builder_cli as cli
 
@@ -22,62 +24,84 @@ M = {
     "healer_events": [], "healer_heals": [],
 }
 
+# ── Save originals ────────────────────────────────────────────────────────────
 _orig_prioritize       = cli.Planner.prioritize
 _orig_execute_step     = cli.Executor.execute_step
 _orig_verify           = cli.Verifier.verify
 _orig_find_stalled     = cli.SelfHealer.find_stalled
 _orig_heal             = cli.SelfHealer.heal
 _orig_detect_conflicts = cli.ShadowAgent.detect_conflicts
-_orig_sdk_run          = cli.AnthropicRunner.run
-_orig_sdktool_run      = cli.SdkToolRunner.run
-_orig_claude_run       = cli.ClaudeRunner.run
+_orig_sdk_arun         = cli.AnthropicRunner.arun      # async path (primary)
+_orig_sdktool_arun     = cli.SdkToolRunner.arun        # async path (primary)
+_orig_sdk_run          = cli.AnthropicRunner.run       # sync path (fallback)
+_orig_sdktool_run      = cli.SdkToolRunner.run         # sync path (fallback)
+_orig_claude_run       = cli.ClaudeRunner.run          # subprocess (always sync)
 _orig_render           = cli.TerminalDisplay.render
 
 
-def _p_prioritize(self, dag, step):
-    t0 = time.perf_counter(); r = _orig_prioritize(self, dag, step)
-    M["planner_t"].append(time.perf_counter() - t0); return r
+# ── Async patches (primary SDK paths) ────────────────────────────────────────
+async def _p_sdk_arun(self, prompt):
+    t0 = time.perf_counter()
+    r = await _orig_sdk_arun(self, prompt)
+    M["sdk_call_t"].append(time.perf_counter() - t0)
+    return r
 
+async def _p_sdktool_arun(self, prompt, tools_str):
+    t0 = time.perf_counter()
+    r = await _orig_sdktool_arun(self, prompt, tools_str)
+    M["sdktool_call_t"].append(time.perf_counter() - t0)
+    return r
+
+
+# ── Sync patches (fallback / subprocess paths) ────────────────────────────────
+def _p_sdk_run(self, prompt):
+    t0 = time.perf_counter()
+    r = _orig_sdk_run(self, prompt)
+    M["sdk_call_t"].append(time.perf_counter() - t0)
+    return r
+
+def _p_sdktool_run(self, prompt, tools_str):
+    t0 = time.perf_counter()
+    r = _orig_sdktool_run(self, prompt, tools_str)
+    M["sdktool_call_t"].append(time.perf_counter() - t0)
+    return r
+
+def _p_claude_run(self, prompt, st_name, tools=""):
+    t0 = time.perf_counter()
+    r = _orig_claude_run(self, prompt, st_name, tools)
+    M["claude_call_t"].append(time.perf_counter() - t0)
+    return r
+
+
+# ── execute_step: before/after count approach (works for sync+async) ──────────
 def _p_execute_step(self, dag, priority_list, step, memory_store):
-    sdk_t, claude_t, sdktool_t = [], [], []
-
-    orig_sdk      = type(self.anthropic).run
-    orig_sdktool  = type(self.sdk_tool).run
-    orig_claude   = type(self.claude).run
-
-    def _sdk(inner, prompt):
-        t0 = time.perf_counter(); r = _orig_sdk_run(inner, prompt)
-        sdk_t.append(time.perf_counter() - t0); M["sdk_call_t"].append(sdk_t[-1]); return r
-
-    def _sdktool(inner, prompt, tools_str):
-        t0 = time.perf_counter(); r = _orig_sdktool_run(inner, prompt, tools_str)
-        sdktool_t.append(time.perf_counter() - t0); M["sdktool_call_t"].append(sdktool_t[-1]); return r
-
-    def _claude(inner, prompt, st_name, tools=""):
-        t0 = time.perf_counter(); r = _orig_claude_run(inner, prompt, st_name, tools)
-        claude_t.append(time.perf_counter() - t0); M["claude_call_t"].append(claude_t[-1]); return r
-
-    type(self.anthropic).run  = _sdk
-    type(self.sdk_tool).run   = _sdktool
-    type(self.claude).run     = _claude
+    sdk_before     = len(M["sdk_call_t"])
+    sdktool_before = len(M["sdktool_call_t"])
+    claude_before  = len(M["claude_call_t"])
 
     t0 = time.perf_counter()
     actions = _orig_execute_step(self, dag, priority_list, step, memory_store)
     M["executor_t"].append(time.perf_counter() - t0)
 
-    type(self.anthropic).run  = orig_sdk
-    type(self.sdk_tool).run   = orig_sdktool
-    type(self.claude).run     = orig_claude
+    sdk_n     = len(M["sdk_call_t"])     - sdk_before
+    sdktool_n = len(M["sdktool_call_t"]) - sdktool_before
+    claude_n  = len(M["claude_call_t"])  - claude_before
 
-    M["sdk_jobs_per_step"].append(len(sdk_t))
-    M["sdktool_jobs_per_step"].append(len(sdktool_t))
-    M["claude_jobs_per_step"].append(len(claude_t))
-    started   = sum(1 for a in actions.values() if a == "started")
-    verified  = sum(1 for a in actions.values() if a in ("verified","review"))
-    dice      = max(0, len(actions) - started - len(sdk_t) - len(sdktool_t) - len(claude_t))
+    M["sdk_jobs_per_step"].append(sdk_n)
+    M["sdktool_jobs_per_step"].append(sdktool_n)
+    M["claude_jobs_per_step"].append(claude_n)
+
+    started  = sum(1 for a in actions.values() if a == "started")
+    verified = sum(1 for a in actions.values() if a in ("verified", "review"))
+    dice     = max(0, len(actions) - started - sdk_n - sdktool_n - claude_n)
     M["dice_jobs_per_step"].append(dice)
     M["verified_per_step"].append(verified)
     return actions
+
+
+def _p_prioritize(self, dag, step):
+    t0 = time.perf_counter(); r = _orig_prioritize(self, dag, step)
+    M["planner_t"].append(time.perf_counter() - t0); return r
 
 def _p_verify(self, dag):
     t0 = time.perf_counter(); r = _orig_verify(self, dag)
@@ -100,13 +124,20 @@ def _p_detect_conflicts(self, dag):
 
 def _p_render(self, *a, **kw): pass
 
-cli.Planner.prioritize           = _p_prioritize
-cli.Executor.execute_step        = _p_execute_step
-cli.Verifier.verify              = _p_verify
-cli.SelfHealer.find_stalled      = _p_find_stalled
-cli.SelfHealer.heal              = _p_heal
+
+# ── Apply patches ─────────────────────────────────────────────────────────────
+cli.AnthropicRunner.arun     = _p_sdk_arun
+cli.SdkToolRunner.arun       = _p_sdktool_arun
+cli.AnthropicRunner.run      = _p_sdk_run
+cli.SdkToolRunner.run        = _p_sdktool_run
+cli.ClaudeRunner.run         = _p_claude_run
+cli.Planner.prioritize       = _p_prioritize
+cli.Executor.execute_step    = _p_execute_step
+cli.Verifier.verify          = _p_verify
+cli.SelfHealer.find_stalled  = _p_find_stalled
+cli.SelfHealer.heal          = _p_heal
 cli.ShadowAgent.detect_conflicts = _p_detect_conflicts
-cli.TerminalDisplay.render       = _p_render
+cli.TerminalDisplay.render   = _p_render
 
 print(f"  Settings: MAX_PER_STEP={cli.EXEC_MAX_PER_STEP}  "
       f"DAG_INTERVAL={cli.DAG_UPDATE_INTERVAL}  "
@@ -163,22 +194,22 @@ verified_f  = sum(1 for t in instance.dag.values()
                   if s.get("status") == "Verified")
 
 def _s(lst, lbl, unit="ms", sc=1000):
-    if not lst: return f"  {lbl:<42} n/a"
+    if not lst: return f"  {lbl:<46} n/a"
     mn=min(lst)*sc; mx=max(lst)*sc; av=statistics.mean(lst)*sc
     md=statistics.median(lst)*sc
     p95=sorted(lst)[int(len(lst)*.95)]*sc if len(lst)>=10 else mx
-    return (f"  {lbl:<42} avg={av:8.2f}{unit}  med={md:8.2f}{unit}  "
+    return (f"  {lbl:<46} avg={av:8.2f}{unit}  med={md:8.2f}{unit}  "
             f"min={mn:6.2f}  max={mx:8.2f}  p95={p95:8.2f}")
 
-print("\n\n" + "═"*82)
-print("  SOLO BUILDER — OPTIMIZED PERFORMANCE PROFILE")
-print("═"*82)
+print("\n\n" + "═"*86)
+print("  SOLO BUILDER — ASYNC PERFORMANCE PROFILE")
+print("═"*86)
 print(f"""
   Config active:
     EXECUTOR_MAX_PER_STEP  = {cli.EXEC_MAX_PER_STEP}   (baseline: 2)
     DAG_UPDATE_INTERVAL    = {cli.DAG_UPDATE_INTERVAL}   (baseline: 1)
     ANTHROPIC_MAX_TOKENS   = {cli.ANTHROPIC_MAX_TOKENS} (baseline: 300)
-    SdkToolRunner          = active (baseline: subprocess)
+    SDK runner             = async asyncio.gather (baseline: ThreadPoolExecutor)
 
   ── EXECUTION OVERVIEW ──────────────────────────────────────────────────────
   Total wall time        : {wall_total:.2f}s
@@ -200,17 +231,17 @@ print(_s(M["verifier_t"],      "Verifier.verify()"))
 print(_s(M["healer_find_t"],   "SelfHealer.find_stalled()"))
 print(_s(M["shadow_detect_t"], "ShadowAgent.detect_conflicts()"))
 if M["sdk_call_t"]:
-    print(_s(M["sdk_call_t"],      "AnthropicRunner.run() [SDK direct]"))
+    print(_s(M["sdk_call_t"],      "AnthropicRunner.arun() [async SDK]"))
 if M["sdktool_call_t"]:
-    print(_s(M["sdktool_call_t"],  "SdkToolRunner.run() [SDK+tools]"))
+    print(_s(M["sdktool_call_t"],  "SdkToolRunner.arun() [async SDK+tools]"))
 if M["claude_call_t"]:
     print(_s(M["claude_call_t"],   "ClaudeRunner.run() [subprocess]"))
 
-total_sdk    = sum(M["sdk_jobs_per_step"])
-total_sdktool= sum(M["sdktool_jobs_per_step"])
-total_claude = sum(M["claude_jobs_per_step"])
-total_dice   = sum(M["dice_jobs_per_step"])
-avg_util     = statistics.mean(
+total_sdk     = sum(M["sdk_jobs_per_step"])
+total_sdktool = sum(M["sdktool_jobs_per_step"])
+total_claude  = sum(M["claude_jobs_per_step"])
+total_dice    = sum(M["dice_jobs_per_step"])
+avg_util = statistics.mean(
     (s+c+st)/cli.EXEC_MAX_PER_STEP
     for s,c,st in zip(M["sdk_jobs_per_step"],M["claude_jobs_per_step"],M["sdktool_jobs_per_step"])
 ) * 100
@@ -222,8 +253,8 @@ sat_steps = sum(
 print(f"""
   ── CONCURRENCY / EXECUTOR ──────────────────────────────────────────────────
   EXECUTOR_MAX_PER_STEP          : {cli.EXEC_MAX_PER_STEP}
-  SDK (no-tools) jobs total      : {total_sdk}
-  SDK+tools jobs total           : {total_sdktool}
+  SDK async jobs total           : {total_sdk}
+  SDK+tools async jobs total     : {total_sdktool}
   Claude subprocess jobs total   : {total_claude}
   Dice-roll fallbacks            : {total_dice}
   Avg SDK jobs/step              : {statistics.mean(M["sdk_jobs_per_step"]):.2f}
@@ -231,7 +262,7 @@ print(f"""
   Avg executor utilization       : {avg_util:.1f}%
   Saturated steps (≥MAX)         : {sat_steps}/{total_steps} ({sat_steps/total_steps*100:.0f}%)
   Steps with 0 active jobs       : {sum(1 for s,c,st in zip(M["sdk_jobs_per_step"],M["claude_jobs_per_step"],M["sdktool_jobs_per_step"]) if s+c+st==0)}
-  Max thread concurrency         : {max(s+c+st for s,c,st in zip(M["sdk_jobs_per_step"],M["claude_jobs_per_step"],M["sdktool_jobs_per_step"]))}
+  Max concurrent jobs/step       : {max(s+c+st for s,c,st in zip(M["sdk_jobs_per_step"],M["claude_jobs_per_step"],M["sdktool_jobs_per_step"]))}
 """)
 
 depths = [d for _,d in M["queue_depth"] if d>0]
@@ -270,6 +301,6 @@ for (lo,hi), lbl in [((0,100),"<100ms"),((100,500),"100-500ms"),
     bar = "█"*(cnt*40//max(total_steps,1))
     print(f"  {lbl:<12} {cnt:>5}   {cnt/total_steps*100:5.1f}%  {bar}")
 
-print("\n" + "═"*82)
-print("  END OF OPTIMIZED PROFILE")
-print("═"*82 + "\n")
+print("\n" + "═"*86)
+print("  END OF ASYNC PROFILE")
+print("═"*86 + "\n")
