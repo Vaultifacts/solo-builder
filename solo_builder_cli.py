@@ -767,11 +767,13 @@ class Executor:
         if sdk_tool_jobs:
             names = ", ".join(j[2] for j in sdk_tool_jobs)
             print(f"  {BLUE}SDK+tools executing {names}…{RESET}", flush=True)
-            _sdktool_results = asyncio.run(asyncio.gather(
-                *(self.sdk_tool.arun(st_data.get("description", ""), st_tools)
-                  for _, _, _, st_data, st_tools in sdk_tool_jobs),
-                return_exceptions=True,
-            ))
+            async def _gather_sdktool(jobs):
+                return await asyncio.gather(
+                    *(self.sdk_tool.arun(sd.get("description", ""), st)
+                      for _, _, _, sd, st in jobs),
+                    return_exceptions=True,
+                )
+            _sdktool_results = asyncio.run(_gather_sdktool(sdk_tool_jobs))
             for (task_name, branch_name, st_name, st_data, st_tools), result \
                     in zip(sdk_tool_jobs, _sdktool_results):
                 success, output = (False, str(result)[:200]) \
@@ -831,11 +833,12 @@ class Executor:
         if sdk_jobs:
             names = ", ".join(j[2] for j in sdk_jobs)
             print(f"  {BLUE}SDK executing {names}…{RESET}", flush=True)
-            _sdk_results = asyncio.run(asyncio.gather(
-                *(self.anthropic.arun(prompt)
-                  for _, _, _, _, prompt in sdk_jobs),
-                return_exceptions=True,
-            ))
+            async def _gather_sdk(jobs):
+                return await asyncio.gather(
+                    *(self.anthropic.arun(p) for _, _, _, _, p in jobs),
+                    return_exceptions=True,
+                )
+            _sdk_results = asyncio.run(_gather_sdk(sdk_jobs))
             for (task_name, branch_name, st_name, st_data, _), result \
                     in zip(sdk_jobs, _sdk_results):
                 success, output = (False, str(result)[:200]) \
