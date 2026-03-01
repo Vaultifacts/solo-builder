@@ -19,6 +19,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH    = _PROJECT_ROOT / "state" / "solo_builder_state.json"
 TRIGGER_PATH  = _PROJECT_ROOT / "state" / "run_trigger"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
+OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +150,20 @@ def run_step():
     TRIGGER_PATH.parent.mkdir(exist_ok=True)
     TRIGGER_PATH.write_text("1")
     return jsonify({"ok": True, "step": state.get("step", 0)}), 202
+
+
+@app.get("/export")
+def export_outputs():
+    """Download all subtask outputs as a Markdown file."""
+    if not OUTPUTS_PATH.exists():
+        return jsonify({"error": "No export file found. Run 'export' in the CLI first."}), 404
+    return send_from_directory(
+        OUTPUTS_PATH.parent,
+        OUTPUTS_PATH.name,
+        as_attachment=True,
+        download_name="solo_builder_outputs.md",
+        mimetype="text/markdown",
+    )
 
 
 @app.get("/journal")

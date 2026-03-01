@@ -13,6 +13,7 @@ Agents:
 CLI commands: run | snapshot | status | add_task | set KEY=VALUE | help | exit
 """
 
+import asyncio
 import os
 import sys
 import copy
@@ -449,10 +450,11 @@ class AnthropicRunner:
     """
 
     def __init__(self, model: str = "claude-sonnet-4-6", max_tokens: int = 300) -> None:
-        self.model      = model
-        self.max_tokens = max_tokens
-        self.client     = None
-        self.available  = self._init()
+        self.model        = model
+        self.max_tokens   = max_tokens
+        self.client       = None
+        self.async_client = None
+        self.available    = self._init()
 
     def _init(self) -> bool:
         try:
@@ -460,7 +462,8 @@ class AnthropicRunner:
             key = os.environ.get("ANTHROPIC_API_KEY", "")
             if not key:
                 return False
-            self.client = anthropic.Anthropic(api_key=key)
+            self.client       = anthropic.Anthropic(api_key=key)
+            self.async_client = anthropic.AsyncAnthropic(api_key=key)
             return True
         except ImportError:
             return False
@@ -471,6 +474,20 @@ class AnthropicRunner:
             return False, "Anthropic SDK unavailable"
         try:
             msg = self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return True, msg.content[0].text.strip()
+        except Exception as exc:
+            return False, str(exc)[:200]
+
+    async def arun(self, prompt: str) -> tuple:
+        """Async version — awaitable, for use with asyncio.gather()."""
+        if not self.available:
+            return False, "Anthropic SDK unavailable"
+        try:
+            msg = await self.async_client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 messages=[{"role": "user", "content": prompt}],
@@ -536,11 +553,12 @@ class SdkToolRunner:
         },
     ]
 
-    def __init__(self, client, model: str, max_tokens: int) -> None:
-        self.client     = client
-        self.model      = model
-        self.max_tokens = max_tokens
-        self.available  = client is not None
+    def __init__(self, client, async_client, model: str, max_tokens: int) -> None:
+        self.client       = client
+        self.async_client = async_client
+        self.model        = model
+        self.max_tokens   = max_tokens
+        self.available    = client is not None and async_client is not None
 
     def run(self, prompt: str, tools_str: str) -> tuple:
         """Tool-use loop. Returns (success: bool, output: str)."""
@@ -552,6 +570,44 @@ class SdkToolRunner:
         try:
             for _ in range(8):  # max 8 tool-use rounds
                 resp = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    tools=schemas,
+                    messages=messages,
+                )
+                if resp.stop_reason == "end_turn":
+                    text = " ".join(
+                        b.text for b in resp.content if hasattr(b, "text")
+                    ).strip()
+                    return True, text
+                if resp.stop_reason == "tool_use":
+                    messages.append({"role": "assistant", "content": resp.content})
+                    results = []
+                    for block in resp.content:
+                        if block.type == "tool_use":
+                            out = self._exec(block.name, block.input)
+                            results.append({
+                                "type":        "tool_result",
+                                "tool_use_id": block.id,
+                                "content":     str(out)[:8000],
+                            })
+                    messages.append({"role": "user", "content": results})
+                else:
+                    break
+        except Exception as exc:
+            return False, str(exc)[:200]
+        return False, "Tool loop exhausted"
+
+    async def arun(self, prompt: str, tools_str: str) -> tuple:
+        """Async tool-use loop — awaitable, for use with asyncio.gather()."""
+        if not self.available:
+            return False, "SDK unavailable"
+        allowed  = {t.strip() for t in tools_str.split(",") if t.strip()}
+        schemas  = [s for s in self._SCHEMAS if s["name"] in allowed]
+        messages = [{"role": "user", "content": prompt}]
+        try:
+            for _ in range(8):
+                resp = await self.async_client.messages.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
                     tools=schemas,
@@ -639,6 +695,7 @@ class Executor:
         # SDK tool-use runner — replaces subprocess for tool-bearing subtasks
         self.sdk_tool = SdkToolRunner(
             client=self.anthropic.client,
+            async_client=self.anthropic.async_client,
             model=ANTHROPIC_MODEL,
             max_tokens=max(ANTHROPIC_MAX_TOKENS, 512),
         )
@@ -706,42 +763,40 @@ class Executor:
                         advanced += 1
                         self._roll_up(dag, task_name, branch_name)
 
-        # ── SDK tool-use jobs (no subprocess) ────────────────────────────────
+        # ── SDK tool-use jobs (async, no subprocess) ─────────────────────────
         if sdk_tool_jobs:
             names = ", ".join(j[2] for j in sdk_tool_jobs)
             print(f"  {BLUE}SDK+tools executing {names}…{RESET}", flush=True)
-            with ThreadPoolExecutor(max_workers=len(sdk_tool_jobs)) as pool:
-                futures = {
-                    pool.submit(self.sdk_tool.run,
-                                st_data.get("description", ""), st_tools):
-                        (task_name, branch_name, st_name, st_data, st_tools)
-                    for task_name, branch_name, st_name, st_data, st_tools
-                    in sdk_tool_jobs
-                }
-                for future in as_completed(futures):
-                    task_name, branch_name, st_name, st_data, st_tools = futures[future]
-                    success, output = future.result()
-                    if success:
-                        new_status             = "Review" if self.review_mode else "Verified"
-                        st_data["status"]      = new_status
-                        st_data["shadow"]      = "Done"
-                        st_data["output"]      = output[:400]
-                        st_data["last_update"] = step
-                        add_memory_snapshot(memory_store, branch_name,
-                                            f"{st_name}_sdktool_verified", step)
-                        actions[st_name] = "review" if self.review_mode else "verified"
-                        if not self.review_mode:
-                            self._roll_up(dag, task_name, branch_name)
-                        _append_journal(
-                            st_name, task_name, branch_name,
-                            st_data.get("description", ""), output, step,
+            _sdktool_results = asyncio.run(asyncio.gather(
+                *(self.sdk_tool.arun(st_data.get("description", ""), st_tools)
+                  for _, _, _, st_data, st_tools in sdk_tool_jobs),
+                return_exceptions=True,
+            ))
+            for (task_name, branch_name, st_name, st_data, st_tools), result \
+                    in zip(sdk_tool_jobs, _sdktool_results):
+                success, output = (False, str(result)[:200]) \
+                    if isinstance(result, Exception) else result
+                if success:
+                    new_status             = "Review" if self.review_mode else "Verified"
+                    st_data["status"]      = new_status
+                    st_data["shadow"]      = "Done"
+                    st_data["output"]      = output[:400]
+                    st_data["last_update"] = step
+                    add_memory_snapshot(memory_store, branch_name,
+                                        f"{st_name}_sdktool_verified", step)
+                    actions[st_name] = "review" if self.review_mode else "verified"
+                    if not self.review_mode:
+                        self._roll_up(dag, task_name, branch_name)
+                    _append_journal(
+                        st_name, task_name, branch_name,
+                        st_data.get("description", ""), output, step,
+                    )
+                else:
+                    # SDK tool run failed — escalate to subprocess
+                    if self.claude.available:
+                        claude_jobs.append(
+                            (task_name, branch_name, st_name, st_data, st_tools)
                         )
-                    else:
-                        # SDK tool run failed — escalate to subprocess
-                        if self.claude.available:
-                            claude_jobs.append(
-                                (task_name, branch_name, st_name, st_data, st_tools)
-                            )
 
         # ── Run Claude jobs in parallel ───────────────────────────────────────
         if claude_jobs:
@@ -772,40 +827,40 @@ class Executor:
                         )
                     # On failure: stay Running → will retry next step or self-heal
 
-        # ── SDK jobs (Anthropic API, no subprocess) ───────────────────────────
+        # ── SDK jobs (async Anthropic API, no subprocess) ─────────────────────
         if sdk_jobs:
             names = ", ".join(j[2] for j in sdk_jobs)
             print(f"  {BLUE}SDK executing {names}…{RESET}", flush=True)
-            with ThreadPoolExecutor(max_workers=len(sdk_jobs)) as pool:
-                futures = {
-                    pool.submit(self.anthropic.run, prompt):
-                        (task_name, branch_name, st_name, st_data)
-                    for task_name, branch_name, st_name, st_data, prompt in sdk_jobs
-                }
-                for future in as_completed(futures):
-                    task_name, branch_name, st_name, st_data = futures[future]
-                    success, output = future.result()
-                    if success:
-                        new_status             = "Review" if self.review_mode else "Verified"
-                        st_data["status"]      = new_status
+            _sdk_results = asyncio.run(asyncio.gather(
+                *(self.anthropic.arun(prompt)
+                  for _, _, _, _, prompt in sdk_jobs),
+                return_exceptions=True,
+            ))
+            for (task_name, branch_name, st_name, st_data, _), result \
+                    in zip(sdk_jobs, _sdk_results):
+                success, output = (False, str(result)[:200]) \
+                    if isinstance(result, Exception) else result
+                if success:
+                    new_status             = "Review" if self.review_mode else "Verified"
+                    st_data["status"]      = new_status
+                    st_data["shadow"]      = "Done"
+                    st_data["output"]      = output[:400]
+                    st_data["last_update"] = step
+                    add_memory_snapshot(memory_store, branch_name,
+                                        f"{st_name}_sdk_verified", step)
+                    actions[st_name] = "review" if self.review_mode else "verified"
+                    if not self.review_mode:
+                        self._roll_up(dag, task_name, branch_name)
+                else:
+                    # SDK failed — dice-roll so pipeline isn't blocked
+                    if random.random() < self.verify_prob:
+                        st_data["status"]      = "Verified"
                         st_data["shadow"]      = "Done"
-                        st_data["output"]      = output[:400]
                         st_data["last_update"] = step
                         add_memory_snapshot(memory_store, branch_name,
-                                            f"{st_name}_sdk_verified", step)
-                        actions[st_name] = "review" if self.review_mode else "verified"
-                        if not self.review_mode:
-                            self._roll_up(dag, task_name, branch_name)
-                    else:
-                        # SDK failed — dice-roll so pipeline isn't blocked
-                        if random.random() < self.verify_prob:
-                            st_data["status"]      = "Verified"
-                            st_data["shadow"]      = "Done"
-                            st_data["last_update"] = step
-                            add_memory_snapshot(memory_store, branch_name,
-                                                f"{st_name}_verified", step)
-                            actions[st_name] = "verified"
-                            self._roll_up(dag, task_name, branch_name)
+                                            f"{st_name}_verified", step)
+                        actions[st_name] = "verified"
+                        self._roll_up(dag, task_name, branch_name)
 
         return actions
 
