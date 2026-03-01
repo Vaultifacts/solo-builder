@@ -4,6 +4,7 @@
     "DAG_UPDATE_INTERVAL": 1,
     "PDF_OUTPUT_PATH": "./snapshots/",
     "STATE_PATH": "./state/solo_builder_state.json",
+    "JOURNAL_PATH": "journal.md",
     "AUTO_SAVE_INTERVAL": 5,
     "AUTO_STEP_DELAY": 0.4,
     "MAX_SUBTASKS_PER_BRANCH": 20,

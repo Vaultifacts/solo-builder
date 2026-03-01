@@ -70,6 +70,8 @@ BAR_WIDTH          : int   = _CFG["BAR_WIDTH"]
 MAX_ALERTS         : int   = _CFG["MAX_ALERTS"]
 EXEC_MAX_PER_STEP  : int   = _CFG["EXECUTOR_MAX_PER_STEP"]
 EXEC_VERIFY_PROB   : float = _CFG["EXECUTOR_VERIFY_PROBABILITY"]
+MAX_SUBTASKS_PER_BRANCH: int = _CFG.get("MAX_SUBTASKS_PER_BRANCH", 20)
+MAX_BRANCHES_PER_TASK  : int = _CFG.get("MAX_BRANCHES_PER_TASK",   10)
 CLAUDE_TIMEOUT        : int = _CFG.get("CLAUDE_TIMEOUT", 60)
 CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
 ANTHROPIC_MODEL       : str  = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
@@ -82,7 +84,8 @@ if not os.path.isabs(PDF_OUTPUT_PATH):
     PDF_OUTPUT_PATH = os.path.join(_HERE, PDF_OUTPUT_PATH)
 if not os.path.isabs(STATE_PATH):
     STATE_PATH = os.path.join(_HERE, STATE_PATH)
-JOURNAL_PATH = os.path.join(_HERE, "journal.md")
+_JOURNAL_RAW = _CFG.get("JOURNAL_PATH", "journal.md")
+JOURNAL_PATH = _JOURNAL_RAW if os.path.isabs(_JOURNAL_RAW) else os.path.join(_HERE, _JOURNAL_RAW)
 
 
 # ── Initial DAG Definition ────────────────────────────────────────────────────
@@ -287,7 +290,10 @@ def _append_journal(
     st_name: str, task_name: str, branch_name: str,
     description: str, output: str, step: int,
 ) -> None:
-    """Append one verified Claude result to journal.md."""
+    """Append one verified Claude result to the journal file."""
+    parent = os.path.dirname(JOURNAL_PATH)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     exists = os.path.exists(JOURNAL_PATH)
     with open(JOURNAL_PATH, "a", encoding="utf-8") as f:
         if not exists:
@@ -998,6 +1004,8 @@ class SoloBuilderCLI:
         self.step             = 0
         self.snapshot_counter = 0
         self.alerts: List[str] = []
+        self._priority_cache: List = []
+        self._last_priority_step: int = -(DAG_UPDATE_INTERVAL + 1)  # force first run
 
         # Agents
         self.planner  = Planner(stall_threshold=STALL_THRESHOLD)
@@ -1024,8 +1032,11 @@ class SoloBuilderCLI:
         self.step += 1
         step_alerts: List[str] = []
 
-        # 1. Planner: prioritize
-        priority = self.planner.prioritize(self.dag, self.step)
+        # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps)
+        if (self.step - self._last_priority_step) >= DAG_UPDATE_INTERVAL:
+            self._priority_cache = self.planner.prioritize(self.dag, self.step)
+            self._last_priority_step = self.step
+        priority = self._priority_cache
 
         # 2. ShadowAgent: detect and resolve conflicts
         conflicts = self.shadow.detect_conflicts(self.dag)
@@ -1427,6 +1438,13 @@ class SoloBuilderCLI:
                 "output":      "",
             }
 
+        # Enforce subtask limit
+        if len(subtasks) > MAX_SUBTASKS_PER_BRANCH:
+            excess = list(subtasks)[MAX_SUBTASKS_PER_BRANCH:]
+            for k in excess:
+                del subtasks[k]
+            print(f"  {YELLOW}Capped to {MAX_SUBTASKS_PER_BRANCH} subtasks (MAX_SUBTASKS_PER_BRANCH).{RESET}")
+
         # Auto-wire: new task depends on the last existing task
         last_task = list(self.dag.keys())[-1] if self.dag else None
 
@@ -1464,6 +1482,12 @@ class SoloBuilderCLI:
         if not task_name or task_name not in self.dag:
             tasks = list(self.dag.keys())
             print(f"  {YELLOW}Usage: add_branch <task>   Available: {tasks}{RESET}")
+            return
+
+        current_branches = len(self.dag[task_name].get("branches", {}))
+        if current_branches >= MAX_BRANCHES_PER_TASK:
+            print(f"  {YELLOW}{task_name} already has {current_branches} branches "
+                  f"(limit: MAX_BRANCHES_PER_TASK={MAX_BRANCHES_PER_TASK}).{RESET}")
             return
 
         # Find next unused branch letter across the whole DAG
@@ -1522,6 +1546,13 @@ class SoloBuilderCLI:
                 "status": "Pending", "shadow": "Pending",
                 "last_update": self.step, "description": spec, "output": "",
             }
+
+        # Enforce subtask limit
+        if len(subtasks) > MAX_SUBTASKS_PER_BRANCH:
+            excess = list(subtasks)[MAX_SUBTASKS_PER_BRANCH:]
+            for k in excess:
+                del subtasks[k]
+            print(f"  {YELLOW}Capped to {MAX_SUBTASKS_PER_BRANCH} subtasks (MAX_SUBTASKS_PER_BRANCH).{RESET}")
 
         self.dag[task_name]["branches"][branch_name] = {
             "status": "Pending",

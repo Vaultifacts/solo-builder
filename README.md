@@ -75,10 +75,14 @@ python api/app.py
 ### Runtime settings
 ```
 set STALL_THRESHOLD=5          # Steps before SelfHealer resets a subtask
+set DAG_UPDATE_INTERVAL=1      # Steps between Planner re-prioritization (1=every step)
+set MAX_SUBTASKS_PER_BRANCH=20 # Hard cap on subtasks per branch (enforced at add_task/add_branch)
+set MAX_BRANCHES_PER_TASK=10   # Hard cap on branches per task (enforced at add_branch)
 set ANTHROPIC_MAX_TOKENS=1024  # Token budget per SDK call
 set ANTHROPIC_MODEL=claude-sonnet-4-6
 set CLAUDE_SUBPROCESS=off      # Force all subtasks through SDK (disable subprocess)
 set AUTO_STEP_DELAY=0.4        # Seconds between auto steps
+set REVIEW_MODE=on             # Pause subtasks at Review before Verified
 set VERBOSITY=DEBUG            # INFO | DEBUG
 ```
 
@@ -156,11 +160,17 @@ solo_builder/
 ```json
 {
   "STALL_THRESHOLD": 5,
+  "DAG_UPDATE_INTERVAL": 1,
+  "MAX_SUBTASKS_PER_BRANCH": 20,
+  "MAX_BRANCHES_PER_TASK": 10,
+  "JOURNAL_PATH": "journal.md",
   "ANTHROPIC_MODEL": "claude-sonnet-4-6",
   "ANTHROPIC_MAX_TOKENS": 300,
   "CLAUDE_TIMEOUT": 60,
   "AUTO_STEP_DELAY": 0.4,
   "EXECUTOR_MAX_PER_STEP": 2,
-  "EXECUTOR_VERIFY_PROBABILITY": 0.6
+  "EXECUTOR_VERIFY_PROBABILITY": 0.6,
+  "REVIEW_MODE": false,
+  "WEBHOOK_URL": ""
 }
 ```
