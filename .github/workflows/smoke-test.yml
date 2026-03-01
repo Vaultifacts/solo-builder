@@ -24,7 +24,7 @@ jobs:
         working-directory: solo_builder
         run: printf 'n\nreset\nauto 3\nexit\n' | PYTHONIOENCODING=utf-8 python solo_builder_cli.py
 
-      - name: Assert 3+ subtasks verified
+      - name: Assert 6+ subtasks verified
         working-directory: solo_builder
         run: |
           python - <<'EOF'
@@ -43,6 +43,6 @@ jobs:
               for s in b["subtasks"].values()
           )
           print(f"Verified: {verified}/{total}")
-          assert verified >= 3, f"Expected 3+ verified subtasks, got {verified}"
+          assert verified >= 6, f"Expected 6+ verified subtasks, got {verified}"
           print("PASS")
           EOF

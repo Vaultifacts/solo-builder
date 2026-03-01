@@ -383,6 +383,9 @@
       document.getElementById("hdr-bar").style.width      = d.pct + "%";
       document.getElementById("hdr-pct").textContent      = d.pct + "%";
       document.getElementById("hdr-step").textContent     = "Step " + d.step;
+      document.title = d.complete
+        ? "Solo Builder ✓ Complete"
+        : `Solo Builder — Step ${d.step} (${d.pct}%)`;
 
       const badge = document.getElementById("hdr-badge");
       if (d.complete) {
@@ -572,10 +575,10 @@
     const btn = document.getElementById("btn-export");
     btn.textContent = "⏳…";
     try {
-      const r = await fetch("/export");
+      const r = await fetch("/export", { method: "POST" });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        toast("⚠ " + (d.error || "Export unavailable — run 'export' in the CLI first."));
+        toast("⚠ " + (d.error || d.reason || "No outputs yet — run some steps first."));
         btn.textContent = "⬇ Export";
         return;
       }

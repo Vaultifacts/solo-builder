@@ -166,6 +166,48 @@ def export_outputs():
     )
 
 
+@app.post("/export")
+def generate_export():
+    """Regenerate solo_builder_outputs.md from current state, then serve it."""
+    state = _load_state()
+    dag   = state.get("dag", {})
+    step  = state.get("step", 0)
+    total = sum(len(b["subtasks"]) for t in dag.values() for b in t["branches"].values())
+    verified = sum(
+        1 for t in dag.values() for b in t["branches"].values()
+        for s in b["subtasks"].values() if s.get("status") == "Verified"
+    )
+    lines = [
+        "# Solo Builder — Claude Outputs\n",
+        f"Step: {step}  |  Verified: {verified}/{total}\n",
+        "---\n",
+    ]
+    count = 0
+    for task_name, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                out = st_data.get("output", "").strip()
+                if not out:
+                    continue
+                desc = st_data.get("description", "").strip()
+                lines.append(f"## {st_name} — {task_name} / {branch_name}\n")
+                if desc:
+                    lines.append(f"**Prompt:** {desc}\n\n")
+                lines.append(f"{out}\n\n")
+                count += 1
+    if count == 0:
+        return jsonify({"ok": False, "reason": "No Claude outputs in state yet."}), 404
+    OUTPUTS_PATH.parent.mkdir(exist_ok=True)
+    OUTPUTS_PATH.write_text("\n".join(lines), encoding="utf-8")
+    return send_from_directory(
+        OUTPUTS_PATH.parent,
+        OUTPUTS_PATH.name,
+        as_attachment=True,
+        download_name="solo_builder_outputs.md",
+        mimetype="text/markdown",
+    )
+
+
 @app.get("/journal")
 def journal():
     if not JOURNAL_PATH.exists():
