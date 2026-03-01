@@ -291,6 +291,7 @@
   <div class="stat"><span class="stat-val cyan"  id="hdr-running">—</span><span class="stat-lbl">Running</span></div>
   <div class="stat"><span class="stat-val yellow" id="hdr-pending">—</span><span class="stat-lbl">Pending</span></div>
   <div class="stat"><span class="stat-val white"  id="hdr-total">—</span><span class="stat-lbl">Total</span></div>
+  <div class="stat"><span class="stat-val white"  id="hdr-rate">—</span><span class="stat-lbl">v/step</span></div>
   <div class="progress-wrap">
     <div class="progress-bar-bg"><div class="progress-bar-fg" id="hdr-bar" style="width:0%"></div></div>
     <div class="progress-pct" id="hdr-pct">0%</div>
@@ -337,8 +338,11 @@
   const BASE = "";          // same origin
   const POLL_MS = 2000;
 
-  let selectedTask = null;
-  let tasksCache   = {};    // id → task data from /tasks/<id> (detailed)
+  let selectedTask  = null;
+  let tasksCache    = {};    // id → task data from /tasks/<id> (detailed)
+  let _rateEma      = null;  // exponential moving avg of verified/step rate
+  let _prevVerified = 0;
+  let _prevStep     = 0;
 
   /* ── Utilities ───────────────────────────────────────────── */
   function statusClass(s) {
@@ -383,6 +387,14 @@
       document.getElementById("hdr-bar").style.width      = d.pct + "%";
       document.getElementById("hdr-pct").textContent      = d.pct + "%";
       document.getElementById("hdr-step").textContent     = "Step " + d.step;
+      if (d.step > _prevStep) {
+        const delta = (d.verified - _prevVerified) / (d.step - _prevStep);
+        _rateEma = _rateEma === null ? delta : 0.3 * delta + 0.7 * _rateEma;
+        _prevVerified = d.verified;
+        _prevStep     = d.step;
+      }
+      document.getElementById("hdr-rate").textContent =
+        _rateEma !== null ? _rateEma.toFixed(1) : "—";
       document.title = d.complete
         ? "Solo Builder ✓ Complete"
         : `Solo Builder — Step ${d.step} (${d.pct}%)`;

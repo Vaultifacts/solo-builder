@@ -2372,6 +2372,49 @@ def main() -> None:
         }))
         return
 
+    # ── watch subcommand (live progress bar, no lock needed) ─────────────────
+    if len(sys.argv) > 1 and sys.argv[1] == "watch":
+        _state_path = os.path.join(_HERE, "state", "solo_builder_state.json")
+        _interval   = 2.0
+        if len(sys.argv) > 2:
+            try:
+                _interval = float(sys.argv[2])
+            except ValueError:
+                pass
+        print(f"  Watching pipeline every {_interval}s  (Ctrl+C to stop)", flush=True)
+        try:
+            while True:
+                if not os.path.exists(_state_path):
+                    print("\r  No state file — start the CLI first.                    ",
+                          end="", flush=True)
+                else:
+                    try:
+                        with open(_state_path) as _f:
+                            _wstate = json.load(_f)
+                    except (json.JSONDecodeError, OSError):
+                        time.sleep(_interval)
+                        continue
+                    _s    = dag_stats(_wstate.get("dag", {}))
+                    _step = _wstate.get("step", 0)
+                    _pct  = round(_s["verified"] / _s["total"] * 100, 1) if _s["total"] else 0.0
+                    _bar  = ("=" * int(_pct / 5)).ljust(20, "-")
+                    if _s["verified"] == _s["total"]:
+                        print(f"\r  {GREEN}Complete!{RESET} "
+                              f"{_s['verified']}/{_s['total']} verified in {_step} steps.            ")
+                        break
+                    print(
+                        f"\r  Step {_step:3d}  [{_bar}]  "
+                        f"{GREEN}{_s['verified']:3d}✓{RESET}  "
+                        f"{CYAN}{_s['running']:2d}▶{RESET}  "
+                        f"{YELLOW}{_s['pending']:3d}●{RESET}  "
+                        f"{_pct:5.1f}%",
+                        end="", flush=True,
+                    )
+                time.sleep(_interval)
+        except KeyboardInterrupt:
+            print()
+        return
+
     # ── .env loader (no external dependency) ────────────────────────────────
     _env_path = os.path.join(_HERE, ".env")
     if os.path.exists(_env_path):
