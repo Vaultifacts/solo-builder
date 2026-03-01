@@ -2220,7 +2220,7 @@ class SoloBuilderCLI:
 
     # ── Main loop ────────────────────────────────────────────────────────────
     def start(self, headless: bool = False, auto_steps: Optional[int] = None,
-              no_resume: bool = False) -> None:
+              no_resume: bool = False, output_format: str = "text") -> None:
         """Run the CLI loop.  In headless mode: skip prompts, auto-run, then exit."""
         if not no_resume and os.path.exists(STATE_PATH):
             try:
@@ -2253,6 +2253,14 @@ class SoloBuilderCLI:
         if headless:
             self._cmd_auto(str(auto_steps) if auto_steps is not None else "")
             self.save_state()
+            if output_format == "json":
+                stats = dag_stats(self.dag)
+                print(json.dumps({
+                    "steps":    self.step,
+                    "verified": stats["verified"],
+                    "total":    stats["total"],
+                    "complete": stats["verified"] == stats["total"],
+                }))
             return
 
         while self.running:
@@ -2363,6 +2371,10 @@ def main() -> None:
         "--no-resume", action="store_true",
         help="Ignore saved state and start a fresh pipeline.",
     )
+    parser.add_argument(
+        "--output-format", choices=["text", "json"], default="text",
+        help="Output format on exit: 'json' prints final stats to stdout.",
+    )
     args = parser.parse_args()
 
     _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
@@ -2375,6 +2387,7 @@ def main() -> None:
             headless=args.headless,
             auto_steps=args.auto,
             no_resume=args.no_resume,
+            output_format=args.output_format,
         )
     finally:
         _release_lock(_LOCK_PATH)

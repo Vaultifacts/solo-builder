@@ -20,28 +20,18 @@ jobs:
       - name: Install dependencies
         run: pip install anthropic flask
 
-      - name: Run CLI (reset + 3 auto steps + exit)
-        working-directory: solo_builder
-        run: printf 'n\nreset\nauto 3\nexit\n' | PYTHONIOENCODING=utf-8 python solo_builder_cli.py
-
-      - name: Assert 6+ subtasks verified
+      - name: Run CLI (headless 3 steps)
         working-directory: solo_builder
         run: |
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py \
+            --headless --auto 3 --no-resume --output-format json \
+            | tee result.json
           python - <<'EOF'
-          import json
-          with open("state/solo_builder_state.json") as f:
-              state = json.load(f)
-          verified = sum(
-              1 for t in state["dag"].values()
-              for b in t["branches"].values()
-              for s in b["subtasks"].values()
-              if s.get("status") == "Verified"
-          )
-          total = sum(
-              1 for t in state["dag"].values()
-              for b in t["branches"].values()
-              for s in b["subtasks"].values()
-          )
+          import json, sys
+          with open("result.json") as f:
+              data = json.load(f)
+          verified = data["verified"]
+          total    = data["total"]
           print(f"Verified: {verified}/{total}")
           assert verified >= 6, f"Expected 6+ verified subtasks, got {verified}"
           print("PASS")

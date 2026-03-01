@@ -4,3 +4,7 @@ state/
 snapshots/
 cmds.txt
 journal.md
+dist/
+build/
+*.egg-info/
+agg.exe
