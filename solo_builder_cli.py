@@ -517,22 +517,22 @@ class Executor:
                 advanced += 1
 
             elif status == "Running":
+                st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
-                if description and self.claude.available:
-                    claude_jobs.append((task_name, branch_name, st_name, st_data,
-                                        st_data.get("tools", "")))
+                if st_tools and self.claude.available:
+                    # Has tools — must use subprocess Claude (needs --allowedTools)
+                    claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
                     advanced += 1
-                else:
-                    # No tools — try Anthropic SDK; fall back to dice roll
-                    if self.anthropic.available:
-                        auto_prompt = (
-                            st_data.get("description", "").strip()
-                            or f"You completed subtask '{st_name}' in task '{task_name}'. "
-                               f"Write one concrete sentence describing what was accomplished."
-                        )
-                        sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
-                        advanced += 1
-                    elif random.random() < self.verify_prob:
+                elif self.anthropic.available:
+                    # No tools — use SDK directly (faster, no subprocess)
+                    auto_prompt = (
+                        description
+                        or f"You completed subtask '{st_name}' in task '{task_name}'. "
+                           f"Write one concrete sentence describing what was accomplished."
+                    )
+                    sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
+                    advanced += 1
+                elif random.random() < self.verify_prob:
                         st_data["status"]      = "Verified"
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
