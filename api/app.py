@@ -3,66 +3,111 @@ Solo Builder REST API
 Loads state from state/solo_builder_state.json on every request.
 
 Install:  pip install flask
-Run:      flask --app api/app.py run
-          python api/app.py
+Run:      python api/app.py
+          flask --app api/app.py run
 """
 
 import json
-import os
+import re
 from pathlib import Path
 
-from flask import Flask, jsonify, abort
+from flask import Flask, jsonify, abort, send_from_directory
 
 app = Flask(__name__)
 
-# Resolve state file relative to project root (one level up from api/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-STATE_PATH = _PROJECT_ROOT / "state" / "solo_builder_state.json"
+STATE_PATH    = _PROJECT_ROOT / "state" / "solo_builder_state.json"
+JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _load_state() -> dict:
+    try:
+        with open(STATE_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"dag": {}, "step": 0}
 
 
 def _load_dag() -> dict:
-    """Load and return the dag dict from the state file."""
-    with open(STATE_PATH, encoding="utf-8") as f:
-        state = json.load(f)
-    return state.get("dag", {})
+    return _load_state().get("dag", {})
 
 
 def _task_summary(task_id: str, task: dict) -> dict:
-    """Lightweight summary for the list endpoint — no subtask outputs."""
-    branches = task.get("branches", {})
+    branches      = task.get("branches", {})
     subtask_count = sum(len(b.get("subtasks", {})) for b in branches.values())
-    verified = sum(
-        1
-        for b in branches.values()
+    verified      = sum(
+        1 for b in branches.values()
         for s in b.get("subtasks", {}).values()
         if s.get("status") == "Verified"
     )
+    running = sum(
+        1 for b in branches.values()
+        for s in b.get("subtasks", {}).values()
+        if s.get("status") == "Running"
+    )
     return {
-        "id": task_id,
-        "status": task.get("status"),
-        "depends_on": task.get("depends_on", []),
-        "branch_count": len(branches),
-        "subtask_count": subtask_count,
+        "id":               task_id,
+        "status":           task.get("status"),
+        "depends_on":       task.get("depends_on", []),
+        "branch_count":     len(branches),
+        "subtask_count":    subtask_count,
         "verified_subtasks": verified,
+        "running_subtasks": running,
     }
+
+
+@app.after_request
+def cors(resp):
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    return resp
 
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
+@app.get("/")
+def dashboard():
+    return send_from_directory(Path(__file__).parent, "dashboard.html")
+
+
+@app.get("/status")
+def status():
+    state    = _load_state()
+    dag      = state.get("dag", {})
+    total    = sum(len(b["subtasks"]) for t in dag.values() for b in t["branches"].values())
+    verified = sum(
+        1 for t in dag.values() for b in t["branches"].values()
+        for s in b["subtasks"].values() if s.get("status") == "Verified"
+    )
+    running = sum(
+        1 for t in dag.values() for b in t["branches"].values()
+        for s in b["subtasks"].values() if s.get("status") == "Running"
+    )
+    return jsonify({
+        "step":      state.get("step", 0),
+        "total":     total,
+        "verified":  verified,
+        "running":   running,
+        "pending":   total - verified - running,
+        "pct":       round(verified / total * 100, 1) if total else 0,
+        "complete":  verified == total,
+    })
+
+
 @app.get("/tasks")
 def list_tasks():
-    """Return a summary list of all tasks in the DAG."""
     dag = _load_dag()
-    tasks = [_task_summary(tid, t) for tid, t in dag.items()]
-    return jsonify({"tasks": tasks, "total": len(tasks)})
+    return jsonify({"tasks": [_task_summary(tid, t) for tid, t in dag.items()]})
 
 
 @app.get("/tasks/<path:task_id>")
 def get_task(task_id: str):
-    """Return full detail for one task, including all branches and subtasks."""
-    dag = _load_dag()
+    dag  = _load_dag()
     task = dag.get(task_id)
     if task is None:
         abort(404, description=f"Task '{task_id}' not found.")
@@ -71,30 +116,44 @@ def get_task(task_id: str):
 
 @app.post("/tasks/<path:task_id>/trigger")
 def trigger_task(task_id: str):
-    """
-    Trigger execution of a task.
-    Reads live state to determine pending subtasks, returns 202 Accepted.
-    Does not mutate the state file — the CLI process owns state writes.
-    """
-    dag = _load_dag()
+    dag  = _load_dag()
     task = dag.get(task_id)
     if task is None:
         abort(404, description=f"Task '{task_id}' not found.")
-
     pending = [
         f"{branch}/{sid}"
         for branch, b in task.get("branches", {}).items()
         for sid, s in b.get("subtasks", {}).items()
         if s.get("status") not in ("Verified", "Running")
     ]
-
     return jsonify({
-        "id": task_id,
-        "accepted": True,
+        "id": task_id, "accepted": True,
         "status": task.get("status"),
-        "pending_subtasks": pending,
-        "pending_count": len(pending),
+        "pending_subtasks": pending, "pending_count": len(pending),
     }), 202
+
+
+@app.get("/journal")
+def journal():
+    if not JOURNAL_PATH.exists():
+        return jsonify({"entries": []})
+    content = JOURNAL_PATH.read_text(encoding="utf-8")
+    entries = []
+    for block in re.split(r"(?=^## )", content, flags=re.MULTILINE):
+        if not block.strip().startswith("## "):
+            continue
+        m = re.match(r"^## (\w+) · (Task \d+) / (Branch \w+) · Step (\d+)", block)
+        if not m:
+            continue
+        body = block[m.end():].strip()
+        body = re.sub(r"^\*\*Prompt:\*\*.*\n\n?", "", body).strip()
+        body = body.rstrip("-").strip()
+        entries.append({
+            "subtask": m.group(1), "task": m.group(2),
+            "branch":  m.group(3), "step": int(m.group(4)),
+            "output":  body[:600],
+        })
+    return jsonify({"entries": entries[-30:]})
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo Builder — Live Dashboard</title>
+<style>
+  :root {
+    --bg:       #0d0d0d;
+    --surface:  #1a1a1a;
+    --border:   #2a2a2a;
+    --text:     #d0d0d0;
+    --dim:      #666;
+    --green:    #4caf50;
+    --cyan:     #00bcd4;
+    --yellow:   #ffc107;
+    --red:      #f44336;
+    --blue:     #2196f3;
+    --font:     'Courier New', Courier, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 15px;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+  }
+  .stat-val { font-size: 20px; font-weight: bold; }
+  .stat-lbl { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+  .stat-val.green  { color: var(--green); }
+  .stat-val.cyan   { color: var(--cyan); }
+  .stat-val.yellow { color: var(--yellow); }
+  .stat-val.white  { color: var(--text); }
+
+  .progress-wrap {
+    flex: 1;
+    min-width: 160px;
+  }
+  .progress-bar-bg {
+    background: var(--border);
+    border-radius: 3px;
+    height: 8px;
+    width: 100%;
+  }
+  .progress-bar-fg {
+    background: var(--green);
+    border-radius: 3px;
+    height: 8px;
+    transition: width 0.5s ease;
+  }
+  .progress-pct {
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: 3px;
+  }
+
+  .status-badge {
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge-complete   { background: #1b3d1e; color: var(--green);  border: 1px solid var(--green); }
+  .badge-running    { background: #0d2d33; color: var(--cyan);   border: 1px solid var(--cyan); }
+  .badge-pending    { background: #2a2200; color: var(--yellow); border: 1px solid var(--yellow); }
+
+  .step-info { color: var(--dim); font-size: 11px; margin-left: auto; }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: calc(100vh - 60px);
+  }
+  .tasks-panel {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    overflow-y: auto;
+    padding: 16px;
+    border-right: 1px solid var(--border);
+  }
+  .detail-panel {
+    grid-column: 2;
+    grid-row: 1;
+    overflow-y: auto;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    max-height: 55vh;
+  }
+  .journal-panel {
+    grid-column: 2;
+    grid-row: 2;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* ── Section headers ─────────────────────────────────────── */
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+
+  /* ── Task grid ───────────────────────────────────────────── */
+  .task-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .task-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .task-card:hover  { border-color: var(--cyan); }
+  .task-card.active { border-color: var(--cyan); background: #0d1e22; }
+  .task-card.blocked { opacity: 0.5; }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .card-id   { color: var(--cyan); font-weight: bold; }
+  .card-mini-badge {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .s-verified { background: #1b3d1e; color: var(--green); }
+  .s-running  { background: #0d2d33; color: var(--cyan); }
+  .s-pending  { background: #2a2200; color: var(--yellow); }
+  .s-blocked  { background: #2a1a00; color: #ff9800; }
+
+  .card-bar-bg {
+    background: var(--border);
+    border-radius: 2px;
+    height: 4px;
+    width: 100%;
+    margin-top: 6px;
+  }
+  .card-bar-fg {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--green);
+    transition: width 0.4s ease;
+  }
+  .card-counts {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 4px;
+  }
+  .card-deps {
+    font-size: 9px;
+    color: #ff9800;
+    margin-top: 3px;
+  }
+
+  /* ── Detail panel ────────────────────────────────────────── */
+  .detail-placeholder {
+    color: var(--dim);
+    font-size: 11px;
+    padding: 20px 0;
+    text-align: center;
+  }
+  .detail-task-id   { color: var(--cyan); font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+  .detail-status    { margin-bottom: 10px; }
+  .branch-block     { margin-bottom: 10px; }
+  .branch-name      { color: var(--yellow); font-size: 11px; margin-bottom: 4px; }
+  .subtask-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 3px 0;
+    border-bottom: 1px solid #1c1c1c;
+  }
+  .st-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  .dot-verified { background: var(--green); }
+  .dot-running  { background: var(--cyan); animation: pulse 1s infinite; }
+  .dot-pending  { background: var(--yellow); }
+  .dot-blocked  { background: #ff9800; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+  .st-name    { color: var(--text); font-size: 11px; min-width: 32px; }
+  .st-output  { color: var(--dim); font-size: 10px; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  /* ── Journal panel ───────────────────────────────────────── */
+  .journal-entry {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .journal-meta { font-size: 10px; color: var(--dim); margin-bottom: 2px; }
+  .journal-body { font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+  /* ── Error toast ─────────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: #3b1010;
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    display: none;
+    z-index: 999;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Solo Builder</h1>
+  <div class="stat"><span class="stat-val green" id="hdr-verified">—</span><span class="stat-lbl">Verified</span></div>
+  <div class="stat"><span class="stat-val cyan"  id="hdr-running">—</span><span class="stat-lbl">Running</span></div>
+  <div class="stat"><span class="stat-val yellow" id="hdr-pending">—</span><span class="stat-lbl">Pending</span></div>
+  <div class="stat"><span class="stat-val white"  id="hdr-total">—</span><span class="stat-lbl">Total</span></div>
+  <div class="progress-wrap">
+    <div class="progress-bar-bg"><div class="progress-bar-fg" id="hdr-bar" style="width:0%"></div></div>
+    <div class="progress-pct" id="hdr-pct">0%</div>
+  </div>
+  <span id="hdr-badge" class="status-badge badge-pending">—</span>
+  <span class="step-info" id="hdr-step">Step —</span>
+</header>
+
+<div class="layout">
+  <div class="tasks-panel">
+    <div class="section-title">Tasks</div>
+    <div class="task-grid" id="task-grid">
+      <div style="color:var(--dim);font-size:11px">Loading…</div>
+    </div>
+  </div>
+
+  <div class="detail-panel">
+    <div class="section-title">Detail</div>
+    <div id="detail-content">
+      <div class="detail-placeholder">Click a task card to inspect branches &amp; subtasks.</div>
+    </div>
+  </div>
+
+  <div class="journal-panel">
+    <div class="section-title">Journal</div>
+    <div id="journal-content">
+      <div class="detail-placeholder">No entries yet.</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const BASE = "";          // same origin
+  const POLL_MS = 2000;
+
+  let selectedTask = null;
+  let tasksCache   = {};    // id → task data from /tasks/<id> (detailed)
+
+  /* ── Utilities ───────────────────────────────────────────── */
+  function statusClass(s) {
+    if (!s) return "s-pending";
+    const l = s.toLowerCase();
+    if (l === "verified") return "s-verified";
+    if (l === "running")  return "s-running";
+    if (l === "blocked")  return "s-blocked";
+    return "s-pending";
+  }
+  function dotClass(s) {
+    if (!s) return "dot-pending";
+    const l = s.toLowerCase();
+    if (l === "verified") return "dot-verified";
+    if (l === "running")  return "dot-running";
+    if (l === "blocked")  return "dot-blocked";
+    return "dot-pending";
+  }
+  function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { el.style.display = "none"; }, 4000);
+  }
+
+  /* ── Fetch helpers ───────────────────────────────────────── */
+  async function api(path) {
+    const r = await fetch(BASE + path);
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  }
+
+  /* ── Header / status ─────────────────────────────────────── */
+  async function pollStatus() {
+    try {
+      const d = await api("/status");
+      document.getElementById("hdr-verified").textContent = d.verified;
+      document.getElementById("hdr-running").textContent  = d.running;
+      document.getElementById("hdr-pending").textContent  = d.pending;
+      document.getElementById("hdr-total").textContent    = d.total;
+      document.getElementById("hdr-bar").style.width      = d.pct + "%";
+      document.getElementById("hdr-pct").textContent      = d.pct + "%";
+      document.getElementById("hdr-step").textContent     = "Step " + d.step;
+
+      const badge = document.getElementById("hdr-badge");
+      if (d.complete) {
+        badge.textContent  = "Complete";
+        badge.className    = "status-badge badge-complete";
+      } else if (d.running > 0) {
+        badge.textContent  = "Running";
+        badge.className    = "status-badge badge-running";
+      } else {
+        badge.textContent  = "Idle";
+        badge.className    = "status-badge badge-pending";
+      }
+    } catch (e) {
+      toast("⚠ /status unreachable — is the Flask server running?");
+    }
+  }
+
+  /* ── Task grid ───────────────────────────────────────────── */
+  async function pollTasks() {
+    try {
+      const d = await api("/tasks");
+      renderGrid(d.tasks);
+    } catch (e) { /* status toast already shown */ }
+  }
+
+  function renderGrid(tasks) {
+    const grid = document.getElementById("task-grid");
+    // Build set of existing card ids
+    const existing = new Set([...grid.querySelectorAll(".task-card")].map(el => el.dataset.id));
+    const incoming  = new Set(tasks.map(t => t.id));
+
+    // Remove stale cards
+    existing.forEach(id => { if (!incoming.has(id)) grid.querySelector(`[data-id="${CSS.escape(id)}"]`)?.remove(); });
+
+    tasks.forEach(t => {
+      let card = grid.querySelector(`[data-id="${CSS.escape(t.id)}"]`);
+      const isBlocked = t.depends_on && t.depends_on.length > 0 && t.status === "Pending";
+      if (!card) {
+        card = document.createElement("div");
+        card.className = "task-card";
+        card.dataset.id = t.id;
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="card-id">${t.id}</span>
+            <span class="card-mini-badge ${statusClass(t.status)}">${t.status || "Pending"}</span>
+          </div>
+          <div class="card-deps"></div>
+          <div class="card-bar-bg"><div class="card-bar-fg" style="width:0%"></div></div>
+          <div class="card-counts"></div>`;
+        card.addEventListener("click", () => selectTask(t.id));
+        grid.appendChild(card);
+      }
+
+      // Update dynamic parts
+      card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
+      card.querySelector(".card-mini-badge").textContent = t.status || "Pending";
+      card.classList.toggle("active",  t.id === selectedTask);
+      card.classList.toggle("blocked", isBlocked);
+
+      const pct = t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0;
+      card.querySelector(".card-bar-fg").style.width = pct + "%";
+      card.querySelector(".card-counts").textContent =
+        `${t.verified_subtasks}/${t.subtask_count} verified` +
+        (t.running_subtasks > 0 ? ` · ${t.running_subtasks} running` : "");
+
+      const depEl = card.querySelector(".card-deps");
+      if (t.depends_on && t.depends_on.length) {
+        depEl.textContent = "← " + t.depends_on.join(", ");
+      } else {
+        depEl.textContent = "";
+      }
+    });
+  }
+
+  /* ── Detail panel ────────────────────────────────────────── */
+  async function selectTask(id) {
+    selectedTask = id;
+    // Highlight active card
+    document.querySelectorAll(".task-card").forEach(c => c.classList.toggle("active", c.dataset.id === id));
+
+    try {
+      const t = await api("/tasks/" + encodeURIComponent(id));
+      tasksCache[id] = t;
+      renderDetail(t);
+    } catch (e) {
+      toast("Could not load task detail: " + e.message);
+    }
+  }
+
+  function renderDetail(t) {
+    const el = document.getElementById("detail-content");
+    let html = `<div class="detail-task-id">${t.id}</div>`;
+    html += `<div class="detail-status"><span class="card-mini-badge ${statusClass(t.status)}">${t.status || "Pending"}</span>`;
+    if (t.depends_on && t.depends_on.length) {
+      html += ` <span style="color:#ff9800;font-size:10px">← ${t.depends_on.join(", ")}</span>`;
+    }
+    html += `</div>`;
+
+    const branches = t.branches || {};
+    Object.entries(branches).forEach(([bname, bdata]) => {
+      html += `<div class="branch-block"><div class="branch-name">${bname}</div>`;
+      const subtasks = bdata.subtasks || {};
+      Object.entries(subtasks).forEach(([sname, s]) => {
+        const output = (s.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const preview = output ? output.replace(/\n/g, " ").substring(0, 80) : (s.description || "");
+        const previewHtml = preview
+          ? `<span class="st-output" title="${output.substring(0, 400)}">${preview}</span>`
+          : "";
+        html += `
+          <div class="subtask-row">
+            <div class="st-dot ${dotClass(s.status)}"></div>
+            <span class="st-name">${sname}</span>
+            ${previewHtml}
+          </div>`;
+      });
+      html += `</div>`;
+    });
+
+    el.innerHTML = html;
+  }
+
+  /* ── Journal ─────────────────────────────────────────────── */
+  async function pollJournal() {
+    try {
+      const d = await api("/journal");
+      renderJournal(d.entries);
+    } catch (_) {}
+  }
+
+  function renderJournal(entries) {
+    const el = document.getElementById("journal-content");
+    if (!entries || entries.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No journal entries.</div>`;
+      return;
+    }
+    const reversed = [...entries].reverse();
+    el.innerHTML = reversed.map(e => `
+      <div class="journal-entry">
+        <div class="journal-meta">${e.subtask} · ${e.task} / ${e.branch} · Step ${e.step}</div>
+        <div class="journal-body">${(e.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;").substring(0, 300)}</div>
+      </div>`).join("");
+  }
+
+  /* ── Polling loop ────────────────────────────────────────── */
+  async function tick() {
+    await Promise.all([pollStatus(), pollTasks(), pollJournal()]);
+    // Refresh detail panel if a task is selected
+    if (selectedTask && tasksCache[selectedTask]) {
+      try {
+        const fresh = await api("/tasks/" + encodeURIComponent(selectedTask));
+        tasksCache[selectedTask] = fresh;
+        renderDetail(fresh);
+      } catch (_) {}
+    }
+  }
+
+  tick();
+  setInterval(tick, POLL_MS);
+})();
+</script>
+</body>
+</html>
