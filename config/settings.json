@@ -16,5 +16,7 @@
     "CLAUDE_TIMEOUT": 60,
     "CLAUDE_ALLOWED_TOOLS": "",
     "ANTHROPIC_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_MAX_TOKENS": 300
+    "ANTHROPIC_MAX_TOKENS": 300,
+    "REVIEW_MODE": false,
+    "WEBHOOK_URL": ""
 }

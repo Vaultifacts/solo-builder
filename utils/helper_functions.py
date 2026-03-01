@@ -25,6 +25,7 @@ RESET   = "\033[0m"
 STATUS_COLORS: Dict[str, str] = {
     "Pending":  YELLOW,
     "Running":  CYAN,
+    "Review":   MAGENTA,
     "Verified": GREEN,
     "Failed":   RED,
 }
@@ -88,7 +89,7 @@ def make_bar(
 # ── DAG Statistics ────────────────────────────────────────────────────────────
 def dag_stats(dag: Dict) -> Dict[str, int]:
     """Compute overall subtask counts across the entire DAG."""
-    stats = {"total": 0, "pending": 0, "running": 0, "verified": 0}
+    stats = {"total": 0, "pending": 0, "running": 0, "review": 0, "verified": 0}
     for task_data in dag.values():
         for branch_data in task_data.get("branches", {}).values():
             for st_data in branch_data.get("subtasks", {}).values():
@@ -98,6 +99,8 @@ def dag_stats(dag: Dict) -> Dict[str, int]:
                     stats["pending"] += 1
                 elif status == "Running":
                     stats["running"] += 1
+                elif status == "Review":
+                    stats["review"] += 1
                 elif status == "Verified":
                     stats["verified"] += 1
     return stats

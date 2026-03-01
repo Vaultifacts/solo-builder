@@ -72,8 +72,10 @@ EXEC_MAX_PER_STEP  : int   = _CFG["EXECUTOR_MAX_PER_STEP"]
 EXEC_VERIFY_PROB   : float = _CFG["EXECUTOR_VERIFY_PROBABILITY"]
 CLAUDE_TIMEOUT        : int = _CFG.get("CLAUDE_TIMEOUT", 60)
 CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
-ANTHROPIC_MODEL       : str = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
-ANTHROPIC_MAX_TOKENS  : int = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
+ANTHROPIC_MODEL       : str  = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
+ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
+REVIEW_MODE           : bool = bool(_CFG.get("REVIEW_MODE",       False))
+WEBHOOK_URL           : str  = _CFG.get("WEBHOOK_URL",            "")
 
 # Resolve relative paths to script location
 if not os.path.isabs(PDF_OUTPUT_PATH):
@@ -481,6 +483,7 @@ class Executor:
     def __init__(self, max_per_step: int, verify_prob: float) -> None:
         self.max_per_step = max_per_step
         self.verify_prob  = verify_prob
+        self.review_mode  = REVIEW_MODE
         self.claude       = ClaudeRunner(timeout=CLAUDE_TIMEOUT, allowed_tools=CLAUDE_ALLOWED_TOOLS)
         self.anthropic    = AnthropicRunner(model=ANTHROPIC_MODEL, max_tokens=ANTHROPIC_MAX_TOKENS)
 
@@ -555,13 +558,15 @@ class Executor:
                     task_name, branch_name, st_name, st_data = futures[future]
                     success, output = future.result()
                     if success:
-                        st_data["status"]      = "Verified"
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["output"]      = output
                         st_data["last_update"] = step
                         add_memory_snapshot(memory_store, branch_name, f"{st_name}_claude_verified", step)
-                        actions[st_name] = "verified"
-                        self._roll_up(dag, task_name, branch_name)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
                         _append_journal(
                             st_name, task_name, branch_name,
                             st_data.get("description", ""), output, step,
@@ -582,14 +587,16 @@ class Executor:
                     task_name, branch_name, st_name, st_data = futures[future]
                     success, output = future.result()
                     if success:
-                        st_data["status"]      = "Verified"
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["output"]      = output[:400]
                         st_data["last_update"] = step
                         add_memory_snapshot(memory_store, branch_name,
                                             f"{st_name}_sdk_verified", step)
-                        actions[st_name] = "verified"
-                        self._roll_up(dag, task_name, branch_name)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
                     else:
                         # SDK failed — dice-roll so pipeline isn't blocked
                         if random.random() < self.verify_prob:
@@ -736,7 +743,7 @@ class SelfHealer:
         for task_name, task_data in dag.items():
             for branch_name, branch_data in task_data.get("branches", {}).items():
                 for st_name, st_data in branch_data.get("subtasks", {}).items():
-                    if st_data.get("status") == "Running":
+                    if st_data.get("status") == "Running":   # Review subtasks are not stalled
                         age = step - st_data.get("last_update", 0)
                         if age >= self.stall_threshold:
                             stalled.append((task_name, branch_name, st_name, age))
@@ -929,7 +936,7 @@ class TerminalDisplay:
             f"{stall_tag}"
         )
         output = st_data.get("output", "")
-        if output and status == "Verified":
+        if output and status in ("Verified", "Review"):
             preview = output[:65].replace("\n", " ")
             print(f"    │      {DIM}↳ {preview}…{RESET}")
 
@@ -944,15 +951,18 @@ class TerminalDisplay:
         stats    = dag_stats(dag)
         total    = stats["total"]
         verified = stats["verified"]
+        review   = stats["review"]
         running  = stats["running"]
         pending  = stats["pending"]
         pct      = verified / total * 100 if total else 0
 
         overall = self._bar(verified, total, "=", "-", width=32)
         print(f"\n  {CYAN}{'─' * self._WIDTH}{RESET}")
+        review_part = f"{MAGENTA}{review}⏸{RESET} " if review else ""
         print(
             f"  Overall [{GREEN}{overall}{RESET}] "
             f"{GREEN}{verified}✓{RESET} "
+            f"{review_part}"
             f"{CYAN}{running}▶{RESET} "
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
@@ -1182,7 +1192,7 @@ class SoloBuilderCLI:
 
                 stats = dag_stats(self.dag)
                 if stats["verified"] == stats["total"]:
-                    # Brief pause so the 100% screen is visible
+                    _fire_completion(self.step, stats["verified"], stats["total"])
                     time.sleep(1.2)
                     break
 
@@ -1611,12 +1621,23 @@ class SoloBuilderCLI:
                 label = "on (subprocess)" if enabled else "off (SDK/dice-roll fallback)"
                 print(f"  {GREEN}CLAUDE_SUBPROCESS = {label}{RESET}")
 
+            elif key == "REVIEW_MODE":
+                enabled = val.lower() not in ("0", "off", "false", "no")
+                self.executor.review_mode = enabled
+                label = "on (subtasks pause at Review for verify)" if enabled else "off (auto-Verified)"
+                print(f"  {GREEN}REVIEW_MODE = {label}{RESET}")
+
+            elif key == "WEBHOOK_URL":
+                global WEBHOOK_URL
+                WEBHOOK_URL = val
+                print(f"  {GREEN}WEBHOOK_URL = {val or '(cleared)'}{RESET}")
+
             else:
                 print(f"  {YELLOW}Unknown key '{key}'. "
                       f"Valid: STALL_THRESHOLD, SNAPSHOT_INTERVAL, "
                       f"VERBOSITY, VERIFY_PROB, AUTO_STEP_DELAY, AUTO_SAVE_INTERVAL, "
                       f"CLAUDE_ALLOWED_TOOLS, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL, "
-                      f"CLAUDE_SUBPROCESS{RESET}")
+                      f"CLAUDE_SUBPROCESS, REVIEW_MODE, WEBHOOK_URL{RESET}")
         except ValueError:
             print(f"  {RED}Invalid value '{val}' for {key}{RESET}")
 
@@ -1963,6 +1984,43 @@ def _splash() -> None:
         print(f"  {YELLOW}[!] matplotlib not found — PDF snapshots disabled.")
         print(f"      Install with: pip install matplotlib{RESET}\n")
     time.sleep(0.6)
+
+
+def _fire_completion(steps: int, verified: int, total: int) -> None:
+    """Non-blocking: POST webhook and/or Windows toast on pipeline completion."""
+    import threading
+
+    def _webhook() -> None:
+        if not WEBHOOK_URL:
+            return
+        try:
+            import urllib.request, urllib.error
+            payload = json.dumps({
+                "event": "complete", "steps": steps,
+                "verified": verified, "total": total,
+            }).encode()
+            req = urllib.request.Request(
+                WEBHOOK_URL, data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=10)
+        except Exception:
+            pass   # Webhook failures are silent — don't interrupt the user
+
+    def _notify() -> None:
+        try:
+            msg = f"Solo Builder: {verified}/{total} verified in {steps} steps"
+            subprocess.Popen(
+                ["powershell.exe", "-WindowStyle", "Hidden", "-Command",
+                 f'[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null;'
+                 f'[System.Windows.Forms.MessageBox]::Show("{msg}", "Solo Builder Complete")'],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_webhook, daemon=True).start()
+    threading.Thread(target=_notify,  daemon=True).start()
 
 
 def _acquire_lock(lock_path: str) -> None:
