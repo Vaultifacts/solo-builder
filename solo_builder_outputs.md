@@ -1,6 +1,6 @@
 # Solo Builder — Claude Outputs
 
-Step: 71  |  Verified: 70/70
+Step: 70  |  Verified: 70/70
 
 ---
 
@@ -9,11 +9,13 @@ Step: 71  |  Verified: 70/70
 **Prompt:** List 5 key features a solo developer AI project management tool needs. Bullet points.
 
 
-- **Task breakdown & prioritization** — AI decomposes goals into actionable tasks and surfaces what to work on next
-- **Context persistence** — remembers project history, decisions, and progress across sessions without manual note-taking
-- **Blocker detection** — identifies when you're stuck and suggests concrete unblocking actions or alternative approaches
-- **Scope management** — flags scope creep and keeps features tied to the core goal to prevent endless yak-shaving
-- **Progress summarization** — generates concise status reports so you always know where the project stands at a glance
+• **Natural language task creation** - Convert vague ideas into structured tasks without rigid forms or syntax
+
+• **Smart prioritization** - Automatically rank work based on deadlines, dependencies, and project goals so you always know what to tackle next
+
+• **Context switching support** - Quickly capture and restore your mental state when jumping between tasks or returning after a break
+
+• **Prog
 
 
 ## A2 — Task 0 / Branch A
@@ -21,9 +23,7 @@ Step: 71  |  Verified: 70/70
 **Prompt:** Write a 2-sentence elevator pitch for Solo Builder — a Python terminal CLI that uses AI agents to track DAG-based project tasks.
 
 
-**Solo Builder** is a Python terminal CLI that uses AI agents to manage your projects as a directed acyclic graph — automatically tracking dependencies, surfacing what's blocked, and telling you exactly what to work on next.
-
-Stop juggling tasks in spreadsheets or bloated project tools; Solo Builder keeps solo developers in flow by turning your project's natural task structure into an intelligent, agent-driven command center that runs right where you already work.
+**Solo Builder** is an AI-powered terminal CLI that helps solo developers manage complex projects by breaking work into intelligent, dependency-aware DAG task graphs — so nothing falls through the cracks. Embedded AI agents actively track progress, surface blockers, and suggest next steps, turning your terminal into a smart project co-pilot that thinks alongside you.
 
 
 ## A3 — Task 0 / Branch A
@@ -31,41 +31,15 @@ Stop juggling tasks in spreadsheets or bloated project tools; Solo Builder keeps
 **Prompt:** Suggest 3 concrete improvements to make Solo Builder more useful for a solo developer.
 
 
-Based on reading the codebase — the CLI, API, dashboard, and journal — here are 3 concrete improvements ranked by solo-dev impact:
+I'd need more context about Solo Builder to give you truly specific advice — I'm not certain which product you're referring to (there are a few tools/platforms with similar names).
+
+Could you clarify:
+- **What Solo Builder does** (e.g., project management, landing pages, indie hacker tool)?
+- **A link or brief description**?
 
 ---
 
-## 1. Human-in-the-Loop Verification (`verify <ST> [note]`)
-
-**The gap:** Subtasks without a `description` field advance to `Verified` via a probability roll (`EXEC_VERIFY_PROB = 0.6`). There's no way to mark real work done — work you did outside the CLI (a design decision, a manual deploy, a code review).
-
-**The fix:** Add a `verify <ST> [note]` command that hard-sets a subtask to `Verified`, appends an entry to `journal.md` with a timestamp and your note, and triggers the Verifier rollup. This closes the loop between simulated progress and actual human output.
-
-**Why it matters:** Right now the DAG can show 80% verified with 0% of it being real. One command makes the tool honest.
-
----
-
-## 2. Velocity-Based ETA in `status` and `/status` API
-
-**The gap:** The system tracks `step` counts but not wall-clock time. The journal explicitly identified this as a key need: *"Progress estimation — realistic time/effort tracking calibrated to your actual velocity."* Currently there's no way to know how long remaining work will actually take.
-
-**The fix:** Store a `verified_at` ISO timestamp when each subtask transitions to `Verified`. Add a `velocity` calculation (subtasks verified per hour over the last 10 verifications) to `status` output and the `/status` API response. Display as: `ETA: ~2h 20min (4.3 subtasks/hr)`.
-
-**Why it matters:** Solo devs make daily scope decisions — ship now vs. keep building. An ETA grounded in real velocity replaces gut feel with data.
-
----
-
-## 3. Dashboard Live Control via File-Signal Bridge
-
-**The gap:** The REST API has a `POST /tasks/<id>/trigger` endpoint that returns `202 Accepted` but does nothing — the CLI is a separate process with no IPC. The dashboard is read-only, polling is absent, and there's no live refresh.
-
-**The fix:** Two parts:
-- In `app.py`, make `POST /trigger` write a signal file (e.g., `state/trigger_<task_id>.signal`)  
-- In `solo_builder_cli.py`, have the `auto` loop check for signal files at each step and inject a forced-run on the targeted task, then delete the file
-
-Add `<meta http-equiv="refresh" content="5">` to `dashboard.html` for instant live polling with no dependencies.
-
-**Why it matters:** The dashboard becomes an actual project HUD rather than a static report — you can kick off a stuck task from the browser without touching the terminal.
+That said, if you share details, I can give sharp, concrete suggest
 
 
 ## A4 — Task 0 / Branch A
@@ -73,19 +47,12 @@ Add `<meta http-equiv="refresh" content="5">` to `dashboard.html` for instant li
 **Prompt:** What are 3 risks of building a self-healing agent system, and one mitigation for each?
 
 
-## 3 Risks of Self-Healing Agent Systems
+# Risks of Building a Self-Healing Agent Systems
 
-**1. Runaway Remediation Loops**
-The agent's fix triggers a new failure, which triggers another fix, ad infinitum — consuming resources or corrupting state progressively.
-- **Mitigation:** Implement a circuit breaker with a max-retry budget per time window. After N failed heal attempts, escalate to a human or halt rather than continuing.
+## 1. **Runaway Remediation Loops**
+The agent repeatedly attempts fixes that either fail or create new problems, consuming resources or causing cascading failures.
 
-**2. Incorrect Root Cause Attribution**
-The agent diagnoses the wrong cause and "heals" by changing something unrelated, masking the real issue or introducing new bugs.
-- **Mitigation:** Require the agent to emit a structured hypothesis with confidence score before acting. Low-confidence or low-specificity diagnoses get routed to human review rather than auto-remediation.
-
-**3. Privilege Escalation / Blast Radius**
-A self-healing agent needs enough permissions to fix things — but those same permissions can cause catastrophic damage if the agent acts on bad reasoning or is manipulated via prompt injection in logs/error messages.
-- **Mitigation:** Apply least-privilege scoping per action type (e.g., the agent can restart a service but cannot modify IAM policies or delete data). Use a separate approval gate for any destructive action.
+**Mitigation:** Implement a **circuit breaker pattern** — cap retry attempts, require human approval after N failed remediation cycles, and maintain a rollback checkpoint before any aut
 
 
 ## A5 — Task 0 / Branch A
@@ -93,7 +60,7 @@ A self-healing agent needs enough permissions to fix things — but those same p
 **Prompt:** Write a tagline for Solo Builder in under 10 words.
 
 
-**Build solo. Ship fast. Think with AI.**
+**"Build it alone. Launch it loud. Grow it big."**
 
 
 ## B1 — Task 0 / Branch B
@@ -101,9 +68,7 @@ A self-healing agent needs enough permissions to fix things — but those same p
 **Prompt:** Describe the difference between a Shadow Agent and a Verifier agent in 2 sentences.
 
 
-A **Shadow Agent** runs silently in parallel with a primary agent, observing the same inputs and producing its own outputs for comparison or monitoring purposes — without affecting the live response.
-
-A **Verifier Agent** actively evaluates another agent's output against defined criteria (correctness, safety, policy) and can block or flag the response before it reaches the user or downstream system.
+A **Shadow Agent** runs in parallel with an existing system or agent, observing inputs and outputs without intervening, typically used to test or evaluate a new agent's behavior against a live environment. A **Verifier Agent** actively checks the outputs of another agent against defined rules, constraints, or ground truth to validate correctness before those outputs are acted upon or passed downst
 
 
 ## B2 — Task 0 / Branch B
@@ -111,20 +76,14 @@ A **Verifier Agent** actively evaluates another agent's output against defined c
 **Prompt:** List 3 real-world use cases for a DAG-based AI project tracker.
 
 
-## 3 Real-World Use Cases for a DAG-Based AI Project Tracker
+# Real-World Use Cases for a DAG-Based AI Project Tracker
 
-**1. Solo SaaS Build Pipeline**
-Track the dependency chain from idea → spec → backend → frontend → testing → deployment. A DAG ensures you can't mark "write API endpoints" complete until "design schema" is done — enforcing logical order and surfacing blockers automatically.
+## 1. 🧬 Drug Discovery Pipeline Management
+**Scenario:** A pharmaceutical company running ML models for compound screening
 
-**2. Content Production Workflow**
-A creator or agency managing blog posts, videos, or social campaigns. Each piece of content has upstream dependencies (research → outline → draft → edit → design → publish). The DAG prevents publishing before editing and highlights which tasks are on the critical path.
-
-**3. AI Model Development Lifecycle**
-Track tasks across data collection → preprocessing → feature engineering → model training → evaluation → deployment → monitoring. Each stage depends on the previous, and some branches (e.g., multiple model experiments) run in parallel — a perfect DAG structure that flat to-do lists can't represent.
-
----
-
-The core value in all three: **DAGs make implicit dependencies explicit**, so you can see what's blocked, what's parallelizable, and what the critical path is — things a flat task list or kanban board can't show.
+- Tasks like **data preprocessing → feature extraction → model training → validation** have strict dependencies
+- The DAG prevents running toxicity predictions before molecular fingerprinting completes
+- Enables **par
 
 
 ## B3 — Task 0 / Branch B
@@ -132,7 +91,7 @@ The core value in all three: **DAGs make implicit dependencies explicit**, so yo
 **Prompt:** In one sentence, explain what a MetaOptimizer does in an AI pipeline.
 
 
-A MetaOptimizer is a higher-level optimization algorithm that tunes the hyperparameters or learning strategies of other optimizers, effectively "learning how to learn" to improve model training efficiency and performance.
+A MetaOptimizer is a higher-level optimization algorithm that automatically tunes the hyperparameters or learning rules of a base optimizer, effectively "learning how to learn" to improve the training efficiency and performance of an AI model.
 
 
 ## C1 — Task 1 / Branch C
@@ -140,7 +99,7 @@ A MetaOptimizer is a higher-level optimization algorithm that tunes the hyperpar
 **Prompt:** What does a DAG (Directed Acyclic Graph) represent in software project management? Answer in one paragraph.
 
 
-In software project management, a Directed Acyclic Graph (DAG) represents the dependency relationships between tasks or components, where each node is a task and each directed edge indicates that one task must complete before another can begin. The "acyclic" constraint ensures there are no circular dependencies — no task can transitively depend on itself — which makes it possible to determine a valid execution order. DAGs are used in build systems (like Make, Bazel, or webpack), CI/CD pipelines, task schedulers, and package managers to resolve the correct sequence of operations: given a DAG, a topological sort produces one or more valid orderings that respect all dependencies. They also enable parallelism analysis — tasks with no dependency relationship between them can safely run concurrently — making DAGs a foundational data structure for optimizing build times and orchestrating complex workflows.
+In software project management, a **Directed Acyclic Graph (DAG)** represents the dependencies and relationships between tasks, modules, or components in a project, where each node corresponds to a specific task or unit of work and each directed edge indicates that one task must be completed before another can begin. The "acyclic" property ensures there are no circular dependencies, meaning the wo
 
 
 ## C2 — Task 1 / Branch C
@@ -148,11 +107,12 @@ In software project management, a Directed Acyclic Graph (DAG) represents the de
 **Prompt:** List 3 advantages of using a priority queue to schedule software tasks.
 
 
-1. **Efficient task ordering** — Tasks are always dequeued in priority order (O(log n) insertion/extraction), so high-priority work runs first without scanning the entire queue.
+# Advantages of Using a Priority Queue for Task Scheduling
 
-2. **Dynamic re-prioritization** — New urgent tasks inserted at runtime automatically surface ahead of lower-priority pending work, making the scheduler responsive to changing conditions.
+## 1. **Efficient Handling of Critical Tasks**
+Higher-priority tasks are always processed before lower-priority ones, ensuring that time-sensitive or mission-critical operations (e.g., interrupt handling, real-time events) receive CPU resources **without unnecessary delays**, regardless of arrival order.
 
-3. **Prevents starvation with aging** — Priority queues can incorporate aging (gradually increasing priority of waiting tasks), ensuring low-priority tasks eventually run rather than being indefinitely blocked by higher-priority arrivals.
+## 2. **Optimal Resource Utilizat
 
 
 ## C3 — Task 1 / Branch C
@@ -160,7 +120,7 @@ In software project management, a Directed Acyclic Graph (DAG) represents the de
 **Prompt:** Explain the concept of task staleness in a project management system in 2 sentences.
 
 
-Task staleness refers to the condition where a task's information, priority, or relevance has become outdated relative to the current state of a project — often because time has passed, dependencies have changed, or the context in which it was created no longer exists. Stale tasks can mislead teams by cluttering backlogs with obsolete work, causing effort to be spent on things that no longer deliver value or that conflict with newer decisions.
+Task staleness refers to the condition where a task has not been updated, progressed, or interacted with for a defined period of time, signaling that it may be neglected, blocked, or forgotten. Project management systems use staleness indicators to alert team members and managers so they can take corrective action, such as reassigning the task, removing blockers, or reprioritizing workloads.
 
 
 ## C4 — Task 1 / Branch C
@@ -170,27 +130,11 @@ Task staleness refers to the condition where a task's information, priority, or 
 
 ## Shadow State in Agent-Based Systems
 
-**Shadow state** is a private, internal representation of the world that an agent maintains independently of the authoritative external state. The agent acts based on its shadow state rather than querying the ground truth on every decision, which can lead to the agent operating on stale or incorrect assumptions.
+### Definition
 
----
+A **shadow state** is a local, maintained copy of some external state that an agent cannot directly observe or control, but needs to reason about. The agent builds and updates this internal representation by tracking events, messages, and observations over time — rather than querying the true state directly.
 
-### Concrete Example
-
-An AI coding agent is given the task: "Delete all `.tmp` files, then run the test suite."
-
-1. The agent reads the directory and builds its shadow state: `[build.tmp, cache.tmp, session.tmp]`
-2. It deletes `build.tmp` and `cache.tmp`
-3. **Meanwhile**, another process creates `new_artifact.tmp` — but the agent's shadow state doesn't know this
-4. The agent "knows" it has cleaned up all `.tmp` files (its shadow state says so) and proceeds to run tests
-5. The test suite fails because `new_artifact.tmp` interferes — but the agent is confused because according to its shadow state, no `.tmp` files exist
-
-The agent's internal model of the world diverged from reality. That divergence is the shadow state problem.
-
----
-
-### Why It Matters
-
-In multi-agent systems this compounds: Agent A's shadow state of what Agent B did may be wrong, leading to cascading incorrect decisions. Solutions include **explicit re-querying** (invalidate cached state before acting), **event-driven updates** (subscribe to change notifications), or **optimistic locking** (verify assumptions right before committing an action).
+It essentially acts as the agent'
 
 
 ## D1 — Task 1 / Branch D
@@ -198,42 +142,17 @@ In multi-agent systems this compounds: Agent A's shadow state of what Agent B di
 **Prompt:** Describe 2 strategies for preventing task starvation in a priority-based scheduler.
 
 
-## Preventing Task Starvation in a Priority-Based Scheduler
+# Preventing Task Starvation in Priority-Based Schedulers
 
-### 1. Aging
-
-Gradually increase the priority of a task the longer it waits in the ready queue.
-
-- Each time a scheduling cycle passes without a task being selected, its effective priority is incremented by some delta.
-- Eventually, even the lowest-priority task ages up to the point where it gets scheduled.
-- After execution, its priority resets to the original value.
-
-```
-effective_priority = base_priority + (wait_time / aging_factor)
-```
-
-**Trade-off:** Requires tracking wait time per task and adds overhead to priority recalculation each cycle.
+## Background
+**Starvation** occurs when low-priority tasks are indefinitely blocked from execution because high-priority tasks continuously consume CPU time.
 
 ---
 
-### 2. Priority Ceiling / Time-Slice Guarantee
+## Strategy 1: Priority Aging
 
-Reserve a minimum time slice or scheduling slot for low-priority tasks regardless of higher-priority demand.
-
-- The scheduler guarantees that every task at any priority level gets CPU time within a bounded window (e.g., at least once every N cycles).
-- Often implemented as a **two-tier policy**: a high-priority queue runs normally, but a background queue is force-scheduled periodically.
-- Similar to the **multi-level feedback queue (MLFQ)** approach where tasks that haven't run recently get a temporary boost into a higher queue.
-
-```
-if task.time_since_last_run > starvation_threshold:
-    promote to higher queue temporarily
-```
-
-**Trade-off:** Harder to tune the threshold — too aggressive and high-priority tasks lose throughput; too lenient and starvation still occurs.
-
----
-
-**Key difference:** Aging is *reactive* (priority grows over time), while the time-slice guarantee is *proactive* (a slot is reserved before starvation occurs).
+### Concept
+Gradually **increase a task's priority the longer it waits** in the ready queue, ensuring it eventually becomes high enough to be sch
 
 
 ## D2 — Task 1 / Branch D
@@ -241,7 +160,7 @@ if task.time_since_last_run > starvation_threshold:
 **Prompt:** What is the difference between optimistic and pessimistic task verification? One paragraph.
 
 
-**Optimistic task verification** assumes a task succeeded unless evidence indicates otherwise — it proceeds immediately after an action and only checks for errors reactively (e.g., catching exceptions). **Pessimistic task verification** assumes a task may have failed and actively confirms success before proceeding — it polls, retries, or waits for explicit confirmation signals (e.g., checking a database record was written before returning success). Optimistic verification is faster and simpler but risks silent failures or race conditions, while pessimistic verification is more robust and reliable but slower and more complex to implement.
+**Optimistic task verification** assumes that a task has been completed correctly and only checks for errors or failures after the fact, if at all, trusting that the process will succeed in most cases — this approach is faster and more efficient but risks missing errors until they cause downstream problems. **Pessimistic task verification**, on the other hand, assumes that a task may have failed a
 
 
 ## E1 — Task 2 / Branch E
@@ -249,13 +168,15 @@ if task.time_since_last_run > starvation_threshold:
 **Prompt:** What are 3 benefits of self-healing automation in a software pipeline?
 
 
-Three benefits of self-healing automation in a software pipeline:
+# 3 Benefits of Self-Healing Automation in a Software Pipeline
 
-1. **Reduced downtime** — Failed steps (flaky tests, transient network errors, resource exhaustion) are automatically retried or rerouted without human intervention, keeping the pipeline flowing.
+## 1. 🔄 Reduced Downtime and Faster Recovery
+- Automatically detects and resolves common failures **without human intervention**
+- Systems can restart failed services, retry failed jobs, or roll back broken deployments
+- Minimizes the **mean time to recovery (MTTR)** significantly
 
-2. **Lower operational burden** — Engineers aren't paged for recoverable failures. The system handles common failure modes (restarting stuck agents, re-provisioning failed nodes) autonomously, freeing the team for higher-value work.
-
-3. **Faster mean time to recovery (MTTR)** — Automated remediation triggers in seconds, whereas human response can take minutes to hours. This compresses the feedback loop and keeps deployments on schedule.
+## 2. 👥 Reduced Operational Burden on Teams
+- Enginee
 
 
 ## E2 — Task 2 / Branch E
@@ -263,7 +184,7 @@ Three benefits of self-healing automation in a software pipeline:
 **Prompt:** Describe how a MetaOptimizer could improve agent performance over time. 2 sentences.
 
 
-A MetaOptimizer learns from an agent's historical performance data to dynamically tune hyperparameters, prompt strategies, and tool-selection policies — adapting the agent's behavior without manual intervention. Over time, it identifies patterns in successes and failures, enabling the agent to route tasks more efficiently, reduce token waste, and improve output quality through continuous self-optimization loops.
+A MetaOptimizer monitors an agent's performance metrics and learning patterns across episodes, dynamically adjusting hyperparameters—such as learning rate, exploration strategies, and reward shaping—to accelerate convergence and prevent stagnation. By learning *how* the agent learns, it can identify failure modes early and redistribute computational resources toward the most impactful optimization
 
 
 ## E3 — Task 2 / Branch E
@@ -271,13 +192,13 @@ A MetaOptimizer learns from an agent's historical performance data to dynamicall
 **Prompt:** List 3 metrics that indicate an AI agent system is performing well.
 
 
-Three key metrics for a well-performing AI agent system:
+Here are **3 key metrics** that indicate an AI agent system is performing well:
 
-1. **Task Completion Rate** — The percentage of assigned tasks successfully completed without human intervention or retries. High completion rate indicates the agent can handle its intended workload reliably.
+## 1. **Task Completion Rate**
+The percentage of assigned tasks the agent successfully completes without failure or human intervention. A high rate suggests the agent reliably achieves its goals.
 
-2. **Latency / Time-to-Result** — How quickly the agent completes tasks end-to-end. Low and consistent latency means the agent isn't getting stuck in loops, retrying excessively, or over-calling tools.
-
-3. **Tool Call Accuracy / Grounding Rate** — The ratio of tool calls that return useful, expected results vs. failed, hallucinated, or redundant calls. High accuracy here means the agent is reasoning correctly about *when* and *how* to use its tools.
+## 2. **Accuracy / Error Rate**
+How often the agent produces correct outputs or decisions versus making mistakes. Low erro
 
 
 ## E4 — Task 2 / Branch E
@@ -285,9 +206,9 @@ Three key metrics for a well-performing AI agent system:
 **Prompt:** What is the difference between reactive and proactive error handling in agent systems? One sentence each.
 
 
-**Reactive** error handling detects and responds to failures *after* they occur (e.g., catching exceptions, retrying failed steps).
+**Reactive error handling** responds to failures after they occur, such as catching exceptions and retrying or recovering in the moment.
 
-**Proactive** error handling anticipates and prevents failures *before* they occur (e.g., validating inputs, checking preconditions, setting resource limits).
+**Proactive error handling** anticipates potential failures before they happen, such as validating inputs, checking preconditions, or building fallback paths into the agent's planning logic.
 
 
 ## E5 — Task 2 / Branch E
@@ -295,15 +216,23 @@ Three key metrics for a well-performing AI agent system:
 **Prompt:** Give one example of a heuristic weight that a MetaOptimizer might adjust in a task planner.
 
 
-A MetaOptimizer might adjust the **deadline urgency multiplier** — a weight that scales how much a task's priority score increases as its due date approaches.
+## Example: Heuristic Weight in a MetaOptimizer
 
-For example:
+### Context
+A task planner uses **weighted A\* search** to find action sequences, with heuristics estimating cost-to-goal.
+
+---
+
+### Specific Example
+
+**Weight: `w_deadline_urgency` (deadline proximity multiplier)**
 
 ```
-priority_score = base_priority * (1 + urgency_weight * days_remaining⁻¹)
+f(n) = g(n) + w_deadline_urgency × h(n)
 ```
 
-If `urgency_weight = 2.0`, tasks get a moderate priority boost as deadlines near. The MetaOptimizer could lower it to `0.5` if it observes that aggressive deadline-chasing causes too many context switches, or raise it to `5.0` if missed deadlines are frequent.
+| Scenario | MetaOptimizer Adjustment | Effect |
+|----------|------------------------
 
 
 ## F1 — Task 2 / Branch F
@@ -311,7 +240,7 @@ If `urgency_weight = 2.0`, tasks get a moderate priority boost as deadlines near
 **Prompt:** What is the role of a Verifier agent in a multi-agent pipeline? 2 sentences.
 
 
-A Verifier agent reviews the output of other agents in the pipeline to check for correctness, consistency, or adherence to specified constraints before passing results downstream. It acts as a quality gate, catching errors or hallucinations early to prevent flawed outputs from propagating through the system.
+A Verifier agent is responsible for checking and validating the outputs produced by other agents in the pipeline, ensuring accuracy, consistency, and adherence to specified requirements or constraints. It acts as a quality control mechanism, flagging errors, hallucinations, or logical inconsistencies before results are passed downstream or delivered to the end user.
 
 
 ## F2 — Task 2 / Branch F
@@ -319,7 +248,7 @@ A Verifier agent reviews the output of other agents in the pipeline to check for
 **Prompt:** Describe how memory snapshots help with debugging in an agent system. One paragraph.
 
 
-Memory snapshots help debug agent systems by capturing the full state of an agent's working memory, context, and intermediate reasoning at specific points in time, allowing developers to replay or inspect exactly what the agent "knew" when it made a decision. Instead of relying solely on logs of actions taken, snapshots preserve the in-context data — tool call results, accumulated conversation history, variable bindings, and any retrieved knowledge — so you can pinpoint whether a failure stemmed from bad input data, a reasoning error, a tool returning unexpected output, or state corruption from a previous step. This is especially valuable in long multi-step pipelines where the root cause of a downstream failure may have originated several turns earlier; snapshots let you bisect the timeline, restore the agent to a known-good state, and re-run from that point with modified conditions rather than re-executing the entire expensive run from scratch.
+Memory snapshots capture the complete state of an agent's working memory, context, and variable bindings at specific points in time, making them invaluable for debugging complex agent systems. When an agent produces unexpected behavior or fails mid-task, developers can replay or inspect the snapshot to see exactly what information the agent was working with — including its current goals, retrieved
 
 
 ## F3 — Task 2 / Branch F
@@ -327,13 +256,21 @@ Memory snapshots help debug agent systems by capturing the full state of an agen
 **Prompt:** List 2 ways a ShadowAgent could detect state inconsistencies in a DAG pipeline.
 
 
-Two ways a ShadowAgent could detect state inconsistencies in a DAG pipeline:
+# Detecting State Inconsistencies in a DAG Pipeline
 
-1. **Checksum/Hash Comparison at Node Boundaries**
-   Each node emits a hash of its output state. The ShadowAgent independently recomputes expected hashes from upstream inputs and compares them at each edge. A mismatch signals that a node's output diverged from its deterministic expectation — catching silent data corruption or non-deterministic execution.
+## 1. Checksum/Hash Validation at Node Boundaries
 
-2. **Topological Invariant Auditing**
-   The ShadowAgent tracks dependency ordering invariants (e.g., node B must always execute after node A completes with a valid state). It monitors execution timestamps and state tokens across the DAG and flags violations where a downstream node holds a stale or pre-update state version from an ancestor — catching race conditions or out-of-order execution bugs.
+A ShadowAgent can compute and compare **cryptographic hashes of node outputs** at each edge transition in the DAG.
+
+```
+Node A produces output → Hash recorded
+         ↓
+Node B receives input → Hash recomputed & compared
+         ↓
+Mismatch detected → Inconsistency flagged
+```
+
+**How it works:**
 
 
 ## F4 — Task 2 / Branch F
@@ -341,7 +278,7 @@ Two ways a ShadowAgent could detect state inconsistencies in a DAG pipeline:
 **Prompt:** What is the difference between a branch and a task in a DAG-based project tracker? One sentence.
 
 
-A **branch** represents a parallel line of work (a divergent path in the DAG), while a **task** is an individual node in the graph with specific dependencies and outputs.
+In a DAG-based project tracker, a **branch** represents a diverging path of parallel work streams in the overall project graph, while a **task** is an individual unit of work that serves as a node within that graph.
 
 
 ## G1 — Task 3 / Branch G
@@ -349,7 +286,7 @@ A **branch** represents a parallel line of work (a divergent path in the DAG), w
 **Prompt:** What is continuous integration and how does it relate to automated project management? One paragraph.
 
 
-Continuous integration (CI) is a software development practice where team members frequently merge code changes into a shared repository — typically multiple times per day — triggering automated pipelines that build, test, and validate the code on each commit. Tools like GitHub Actions, CircleCI, or Jenkins run these pipelines automatically, catching integration bugs early before they compound. In the context of automated project management, CI acts as the enforcement layer: it can automatically update issue trackers (closing tickets when tests pass), trigger deployment workflows, generate status reports, enforce code quality gates, and even notify stakeholders — all without human intervention. This closes the loop between writing code and managing the project lifecycle, turning what was once a manual, error-prone handoff process into a continuous, auditable feedback loop tied directly to the codebase.
+Continuous integration (CI) is a software development practice where developers frequently merge their code changes into a shared repository, often multiple times per day, with each integration automatically triggering a build and test process to detect errors quickly. It relates to automated project management in that CI pipelines can be configured to automatically update task statuses, generate
 
 
 ## G2 — Task 3 / Branch G
@@ -357,11 +294,12 @@ Continuous integration (CI) is a software development practice where team member
 **Prompt:** List 3 common causes of technical debt in solo developer projects.
 
 
-1. **Skipping tests** — Solo devs often prioritize shipping over test coverage, making future changes risky and regressions hard to catch.
+Here are 3 common causes of technical debt in solo developer projects:
 
-2. **Premature or absent abstractions** — Either over-engineering early (building for scale that never comes) or copy-pasting code repeatedly instead of extracting shared logic.
+## 1. **Skipping Documentation and Planning**
+With no team to coordinate with, solo developers often jump straight into coding without proper design documentation, leading to poorly structured code that becomes increasingly difficult to maintain or refactor later.
 
-3. **Deferred dependency upgrades** — Staying on outdated libraries to avoid breakage, until the gap becomes too large to bridge without significant rework.
+## 2. **Deferred Refactoring ("It Works, So I'll Fix It Later"
 
 
 ## G3 — Task 3 / Branch G
@@ -369,7 +307,7 @@ Continuous integration (CI) is a software development practice where team member
 **Prompt:** Describe the MVP (Minimum Viable Product) concept in 2 sentences.
 
 
-An MVP is the simplest version of a product that delivers core value to early users while requiring the least development effort. It exists to validate assumptions quickly, gather real feedback, and avoid building features nobody wants.
+An MVP is the most basic version of a product that includes only the core features necessary to solve a key problem and satisfy early adopters. It allows teams to launch quickly, gather real user feedback, and validate assumptions before investing significant time and resources into full development.
 
 
 ## G4 — Task 3 / Branch G
@@ -377,7 +315,7 @@ An MVP is the simplest version of a product that delivers core value to early us
 **Prompt:** What is a sprint in agile methodology? One sentence.
 
 
-A sprint is a fixed-length iteration (typically 1–4 weeks) in which a team completes a defined set of work from the product backlog.
+A sprint is a fixed, short time period (typically 1–4 weeks) during which a team works to complete a defined set of tasks or deliverables.
 
 
 ## G5 — Task 3 / Branch G
@@ -385,13 +323,17 @@ A sprint is a fixed-length iteration (typically 1–4 weeks) in which a team com
 **Prompt:** List 3 developer tools a solo builder could use alongside an AI task manager.
 
 
-Here are 3 developer tools that pair well with an AI task manager for solo builders:
+Here are 3 developer tools that pair well with an AI task manager:
 
-1. **Linear** — Lightweight issue tracker with keyboard-first UX and automation hooks; integrates cleanly with AI-generated task lists via API.
+1. **GitHub / GitLab**
+   - Tracks code changes and issues alongside AI-generated tasks
+   - Lets you link commits directly to specific work items
 
-2. **Cursor / Claude Code** — AI-native code editors that can act on task descriptions directly, closing the loop between planning and execution.
+2. **Cursor or VS Code**
+   - AI-assisted code editors that complement task planning with hands-on execution
+   - Keep your coding environment and task context in sync
 
-3. **Zapier / n8n** — Workflow automation to pipe task updates between your AI manager, GitHub, Slack, calendar, and other tools without custom glue code.
+3. **Notion or
 
 
 ## G6 — Task 3 / Branch G
@@ -399,7 +341,7 @@ Here are 3 developer tools that pair well with an AI task manager for solo build
 **Prompt:** What is the difference between async and sync task execution in pipelines? One paragraph.
 
 
-In a pipeline, **synchronous (sync) execution** runs tasks sequentially — each task must complete before the next begins, blocking the thread until done, which is simple to reason about but can be slow when tasks involve waiting (I/O, network, disk). **Asynchronous (async) execution** allows tasks to be initiated without blocking — the pipeline can hand off a task, continue scheduling other work, and resume when the result is ready (via callbacks, promises, or `await`), enabling concurrency within a single thread. The key tradeoff is that sync is easier to debug and reason about (linear control flow, predictable errors), while async maximizes throughput by overlapping I/O-bound work, but introduces complexity around ordering, error propagation, and race conditions. In practice, pipelines with heavy I/O (API calls, file reads, database queries) benefit most from async, while CPU-bound transform steps often gain little from it.
+In a **synchronous** pipeline, tasks execute sequentially and blocking — each task must complete before the next one starts, meaning the pipeline waits for a result at every step, which is simpler to reason about but can be inefficient if tasks involve waiting (e.g., I/O, network calls). In an **asynchronous** pipeline, tasks can be initiated without waiting for previous ones to finish, allowing m
 
 
 ## H1 — Task 3 / Branch H
@@ -407,7 +349,7 @@ In a pipeline, **synchronous (sync) execution** runs tasks sequentially — each
 **Prompt:** Describe the concept of a 'Definition of Done' in software projects. 2 sentences.
 
 
-A **Definition of Done (DoD)** is a shared, explicit checklist of criteria that a feature or task must meet before it's considered complete — covering things like code review, tests passing, and documentation. It ensures the entire team has a common understanding of "done," preventing half-finished work from being declared complete prematurely.
+A **Definition of Done (DoD)** is a shared, agreed-upon checklist of criteria that a piece of work (such as a user story or feature) must meet before it can be considered truly complete, typically covering aspects like coding, testing, documentation, and review. It ensures a consistent standard of quality across the team and prevents partially finished work from being declared "done" prematurely.
 
 
 ## H2 — Task 3 / Branch H
@@ -415,11 +357,10 @@ A **Definition of Done (DoD)** is a shared, explicit checklist of criteria that 
 **Prompt:** List 3 ways to reduce context-switching costs for a solo developer.
 
 
-1. **Batch similar work into time blocks** — Group all code review, emails, and deploys into dedicated slots rather than interleaving them. Context has a "warm-up" cost; staying in one mode longer amortizes it.
+Here are 3 practical ways to reduce context-switching costs for a solo developer:
 
-2. **Write a daily "re-entry note" before stopping** — Leave a 3-5 line note at the top of your current file or task tracker: what you were doing, what's next, and any open questions. Eliminates the 10-15 min reconstruction cost when you return.
-
-3. **Use a single canonical task list, not scattered notes** — One source of truth (a `TODO.md`, Linear board, or similar) means you spend zero time remembering *where* your tasks live. The less cognitive overhead to find "what's next," the faster you re-engage.
+## 1. **Time Blocking with Intentional Transitions**
+Group similar tasks into dedicated blocks (e.g., coding in the morning, emails/admin in the afternoon). Before stopping work, write a brief "re-entry note" — the next action, current state, and any open questions — so you can resume quickly without rebuilding ment
 
 
 ## H3 — Task 3 / Branch H
@@ -427,7 +368,7 @@ A **Definition of Done (DoD)** is a shared, explicit checklist of criteria that 
 **Prompt:** What is the Pomodoro technique and how might it help a solo developer? One paragraph.
 
 
-The Pomodoro technique is a time management method where you work in focused 25-minute intervals (called "pomodoros") separated by short 5-minute breaks, with a longer 15–30 minute break after every four cycles. For a solo developer, it's particularly useful because there's no external structure or manager to keep you on track — the technique provides that rhythm artificially. It combats the two failure modes solo work tends to produce: hyperfocus burnout (losing hours in a tunnel without rest) and constant context-switching (checking Slack, email, or social media). The forced breaks give your brain time to consolidate what you've built, and the defined work blocks make vague tasks feel concrete and time-boxed, which reduces the paralysis of staring at an empty file wondering where to start.
+The Pomodoro Technique is a time management method developed by Francesco Cirillo in the late 1980s, where you break work into focused 25-minute intervals (called "pomodoros") separated by short 5-minute breaks, with a longer 15-30 minute break after every four intervals. For a solo developer, this can be particularly valuable because working alone means there are no external structures like meeti
 
 
 ## H4 — Task 3 / Branch H
@@ -435,21 +376,17 @@ The Pomodoro technique is a time management method where you work in focused 25-
 **Prompt:** Give 2 examples of how AI can assist with project estimation for a solo developer.
 
 
-Here are 2 examples of how AI can assist with project estimation for a solo developer:
+# AI Assistance with Project Estimation for Solo Developers
 
----
+## Example 1: Breaking Down Task Complexity
 
-**1. Task Decomposition & Complexity Scoring**
+A solo developer can describe a feature to an AI tool and ask it to **identify subtasks they might have overlooked**.
 
-A solo dev describes a feature in plain language (e.g., "add user authentication with OAuth"). AI breaks it down into granular subtasks, flags hidden complexity (token refresh, edge cases, testing), and assigns relative effort scores based on the tech stack — surfacing work the dev may have underestimated.
+**Scenario:** You plan to build a user authentication system and estimate 2 days.
 
-**2. Historical Pattern Matching**
-
-AI analyzes past project notes, commit history, or journal entries to identify how long similar tasks *actually* took vs. how long they were estimated to take. It then applies a calibration factor to future estimates, reducing the optimism bias that solo devs commonly experience.
-
----
-
-Both approaches shift estimation from gut-feel guessing to data-informed planning — especially valuable without a team to sanity-check scope.
+AI might surface forgotten tasks like:
+- Password reset email flow
+- Session timeout handlin
 
 
 ## I1 — Task 3 / Branch I
@@ -457,7 +394,7 @@ Both approaches shift estimation from gut-feel guessing to data-informed plannin
 **Prompt:** What is scope creep and how can a solo developer prevent it? One paragraph.
 
 
-Scope creep is the gradual, unplanned expansion of a project's requirements beyond what was originally defined — features get added, goals shift, and "just one more thing" becomes the default mode until the project balloons in size, stalls, or never ships. For a solo developer, the best defenses are: write a short, explicit spec before coding (even a bullet list) and treat it as a contract with yourself; use a "not now" list to capture ideas without acting on them immediately; timebox work into fixed sprints with defined deliverables; and ruthlessly apply the question "does this help the user do the core thing?" before adding anything new. Shipping a focused v1 is always worth more than endlessly polishing a v0.
+Scope creep is the gradual expansion of a project's requirements beyond its original goals, often through small, seemingly harmless additions that accumulate over time and derail timelines, inflate complexity, and kill motivation. For a solo developer, it's especially dangerous because there's no team to push back or keep priorities in check. To prevent it, a solo developer should define a clear,
 
 
 ## I2 — Task 3 / Branch I
@@ -465,11 +402,13 @@ Scope creep is the gradual, unplanned expansion of a project's requirements beyo
 **Prompt:** List 3 warning signs that a solo software project is at risk of failure.
 
 
-1. **Scope creep without shipping** — Constantly adding features before releasing anything. If the MVP keeps expanding, the project may never reach users.
+Here are 3 common warning signs:
 
-2. **No external feedback loop** — Building in isolation with no users, testers, or peers reviewing the work. Without external signal, you can spend months solving the wrong problem.
+**1. Scope Creep Without Boundaries**
+Continuously adding features before finishing core functionality, leading to a project that grows faster than progress is made. If the "done" definition keeps shifting, completion becomes impossible.
 
-3. **Motivation tied to novelty, not completion** — High energy at the start, but declining interest once the "fun" technical parts are done and the unglamorous work (testing, docs, deployment, support) begins.
+**2. Avoiding the Hard Parts**
+Consistently working on easy or familiar tasks while postponing difficult technical challenges.
 
 
 ## I3 — Task 3 / Branch I
@@ -477,7 +416,7 @@ Scope creep is the gradual, unplanned expansion of a project's requirements beyo
 **Prompt:** Describe the concept of 'bikeshedding' and why it's a risk for solo developers. 2 sentences.
 
 
-Bikeshedding is the tendency to spend disproportionate time on trivial, easy-to-visualize decisions (like picking a color scheme or folder naming convention) while avoiding harder, more important work. For solo developers it's especially dangerous because there's no team to redirect focus — you can burn hours on inconsequential choices with no one to call you out.
+**Bikeshedding** is the tendency to spend disproportionate time debating trivial, easy-to-understand details (like what color to paint a bike shed) while neglecting complex, critical decisions that actually matter. For solo developers, it's a particular risk because there's no team to redirect focus or call out the wasted effort, making it easy to burn hours obsessing over things like variable nam
 
 
 ## J1 — Task 4 / Branch J
@@ -485,15 +424,22 @@ Bikeshedding is the tendency to spend disproportionate time on trivial, easy-to-
 **Prompt:** What are 3 principles of clean code that every solo developer should follow?
 
 
-Three clean code principles every solo developer should follow:
+# 3 Clean Code Principles for Solo Developers
 
-1. **Obvious naming over clever naming** — Variables, functions, and files should say *what* they do, not *how*. `getUserById()` beats `fetch()`. You'll thank yourself six months later when you've forgotten the context.
+## 1. **Write Self-Documenting Code**
+Name things clearly enough that comments become unnecessary for *what* the code does.
 
-2. **One thing, one place** — Each function does one thing; each piece of logic lives in one place. Duplication is the fastest way to create bugs that are hard to track down, especially when working alone with no one to catch inconsistencies.
+```python
+# Bad
+def calc(x, y, z):
+    return x * (1 - y) * (1 + z)
 
-3. **Delete dead code** — If it's commented out or unused, remove it. You have git for history. Dead code creates false signals about what the system actually does and slows down every future read of the file.
+# Good
+def calculate_discounted_price(base_price, discount_rate, tax_rate):
+    return base_price * (1 - discount_rate) * (1 + tax_rate)
+```
 
-The common thread: you are your own future code reviewer. Write for that person.
+**Why it matters
 
 
 ## J2 — Task 4 / Branch J
@@ -501,7 +447,24 @@ The common thread: you are your own future code reviewer. Write for that person.
 **Prompt:** Describe the DRY (Don't Repeat Yourself) principle in one sentence with a concrete example.
 
 
-DRY means every piece of knowledge should have a single authoritative definition — for example, instead of hardcoding a tax rate of `0.08` in five different functions, define `TAX_RATE = 0.08` once and reference that constant everywhere.
+## DRY Principle
+
+**Every piece of knowledge should have a single, unambiguous representation in a system.**
+
+---
+
+### Concrete Example
+
+❌ **Violates DRY** — tax rate duplicated in multiple functions:
+```python
+def calculate_order_total(price):
+    return price * 1.08  # 8% tax hardcoded here
+
+def calculate_shipping_cost(base_cost):
+    return base_cost * 1.08  # 8% tax hardcoded again
+```
+
+✅ **Fo
 
 
 ## J3 — Task 4 / Branch J
@@ -509,47 +472,18 @@ DRY means every piece of knowledge should have a single authoritative definition
 **Prompt:** What is a code smell? Give 3 examples.
 
 
-A **code smell** is a surface-level pattern in code that suggests a deeper problem — not necessarily a bug, but a sign that the design could be improved.
+# Code Smell
+
+A **code smell** is a surface indication in source code that usually corresponds to a deeper problem — it doesn't necessarily mean the code is broken, but it suggests poor design, reduced maintainability, or potential bugs down the road.
+
+The term was popularized by **Martin Fowler** in his book *Refactoring*.
 
 ---
 
 ## 3 Examples
 
-**1. Long Method**
-A function that does too much. If you need to scroll to read a single method, it's doing more than one thing and should be broken up.
-
-```python
-def process_order(order):
-    # 200 lines of validation, pricing, tax, shipping, email...
-```
-
-**2. Duplicate Code**
-The same logic copy-pasted in multiple places. If you fix a bug in one copy, you have to remember to fix all the others — and you will forget.
-
-```js
-// In UserCard.jsx
-const name = user.firstName + ' ' + user.lastName;
-
-// In ProfilePage.jsx
-const name = user.firstName + ' ' + user.lastName;  // again
-```
-
-**3. God Object / God Class**
-A single class that knows and does everything. It accumulates responsibilities over time until it's impossible to test or change without side effects.
-
-```python
-class App:
-    def handle_login(self): ...
-    def send_email(self): ...
-    def render_dashboard(self): ...
-    def calculate_taxes(self): ...
-    def connect_to_db(self): ...
-    # 3000 more lines
-```
-
----
-
-The term was popularized by Martin Fowler in *Refactoring* (1999). Smells don't demand immediate fixes, but they signal where technical debt is accumulating.
+### 1. 🔁 Duplicate Code (DRY Violation)
+The same logi
 
 
 ## J4 — Task 4 / Branch J
@@ -557,9 +491,11 @@ The term was popularized by Martin Fowler in *Refactoring* (1999). Smells don't 
 **Prompt:** Pick 3 of the SOLID principles and explain each in one bullet point.
 
 
-- **S — Single Responsibility**: A class or module should have one reason to change — do one thing and own it completely.
-- **O — Open/Closed**: Code should be open for extension but closed for modification — add new behavior by adding new code, not by editing existing code.
-- **D — Dependency Inversion**: High-level modules shouldn't depend on low-level modules; both should depend on abstractions — program to interfaces, not implementations.
+Here are 3 SOLID principles:
+
+- **Single Responsibility Principle (SRP)** - A class should have only one reason to change, meaning it should only have one job or responsibility, keeping code focused and easier to maintain.
+
+- **Open/Closed Principle (OCP)** - Software entities should be open for extension but closed for modification, meaning you should be able to add new functionality without alte
 
 
 ## J5 — Task 4 / Branch J
@@ -567,7 +503,7 @@ The term was popularized by Martin Fowler in *Refactoring* (1999). Smells don't 
 **Prompt:** What is test-driven development (TDD)? Describe it in 2 sentences.
 
 
-Test-driven development (TDD) is a software development practice where you write failing tests *before* writing the implementation code, then write the minimum code needed to make those tests pass. The cycle repeats in short iterations — Red (write failing test) → Green (make it pass) → Refactor (clean up) — ensuring code is always covered by tests and designed to be testable from the start.
+**Test-driven development (TDD)** is a software development practice where you write automated tests *before* writing the actual code, then write just enough code to make those tests pass. This cycle — often called **Red-Green-Refactor** (write a failing test, make it pass, then clean up the code) — helps ensure code is testable, focused, and meets requirements from the start.
 
 
 ## J6 — Task 4 / Branch J
@@ -575,11 +511,13 @@ Test-driven development (TDD) is a software development practice where you write
 **Prompt:** List 3 benefits of writing unit tests for a solo developer project.
 
 
-1. **Catch regressions instantly** — When you revisit code weeks later and make changes, tests immediately tell you if you broke something that previously worked.
+Here are 3 benefits of writing unit tests for a solo developer project:
 
-2. **Confidence to refactor** — You can restructure or optimize code without fear, knowing the test suite will validate behavior is preserved.
+## 1. **Confidence When Refactoring**
+When you revisit code weeks or months later, tests act as a safety net. You can restructure or optimize code knowing that passing tests confirm you haven't broken existing functionality.
 
-3. **Acts as living documentation** — Tests show exactly how your code is supposed to be used and what edge cases matter, which is invaluable when your memory of the implementation fades.
+## 2. **Faster Debugging**
+Rather than manually tracing through the entire application to find a bug,
 
 
 ## J7 — Task 4 / Branch J
@@ -587,7 +525,7 @@ Test-driven development (TDD) is a software development practice where you write
 **Prompt:** What is a linter and why should solo developers use one? One paragraph.
 
 
-A **linter** is a static analysis tool that scans your code for potential errors, style inconsistencies, and anti-patterns without actually running it — catching things like undefined variables, unused imports, unreachable code, or formatting that deviates from a chosen style guide. For solo developers, linters are especially valuable because there's no teammate to catch mistakes in code review: the linter acts as a tireless second pair of eyes, enforcing consistent conventions across your codebase even as it grows over months or years, reducing cognitive overhead when you return to old code, and catching bugs earlier (at write-time rather than runtime), which is far cheaper to fix. Tools like ESLint for JavaScript, Pylint/Ruff for Python, or Biome for TypeScript integrate directly into your editor and CI pipeline, making quality enforcement essentially free once configured.
+A **linter** is a static code analysis tool that automatically scans your code for errors, stylistic inconsistencies, suspicious constructs, and violations of defined coding standards — without actually running the program. Examples include ESLint for JavaScript, Pylint for Python, and RuboCop for Ruby. Solo developers should absolutely use one because, without a team to do code reviews, there's n
 
 
 ## J8 — Task 4 / Branch J
@@ -595,9 +533,9 @@ A **linter** is a static analysis tool that scans your code for potential errors
 **Prompt:** Describe the difference between unit tests and integration tests in one sentence each.
 
 
-**Unit tests** verify individual functions or components in isolation, with dependencies mocked or stubbed out.
+**Unit tests** verify that a single, isolated piece of code (such as a function or class) behaves correctly on its own, with dependencies mocked or stubbed out.
 
-**Integration tests** verify that multiple components work correctly together, using real dependencies and testing the interactions between them.
+**Integration tests** verify that multiple components or systems work correctly *together*, testing the interactions and interfaces between them with real (or near-real) dependencies.
 
 
 ## K1 — Task 4 / Branch K
@@ -605,17 +543,18 @@ A **linter** is a static analysis tool that scans your code for potential errors
 **Prompt:** What is semantic versioning (semver)? Give one example of a version bump and why.
 
 
-**Semantic versioning (semver)** is a versioning scheme with the format `MAJOR.MINOR.PATCH`:
+# Semantic Versioning (SemVer)
 
-- **MAJOR** — breaking change (incompatible API change)
-- **MINOR** — new feature, backwards-compatible
-- **PATCH** — bug fix, backwards-compatible
+Semantic versioning is a versioning scheme that uses a structured **three-part number** to communicate the nature of changes in a release:
 
-**Example:**
+```
+MAJOR.MINOR.PATCH
+```
 
-`1.4.2` → `1.5.0`
-
-A new optional `--verbose` flag was added to a CLI tool. Existing usage still works, so it's a backwards-compatible feature addition — bump MINOR, reset PATCH to 0.
+| Part | When to increment | Resets |
+|------|-------------------|--------|
+| **MAJOR** | Breaking/incompatible API changes | Minor and Patch → 0 |
+| **MINOR** | New backward-compatible functionality |
 
 
 ## K2 — Task 4 / Branch K
@@ -623,11 +562,21 @@ A new optional `--verbose` flag was added to a CLI tool. Existing usage still wo
 **Prompt:** List 3 best practices for writing clear git commit messages.
 
 
-1. **Use the imperative mood in the subject line** — Write "Add login feature" not "Added login feature" or "Adding login feature". Git itself uses this convention (e.g., "Merge branch...").
+# Best Practices for Writing Clear Git Commit Messages
 
-2. **Keep the subject line under 50 characters** — A concise subject fits in `git log --oneline` without truncation. If more detail is needed, add a blank line after the subject followed by a body paragraph explaining *why*, not *what*.
+## 1. 📝 Use a Clear, Imperative Subject Line
+Write the subject line as a **command** (as if completing the sentence *"This commit will..."*), kept under **50 characters**.
 
-3. **Reference the "why", not just the "what"** — The diff already shows *what* changed. A good commit message explains the reason or context: "Fix race condition in auth middleware causing intermittent 401s" beats "Fix bug".
+```
+✅ Add user authentication middleware
+✅ Fix null pointer exception in login flow
+❌ fixed stuff
+❌ I added some new authentication things
+```
+
+---
+
+## 2. 🎯 Explain *Why*,
 
 
 ## K3 — Task 4 / Branch K
@@ -635,7 +584,7 @@ A new optional `--verbose` flag was added to a CLI tool. Existing usage still wo
 **Prompt:** What is a pull request and how does it help with code quality? One paragraph.
 
 
-A pull request (PR) is a mechanism in version control platforms like GitHub where a developer proposes merging changes from one branch into another, typically from a feature branch into the main branch. It helps with code quality by creating a structured review process: before code lands in the main codebase, teammates can examine the diff, leave inline comments, ask questions, catch bugs, and request changes. This peer review layer acts as a quality gate, enforcing coding standards, sharing knowledge across the team, and preventing regressions — all before the code affects production.
+A **pull request** (PR) is a mechanism used in version control systems like GitHub or GitLab where a developer proposes merging a set of changes from one branch into another, typically from a feature branch into the main codebase. Rather than directly pushing code to the main branch, the developer opens a pull request that notifies teammates and invites them to review the changes before they are m
 
 
 ## K4 — Task 4 / Branch K
@@ -643,7 +592,7 @@ A pull request (PR) is a mechanism in version control platforms like GitHub wher
 **Prompt:** Describe the concept of self-code-review for a solo developer. 2 sentences.
 
 
-Self-code-review is the practice of a solo developer critically examining their own code after a short time gap — treating themselves as a skeptical reviewer rather than the original author. It surfaces bugs, unclear logic, and over-engineering that are invisible in the flow state of writing.
+Self-code-review is the practice of a solo developer critically examining their own code after a period of time—often stepping away before returning with fresh eyes—to catch bugs, improve readability, and assess design decisions as if they were an outside reviewer. It encourages a mindset shift from "author" to "critic," helping the developer identify issues they might have overlooked when initial
 
 
 ## K5 — Task 4 / Branch K
@@ -651,7 +600,7 @@ Self-code-review is the practice of a solo developer critically examining their 
 **Prompt:** What is continuous deployment and how does it benefit a solo developer project? 2 sentences.
 
 
-Continuous deployment (CD) automatically releases every code change that passes tests directly to production, eliminating manual deployment steps. For a solo developer, this means faster iteration, reduced deployment friction, and more time focused on building features rather than managing releases.
+Continuous deployment is a practice where code changes are automatically built, tested, and released to production whenever a developer pushes new code to a repository. For a solo developer, it eliminates manual deployment steps, reduces human error, and lets you focus on writing code rather than managing releases.
 
 
 ## L1 — Task 5 / Branch L
@@ -659,15 +608,24 @@ Continuous deployment (CD) automatically releases every code change that passes 
 **Prompt:** What are 3 key metrics a solo developer should track for a CLI tool project?
 
 
-For a CLI tool project, the 3 most valuable metrics to track are:
+# 3 Key Metrics for a Solo Developer's CLI Tool
 
-1. **Adoption / Install rate** — how many unique installs or downloads per week. This tells you if discovery and onboarding are working. Track via npm downloads, pip stats, or a lightweight telemetry ping.
+## 1. **Usage Frequency & Command Distribution**
+Track which commands are actually being used
 
-2. **Command usage frequency** — which commands/flags are actually used. Helps you prioritize features and deprecate dead code. A simple local log file or opt-in analytics (e.g., PostHog) works well.
+```bash
+# Simple approach: log command invocations
+~/.config/yourtool/usage.log
 
-3. **Error rate by command** — how often commands fail and with what exit codes. High error rates on a specific command signal UX problems or edge cases you haven't handled. Achievable with structured logging + periodic review.
+command_name | timestamp | execution_time_ms
+```
 
-These three give you a feedback loop: people find it → they use it → they succeed (or don't).
+**Why it matters:** Tells you where to focus development effort and what to deprecate
+
+---
+
+## 2. **Error Rate by Command**
+T
 
 
 ## L2 — Task 5 / Branch L
@@ -675,7 +633,7 @@ These three give you a feedback loop: people find it → they use it → they su
 **Prompt:** Describe the concept of a project roadmap in 2 sentences.
 
 
-A project roadmap is a high-level visual or written plan that outlines the goals, milestones, and timeline for a project from its current state to completion. It communicates strategic direction and priorities to stakeholders, helping teams stay aligned on what needs to be built, in what order, and by when.
+A project roadmap is a high-level visual or strategic plan that outlines a project's goals, key milestones, deliverables, and timeline, providing stakeholders with a clear overview of the project's direction. It serves as a guiding document that aligns team members and stakeholders on priorities and progress, while remaining flexible enough to adapt to changes throughout the project's lifecycle.
 
 
 ## L3 — Task 5 / Branch L
@@ -683,11 +641,15 @@ A project roadmap is a high-level visual or written plan that outlines the goals
 **Prompt:** List 3 ways to gather user feedback on a solo developer CLI tool.
 
 
-1. **GitHub Issues** — Add a `--feedback` flag or link in your CLI output that opens a pre-filled GitHub issue template. Low friction for developers already on GitHub.
+Here are 3 practical ways to gather user feedback on a solo developer CLI tool:
 
-2. **In-tool prompt** — After N uses or on exit, print a one-line prompt: `"Found a bug or have a suggestion? → https://..."`  Track opt-outs in a local config file to avoid spamming.
+## 1. **GitHub Issues with Structured Templates**
+- Set up issue templates for bug reports and feature requests
+- Add a dedicated "Feedback" issue template with targeted questions
+- Easy to implement and keeps feedback alongside your codebase
+- Users already expect this workflow for CLI tools
 
-3. **Anonymous telemetry** — Log command usage/errors to a lightweight endpoint (e.g., a free Plausible instance or simple HTTP POST). Always opt-in with explicit consent on first run, and document it clearly in the README.
+## 2. **Built-in Feedbac
 
 
 ## L4 — Task 5 / Branch L
@@ -695,7 +657,7 @@ A project roadmap is a high-level visual or written plan that outlines the goals
 **Prompt:** What is feature prioritization and why is it important for solo developers? One paragraph.
 
 
-Feature prioritization is the process of ranking and ordering product features or tasks by their relative value, impact, and urgency so that limited time and resources are directed toward the highest-leverage work first. For solo developers, it's especially critical because there's no team to parallelize work, no manager to absorb poor planning decisions, and no buffer for wasted effort — every hour spent on a low-value feature is an hour not spent on something that could move the needle. Without a prioritization framework (like RICE, MoSCoW, or simple impact-vs-effort scoring), solo builders tend to work on what's interesting rather than what's important, fall into endless polish cycles on features users don't care about, and ship products that feel incomplete in the areas that matter most. Good prioritization forces brutal honesty about what actually needs to exist for the product to succeed versus what would merely be nice to have.
+Feature prioritization is the process of determining which features, improvements, or tasks should be built or addressed first based on factors like user value, business impact, technical complexity, and available resources. For solo developers, it is especially critical because time and energy are extremely limited — there is no team to divide work across, no dedicated product manager to guide de
 
 
 ## L5 — Task 5 / Branch L
@@ -703,13 +665,14 @@ Feature prioritization is the process of ranking and ordering product features o
 **Prompt:** Describe 2 ways AI can help a solo developer with project documentation.
 
 
-## 2 Ways AI Can Help a Solo Developer with Project Documentation
+# AI Assistance for Solo Developer Documentation
 
-**1. Auto-generating docs from code**
-AI can read your source code — functions, classes, API routes — and produce accurate README sections, API references, or inline docstrings. Instead of manually writing what a function does, you describe your intent and the AI drafts documentation that matches the actual implementation. This keeps docs in sync with code without the maintenance burden.
+## 1. Automated Code Documentation Generation
 
-**2. Maintaining a living knowledge base**
-As a solo dev, context lives entirely in your head. AI can act as a documentation co-pilot: summarizing decisions from your commit history, turning Slack/Discord notes into structured ADRs (Architecture Decision Records), or updating a `journal.md` as features ship. This offloads the cognitive overhead of "writing it down" so future-you (or an onboarding collaborator) has context without digging through git logs.
+AI can analyze your existing code and **generate meaningful documentation** without you writing it from scratch:
+
+- **Docstrings and comments** - Describe what functions, classes, and modules do based on the actual code logic
+- **README files** - Draft structured project overviews including setup instr
 
 
 ## L6 — Task 5 / Branch L
@@ -717,7 +680,7 @@ As a solo dev, context lives entirely in your head. AI can act as a documentatio
 **Prompt:** What is a changelog and why should every project have one? One sentence.
 
 
-A changelog is a file that records all notable changes made to a project over time, so users and contributors can quickly understand what changed, when, and why between versions.
+A changelog is a file that records a curated, chronologically ordered list of notable changes for each version of a project, so users and contributors can easily track what has changed and when.
 
 
 ## M1 — Task 5 / Branch M
@@ -725,11 +688,15 @@ A changelog is a file that records all notable changes made to a project over ti
 **Prompt:** List 3 strategies for getting early users for a solo developer tool.
 
 
-1. **Post in developer communities** — Share in relevant subreddits (r/programming, r/webdev, r/SideProject), Hacker News (Show HN), and niche Discord servers. Lead with the problem you solve, not the product.
+Here are 3 effective strategies for getting early users for a solo developer tool:
 
-2. **Build in public** — Tweet/post progress updates with screenshots and metrics. Developers follow builders. This compounds over time and attracts early adopters who want to give feedback.
+## 1. **Launch Where Developers Already Are**
+- Post on **Hacker News** (Show HN), **Reddit** (r/programming, r/webdev), or **Dev.to**
+- Share in relevant **Discord/Slack communities**
+- The key is being genuinely helpful, not spammy — explain the problem you're solving clearly
 
-3. **Find watering holes** — Go where your target users already hang out (GitHub discussions, Stack Overflow, specific Slack workspaces, forum threads about the problem your tool solves) and engage genuinely before mentioning your tool.
+## 2. **Build in Public**
+- Share yo
 
 
 ## M2 — Task 5 / Branch M
@@ -737,7 +704,7 @@ A changelog is a file that records all notable changes made to a project over ti
 **Prompt:** What is developer experience (DX) and why does it matter? One paragraph.
 
 
-Developer experience (DX) refers to the overall quality of a developer's interactions with tools, APIs, SDKs, documentation, workflows, and processes while building software. It's the developer-facing analog to user experience (UX) — encompassing how intuitive an API is to use, how fast a build system runs, how clear error messages are, how easily a local environment can be set up, and how well documentation answers real questions. DX matters because friction compounds: a confusing API causes bugs, a slow CI pipeline kills momentum, and poor docs force developers to reverse-engineer intent — all of which drain productivity, increase onboarding time, and raise the likelihood of misuse or abandonment. Great DX reduces cognitive load, accelerates iteration, and directly improves the quality and reliability of what developers ship.
+**Developer experience (DX)** refers to the overall quality of experience that developers have when working with tools, APIs, frameworks, libraries, platforms, or any system they interact with to build software. It encompasses everything from how intuitive and well-documented an API is, to how quickly a developer can go from setup to a working prototype, to how helpful error messages are, to how s
 
 
 ## M3 — Task 5 / Branch M
@@ -745,11 +712,14 @@ Developer experience (DX) refers to the overall quality of a developer's interac
 **Prompt:** Describe 2 ways to measure whether a solo developer project is succeeding.
 
 
-Two ways to measure whether a solo developer project is succeeding:
+Here are 2 practical ways to measure success for a solo developer project:
 
-1. **User engagement / retention** — Are real users returning? Metrics like DAU/MAU ratio, session length, or repeat purchases tell you whether the product solves a genuine problem. A growing or stable retention rate beats vanity metrics like total signups.
+## 1. User Engagement Metrics
+Track whether real people are actually using what you built and returning to it.
 
-2. **Revenue vs. time invested** — Track effective hourly rate (revenue ÷ hours worked). For a solo builder, this is the clearest signal of sustainability. Consistent month-over-month growth in this ratio means the project is compounding, not just treading water.
+- **Active users over time** - Are users coming back, or dropping off after the first visit?
+- **Retention rate** - A project gaining traction typically shows users returning week over week
+- **Core action comple
 
 
 ## M4 — Task 5 / Branch M
@@ -757,19 +727,16 @@ Two ways to measure whether a solo developer project is succeeding:
 **Prompt:** What is open source and what are 2 benefits of open-sourcing a solo developer project?
 
 
-## What is Open Source?
+## Open Source
 
-**Open source** means making your project's source code publicly available for anyone to view, use, modify, and distribute. It's governed by a license (e.g., MIT, Apache, GPL) that defines what others can and can't do with it.
+Open source refers to software whose **source code is publicly available** for anyone to view, use, modify, and distribute, typically under a specific license (e.g., MIT, GPL).
 
 ---
 
 ## 2 Benefits for a Solo Developer
 
-**1. Credibility & Portfolio Signal**
-Public repos act as a live portfolio. Recruiters, clients, and collaborators can inspect your actual code quality — far more convincing than a resume bullet point. Stars and forks are social proof of usefulness.
-
-**2. Free Bug Reports & Contributions**
-Other developers will use your project in ways you never anticipated, surfacing edge cases and bugs you'd never find alone. Some will even submit fixes, saving you time you don't have as a solo dev.
+### 1. 🤝 Community Contributions
+Others can submit bug fixes, improvements, and features, effectively giving you **free help** on your project. This can accelerate d
 
 
 ## N1 — Task 5 / Branch N
@@ -777,13 +744,15 @@ Other developers will use your project in ways you never anticipated, surfacing 
 **Prompt:** What are 3 signs that a software project is ready for its first public release?
 
 
-Three signs a software project is ready for its first public release:
+Here are 3 key signs that a software project is ready for its first public release:
 
-1. **Core features work reliably end-to-end** — The primary use cases complete without crashes or data loss. Edge cases may exist, but the happy path is stable and tested.
+## 1. Core Features Are Stable and Functional
+- The primary use cases work reliably end-to-end
+- Critical bugs have been resolved
+- The software does what it claims to do consistently, not just under ideal conditions
 
-2. **You can onboard a stranger without hand-holding** — Documentation, setup instructions, and error messages are clear enough that someone unfamiliar with the codebase can install and use it successfully.
-
-3. **You have a feedback and bug-triage path** — An issue tracker, contact method, or support channel exists so users can report problems and you can respond. Shipping without this means problems disappear into the void.
+## 2. It Can Be Used Without the Creator's Help
+- Documentation or instructions allow a new user
 
 
 ## N2 — Task 5 / Branch N
@@ -791,7 +760,7 @@ Three signs a software project is ready for its first public release:
 **Prompt:** Describe the concept of a 'soft launch' for a developer tool. 2 sentences.
 
 
-A soft launch is a limited, quiet release of a developer tool to a small group of early users — without broad marketing — to gather real-world feedback and catch issues before the full public release. It lets you validate assumptions, fix rough edges, and build initial social proof while maintaining the ability to pivot quickly with minimal reputational risk.
+A soft launch for a developer tool involves releasing it to a limited audience—such as beta users, early adopters, or a specific community—before making it broadly available, allowing the team to gather real-world feedback and identify issues in a controlled environment. This approach lets developers refine documentation, fix bugs, and validate core workflows without the pressure or scrutiny of a
 
 
 ## N3 — Task 5 / Branch N
@@ -799,9 +768,15 @@ A soft launch is a limited, quiet release of a developer tool to a small group o
 **Prompt:** List 3 things a developer should document before releasing an open-source project.
 
 
-1. **README** — Setup instructions, usage examples, and what the project does and why.
-2. **Contributing guidelines** — How to report bugs, submit PRs, code style expectations, and the review process.
-3. **License** — The terms under which others can use, modify, and distribute the code.
+Here are **3 important things a developer should document** before releasing an open-source project:
+
+1. **README / Project Overview**
+   - What the project does, its purpose, and who it's for
+   - Includes installation instructions, basic usage examples, and prerequisites
+
+2. **Contribution Guidelines**
+   - How others can submit bug reports, feature requests, or pull requests
+   - Coding standar
 
 
 ## N4 — Task 5 / Branch N
@@ -809,13 +784,13 @@ A soft launch is a limited, quiet release of a developer tool to a small group o
 **Prompt:** What is a README file and what are its 3 most important sections? One sentence each.
 
 
-A **README** is a text file (typically Markdown) that introduces and documents a project for anyone who encounters the repository.
+A **README** file is a text document (typically Markdown) that serves as the front page of a project, giving visitors a quick overview of what it is and how to use it.
 
-**3 most important sections:**
+**3 Most Important Sections:**
 
-1. **Project Description** — Explains what the project does and why it exists, giving readers immediate context on its purpose.
-2. **Installation/Setup** — Provides the exact steps needed to get the project running on a local machine.
-3. **Usage** — Shows how to actually use the project, typically with commands or code examples.
+1. **Description** – Explains what the project does and why it exists.
+2. **Installation** – Tells users how to set up and run the project on their machine.
+3. **Usage** – Shows how to actually use t
 
 
 ## N5 — Task 5 / Branch N
@@ -823,19 +798,21 @@ A **README** is a text file (typically Markdown) that introduces and documents a
 **Prompt:** Write a one-sentence mission statement for Solo Builder — an AI-powered CLI that manages DAG-based tasks for solo developers.
 
 
-Solo Builder empowers solo developers to ship faster by orchestrating complex, dependency-aware workflows through an AI-driven CLI that thinks, plans, and executes tasks so you can focus on building.
+**Solo Builder empowers solo developers to move at the speed of thought by intelligently orchestrating complex, dependency-driven tasks through a conversational CLI — so you can focus on building, not managing.**
 
 
 ## O1 — Task 6 / Branch O
 
-**Prompt:** Summarize in 3 bullet points how DAG-based task management (like Solo Builder) improves over a simple to-do list for a solo developer.
+**Prompt:** Read the file state/solo_builder_state.json. Summarize in 3 bullet points: how many tasks completed, which task had the most subtasks, and one notable Claude output found in the data.
 
 
-- **Dependency awareness**: A DAG enforces task ordering by modeling which tasks block others, so you never start work that depends on incomplete prerequisites — unlike a flat list where ordering is manual and error-prone.
+Here's a 3-bullet summary of `solo_builder_state.json`:
 
-- **Parallel execution visibility**: The graph structure makes it immediately clear which tasks have no blockers and can run concurrently, letting a solo dev maximize throughput instead of working sequentially by default.
+- **64 of 70 subtasks completed** (Verified/Done) across 7 top-level tasks, putting the project at ~91% completion by step 65 of the run.
 
-- **Cascading impact analysis**: When a task changes (delayed, skipped, re-scoped), a DAG automatically surfaces downstream effects — a flat to-do list requires you to mentally trace dependencies yourself, which breaks down as project complexity grows.
+- **Task 4 / Branch J had the most subtasks** — 8 subtasks covering topics like clean code principles, architecture patterns, and developer productivity, making it the most expansive branch in the DAG.
+
+- **Notable Claude output** — in Task 4 / Branch J (subtask J1), Claude produced a well-structured markdown response on clean code principles for solo developers, complete with a Python before/after code example illustrating self-documenting naming (`calc` → `calculate_discounted_price`).
 
 
 ## O2 — Task 6 / Branch O
@@ -843,7 +820,7 @@ Solo Builder empowers solo developers to ship faster by orchestrating complex, d
 **Prompt:** Describe how self-healing agents reduce manual intervention in a software project pipeline. One paragraph.
 
 
-Self-healing agents reduce manual intervention by continuously monitoring pipeline health and autonomously detecting, diagnosing, and remediating failures without human involvement. When a build breaks, a service crashes, or a test suite regresses, the agent intercepts the failure signal, queries relevant logs and metrics, identifies the root cause, and applies a targeted fix — whether that means retrying a flaky network call with backoff, reverting a bad dependency bump, restarting a crashed process, or patching a configuration drift. Because the agent encodes institutional knowledge about common failure modes, it can resolve the majority of routine incidents (failed deployments, environment mismatches, resource exhaustion, stale credentials) faster than a human on-call engineer could even acknowledge the alert, dramatically shrinking mean time to recovery. Engineers are only paged for novel or high-blast-radius failures that fall outside the agent's known remediation playbooks, shifting their attention from repetitive firefighting to higher-leverage work like designing new features or improving the agent's own failure taxonomy.
+Self-healing agents reduce manual intervention in a software project pipeline by continuously monitoring system states, detecting anomalies, and autonomously executing corrective actions without requiring human involvement. When a build fails, a test suite breaks, or a deployment encounters an error, these agents analyze logs, identify root causes, and apply predefined or AI-driven remediation str
 
 
 ## O3 — Task 6 / Branch O
@@ -851,7 +828,9 @@ Self-healing agents reduce manual intervention by continuously monitoring pipeli
 **Prompt:** Write a 3-sentence executive summary of Solo Builder for a developer audience.
 
 
-Solo Builder is a Python terminal CLI that orchestrates a six-agent pipeline (Planner, Executor, Verifier, SelfHealer, ShadowAgent, MetaOptimizer) over a DAG-based task graph, enabling a solo developer to run dependency-aware, multi-branch workflows concurrently via `ThreadPoolExecutor` — with real subtasks executed headlessly through `claude -p`. State is persisted as versioned JSON, all Claude outputs are logged to an append-only `journal.md`, and the system self-corrects via stall detection and adaptive weight tuning — no external orchestration framework required. It's a lightweight, self-contained alternative to tools like Temporal or Prefect, purpose-built for one developer operating with the leverage of a coordinated AI agent team.
+Here's a 3-sentence executive summary of Solo Builder for a developer audience:
+
+**Solo Builder** is a lightweight, opinionated framework designed to help individual developers rapidly scaffold, build, and ship full-stack applications without the overhead of managing complex toolchains or team-based workflows. It provides a curated set of pre-configured integrations — covering auth, database, paym
 
 
 ## P1 — Task 6 / Branch P
@@ -859,13 +838,12 @@ Solo Builder is a Python terminal CLI that orchestrates a six-agent pipeline (Pl
 **Prompt:** What would a 'v2.0' of Solo Builder look like? List 3 major new features with one sentence each.
 
 
-Based on the current architecture — a six-agent DAG pipeline with CLI-only interface and simulated execution — here are three v2.0 features:
+I need to be straightforward with you - I don't have specific knowledge of a product called "Solo Builder" in my training data, so I can't accurately describe what its current v1.0 features are or make meaningful v2.0 suggestions based on its actual roadmap.
 
-1. **Real Code Execution Engine** — Replace the probability-based subtask simulation with an actual sandboxed execution layer (Docker or subprocess) so Claude-generated code is run, tested, and verified against real pass/fail output rather than random rolls.
+**Could you give me a quick description of what Solo Builder does?**
 
-2. **Natural Language DAG Builder** — Let users describe an entire project in plain English (e.g., "Build a SaaS billing page") and have the Planner auto-decompose it into a full multi-branch dependency graph, eliminating the need to manually wire tasks with `depends` commands.
-
-3. **Persistent Agent Memory & Learning** — Give each agent (especially MetaOptimizer) cross-session memory so the system learns which task types stall most, which healing strategies work, and continuously tunes its own weights across projects — not just within a single run.
+For example:
+- Is it a website/landing page builder for solopreneurs?
 
 
 ## P2 — Task 6 / Branch P
@@ -873,46 +851,18 @@ Based on the current architecture — a six-agent DAG pipeline with CLI-only int
 **Prompt:** How would you adapt Solo Builder for a team of 3-5 developers instead of a solo developer? Give 3 key changes.
 
 
----
+# Adapting Solo Builder for a Team of 3-5 Developers
 
-## 1. Adapting Solo Builder for a Team of 3–5
+## Context First: What Solo Builder Optimizes For
 
-**1. Replace single-owner state with shared, conflict-safe state**
-The current `solo_builder_state.json` is a flat file owned by one process. For a team, migrate to a backend store (SQLite or Postgres) with row-level locking. Each developer claims subtasks via an atomic `status: InProgress (owner: dev@)` field, preventing double-assignment.
-
-**2. Add a role/assignment layer to the DAG**
-Branches and subtasks need an `assigned_to` field and optional skill tags (e.g., `frontend`, `infra`). The orchestrator routes tasks based on declared expertise rather than blindly queuing the next available item. A simple YAML roster file maps team members to tags.
-
-**3. Introduce a PR/review gate between "Done" and "Verified"**
-Solo Builder auto-advances `Done → Verified`. In a team context, insert a `PeerReview` status — another developer (or Claude acting as reviewer) must approve before the DAG advances. This preserves the self-healing audit trail while enforcing team quality gates.
+Solo Builder prioritizes **speed of decision-making** and **minimal overhead** because one person holds all context. A small team breaks that assumption in specific, predictable ways.
 
 ---
 
-## 2. State File Summary (`solo_builder_state.json`)
+## Key Change 1: Replace Implicit Context with Lightweight Decision Records
 
-- **Tasks completed:** 68 of 70 subtasks are `Verified` or `Done` — the agent is at **step 70** with 2 subtasks still in-flight and zero self-heals triggered.
-- **Most subtasks:** `Task 4 / Branch J` has the most work, with **8 subtasks** — the largest single branch in the DAG.
-- **Notable Claude output** (from `Task 0 / Branch A / A1`): A clean five-bullet feature list for the tool itself — *task breakdown & prioritization, context persistence, blocker detection, scope management, progress summarization* — demonstrating the agent describing its own purpose from first principles.
-
----
-
-## 3. Haikus
-
-**On a self-healing AI agent:**
-
-```
-Broken node detected —
-the graph rewrites its own path.
-No human awake.
-```
-
-**On a DAG reaching 100% completion:**
-
-```
-Last edge turns to green.
-The whole graph exhales at once —
-nothing left to do.
-```
+**The Solo Problem:**
+One de
 
 
 ## P3 — Task 6 / Branch P
@@ -920,41 +870,11 @@ nothing left to do.
 **Prompt:** Write a haiku about software agents managing project tasks autonomously.
 
 
-Here are all three deliverables:
+Here's a haiku about autonomous software agents managing project tasks:
 
----
+**Silent code decides**
+**Tasks flow without human hands**
+**The project completes**
 
-**Haiku 1 — Agents managing tasks autonomously:**
-
-```
-Silent threads align
-Each agent claims its next task
-No manager waits
-```
-
----
-
-**State file summary — `state/solo_builder_state.json`:**
-
-- **74 of 77 items verified** (tasks + subtasks) — the DAG is nearly fully complete, with only 3 items not yet in "Verified" state
-- **Task 4 / Branch J had the most subtasks** — 8 subtasks, the heaviest branch in the entire graph
-- **Notable Claude output (Task 0 / Branch A / A1):** A clean 5-point feature list for a solo dev AI tool — including "blocker detection," "scope management," and "progress summarization" — showing the agent was used to define Solo Builder's own requirements from day one
-
----
-
-**Haiku 2 — Self-healing AI agent monitoring its own task graph:**
-
-```
-A node goes dark — cold
-The agent reroutes itself
-No panic. Just work.
-```
-
-**Haiku 3 — DAG reaches 100% completion:**
-
-```
-Last edge resolves
-The graph exhales — nothing left
-Done means nothing waits
-```
+This haiku captures the quiet, seamless nature of autonomous agents working independently, with tasks moving through a pipeline on their own, ultimately achieving the goal without direct human intervention.
 
