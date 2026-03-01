@@ -1,0 +1,9 @@
+# Solo Builder dependencies
+# Core CLI (solo_builder_cli.py) uses stdlib only.
+
+# REST API
+flask>=3.1
+
+# PDF snapshots (optional — gracefully disabled if missing)
+matplotlib>=3.10
+numpy>=2.2
