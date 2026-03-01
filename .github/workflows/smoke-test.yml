@@ -20,16 +20,14 @@ jobs:
       - name: Install dependencies
         run: pip install anthropic flask
 
-      - name: Run CLI (headless 3 steps)
+      - name: Run CLI (headless 3 steps) and assert 6+ verified
         working-directory: solo_builder
         run: |
           PYTHONIOENCODING=utf-8 python solo_builder_cli.py \
             --headless --auto 3 --no-resume --output-format json \
-            | tee result.json
-          python - <<'EOF'
+          | python - <<'EOF'
           import json, sys
-          with open("result.json") as f:
-              data = json.load(f)
+          data     = json.load(sys.stdin)
           verified = data["verified"]
           total    = data["total"]
           print(f"Verified: {verified}/{total}")

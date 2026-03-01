@@ -2253,14 +2253,6 @@ class SoloBuilderCLI:
         if headless:
             self._cmd_auto(str(auto_steps) if auto_steps is not None else "")
             self.save_state()
-            if output_format == "json":
-                stats = dag_stats(self.dag)
-                print(json.dumps({
-                    "steps":    self.step,
-                    "verified": stats["verified"],
-                    "total":    stats["total"],
-                    "complete": stats["verified"] == stats["total"],
-                }))
             return
 
         while self.running:
@@ -2357,7 +2349,18 @@ def _release_lock(lock_path: str) -> None:
 
 
 def main() -> None:
-    """Entry point for `solo-builder` console script (PyPI install)."""
+    """Entry point — interactive or headless."""
+    # ── .env loader (no external dependency) ────────────────────────────────
+    _env_path = os.path.join(_HERE, ".env")
+    if os.path.exists(_env_path):
+        with open(_env_path) as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _, _v = _line.partition("=")
+                    os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
+    # ── Argument parsing ─────────────────────────────────────────────────────
     parser = argparse.ArgumentParser(prog="solo-builder", add_help=True)
     parser.add_argument(
         "--headless", action="store_true",
@@ -2373,13 +2376,28 @@ def main() -> None:
     )
     parser.add_argument(
         "--output-format", choices=["text", "json"], default="text",
-        help="Output format on exit: 'json' prints final stats to stdout.",
+        help="'json' sends final stats as JSON to stdout; all other output goes to stderr.",
+    )
+    parser.add_argument(
+        "--webhook", metavar="URL", default=None,
+        help="POST completion JSON to this URL (overrides WEBHOOK_URL in settings).",
     )
     args = parser.parse_args()
 
+    # ── Apply flag overrides ─────────────────────────────────────────────────
+    if args.webhook:
+        global WEBHOOK_URL
+        WEBHOOK_URL = args.webhook
+
+    _json_mode = args.headless and args.output_format == "json"
+    if _json_mode:
+        sys.stdout = sys.stderr   # redirect ANSI display to stderr; JSON goes to real stdout
+
+    # ── Run ──────────────────────────────────────────────────────────────────
     _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     _acquire_lock(_LOCK_PATH)
+    cli = None
     try:
         _splash()
         cli = SoloBuilderCLI()
@@ -2387,10 +2405,19 @@ def main() -> None:
             headless=args.headless,
             auto_steps=args.auto,
             no_resume=args.no_resume,
-            output_format=args.output_format,
         )
     finally:
         _release_lock(_LOCK_PATH)
+        if _json_mode:
+            sys.stdout = sys.__stdout__
+            if cli is not None:
+                stats = dag_stats(cli.dag)
+                print(json.dumps({
+                    "steps":    cli.step,
+                    "verified": stats["verified"],
+                    "total":    stats["total"],
+                    "complete": stats["verified"] == stats["total"],
+                }))
 
 
 if __name__ == "__main__":

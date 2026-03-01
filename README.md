@@ -36,8 +36,13 @@
 git clone https://github.com/Vaultifacts/solo-builder.git
 cd solo-builder/solo_builder
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+Create a `.env` file (never committed) with your API key:
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+Or `export ANTHROPIC_API_KEY=sk-ant-...` in your shell.
 
 ---
 
