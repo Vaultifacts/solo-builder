@@ -260,7 +260,7 @@ INITIAL_DAG: Dict[str, Any] = {
             "Branch O": {
                 "status": "Pending",
                 "subtasks": {
-                    "O1": {"status": "Pending", "shadow": "Pending", "last_update": 0, "description": "Summarize in 3 bullet points how DAG-based task management (like Solo Builder) improves over a simple to-do list for a solo developer.", "output": ""},
+                    "O1": {"status": "Pending", "shadow": "Pending", "last_update": 0, "description": "Read the file state/solo_builder_state.json. Summarize in 3 bullet points: how many tasks completed, which task had the most subtasks, and one notable Claude output found in the data.", "output": "", "tools": "Read,Glob,Grep"},
                     "O2": {"status": "Pending", "shadow": "Pending", "last_update": 0, "description": "Describe how self-healing agents reduce manual intervention in a software project pipeline. One paragraph.", "output": ""},
                     "O3": {"status": "Pending", "shadow": "Pending", "last_update": 0, "description": "Write a 3-sentence executive summary of Solo Builder for a developer audience.", "output": ""},
                 },
