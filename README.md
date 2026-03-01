@@ -4,7 +4,10 @@
 
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
+[![PyPI](https://img.shields.io/pypi/v/solo-builder.svg)](https://pypi.org/project/solo-builder/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+![Solo Builder demo](demo.gif)
 
 ---
 

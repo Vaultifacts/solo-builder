@@ -1987,7 +1987,8 @@ def _release_lock(lock_path: str) -> None:
         pass
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for `solo-builder` console script (PyPI install)."""
     _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     _acquire_lock(_LOCK_PATH)
@@ -1997,3 +1998,7 @@ if __name__ == "__main__":
         cli.start()
     finally:
         _release_lock(_LOCK_PATH)
+
+
+if __name__ == "__main__":
+    main()
