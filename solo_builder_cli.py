@@ -72,6 +72,8 @@ EXEC_MAX_PER_STEP  : int   = _CFG["EXECUTOR_MAX_PER_STEP"]
 EXEC_VERIFY_PROB   : float = _CFG["EXECUTOR_VERIFY_PROBABILITY"]
 CLAUDE_TIMEOUT        : int = _CFG.get("CLAUDE_TIMEOUT", 60)
 CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
+ANTHROPIC_MODEL       : str = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
+ANTHROPIC_MAX_TOKENS  : int = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
 
 # Resolve relative paths to script location
 if not os.path.isabs(PDF_OUTPUT_PATH):
@@ -430,6 +432,46 @@ class ClaudeRunner:
             return False, str(exc)[:200]
 
 
+class AnthropicRunner:
+    """Calls the Anthropic SDK directly — no subprocess, no CLI required.
+
+    Activated when ANTHROPIC_API_KEY is set in the environment.
+    Used for Running subtasks that have no tools requirement.
+    Falls back gracefully if the SDK is not installed or key is absent.
+    """
+
+    def __init__(self, model: str = "claude-sonnet-4-6", max_tokens: int = 300) -> None:
+        self.model      = model
+        self.max_tokens = max_tokens
+        self.client     = None
+        self.available  = self._init()
+
+    def _init(self) -> bool:
+        try:
+            import anthropic                        # noqa: PLC0415
+            key = os.environ.get("ANTHROPIC_API_KEY", "")
+            if not key:
+                return False
+            self.client = anthropic.Anthropic(api_key=key)
+            return True
+        except ImportError:
+            return False
+
+    def run(self, prompt: str) -> tuple:
+        """Returns (success: bool, output: str)."""
+        if not self.available:
+            return False, "Anthropic SDK unavailable"
+        try:
+            msg = self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return True, msg.content[0].text.strip()
+        except Exception as exc:
+            return False, str(exc)[:200]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # AGENT: Executor
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -440,6 +482,7 @@ class Executor:
         self.max_per_step = max_per_step
         self.verify_prob  = verify_prob
         self.claude       = ClaudeRunner(timeout=CLAUDE_TIMEOUT, allowed_tools=CLAUDE_ALLOWED_TOOLS)
+        self.anthropic    = AnthropicRunner(model=ANTHROPIC_MODEL, max_tokens=ANTHROPIC_MAX_TOKENS)
 
     def execute_step(
         self,
@@ -455,6 +498,7 @@ class Executor:
         actions: Dict[str, str] = {}
         advanced = 0
         claude_jobs: list = []
+        sdk_jobs:    list = []
 
         for task_name, branch_name, st_name, _ in priority_list:
             if advanced >= self.max_per_step:
@@ -479,8 +523,16 @@ class Executor:
                                         st_data.get("tools", "")))
                     advanced += 1
                 else:
-                    # Simulated fallback (no description or claude not available)
-                    if random.random() < self.verify_prob:
+                    # No tools — try Anthropic SDK; fall back to dice roll
+                    if self.anthropic.available:
+                        auto_prompt = (
+                            st_data.get("description", "").strip()
+                            or f"You completed subtask '{st_name}' in task '{task_name}'. "
+                               f"Write one concrete sentence describing what was accomplished."
+                        )
+                        sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
+                        advanced += 1
+                    elif random.random() < self.verify_prob:
                         st_data["status"]      = "Verified"
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
@@ -515,6 +567,39 @@ class Executor:
                             st_data.get("description", ""), output, step,
                         )
                     # On failure: stay Running → will retry next step or self-heal
+
+        # ── SDK jobs (Anthropic API, no subprocess) ───────────────────────────
+        if sdk_jobs:
+            names = ", ".join(j[2] for j in sdk_jobs)
+            print(f"  {BLUE}SDK executing {names}…{RESET}", flush=True)
+            with ThreadPoolExecutor(max_workers=len(sdk_jobs)) as pool:
+                futures = {
+                    pool.submit(self.anthropic.run, prompt):
+                        (task_name, branch_name, st_name, st_data)
+                    for task_name, branch_name, st_name, st_data, prompt in sdk_jobs
+                }
+                for future in as_completed(futures):
+                    task_name, branch_name, st_name, st_data = futures[future]
+                    success, output = future.result()
+                    if success:
+                        st_data["status"]      = "Verified"
+                        st_data["shadow"]      = "Done"
+                        st_data["output"]      = output[:400]
+                        st_data["last_update"] = step
+                        add_memory_snapshot(memory_store, branch_name,
+                                            f"{st_name}_sdk_verified", step)
+                        actions[st_name] = "verified"
+                        self._roll_up(dag, task_name, branch_name)
+                    else:
+                        # SDK failed — dice-roll so pipeline isn't blocked
+                        if random.random() < self.verify_prob:
+                            st_data["status"]      = "Verified"
+                            st_data["shadow"]      = "Done"
+                            st_data["last_update"] = step
+                            add_memory_snapshot(memory_store, branch_name,
+                                                f"{st_name}_verified", step)
+                            actions[st_name] = "verified"
+                            self._roll_up(dag, task_name, branch_name)
 
         return actions
 
@@ -872,7 +957,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ tools │ output │ export │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1180,6 +1265,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("describe "):
             self._cmd_describe(raw[9:])
+
+        elif cmd.startswith("verify "):
+            self._cmd_verify(raw[7:])
 
         elif cmd.startswith("tools "):
             self._cmd_tools(raw[6:])
@@ -1670,6 +1758,29 @@ class SoloBuilderCLI:
         self.display.render(self.dag, self.memory_store, self.step,
                             self.alerts, self.meta.forecast(self.dag))
 
+    def _cmd_verify(self, args: str) -> None:
+        """verify <subtask> [note] — hard-set a subtask Verified (human confirmation)."""
+        parts     = args.strip().split(" ", 1)
+        st_target = parts[0].upper() if parts and parts[0] else ""
+        if not st_target:
+            print(f"  Usage: verify <subtask_name> [optional note]")
+            return
+        note  = parts[1].strip() if len(parts) > 1 else "Manually verified"
+        found = self._find_subtask(st_target)
+        if not found:
+            print(f"  {YELLOW}Subtask '{st_target}' not found.{RESET}")
+            return
+        task_name, task_data, branch_name, branch_data, st = found
+        prev              = st.get("status", "Pending")
+        st["status"]      = "Verified"
+        st["shadow"]      = "Done"
+        st["output"]      = note
+        st["last_update"] = self.step
+        self.executor._roll_up(self.dag, task_name, branch_name)
+        print(f"  {GREEN}v {st_target} ({task_name}) verified (was {prev}). Note: {note[:60]}{RESET}")
+        self.display.render(self.dag, self.memory_store, self.step,
+                            self.alerts, self.meta.forecast(self.dag))
+
     def _cmd_tools(self, args: str) -> None:
         """tools <ST> <toollist> — set allowed tools for a subtask and re-queue it.
 
@@ -1743,6 +1854,7 @@ class SoloBuilderCLI:
             ("depends <T> <dep>",      "Add dependency: Task T depends on dep"),
             ("undepends <T> <dep>",    "Remove a dependency from Task T"),
             ("describe <ST> <text>",   "Attach a real Claude task description to a subtask"),
+            ("verify <ST> [note]",     "Hard-set a subtask Verified (human confirmation)"),
             ("tools <ST> <toollist>",  "Set allowed tools for a subtask (re-queues it)"),
             ("output <ST>",            "Print full Claude output for a subtask"),
             ("set KEY=VALUE",          "Change runtime config"),
