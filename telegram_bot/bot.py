@@ -3,10 +3,12 @@
 Solo Builder — Telegram Bot
 
 Control the CLI from your phone:
-  /status  — DAG progress summary
-  /run     — trigger one step
-  /export  — download all Claude outputs as Markdown
-  /help    — command list
+  /status      — DAG progress summary
+  /run         — trigger one step
+  /auto [N]    — run N steps automatically (default: until complete)
+  /verify ST [note] — hard-set a subtask Verified (works during REVIEW_MODE)
+  /export      — download all Claude outputs as Markdown
+  /help        — command list
 
 Setup:
   pip install "python-telegram-bot>=20.0"
@@ -33,10 +35,11 @@ except ImportError:
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-_ROOT        = Path(__file__).resolve().parent.parent   # solo_builder/
-STATE_PATH   = _ROOT / "state" / "solo_builder_state.json"
-TRIGGER_PATH = _ROOT / "state" / "run_trigger"
-OUTPUTS_PATH = _ROOT / "solo_builder_outputs.md"
+_ROOT          = Path(__file__).resolve().parent.parent   # solo_builder/
+STATE_PATH     = _ROOT / "state" / "solo_builder_state.json"
+TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
+VERIFY_TRIGGER = _ROOT / "state" / "verify_trigger.json"
+OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")   # optional whitelist
@@ -52,6 +55,15 @@ def _load_state() -> dict:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {"dag": {}, "step": 0}
+
+
+def _has_work(dag: dict) -> bool:
+    return any(
+        s.get("status") in ("Pending", "Running")
+        for t in dag.values()
+        for b in t["branches"].values()
+        for s in b["subtasks"].values()
+    )
 
 
 def _format_status(state: dict) -> str:
@@ -96,10 +108,12 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     await update.message.reply_text(
         "*Solo Builder Bot*\n\n"
-        "/status — DAG progress summary\n"
-        "/run    — trigger one step\n"
-        "/export — download all Claude outputs\n"
-        "/help   — this message",
+        "/status          — DAG progress summary\n"
+        "/run             — trigger one step\n"
+        "/auto \\[N\\]       — run N steps (default: until complete)\n"
+        "/verify ST \\[note\\] — approve a subtask (REVIEW\\_MODE)\n"
+        "/export          — download all Claude outputs\n"
+        "/help            — this message",
         parse_mode="Markdown",
     )
 
@@ -114,20 +128,50 @@ async def cmd_run(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _allowed(update):
         return
     state = _load_state()
-    dag   = state.get("dag", {})
-    has_work = any(
-        s.get("status") in ("Pending", "Running")
-        for t in dag.values()
-        for b in t["branches"].values()
-        for s in b["subtasks"].values()
-    )
-    if not has_work:
+    if not _has_work(state.get("dag", {})):
         await update.message.reply_text("✅ Pipeline already complete.")
         return
     TRIGGER_PATH.parent.mkdir(exist_ok=True)
     TRIGGER_PATH.write_text("1")
     await update.message.reply_text(
         f"▶ Step triggered (step {state.get('step', 0)} → next)"
+    )
+
+
+async def cmd_verify(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not _allowed(update):
+        return
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: `/verify SUBTASK [note]`\nExample: `/verify A3 looks good`",
+            parse_mode="Markdown",
+        )
+        return
+    subtask = context.args[0].upper()
+    note    = " ".join(context.args[1:]) if len(context.args) > 1 else "Telegram verify"
+    VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
+    VERIFY_TRIGGER.write_text(
+        json.dumps({"subtask": subtask, "note": note}), encoding="utf-8"
+    )
+    await update.message.reply_text(
+        f"⏳ Verify queued: `{subtask}` — _{note}_\n"
+        f"CLI will process it at the next step boundary.",
+        parse_mode="Markdown",
+    )
+
+
+async def cmd_auto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not _allowed(update):
+        return
+    try:
+        n = int(context.args[0]) if context.args else None
+    except ValueError:
+        await update.message.reply_text("Usage: `/auto [N]`", parse_mode="Markdown")
+        return
+    label = f"{n} steps" if n is not None else "until complete"
+    asyncio.create_task(_run_auto(str(update.effective_chat.id), n, context.application))
+    await update.message.reply_text(
+        f"▶ Auto-run started: {label}\nSend /status for progress.",
     )
 
 
@@ -149,8 +193,49 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 # ---------------------------------------------------------------------------
-# Background completion poller
+# Background tasks
 # ---------------------------------------------------------------------------
+
+async def _run_auto(chat_id: str, n: int | None, app: Application) -> None:
+    """Drive the CLI through n steps (or until complete) via trigger file."""
+    limit     = n if n is not None else 200   # safety cap
+    completed = 0
+
+    for _ in range(limit):
+        state = _load_state()
+        if not _has_work(state.get("dag", {})):
+            await app.bot.send_message(
+                chat_id=chat_id,
+                text=f"✅ Pipeline complete after {completed} steps.\n\n{_format_status(state)}",
+                parse_mode="Markdown",
+            )
+            return
+
+        current_step = state.get("step", 0)
+        TRIGGER_PATH.parent.mkdir(exist_ok=True)
+        TRIGGER_PATH.write_text("1")
+
+        # Wait up to 15 s for the CLI to process the step
+        for _ in range(150):
+            await asyncio.sleep(0.1)
+            if _load_state().get("step", 0) > current_step:
+                completed += 1
+                break
+        else:
+            await app.bot.send_message(
+                chat_id=chat_id,
+                text=f"⚠️ Step timeout after {completed} steps. Is the CLI running?",
+            )
+            return
+
+    # n-step run finished without hitting complete
+    final = _load_state()
+    await app.bot.send_message(
+        chat_id=chat_id,
+        text=f"✅ {completed}/{limit} steps done.\n\n{_format_status(final)}",
+        parse_mode="Markdown",
+    )
+
 
 async def _poll_completion(app: Application) -> None:
     """Notify CHAT_ID when all subtasks reach Verified. Resets on DAG reset."""
@@ -217,6 +302,8 @@ def main() -> None:
     app.add_handler(CommandHandler("help",   cmd_help))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("run",    cmd_run))
+    app.add_handler(CommandHandler("auto",   cmd_auto))
+    app.add_handler(CommandHandler("verify", cmd_verify))
     app.add_handler(CommandHandler("export", cmd_export))
 
     print("Solo Builder Bot started. Send /help in Telegram.")
