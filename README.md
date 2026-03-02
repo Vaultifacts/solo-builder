@@ -60,6 +60,24 @@ python api/app.py
 # Open http://127.0.0.1:5000
 ```
 
+### Terminal 3 — Telegram Bot (optional)
+```bash
+# 1. Create a bot via @BotFather, copy the token
+# 2. Add to .env:  TELEGRAM_BOT_TOKEN=<token>
+#                  TELEGRAM_CHAT_ID=<your chat ID>   # optional, restricts to one user
+pip install "python-telegram-bot>=20.0"
+python telegram_bot/bot.py
+```
+
+| Bot Command | Description |
+|---|---|
+| `/status` | DAG progress summary with per-task bar charts |
+| `/run` | Trigger one step (same as the dashboard Run Step button) |
+| `/export` | Download `solo_builder_outputs.md` as a file |
+| `/help` | Command list |
+
+The bot also sends a completion notification when all subtasks reach Verified.
+
 ### Key commands
 
 | Command | Description |

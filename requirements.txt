@@ -10,3 +10,6 @@ anthropic>=0.40
 # PDF snapshots (optional — gracefully disabled if missing)
 matplotlib>=3.10
 numpy>=2.2
+
+# Telegram bot (optional — only needed for telegram_bot/bot.py)
+python-telegram-bot>=20.0
