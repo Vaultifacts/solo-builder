@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.0.1] — 2026-03-02
+
+### Fixed
+- **CI `NameError` on import** — `PdfPages` was used as a type annotation in
+  `solo_builder_live_multi_snapshot.py` but is only imported under a
+  `try/except ImportError` block for matplotlib. Without matplotlib installed
+  (CI only installs `anthropic flask`), Python evaluated the annotation at
+  import time and raised `NameError`. Added `from __future__ import annotations`
+  to make all annotations lazy — resolves all 13 CI smoke-test failures.
+
+### Changed
+- `_PROJECT_CONTEXT` constant prepended to every Claude prompt so responses
+  always know they are working within Solo Builder — eliminates "I don't know
+  what Solo Builder is" replies when subtask descriptions lack project context.
+  Applied to both the `AnthropicRunner` (no-tools) path and the
+  `SdkToolRunner` (tool-use) path via `_gather_sdktool`.
+- Splash banner and `pyproject.toml` version bumped to **2.0.1**.
+
+---
+
 ## [v2.0] — 2026-03-01
 
 ### Milestone — production-ready async SDK pipeline

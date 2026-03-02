@@ -81,6 +81,14 @@ ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
 REVIEW_MODE           : bool = bool(_CFG.get("REVIEW_MODE",       False))
 WEBHOOK_URL           : str  = _CFG.get("WEBHOOK_URL",            "")
 
+# One-liner context injected at the front of every Claude prompt so the model
+# knows what project it is working within, avoiding "I don't know what X is"
+_PROJECT_CONTEXT = (
+    "Context: Solo Builder is a Python terminal CLI that uses six AI agents "
+    "(Planner, ShadowAgent, SelfHealer, Executor, Verifier, MetaOptimizer) "
+    "and the Anthropic SDK to manage DAG-based software project tasks. "
+)
+
 # Resolve relative paths to script location
 if not os.path.isabs(PDF_OUTPUT_PATH):
     PDF_OUTPUT_PATH = os.path.join(_HERE, PDF_OUTPUT_PATH)
@@ -705,7 +713,8 @@ class Executor:
     @staticmethod
     async def _gather_sdktool(runner, jobs):
         return await asyncio.gather(
-            *(runner.arun(sd.get("description", ""), st) for _, _, _, sd, st in jobs),
+            *(runner.arun(_PROJECT_CONTEXT + sd.get("description", ""), st)
+              for _, _, _, sd, st in jobs),
             return_exceptions=True,
         )
 
@@ -763,11 +772,12 @@ class Executor:
                         advanced += 1
                 elif self.anthropic.available:
                     # No tools — use SDK directly (faster, no subprocess)
-                    auto_prompt = (
+                    raw_prompt = (
                         description
                         or f"You completed subtask '{st_name}' in task '{task_name}'. "
                            f"Write one concrete sentence describing what was accomplished."
                     )
+                    auto_prompt = _PROJECT_CONTEXT + raw_prompt
                     sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
                     advanced += 1
                 elif random.random() < self.verify_prob:
@@ -2273,7 +2283,7 @@ class SoloBuilderCLI:
 def _splash() -> None:
     lines = [
         "╔══════════════════════════════════════════════════════╗",
-        "║      SOLO BUILDER — AI AGENT CLI  v2.0               ║",
+        "║      SOLO BUILDER — AI AGENT CLI  v2.0.1             ║",
         "║                                                       ║",
         "║  DAG · Shadow · Self-Heal · Auto-Run · Persistence   ║",
         "╚══════════════════════════════════════════════════════╝",
