@@ -5,6 +5,8 @@ Generates multi-page PDF timeline snapshots of the Solo Builder DAG and memory s
 Requires: matplotlib
 """
 
+from __future__ import annotations
+
 import os
 from datetime import datetime
 from typing import Dict, Any
