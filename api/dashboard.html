@@ -607,6 +607,7 @@
       <button class="sidebar-tab" onclick="switchTab('stats')">Stats</button>
       <button class="sidebar-tab" onclick="switchTab('history')">History</button>
       <button class="sidebar-tab" onclick="switchTab('branches')">Branches</button>
+      <button class="sidebar-tab" onclick="switchTab('settings')">Settings</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -631,6 +632,11 @@
     <div class="sidebar-tab-content" id="tab-branches">
       <div id="branches-content">
         <div class="detail-placeholder">No branches yet.</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-settings">
+      <div id="settings-content">
+        <div class="detail-placeholder">Loading settings…</div>
       </div>
     </div>
   </div>
@@ -1072,9 +1078,33 @@
     el.innerHTML = html;
   }
 
+  async function pollSettings() {
+    try {
+      const d = await api("/config");
+      renderSettings(d);
+    } catch (_) {}
+  }
+
+  function renderSettings(d) {
+    const el = document.getElementById("settings-content");
+    if (!d || typeof d !== "object") {
+      el.innerHTML = `<div class="detail-placeholder">Could not load settings.</div>`;
+      return;
+    }
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${Object.keys(d).length} settings</div>`;
+    Object.entries(d).forEach(([k, v]) => {
+      const vStr = typeof v === "string" ? v : JSON.stringify(v);
+      html += `<div class="diff-entry" style="display:flex;justify-content:space-between;gap:8px">`;
+      html += `<span style="color:var(--cyan);font-size:11px">${k}</span>`;
+      html += `<span style="color:var(--text);font-size:11px;text-align:right;word-break:break-all">${vStr}</span>`;
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {

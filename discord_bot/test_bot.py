@@ -1962,6 +1962,37 @@ class TestTimelineCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("not found", text)
 
 
+class TestFilterCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot filter command."""
+
+    async def test_filter_verified(self):
+        """'filter Verified' returns matching subtasks."""
+        state = _make_state({"A1": "Verified", "A2": "Running", "A3": "Verified"})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("filter Verified"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Verified", text)
+        self.assertIn("2", text)
+
+    async def test_filter_invalid_status(self):
+        """'filter bogus' shows usage."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=_make_state({"A1": "Pending"})):
+            await bot_module._handle_text_command(_make_msg("filter bogus"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+    async def test_filter_empty(self):
+        """'filter Running' with no running subtasks shows 0."""
+        state = _make_state({"A1": "Verified"})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("filter Running"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("0", text)
+
+
 class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot history command."""
 

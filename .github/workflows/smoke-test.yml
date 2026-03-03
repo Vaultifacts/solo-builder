@@ -86,10 +86,10 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
-      - name: Run bot unit tests (180 tests)
+      - name: Run bot unit tests (183 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
-      - name: Run API unit tests (50 tests)
+      - name: Run API unit tests (53 tests)
         run: PYTHONIOENCODING=utf-8 python api/test_app.py
 
       - name: Profiler dry-run (patch smoke test)

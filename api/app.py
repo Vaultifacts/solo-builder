@@ -488,6 +488,26 @@ def config():
         return jsonify({"error": "Could not read settings."}), 500
 
 
+@app.post("/config")
+def update_config():
+    """Merge posted keys into settings.json and return updated config."""
+    body = request.get_json(silent=True) or {}
+    if not body:
+        return jsonify({"ok": False, "reason": "No JSON body."}), 400
+    if not SETTINGS_PATH.exists():
+        return jsonify({"error": "Settings file not found."}), 404
+    try:
+        data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        for key, val in body.items():
+            if key not in data:
+                return jsonify({"ok": False, "reason": f"Unknown key '{key}'."}), 400
+            data[key] = val
+        SETTINGS_PATH.write_text(json.dumps(data, indent=4), encoding="utf-8")
+        return jsonify({"ok": True, **data})
+    except Exception:
+        return jsonify({"error": "Could not update settings."}), 500
+
+
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------

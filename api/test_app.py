@@ -582,6 +582,23 @@ class TestConfig(_Base):
         self.assertIn("STALL_THRESHOLD", d)
         self.assertIn("EXECUTOR_VERIFY_PROBABILITY", d)
 
+    def test_post_updates_setting(self):
+        r = self.client.post("/config", json={"STALL_THRESHOLD": 99})
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d.get("ok"))
+        self.assertEqual(d.get("STALL_THRESHOLD"), 99)
+
+    def test_post_unknown_key_rejected(self):
+        r = self.client.post("/config", json={"BOGUS_KEY_XYZ": 1})
+        self.assertEqual(r.status_code, 400)
+        d = r.get_json()
+        self.assertIn("Unknown key", d.get("reason", ""))
+
+    def test_post_empty_body_rejected(self):
+        r = self.client.post("/config", json={})
+        self.assertEqual(r.status_code, 400)
+
 
 # Error handlers
 # ---------------------------------------------------------------------------

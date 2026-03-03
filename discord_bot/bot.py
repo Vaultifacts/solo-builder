@@ -252,6 +252,27 @@ def _format_stats(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_filter(state: dict, status: str) -> str:
+    """Return subtasks matching a given status."""
+    target = status.strip().capitalize()
+    valid = ("Verified", "Running", "Pending", "Review")
+    if target not in valid:
+        return f"Usage: `filter <{'|'.join(valid)}>`"
+    icon = {"Verified": "✅", "Running": "▶", "Pending": "⏳", "Review": "⏸"}.get(target, "❓")
+    matches = []
+    for task_name, task in state.get("dag", {}).items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_data.get("status", "Pending") == target:
+                    desc = (st_data.get("description") or "")[:50]
+                    matches.append(f"{st_name} ({task_name}) — {desc}")
+    header = f"{icon} **{target} Subtasks** ({len(matches)})"
+    if not matches:
+        return f"{header}\n_None._"
+    body = "\n".join(f"  {m}" for m in matches[:30])
+    return f"{header}\n```\n{body}\n```"
+
+
 def _format_timeline(state: dict, st_target: str) -> str:
     """Return a formatted timeline string for a subtask's history array."""
     st_target = st_target.strip().upper()
@@ -487,6 +508,7 @@ _HELP_TEXT = (
     "`stats`                            — per-task breakdown (verified, avg steps)\n"
     "`history [N]`                      — last N status transitions (default 20)\n"
     "`search <keyword>`                 — find subtasks by keyword\n"
+    "`filter <status>`                  — show subtasks matching a status\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -819,6 +841,11 @@ async def _handle_text_command(message: discord.Message) -> None:
     elif low == "diff":
         await _send(message, _format_diff())
 
+    elif low == "filter" or low.startswith("filter "):
+        status_arg = text[7:].strip() if " " in text else ""
+        state = _load_state()
+        await _send(message, _format_filter(state, status_arg))
+
     elif low.startswith("timeline "):
         st = text[9:].strip()
         state = _load_state()
@@ -912,6 +939,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/config`                           — show all current settings\n"
         "`/branches [task]`                  — list branches for a task (or overview)\n"
         "`/graph`                            — visual ASCII DAG dependency graph\n"
+        "`/filter <status>`                  — show subtasks matching a status\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -1006,6 +1034,15 @@ async def search_cmd(interaction: discord.Interaction, query: str) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_search(_load_state(), query))
+
+
+@bot.tree.command(name="filter", description="Show subtasks matching a status (Verified/Running/Pending/Review)")
+@app_commands.describe(status="Status to filter by (Verified, Running, Pending, or Review)")
+async def filter_cmd(interaction: discord.Interaction, status: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_filter(_load_state(), status))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")

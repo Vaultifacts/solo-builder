@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.42] — 2026-03-03
+
+### Added
+- **Dashboard settings panel** — sixth sidebar tab showing all runtime settings
+  from `GET /config`, auto-refreshed every poll cycle
+- **Bot `/filter` command** — plain-text and `/filter status` slash command;
+  shows subtasks matching Verified/Running/Pending/Review. 45 Discord commands total.
+- **CLI `graph` command** — ASCII dependency graph with progress counters,
+  dependent arrows, and emoji status icons
+- **API `POST /config` endpoint** — merge posted keys into settings.json;
+  validates keys exist, returns updated config
+- **9 new tests** (3 bot filter + 3 API config POST + 3 existing)
+  → 183 bot + 53 API = 236 total
+
+---
+
 ## [v2.1.41] — 2026-03-03
 
 ### Added

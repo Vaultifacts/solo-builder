@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1896,6 +1896,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("filter "):
             self._cmd_filter(raw[7:])
+
+        elif cmd == "graph":
+            self._cmd_graph()
 
         elif cmd == "log":
             self._cmd_log("")
@@ -2788,6 +2791,32 @@ class SoloBuilderCLI:
                 print(f"  {CYAN}{st_name:<5}{RESET} {DIM}{task_name} — {desc}{RESET}")
         print()
 
+    def _cmd_graph(self) -> None:
+        """graph — ASCII dependency graph with progress counters."""
+        sym = {"Verified": "✅", "Running": "▶️", "Review": "⏸", "Pending": "⏳", "Blocked": "🔒"}
+        print(f"\n  {BOLD}{CYAN}DAG Graph{RESET}")
+        print(f"  {'─' * 50}")
+        task_names = list(self.dag.keys())
+        for t_name in task_names:
+            t_data = self.dag[t_name]
+            t_status = t_data.get("status", "Pending")
+            icon = sym.get(t_status, "⏳")
+            deps = t_data.get("depends_on", [])
+            branches = t_data.get("branches", {})
+            n_st = sum(len(b.get("subtasks", {})) for b in branches.values())
+            n_v = sum(1 for b in branches.values()
+                      for s in b.get("subtasks", {}).values()
+                      if s.get("status") == "Verified")
+            line = f"  {icon} {t_name} [{n_v}/{n_st}]"
+            if deps:
+                line += f"  {DIM}← {', '.join(deps)}{RESET}"
+            print(line)
+            dependents = [tn for tn in task_names
+                          if t_name in self.dag[tn].get("depends_on", [])]
+            for d in dependents:
+                print(f"     └──▶ {d}")
+        print(f"  {'─' * 50}\n")
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -2933,6 +2962,7 @@ class SoloBuilderCLI:
             ("branches [Task N]",      "List all branches for a task with subtask detail"),
             ("search <text>",          "Find subtasks by keyword (description/output)"),
             ("filter <status>",        "Show only subtasks matching a status"),
+            ("graph",                  "ASCII dependency graph with progress counters"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
