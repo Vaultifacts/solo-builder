@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.32] — 2026-03-03
+
+### Added
+- **Dashboard subtask status timeline** — modal shows a visual timeline of status
+  transitions (Pending → Running → Verified) with step numbers; recorded via `history`
+  array on each subtask in the state JSON
+- **Bot `/pause` and `/resume` commands** — pause auto-run without full stop; resume
+  continues from the same position. CLI auto loop respects `state/pause_trigger` file.
+  Both plain-text and slash command variants. 30 Discord commands total.
+- **CLI `diff` command** — compares current state to `.1` backup and shows which
+  subtasks changed status (e.g. Pending → Running, Running → Verified) with output preview
+- **4 new bot tests** (pause/resume) → 164 bot + 28 API = 192 total
+
+---
+
 ## [v2.1.31] — 2026-03-03
 
 ### Added

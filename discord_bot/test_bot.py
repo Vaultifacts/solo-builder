@@ -1856,6 +1856,48 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         self.assertIn("REVIEW_MODE", text)
 
 
+    async def test_pause_writes_trigger(self):
+        """'pause' writes the pause trigger file when auto is running."""
+        mock_trig = MagicMock()
+        mock_trig.exists.return_value = False
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "PAUSE_TRIGGER", new=mock_trig), \
+             patch.object(bot_module, "_auto_running", return_value=True):
+            await bot_module._handle_text_command(_make_msg("pause"))
+        mock_trig.write_text.assert_called_once_with("1")
+        text = mock_send.call_args[0][1]
+        self.assertIn("Pause", text)
+
+    async def test_pause_no_auto_shows_warning(self):
+        """'pause' with no auto-run sends a warning."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_auto_running", return_value=False):
+            await bot_module._handle_text_command(_make_msg("pause"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No auto-run", text)
+
+    async def test_resume_clears_trigger(self):
+        """'resume' removes the pause trigger file."""
+        mock_trig = MagicMock()
+        mock_trig.exists.return_value = True
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "PAUSE_TRIGGER", new=mock_trig):
+            await bot_module._handle_text_command(_make_msg("resume"))
+        mock_trig.unlink.assert_called_once()
+        text = mock_send.call_args[0][1]
+        self.assertIn("Resumed", text)
+
+    async def test_resume_not_paused(self):
+        """'resume' when not paused sends a warning."""
+        mock_trig = MagicMock()
+        mock_trig.exists.return_value = False
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "PAUSE_TRIGGER", new=mock_trig):
+            await bot_module._handle_text_command(_make_msg("resume"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Not paused", text)
+
+
 class TestUndoCommand(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_undo."""
 

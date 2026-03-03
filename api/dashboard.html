@@ -269,6 +269,19 @@
   .subtask-row:hover { background: #1a2028; }
 
   /* ── Subtask modal ─────────────────────────────────────── */
+  .timeline-entry {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+    font-size: 11px;
+  }
+  .timeline-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .timeline-arrow { color: var(--dim); font-size: 10px; margin: 0 2px; }
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -564,6 +577,10 @@
     <div class="modal-field">
       <div class="modal-label">Output</div>
       <div class="modal-text" id="modal-output">—</div>
+    </div>
+    <div class="modal-field" id="modal-timeline-wrap" style="display:none">
+      <div class="modal-label">Timeline</div>
+      <div class="modal-text" id="modal-timeline">—</div>
     </div>
     <div class="modal-field" id="modal-tools-wrap" style="display:none">
       <div class="modal-label">Tools</div>
@@ -981,6 +998,20 @@
       `<span class="modal-status ${cls}">${status}</span>`;
     document.getElementById("modal-desc").textContent = stData.description || "(no description)";
     document.getElementById("modal-output").textContent = stData.output || "(no output yet)";
+    const tlWrap = document.getElementById("modal-timeline-wrap");
+    const history = stData.history || [];
+    if (history.length > 0) {
+      const colorMap = {Running: "var(--cyan)", Verified: "var(--green)", Review: "var(--yellow)", Pending: "var(--dim)"};
+      let tlHtml = '<span class="timeline-entry"><span class="timeline-dot" style="background:var(--dim)"></span> Pending</span>';
+      for (const h of history) {
+        const c = colorMap[h.status] || "var(--dim)";
+        tlHtml += `<span class="timeline-arrow">\u2192</span><span class="timeline-entry"><span class="timeline-dot" style="background:${c}"></span> ${h.status} <span style="color:var(--dim)">(step ${h.step})</span></span>`;
+      }
+      document.getElementById("modal-timeline").innerHTML = tlHtml;
+      tlWrap.style.display = "";
+    } else {
+      tlWrap.style.display = "none";
+    }
     const toolsWrap = document.getElementById("modal-tools-wrap");
     if (stData.tools) {
       toolsWrap.style.display = "";

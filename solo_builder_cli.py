@@ -762,6 +762,7 @@ class Executor:
             if status == "Pending":
                 st_data["status"]      = "Running"
                 st_data["last_update"] = step
+                st_data.setdefault("history", []).append({"status": "Running", "step": step})
                 dag[task_name]["status"]                              = "Running"
                 dag[task_name]["branches"][branch_name]["status"]     = "Running"
                 add_memory_snapshot(memory_store, branch_name, f"{st_name}_started", step)
@@ -795,6 +796,7 @@ class Executor:
                         st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
+                        self._record_history(st_data, new_status, step)
                         add_memory_snapshot(memory_store, branch_name, f"{st_name}_verified", step)
                         actions[st_name] = "review" if self.review_mode else "verified"
                         advanced += 1
@@ -818,6 +820,7 @@ class Executor:
                     st_data["shadow"]      = "Done"
                     st_data["output"]      = output[:400]
                     st_data["last_update"] = step
+                    self._record_history(st_data, new_status, step)
                     add_memory_snapshot(memory_store, branch_name,
                                         f"{st_name}_sdktool_verified", step)
                     actions[st_name] = "review" if self.review_mode else "verified"
@@ -839,6 +842,7 @@ class Executor:
                         st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
+                        self._record_history(st_data, new_status, step)
                         add_memory_snapshot(memory_store, branch_name,
                                             f"{st_name}_verified", step)
                         actions[st_name] = "review" if self.review_mode else "verified"
@@ -864,6 +868,7 @@ class Executor:
                         st_data["shadow"]      = "Done"
                         st_data["output"]      = output
                         st_data["last_update"] = step
+                        self._record_history(st_data, new_status, step)
                         add_memory_snapshot(memory_store, branch_name, f"{st_name}_claude_verified", step)
                         actions[st_name] = "review" if self.review_mode else "verified"
                         if not self.review_mode:
@@ -891,6 +896,7 @@ class Executor:
                     st_data["shadow"]      = "Done"
                     st_data["output"]      = output[:400]
                     st_data["last_update"] = step
+                    self._record_history(st_data, new_status, step)
                     add_memory_snapshot(memory_store, branch_name,
                                         f"{st_name}_sdk_verified", step)
                     actions[st_name] = "review" if self.review_mode else "verified"
@@ -902,12 +908,18 @@ class Executor:
                         st_data["status"]      = "Verified"
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
+                        self._record_history(st_data, "Verified", step)
                         add_memory_snapshot(memory_store, branch_name,
                                             f"{st_name}_verified", step)
                         actions[st_name] = "verified"
                         self._roll_up(dag, task_name, branch_name)
 
         return actions
+
+    @staticmethod
+    def _record_history(st_data: Dict, new_status: str, step: int) -> None:
+        """Append a status transition to the subtask's history timeline."""
+        st_data.setdefault("history", []).append({"status": new_status, "step": step})
 
     # ── Roll-up helpers ──────────────────────────────────────────────────────
     def _roll_up(self, dag: Dict, task_name: str, branch_name: str) -> None:
@@ -1266,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1598,6 +1610,7 @@ class SoloBuilderCLI:
         _deptrigger  = os.path.join(_HERE, "state", "depends_trigger.json")
         _undeptrigger = os.path.join(_HERE, "state", "undepends_trigger.json")
         _undotrigger  = os.path.join(_HERE, "state", "undo_trigger")
+        _pausetrigger = os.path.join(_HERE, "state", "pause_trigger")
         try:
             while True:
                 self.run_step()
@@ -1627,6 +1640,15 @@ class SoloBuilderCLI:
                             pass
                         _stopped = True
                         break
+                    # Pause gate: spin while pause_trigger exists (don't advance _waited)
+                    while os.path.exists(_pausetrigger):
+                        if _waited < 0.05:  # first detection — print once
+                            print(f"  {YELLOW}Auto-run paused remotely. Waiting for resume…{RESET}", flush=True)
+                            _waited = 0.05
+                        time.sleep(0.2)
+                        # Still honour stop during pause
+                        if os.path.exists(_stoptrig):
+                            break
                     if os.path.exists(_vtrigger):
                         try:
                             vdata = json.loads(
@@ -1821,6 +1843,9 @@ class SoloBuilderCLI:
 
         elif cmd == "undo":
             self._cmd_undo()
+
+        elif cmd == "diff":
+            self._cmd_diff()
 
         elif cmd == "reset":
             self._cmd_reset()
@@ -2513,6 +2538,7 @@ class SoloBuilderCLI:
         st["shadow"]      = "Done"
         st["output"]      = note
         st["last_update"] = self.step
+        st.setdefault("history", []).append({"status": "Verified", "step": self.step})
         self.executor._roll_up(self.dag, task_name, branch_name)
         print(f"  {GREEN}v {st_target} ({task_name}) verified (was {prev}). Note: {note[:60]}{RESET}")
         self.display.render(self.dag, self.memory_store, self.step,
@@ -2572,6 +2598,49 @@ class SoloBuilderCLI:
         else:
             print(f"  {YELLOW}No output for {st_target} ({task_name}) yet.{RESET}\n")
 
+    def _cmd_diff(self) -> None:
+        """diff — show what changed in the last step vs the .1 backup."""
+        backup_path = f"{STATE_PATH}.1"
+        if not os.path.exists(backup_path):
+            print(f"  {YELLOW}No backup to diff against (run at least 2 saves).{RESET}")
+            return
+        try:
+            with open(backup_path, "r", encoding="utf-8") as f:
+                old = json.load(f)
+        except Exception as exc:
+            print(f"  {RED}Could not read backup: {exc}{RESET}")
+            return
+
+        old_dag = old.get("dag", {})
+        new_dag = self.dag
+        old_step = old.get("step", 0)
+        changes = []
+
+        for task_name, task_data in new_dag.items():
+            old_task = old_dag.get(task_name, {})
+            for branch_name, branch_data in task_data.get("branches", {}).items():
+                old_branch = old_task.get("branches", {}).get(branch_name, {})
+                for st_name, st_data in branch_data.get("subtasks", {}).items():
+                    old_st = old_branch.get("subtasks", {}).get(st_name, {})
+                    old_status = old_st.get("status", "?")
+                    new_status = st_data.get("status", "?")
+                    if old_status != new_status:
+                        out = st_data.get("output", "")
+                        preview = f" — {out[:60]}" if out and new_status in ("Verified", "Review") else ""
+                        changes.append(
+                            f"    {CYAN}{st_name:<5}{RESET} "
+                            f"{format_status(old_status)} → {format_status(new_status)}"
+                            f"{DIM}{preview}{RESET}"
+                        )
+
+        print(f"\n  {BOLD}Diff: step {old_step} → {self.step}{RESET}")
+        if changes:
+            for c in changes:
+                print(c)
+        else:
+            print(f"  {DIM}No subtask status changes.{RESET}")
+        print()
+
     def _cmd_help(self) -> None:
         W = 60
         print(f"\n  {BOLD}{CYAN}Solo Builder — Commands{RESET}")
@@ -2584,6 +2653,7 @@ class SoloBuilderCLI:
             ("load",                   "Load last saved state from disk"),
             ("load_backup [1|2|3]",   "Restore from a backup (.1=newest, .3=oldest)"),
             ("undo",                   "Undo last step (restore from .1 backup)"),
+            ("diff",                   "Show what changed since last save"),
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
@@ -2898,11 +2968,12 @@ def main() -> None:
     _DEP_PATH   = os.path.join(_HERE, "state", "depends_trigger.json")
     _UDEP_PATH  = os.path.join(_HERE, "state", "undepends_trigger.json")
     _UNDO_PATH  = os.path.join(_HERE, "state", "undo_trigger")
+    _PAUSE_PATH = os.path.join(_HERE, "state", "pause_trigger")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
     for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
                    _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH,
-                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH):
+                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH, _PAUSE_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

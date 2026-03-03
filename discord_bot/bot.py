@@ -62,6 +62,7 @@ SET_TRIGGER             = _ROOT / "state" / "set_trigger.json"
 DEPENDS_TRIGGER         = _ROOT / "state" / "depends_trigger.json"
 UNDEPENDS_TRIGGER       = _ROOT / "state" / "undepends_trigger.json"
 UNDO_TRIGGER            = _ROOT / "state" / "undo_trigger"
+PAUSE_TRIGGER           = _ROOT / "state" / "pause_trigger"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
 SETTINGS_PATH  = _ROOT / "config" / "settings.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
@@ -266,6 +267,8 @@ _HELP_TEXT = (
     "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
     "`undo`                             — undo last step (restore from backup)\n"
+    "`pause`                            — pause auto-run (resume continues)\n"
+    "`resume`                           — resume a paused auto-run\n"
     "`config`                           — show all current runtime settings\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -287,7 +290,10 @@ async def _handle_text_command(message: discord.Message) -> None:
     if low == "status":
         reply = _format_status(_load_state())
         if _auto_running():
-            reply += "\n▶ Auto-run in progress — use `stop` to cancel."
+            if PAUSE_TRIGGER.exists():
+                reply += "\n⏸ Auto-run **paused** — use `resume` to continue."
+            else:
+                reply += "\n▶ Auto-run in progress — use `stop` to cancel."
         await _send(message, reply)
 
     elif low == "run":
@@ -559,6 +565,24 @@ async def _handle_text_command(message: discord.Message) -> None:
         UNDO_TRIGGER.write_text("1")
         await _send(message, "↩️ Undo queued — CLI will restore from last backup at next step boundary.")
 
+    elif low == "pause":
+        if not _auto_running():
+            await _send(message, "⚠️ No auto-run in progress to pause.")
+            return
+        PAUSE_TRIGGER.parent.mkdir(exist_ok=True)
+        PAUSE_TRIGGER.write_text("1")
+        await _send(message, "⏸ Pause signal sent — auto-run will pause after the current step. Use `resume` to continue.")
+
+    elif low == "resume":
+        if PAUSE_TRIGGER.exists():
+            try:
+                PAUSE_TRIGGER.unlink()
+            except OSError:
+                pass
+            await _send(message, "▶ Resumed — auto-run will continue.")
+        else:
+            await _send(message, "⚠️ Not paused.")
+
     elif low == "config":
         try:
             cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
@@ -648,6 +672,34 @@ async def undo_cmd(interaction: discord.Interaction) -> None:
     UNDO_TRIGGER.parent.mkdir(exist_ok=True)
     UNDO_TRIGGER.write_text("1")
     await interaction.response.send_message("↩️ Undo queued — CLI will restore from last backup at next step boundary.")
+
+
+@bot.tree.command(name="pause", description="Pause auto-run (resume continues from same position)")
+async def pause_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if not _auto_running():
+        await interaction.response.send_message("⚠️ No auto-run in progress to pause.", ephemeral=True)
+        return
+    PAUSE_TRIGGER.parent.mkdir(exist_ok=True)
+    PAUSE_TRIGGER.write_text("1")
+    await interaction.response.send_message("⏸ Pause signal sent — auto-run will pause after the current step. Use `/resume` to continue.")
+
+
+@bot.tree.command(name="resume", description="Resume a paused auto-run")
+async def resume_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if PAUSE_TRIGGER.exists():
+        try:
+            PAUSE_TRIGGER.unlink()
+        except OSError:
+            pass
+        await interaction.response.send_message("▶ Resumed — auto-run will continue.")
+    else:
+        await interaction.response.send_message("⚠️ Not paused.", ephemeral=True)
 
 
 @bot.tree.command(name="config", description="Show all current runtime settings")
@@ -1112,6 +1164,9 @@ async def _run_auto(channel_id: int, n: Optional[int]) -> None:
         return _has_work(_load_state().get("dag", {}))
 
     for _ in range(limit):
+        # Pause gate: wait while pause trigger exists
+        while PAUSE_TRIGGER.exists():
+            await asyncio.sleep(0.5)
         if not _hb_has_work():
             # Wait up to 30 s for the auto-save JSON to reflect all-Verified.
             # The JSON saves every 5 steps so can lag well behind the heartbeat.
