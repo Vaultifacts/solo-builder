@@ -5,6 +5,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1] — 2026-03-03
+
+### Added
+- **Discord bot** (`discord_bot/bot.py`) — replaces Telegram integration;
+  supports both slash commands and plain-text (no `/` prefix required)
+- **Natural language commands** — `status`, `run`, `auto [n]`, `stop`,
+  `verify <ST> [note]`, `export`, `help` all work without a `/` prefix
+- **Two-way chat logging** — every user message and every bot reply is
+  appended to `discord_bot/chat.log` with UTC timestamp, channel, and author
+- **Per-step progress tickers** — during `auto` runs the bot posts a one-line
+  ticker after each step: `Step N — X✅ Y▶ Z⏸ W⏳ / 70 (pct%)`
+- **Heartbeat file** (`state/step.txt`) — CLI writes
+  `step,verified,total,pending,running,review` after every step so the bot
+  always reads live counters instead of the 5-step-stale JSON
+- **`stop` / `/stop` command** — two-layer stop: cancels the bot's `_run_auto`
+  asyncio task AND writes `state/stop_trigger`; CLI checks the trigger in the
+  inter-step delay window and halts after the current step completes
+- **Duplicate auto guard** — `_auto_task` module variable tracks the running
+  coroutine; a second `auto`/`/auto` while one is active replies with a
+  warning instead of spawning a second concurrent run
+
+### Fixed
+- **`verify_trigger` blocked by `run_trigger`** — CLI auto loop previously
+  checked `run_trigger` first and broke immediately, skipping any pending
+  `verify_trigger.json`. Now `verify_trigger` is processed before the
+  `run_trigger` break, so Discord verify commands work during active auto runs.
+- **Stale completion summary** — `_run_auto` now waits up to 6 s for the
+  auto-save JSON flush before posting the final `✅ Pipeline complete` message,
+  eliminating the "69/70" count that appeared when the JSON hadn't caught up.
+- **`SdkToolRunner` rate limit retry** — `arun` retries up to 3× on
+  `anthropic.RateLimitError` with exponential backoff (5 s → 10 s → 20 s,
+  capped at 60 s). Root cause: O1's large state-file read hit rate limits
+  during high-concurrency runs and previously silently left the subtask stuck.
+- **Dice-roll escape for failed tool subtasks** — when `SdkToolRunner` fails
+  and `ClaudeRunner` subprocess is unavailable, a `verify_prob` dice roll is
+  applied so tools-bearing subtasks don't stay blocked in `Running` indefinitely.
+
+---
+
 ## [v2.0.1] — 2026-03-02
 
 ### Fixed
