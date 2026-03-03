@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1880,6 +1880,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("branches "):
             self._cmd_branches(raw[9:])
+
+        elif cmd.startswith("rename "):
+            self._cmd_rename(raw[7:])
 
         elif cmd.startswith("search "):
             self._cmd_search(raw[7:])
@@ -2594,6 +2597,25 @@ class SoloBuilderCLI:
         else:
             print(f"  {YELLOW}No output for {st_target} ({task_name}) yet.{RESET}\n")
 
+    def _cmd_rename(self, args: str) -> None:
+        """rename <ST> <text> — update a subtask's description inline."""
+        parts = args.strip().split(" ", 1)
+        st_target = parts[0].upper() if parts and parts[0] else ""
+        if not st_target or len(parts) < 2 or not parts[1].strip():
+            print(f"  Usage: rename <subtask> <new description>")
+            return
+        new_desc = parts[1].strip()
+        found = self._find_subtask(st_target)
+        if not found:
+            print(f"  {YELLOW}Subtask '{st_target}' not found.{RESET}")
+            return
+        task_name, _, _, _, st = found
+        old = (st.get("description") or "")[:40]
+        st["description"] = new_desc
+        print(f"  {GREEN}Renamed {st_target} ({task_name}): {new_desc[:60]}{RESET}")
+        if old:
+            print(f"  {DIM}Was: {old}{RESET}")
+
     def _cmd_timeline(self, args: str) -> None:
         """timeline <subtask> — print the full status history of a subtask."""
         st_target = args.strip().upper()
@@ -2852,6 +2874,7 @@ class SoloBuilderCLI:
             ("depends",                 "Print dependency graph"),
             ("depends <T> <dep>",      "Add dependency: Task T depends on dep"),
             ("undepends <T> <dep>",    "Remove a dependency from Task T"),
+            ("rename <ST> <text>",     "Update a subtask's description inline"),
             ("describe <ST> <text>",   "Attach a real Claude task description to a subtask"),
             ("verify <ST> [note]",     "Hard-set a subtask Verified (human confirmation)"),
             ("tools <ST> <toollist>",  "Set allowed tools for a subtask (re-queues it)"),

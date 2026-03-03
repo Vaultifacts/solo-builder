@@ -157,6 +157,45 @@ def _format_search(state: dict, query: str) -> str:
     return header + "\n" + "\n".join(matches[:20])
 
 
+def _format_branches(state: dict, task_filter: str = "") -> str:
+    """Return formatted branch listing, optionally filtered to one task."""
+    dag = state.get("dag", {})
+    task_filter = task_filter.strip()
+    if task_filter:
+        # Normalise "0" → "Task 0"
+        if task_filter.isdigit():
+            task_filter = f"Task {task_filter}"
+        task_data = dag.get(task_filter)
+        if not task_data:
+            return f"⚠️ Task `{task_filter}` not found."
+        branches = task_data.get("branches", {})
+        lines = [f"**{task_filter}** — {len(branches)} branch{'es' if len(branches) != 1 else ''}", "```"]
+        for br_name, br_data in branches.items():
+            subs = br_data.get("subtasks", {})
+            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r = sum(1 for s in subs.values() if s.get("status") == "Running")
+            p = len(subs) - v - r
+            lines.append(f"  {br_name:<14} {len(subs)} STs  {v}✓ {r}▶ {p}●")
+            for st_name, st_data in subs.items():
+                icon = {"Verified": "✅", "Running": "▶", "Review": "⏸"}.get(st_data.get("status", "Pending"), "⏳")
+                lines.append(f"    {icon} {st_name:<5} {st_data.get('status', 'Pending')}")
+        lines.append("```")
+        return "\n".join(lines)
+    # All tasks overview
+    lines = ["**Branches Overview**", "```"]
+    for task_name, task_data in dag.items():
+        branches = task_data.get("branches", {})
+        lines.append(f"{task_name}  ({len(branches)} branches)")
+        for br_name, br_data in branches.items():
+            subs = br_data.get("subtasks", {})
+            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r = sum(1 for s in subs.values() if s.get("status") == "Running")
+            p = len(subs) - v - r
+            lines.append(f"  {br_name:<14} {len(subs)} STs  {v}✓ {r}▶ {p}●")
+    lines.append("```")
+    return "\n".join(lines)
+
+
 def _format_history(state: dict, limit: int = 20) -> str:
     """Return a formatted recent activity log across all subtasks."""
     dag = state.get("dag", {})
@@ -805,6 +844,11 @@ async def _handle_text_command(message: discord.Message) -> None:
         st = text[3:].strip() if low.startswith("log ") else ""
         await _send(message, _format_log(st))
 
+    elif low == "branches" or low.startswith("branches "):
+        task_arg = text[9:].strip() if low.startswith("branches ") else ""
+        state = _load_state()
+        await _send(message, _format_branches(state, task_arg))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -854,6 +898,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/export`                           — download all Claude outputs\n"
         "`/undo`                             — undo last step (restore from backup)\n"
         "`/config`                           — show all current settings\n"
+        "`/branches [task]`                  — list branches for a task (or overview)\n"
         "`/graph`                            — visual ASCII DAG dependency graph\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
@@ -958,6 +1003,15 @@ async def history_cmd(interaction: discord.Interaction, limit: int = 20) -> None
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_history(_load_state(), limit))
+
+
+@bot.tree.command(name="branches", description="List branches for a task with subtask counts")
+@app_commands.describe(task="Task name or number (e.g. 0, Task 0). Omit for overview.")
+async def branches_cmd(interaction: discord.Interaction, task: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_branches(_load_state(), task))
 
 
 @bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")

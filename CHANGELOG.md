@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.39] — 2026-03-03
+
+### Added
+- **Dashboard timeline panel** — clicking a subtask now fetches fresh data from
+  `GET /timeline/<subtask>` for live-updated modal (description, output, history, tools)
+- **Bot `/branches` command** — plain-text and `/branches [task]` slash command;
+  shows branch overview or per-task detail with subtask statuses. 42 Discord commands total.
+- **CLI `rename <ST> <text>` command** — update a subtask's description inline without
+  re-queuing (lighter than `describe` which resets status)
+- **API `GET /branches/<task>` endpoint** — per-task branch listing as JSON with
+  subtask counts, status breakdown (verified/running/review/pending), and subtask list
+- **11 new tests** (3 bot branches + 3 API branches + 3 API timeline + 2 bot log)
+  → 178 bot + 45 API = 223 total
+
+---
+
 ## [v2.1.38] — 2026-03-03
 
 ### Added

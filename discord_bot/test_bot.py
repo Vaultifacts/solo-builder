@@ -2094,6 +2094,66 @@ class TestLogCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Journal", text)
 
 
+class TestBranchesCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot branches command."""
+
+    async def test_branches_overview(self):
+        """'branches' shows all tasks and their branches."""
+        state = {
+            "dag": {
+                "Task 0": {
+                    "status": "Running",
+                    "branches": {
+                        "Branch A": {
+                            "subtasks": {
+                                "A1": {"status": "Verified"},
+                                "A2": {"status": "Running"},
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("branches"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Task 0", text)
+        self.assertIn("Branch A", text)
+
+    async def test_branches_specific_task(self):
+        """'branches 0' shows branches for Task 0."""
+        state = {
+            "dag": {
+                "Task 0": {
+                    "status": "Running",
+                    "branches": {
+                        "Branch A": {
+                            "subtasks": {
+                                "A1": {"status": "Pending"},
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("branches 0"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Task 0", text)
+        self.assertIn("A1", text)
+
+    async def test_branches_not_found(self):
+        """'branches 99' shows not found message."""
+        state = {"dag": {"Task 0": {"branches": {}}}}
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("branches 99"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("not found", text)
+
+
 class TestUndoCommand(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_undo."""
 

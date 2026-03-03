@@ -472,6 +472,38 @@ class TestDiff(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /branches/<task>
+# ---------------------------------------------------------------------------
+
+class TestBranches(_Base):
+
+    def test_branches_found(self):
+        state = self._make_state({"A1": "Verified", "A2": "Running"})
+        self._write_state(state)
+        r = self.client.get("/branches/Task 0")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["task"], "Task 0")
+        self.assertEqual(d["branch_count"], 1)
+        br = d["branches"][0]
+        self.assertEqual(br["branch"], "Branch A")
+        self.assertEqual(br["verified"], 1)
+        self.assertEqual(br["running"], 1)
+
+    def test_branches_not_found(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/branches/Task 99")
+        self.assertEqual(r.status_code, 404)
+
+    def test_branches_subtask_list(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        r = self.client.get("/branches/Task 0")
+        d = r.get_json()
+        subs = d["branches"][0]["subtasks"]
+        self.assertTrue(any(s["name"] == "A1" for s in subs))
+
+
+# ---------------------------------------------------------------------------
 # GET /timeline/<subtask>
 # ---------------------------------------------------------------------------
 

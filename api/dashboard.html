@@ -1205,17 +1205,15 @@
   /* ── Subtask modal ─────────────────────────────────────── */
   let _modalSt = null;   // currently displayed subtask name
 
-  window.showModal = function (stName, stData) {
-    _modalSt = stName;
+  function _renderModal(stName, d) {
+    const status = d.status || "Pending";
     document.getElementById("modal-title").textContent = stName;
-    const status = stData.status || "Pending";
-    const cls = statusClass(status);
     document.getElementById("modal-status-wrap").innerHTML =
-      `<span class="modal-status ${cls}">${status}</span>`;
-    document.getElementById("modal-desc").textContent = stData.description || "(no description)";
-    document.getElementById("modal-output").textContent = stData.output || "(no output yet)";
+      `<span class="modal-status ${statusClass(status)}">${status}</span>`;
+    document.getElementById("modal-desc").textContent = d.description || "(no description)";
+    document.getElementById("modal-output").textContent = d.output || "(no output yet)";
     const tlWrap = document.getElementById("modal-timeline-wrap");
-    const history = stData.history || [];
+    const history = d.history || [];
     if (history.length > 0) {
       const colorMap = {Running: "var(--cyan)", Verified: "var(--green)", Review: "var(--yellow)", Pending: "var(--dim)"};
       let tlHtml = '<span class="timeline-entry"><span class="timeline-dot" style="background:var(--dim)"></span> Pending</span>';
@@ -1229,13 +1227,22 @@
       tlWrap.style.display = "none";
     }
     const toolsWrap = document.getElementById("modal-tools-wrap");
-    if (stData.tools) {
+    if (d.tools) {
       toolsWrap.style.display = "";
-      document.getElementById("modal-tools").textContent = stData.tools;
+      document.getElementById("modal-tools").textContent = d.tools;
     } else {
       toolsWrap.style.display = "none";
     }
+  }
+
+  window.showModal = function (stName, stData) {
+    _modalSt = stName;
+    _renderModal(stName, stData);
     document.getElementById("modal-overlay").classList.add("show");
+    // Fetch fresh data from timeline API
+    api("/timeline/" + encodeURIComponent(stName))
+      .then(d => { if (_modalSt === stName) _renderModal(stName, d); })
+      .catch(() => {});
   };
 
   window.closeModal = function () {
