@@ -18,6 +18,10 @@ app = Flask(__name__)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH    = _PROJECT_ROOT / "state" / "solo_builder_state.json"
 TRIGGER_PATH  = _PROJECT_ROOT / "state" / "run_trigger"
+VERIFY_TRIGGER  = _PROJECT_ROOT / "state" / "verify_trigger.json"
+DESCRIBE_TRIGGER = _PROJECT_ROOT / "state" / "describe_trigger.json"
+TOOLS_TRIGGER   = _PROJECT_ROOT / "state" / "tools_trigger.json"
+SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
 
@@ -65,6 +69,7 @@ def _task_summary(task_id: str, task: dict) -> dict:
 @app.after_request
 def cors(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return resp
 
 
@@ -150,6 +155,66 @@ def run_step():
     TRIGGER_PATH.parent.mkdir(exist_ok=True)
     TRIGGER_PATH.write_text("1")
     return jsonify({"ok": True, "step": state.get("step", 0)}), 202
+
+
+@app.post("/verify")
+def verify_subtask():
+    """Queue a subtask verify via trigger file."""
+    data = request.get_json(silent=True) or {}
+    subtask = (data.get("subtask") or "").strip().upper()
+    note = (data.get("note") or "Dashboard verify").strip()
+    if not subtask:
+        return jsonify({"ok": False, "reason": "Missing 'subtask' field."}), 400
+    VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
+    VERIFY_TRIGGER.write_text(
+        json.dumps({"subtask": subtask, "note": note}), encoding="utf-8"
+    )
+    return jsonify({"ok": True, "subtask": subtask, "note": note}), 202
+
+
+@app.post("/describe")
+def describe_subtask():
+    """Queue a subtask describe via trigger file."""
+    data = request.get_json(silent=True) or {}
+    subtask = (data.get("subtask") or "").strip().upper()
+    desc = (data.get("desc") or "").strip()
+    if not subtask or not desc:
+        return jsonify({"ok": False, "reason": "Missing 'subtask' or 'desc' field."}), 400
+    DESCRIBE_TRIGGER.parent.mkdir(exist_ok=True)
+    DESCRIBE_TRIGGER.write_text(
+        json.dumps({"subtask": subtask, "desc": desc}), encoding="utf-8"
+    )
+    return jsonify({"ok": True, "subtask": subtask, "desc": desc}), 202
+
+
+@app.post("/tools")
+def tools_subtask():
+    """Queue a subtask tools change via trigger file."""
+    data = request.get_json(silent=True) or {}
+    subtask = (data.get("subtask") or "").strip().upper()
+    tools = (data.get("tools") or "").strip()
+    if not subtask or not tools:
+        return jsonify({"ok": False, "reason": "Missing 'subtask' or 'tools' field."}), 400
+    TOOLS_TRIGGER.parent.mkdir(exist_ok=True)
+    TOOLS_TRIGGER.write_text(
+        json.dumps({"subtask": subtask, "tools": tools}), encoding="utf-8"
+    )
+    return jsonify({"ok": True, "subtask": subtask, "tools": tools}), 202
+
+
+@app.post("/set")
+def set_setting():
+    """Queue a settings change via trigger file."""
+    data = request.get_json(silent=True) or {}
+    key = (data.get("key") or "").strip().upper()
+    value = (data.get("value") or "").strip()
+    if not key or not value:
+        return jsonify({"ok": False, "reason": "Missing 'key' or 'value' field."}), 400
+    SET_TRIGGER.parent.mkdir(exist_ok=True)
+    SET_TRIGGER.write_text(
+        json.dumps({"key": key, "value": value}), encoding="utf-8"
+    )
+    return jsonify({"ok": True, "key": key, "value": value}), 202
 
 
 @app.get("/export")

@@ -126,7 +126,7 @@
     grid-template-columns: 1fr 320px;
     grid-template-rows: auto 1fr;
     gap: 0;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 100px);
   }
   .tasks-panel {
     grid-column: 1;
@@ -267,6 +267,91 @@
   .journal-meta { font-size: 10px; color: var(--dim); margin-bottom: 2px; }
   .journal-body { font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
 
+  /* ── Command toolbar ─────────────────────────────────────── */
+  .cmd-toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .cmd-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .cmd-group label {
+    color: var(--dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 50px;
+  }
+  .cmd-input {
+    width: 52px;
+    padding: 2px 5px;
+    font-size: 11px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--font);
+  }
+  .cmd-input-wide {
+    width: 160px;
+    padding: 2px 5px;
+    font-size: 11px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--font);
+  }
+  .cmd-btn {
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: var(--font);
+  }
+  .btn-verify {
+    background: #1b3d1e;
+    color: var(--green);
+    border: 1px solid var(--green);
+  }
+  .btn-verify:hover { background: #2a5a2a; }
+  .btn-describe {
+    background: #1e1433;
+    color: #ce93d8;
+    border: 1px solid #9c27b0;
+  }
+  .btn-describe:hover { background: #2e1f4a; }
+  .btn-tools {
+    background: #0d2233;
+    color: var(--blue);
+    border: 1px solid var(--blue);
+  }
+  .btn-tools:hover { background: #1a3a55; }
+  .btn-set {
+    background: #2a2200;
+    color: var(--yellow);
+    border: 1px solid var(--yellow);
+  }
+  .btn-set:hover { background: #3d3300; }
+  .cmd-feedback {
+    font-size: 10px;
+    color: var(--green);
+    margin-left: 4px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .cmd-feedback.show { opacity: 1; }
+
   /* ── Error toast ─────────────────────────────────────────── */
   #toast {
     position: fixed;
@@ -305,6 +390,36 @@
     <button id="btn-auto" onclick="runAuto()" title="Run N steps automatically">⏩ Auto</button>
   </div>
 </header>
+
+<div class="cmd-toolbar">
+  <div class="cmd-group">
+    <label>Verify</label>
+    <input id="cmd-verify-st" class="cmd-input" placeholder="A3" title="Subtask name">
+    <input id="cmd-verify-note" class="cmd-input-wide" placeholder="optional note" title="Review note">
+    <button class="cmd-btn btn-verify" onclick="cmdVerify()">✓</button>
+    <span id="fb-verify" class="cmd-feedback"></span>
+  </div>
+  <div class="cmd-group">
+    <label>Describe</label>
+    <input id="cmd-desc-st" class="cmd-input" placeholder="A3" title="Subtask name">
+    <input id="cmd-desc-text" class="cmd-input-wide" placeholder="new prompt text" title="Claude prompt">
+    <button class="cmd-btn btn-describe" onclick="cmdDescribe()">✎</button>
+    <span id="fb-desc" class="cmd-feedback"></span>
+  </div>
+  <div class="cmd-group">
+    <label>Tools</label>
+    <input id="cmd-tools-st" class="cmd-input" placeholder="A3" title="Subtask name">
+    <input id="cmd-tools-list" class="cmd-input-wide" placeholder="Read,Glob,Grep" title="Tool list or 'none'">
+    <button class="cmd-btn btn-tools" onclick="cmdTools()">⚙</button>
+    <span id="fb-tools" class="cmd-feedback"></span>
+  </div>
+  <div class="cmd-group">
+    <label>Set</label>
+    <input id="cmd-set-key" class="cmd-input-wide" placeholder="REVIEW_MODE=on" title="KEY=VALUE">
+    <button class="cmd-btn btn-set" onclick="cmdSet()">⏎</button>
+    <span id="fb-set" class="cmd-feedback"></span>
+  </div>
+</div>
 
 <div class="layout">
   <div class="tasks-panel">
@@ -623,6 +738,67 @@
       setTimeout(() => { btn.textContent = "▶ Run Step"; btn.disabled = false; }, 1500);
     }
   }
+
+  /* ── Command toolbar actions ─────────────────────────────── */
+  function _flash(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("show"), 2500);
+  }
+
+  async function _postCmd(url, body, fbId) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      _flash(fbId, d.ok ? "✓" : "✗ " + (d.reason || "error"));
+      if (d.ok) setTimeout(tick, 600);
+    } catch (e) {
+      _flash(fbId, "✗ Error");
+    }
+  }
+
+  window.cmdVerify = function () {
+    const st   = document.getElementById("cmd-verify-st").value.trim();
+    const note = document.getElementById("cmd-verify-note").value.trim() || "Dashboard verify";
+    if (!st) { _flash("fb-verify", "Enter subtask"); return; }
+    _postCmd("/verify", {subtask: st, note: note}, "fb-verify");
+    document.getElementById("cmd-verify-st").value = "";
+    document.getElementById("cmd-verify-note").value = "";
+  };
+
+  window.cmdDescribe = function () {
+    const st   = document.getElementById("cmd-desc-st").value.trim();
+    const desc = document.getElementById("cmd-desc-text").value.trim();
+    if (!st || !desc) { _flash("fb-desc", "Enter subtask + prompt"); return; }
+    _postCmd("/describe", {subtask: st, desc: desc}, "fb-desc");
+    document.getElementById("cmd-desc-st").value = "";
+    document.getElementById("cmd-desc-text").value = "";
+  };
+
+  window.cmdTools = function () {
+    const st    = document.getElementById("cmd-tools-st").value.trim();
+    const tools = document.getElementById("cmd-tools-list").value.trim();
+    if (!st || !tools) { _flash("fb-tools", "Enter subtask + tools"); return; }
+    _postCmd("/tools", {subtask: st, tools: tools}, "fb-tools");
+    document.getElementById("cmd-tools-st").value = "";
+    document.getElementById("cmd-tools-list").value = "";
+  };
+
+  window.cmdSet = function () {
+    const raw = document.getElementById("cmd-set-key").value.trim();
+    if (!raw || !raw.includes("=")) { _flash("fb-set", "Format: KEY=VALUE"); return; }
+    const [key, ...rest] = raw.split("=");
+    const value = rest.join("=").trim();
+    if (!key.trim() || !value) { _flash("fb-set", "Format: KEY=VALUE"); return; }
+    _postCmd("/set", {key: key.trim(), value: value}, "fb-set");
+    document.getElementById("cmd-set-key").value = "";
+  };
 
   tick();
   setInterval(tick, POLL_MS);

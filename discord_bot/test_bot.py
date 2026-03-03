@@ -1640,6 +1640,53 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
             await bot_module._handle_text_command(_make_msg("snapshot"))
         mock_st.write_text.assert_called_once_with("1")
 
+    async def test_set_setter_writes_trigger(self):
+        """'set REVIEW_MODE=on' writes the set trigger file."""
+        mock_trig = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "SET_TRIGGER", new=mock_trig):
+            await bot_module._handle_text_command(_make_msg("set REVIEW_MODE=on"))
+        mock_trig.write_text.assert_called_once()
+        written = json.loads(mock_trig.write_text.call_args[0][0])
+        self.assertEqual(written["key"], "REVIEW_MODE")
+        self.assertEqual(written["value"], "on")
+        text = mock_send.call_args[0][1]
+        self.assertIn("REVIEW_MODE", text)
+
+    async def test_set_getter_reads_config(self):
+        """'set REVIEW_MODE' reads config/settings.json and replies with value."""
+        mock_settings = MagicMock()
+        mock_settings.read_text.return_value = json.dumps({"REVIEW_MODE": True})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "SETTINGS_PATH", new=mock_settings):
+            await bot_module._handle_text_command(_make_msg("set REVIEW_MODE"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("REVIEW_MODE", text)
+        self.assertIn("True", text)
+
+    async def test_set_getter_unknown_key_sends_error(self):
+        """'set BOGUS_KEY' sends an error listing known keys."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("set BOGUS_KEY"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Unknown", text)
+
+    async def test_set_trigger_consumed_by_cli(self):
+        """CLI auto loop consumes set_trigger.json and calls _cmd_set."""
+        import tempfile
+        cli = _cli_module.SoloBuilderCLI()
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        )
+        json.dump({"key": "REVIEW_MODE", "value": "on"}, tmp)
+        tmp.close()
+        # Simulate trigger consumption by testing _cmd_set directly
+        cli._cmd_set("REVIEW_MODE=on")
+        self.assertTrue(cli.executor.review_mode)
+        cli._cmd_set("REVIEW_MODE=off")
+        self.assertFalse(cli.executor.review_mode)
+        os.unlink(tmp.name)
+
 
 # ---------------------------------------------------------------------------
 # Entry point

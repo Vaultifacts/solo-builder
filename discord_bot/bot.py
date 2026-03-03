@@ -58,7 +58,9 @@ DESCRIBE_TRIGGER        = _ROOT / "state" / "describe_trigger.json"
 TOOLS_TRIGGER           = _ROOT / "state" / "tools_trigger.json"
 RESET_TRIGGER           = _ROOT / "state" / "reset_trigger"
 SNAPSHOT_TRIGGER        = _ROOT / "state" / "snapshot_trigger"
+SET_TRIGGER             = _ROOT / "state" / "set_trigger.json"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
+SETTINGS_PATH  = _ROOT / "config" / "settings.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -224,6 +226,8 @@ _HELP_TEXT = (
     "`add_branch <task> <spec>`         — queue a new branch on an existing task\n"
     "`prioritize_branch <task> <branch>` — boost a branch to front of queue\n"
     "`reset confirm`                    — reset DAG to initial state (destructive!)\n"
+    "`set KEY=VALUE`                    — change a runtime setting\n"
+    "`set KEY`                          — show current value of a setting\n"
     "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
     "`help`                             — this message\n\n"
@@ -425,6 +429,47 @@ async def _handle_text_command(message: discord.Message) -> None:
             f"✅ Priority boost queued: Task {pb_task} / {pb_branch}\nCLI will boost it at the next step boundary."
         )
 
+    elif low.startswith("set "):
+        rest = text[4:].strip()
+        if "=" in rest:
+            # Setter: set KEY=VALUE → write trigger for CLI
+            k, v = rest.split("=", 1)
+            k, v = k.strip(), v.strip()
+            if not k:
+                await _send(message, "Usage: `set KEY=VALUE` or `set KEY`")
+                return
+            SET_TRIGGER.parent.mkdir(exist_ok=True)
+            SET_TRIGGER.write_text(json.dumps({"key": k, "value": v}), encoding="utf-8")
+            await _send(message, f"⚙️ `{k.upper()}={v}` queued — CLI will apply at the next step boundary.")
+        else:
+            # Getter: set KEY → read config/settings.json
+            bare = rest.upper()
+            _KEY_MAP = {
+                "STALL_THRESHOLD": "STALL_THRESHOLD",
+                "SNAPSHOT_INTERVAL": "SNAPSHOT_INTERVAL",
+                "VERBOSITY": "VERBOSITY",
+                "VERIFY_PROB": "EXECUTOR_VERIFY_PROBABILITY",
+                "AUTO_STEP_DELAY": "AUTO_STEP_DELAY",
+                "AUTO_SAVE_INTERVAL": "AUTO_SAVE_INTERVAL",
+                "CLAUDE_ALLOWED_TOOLS": "CLAUDE_ALLOWED_TOOLS",
+                "ANTHROPIC_MAX_TOKENS": "ANTHROPIC_MAX_TOKENS",
+                "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
+                "REVIEW_MODE": "REVIEW_MODE",
+                "WEBHOOK_URL": "WEBHOOK_URL",
+                "EXECUTOR_MAX_PER_STEP": "EXECUTOR_MAX_PER_STEP",
+                "DAG_UPDATE_INTERVAL": "DAG_UPDATE_INTERVAL",
+            }
+            cfg_key = _KEY_MAP.get(bare)
+            if not cfg_key:
+                await _send(message, f"❌ Unknown setting `{bare}`. Known: {', '.join(sorted(_KEY_MAP))}")
+                return
+            try:
+                cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+                val = cfg.get(cfg_key, "(not set)")
+                await _send(message, f"⚙️ `{bare}` = `{val}`")
+            except Exception:
+                await _send(message, "❌ Could not read `config/settings.json`.")
+
     elif low in ("help", "?"):
         await _send(message, _HELP_TEXT)
 
@@ -451,6 +496,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/add_task spec`                    — queue a new task\n"
         "`/add_branch task spec`             — queue a new branch on a task\n"
         "`/prioritize_branch task branch`    — boost a branch to front of queue\n"
+        "`/set key [value]`                  — change or query a runtime setting\n"
         "`/reset confirm:yes`                — reset DAG (destructive!)\n"
         "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
@@ -721,6 +767,53 @@ async def prioritize_branch_cmd(interaction: discord.Interaction, task: str, bra
     await interaction.response.send_message(
         f"✅ Priority boost queued: Task {task} / {branch}\nCLI will boost it at the next step boundary."
     )
+
+
+@bot.tree.command(name="set", description="Change or query a runtime setting")
+@app_commands.describe(
+    key="Setting name (e.g. REVIEW_MODE, ANTHROPIC_MAX_TOKENS)",
+    value="New value (omit to show current value)",
+)
+async def set_cmd(interaction: discord.Interaction, key: str, value: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    key = key.strip().upper()
+    if value:
+        SET_TRIGGER.parent.mkdir(exist_ok=True)
+        SET_TRIGGER.write_text(json.dumps({"key": key, "value": value.strip()}), encoding="utf-8")
+        await interaction.response.send_message(
+            f"⚙️ `{key}={value.strip()}` queued — CLI will apply at the next step boundary."
+        )
+    else:
+        _KEY_MAP = {
+            "STALL_THRESHOLD": "STALL_THRESHOLD",
+            "SNAPSHOT_INTERVAL": "SNAPSHOT_INTERVAL",
+            "VERBOSITY": "VERBOSITY",
+            "VERIFY_PROB": "EXECUTOR_VERIFY_PROBABILITY",
+            "AUTO_STEP_DELAY": "AUTO_STEP_DELAY",
+            "AUTO_SAVE_INTERVAL": "AUTO_SAVE_INTERVAL",
+            "CLAUDE_ALLOWED_TOOLS": "CLAUDE_ALLOWED_TOOLS",
+            "ANTHROPIC_MAX_TOKENS": "ANTHROPIC_MAX_TOKENS",
+            "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
+            "REVIEW_MODE": "REVIEW_MODE",
+            "WEBHOOK_URL": "WEBHOOK_URL",
+            "EXECUTOR_MAX_PER_STEP": "EXECUTOR_MAX_PER_STEP",
+            "DAG_UPDATE_INTERVAL": "DAG_UPDATE_INTERVAL",
+        }
+        cfg_key = _KEY_MAP.get(key)
+        if not cfg_key:
+            await interaction.response.send_message(
+                f"❌ Unknown setting `{key}`. Known: {', '.join(sorted(_KEY_MAP))}",
+                ephemeral=True,
+            )
+            return
+        try:
+            cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            val = cfg.get(cfg_key, "(not set)")
+            await interaction.response.send_message(f"⚙️ `{key}` = `{val}`")
+        except Exception:
+            await interaction.response.send_message("❌ Could not read `config/settings.json`.", ephemeral=True)
 
 
 # ---------------------------------------------------------------------------

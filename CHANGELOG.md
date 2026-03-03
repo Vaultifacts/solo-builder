@@ -5,6 +5,134 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.25] — 2026-03-03
+
+### Added
+- **`set` bot command** — `set KEY=VALUE` (setter via trigger file) and `set KEY`
+  (getter, reads `config/settings.json` directly) exposed via both plain-text and
+  `/set` slash command; 13 known keys with descriptive error for unknowns
+- **Dashboard command toolbar** — inline forms for Verify, Describe, Tools, and Set
+  added below the header; each POSTs to a new Flask endpoint that writes the
+  corresponding trigger file for CLI consumption
+- **Flask API endpoints** — `POST /verify`, `POST /describe`, `POST /tools`,
+  `POST /set` for dashboard→CLI trigger-file IPC
+- **`set_trigger.json` IPC** — CLI auto loop consumes `state/set_trigger.json`
+  and calls `_cmd_set(KEY=VALUE)`; cleared at startup
+
+### Changed
+- **CHANGELOG.md** — extended from v2.1.18 to v2.1.25; covers full v2.1.19–v2.1.25 history
+- **Dashboard layout** — `calc(100vh - 60px)` → `calc(100vh - 100px)` to accommodate toolbar
+- **CORS** — `Access-Control-Allow-Headers: Content-Type` added for POST JSON bodies
+- **Discord bot** — 16 commands total (15 slash + plain-text, including `/set`)
+- **README** — version badge v2.1.25; bot commands table adds `set`; dashboard
+  features row updated; CI test count updated
+
+---
+
+## [v2.1.24] — 2026-03-03
+
+### Added
+- **`tools` bot command** — `tools <ST> <list>` + `/tools` slash; writes
+  `tools_trigger.json` for CLI consumption
+- **`reset` bot command** — safety-gated: bare `reset` warns, `reset confirm`
+  writes `reset_trigger`; `/reset` requires `confirm:yes` parameter
+- **`snapshot` bot command** — writes `snapshot_trigger`; attaches latest PDF
+  from `snapshots/` if available
+- **14 Discord commands** — full CLI parity achieved (status, run, auto, stop,
+  verify, output, describe, tools, add_task, add_branch, prioritize_branch,
+  reset, snapshot, export + help)
+
+### Changed
+- **CI smoke test** — bot test count label 136 → 141
+- **README** — version badge v2.1.24; features row "14 commands"; CI table updated
+- 141 tests total (+5)
+
+---
+
+## [v2.1.23] — 2026-03-03
+
+### Added
+- **`_persist_setting(cfg_key, value)`** — silently writes config changes back to
+  `config/settings.json`; called after every successful `set` command
+- **Per-branch status bars** in `_format_status` — bot status output includes
+  6-char branch bars with status symbols (✓/▶/⏸/·) below each task row
+- **`describe` bot command** — `describe <ST> <prompt>` + `/describe` slash;
+  writes `describe_trigger.json` for CLI consumption
+
+### Changed
+- **CI smoke test** — bot test count label 131 → 136
+- 136 tests total (+5)
+
+---
+
+## [v2.1.22] — 2026-03-03
+
+### Added
+- **`set KEY` getter** — bare `set KEY` (no `=`) prints the current value from
+  an inline `_current` dict mapping all 12 settable keys; unknown keys print usage
+- **`output` bot command** — `output <ST>` + `/output` slash; reads state JSON
+  directly via `_find_subtask_output()` helper (no trigger needed)
+- **`prioritize_branch` bot command** — `prioritize_branch <task> <branch>` +
+  `/prioritize_branch` slash; writes `prioritize_branch_trigger.json`
+- **Actual branch boosting** — `_cmd_prioritize_branch` sets
+  `last_update = step - 500` on Pending subtasks (high staleness → high Planner
+  risk score); forces priority cache refresh
+
+### Fixed
+- **SyntaxError in `_cmd_set`** — `name 'AUTO_STEP_DELAY' is used prior to
+  global declaration`; hoisted all `global` declarations to function top
+
+### Changed
+- **CI smoke test** — bot test count label 121 → 131
+- 131 tests total (+10)
+
+---
+
+## [v2.1.21] — 2026-03-03
+
+### Added
+- **`WEBHOOK_URL` validation** — `set WEBHOOK_URL=...` warns (yellow) if the
+  URL doesn't start with `http://` or `https://`; empty string clears silently
+- **CI `add_task` dep wiring test** — verifies `| depends: N` syntax, digit
+  normalisation, and spec stripping
+
+### Changed
+- **README** — synced with v2.1.21: bot commands table, features, CI table
+- 121 tests total
+
+---
+
+## [v2.1.20] — 2026-03-03
+
+### Added
+- **`add_branch` bot command** — `add_branch <task> <spec>` + `/add_branch` slash;
+  writes `add_branch_trigger.json`
+- **`add_task` dep wiring** — `add_task Foo | depends: N` syntax for explicit
+  dependency override; digit normalisation (`| depends: 0` → `Task 0`)
+- **CI `add_branch` inline spec test** — verifies `add_branch 0 <spec>` skips
+  `input()` and grows Task 0's branches
+
+### Changed
+- **CI smoke test** — 3 new test steps (add_task inline, add_task dep, add_branch inline)
+- 121 tests total
+
+---
+
+## [v2.1.19] — 2026-03-03
+
+### Added
+- **`add_branch` inline spec** — `add_branch 0 Write integration tests` skips the
+  interactive prompt; backward-compatible (bare `add_branch 0` still calls `input()`)
+- **`add_task` bot command** — `add_task <spec>` + `/add_task` slash; writes
+  `add_task_trigger.json` for CLI consumption
+- **CI `add_task` inline spec test** — verifies inline spec skips `input()` and
+  grows the DAG
+
+### Changed
+- 112 tests total
+
+---
+
 ## [v2.1.18] — 2026-03-03
 
 ### Added

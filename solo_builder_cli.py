@@ -1522,6 +1522,7 @@ class SoloBuilderCLI:
         _ttrigger    = os.path.join(_HERE, "state", "tools_trigger.json")
         _rtrigger    = os.path.join(_HERE, "state", "reset_trigger")
         _snaptrigger = os.path.join(_HERE, "state", "snapshot_trigger")
+        _settrigger  = os.path.join(_HERE, "state", "set_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1620,6 +1621,18 @@ class SoloBuilderCLI:
                             t_tools = tdata.get("tools", "").strip()
                             if t_st and t_tools:
                                 self._cmd_tools(f"{t_st} {t_tools}")
+                        except Exception:
+                            pass
+                    if os.path.exists(_settrigger):
+                        try:
+                            sdata = json.loads(
+                                open(_settrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_settrigger)
+                            s_key = sdata.get("key", "").strip()
+                            s_val = sdata.get("value", "").strip()
+                            if s_key and s_val:
+                                self._cmd_set(f"{s_key}={s_val}")
                         except Exception:
                             pass
                     if os.path.exists(_rtrigger):
@@ -2768,10 +2781,11 @@ def main() -> None:
     _T_PATH     = os.path.join(_HERE, "state", "tools_trigger.json")
     _R_PATH     = os.path.join(_HERE, "state", "reset_trigger")
     _SNAP_PATH  = os.path.join(_HERE, "state", "snapshot_trigger")
+    _SET_PATH   = os.path.join(_HERE, "state", "set_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
     for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
-                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH):
+                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:
