@@ -40,22 +40,25 @@ jobs:
               for b in t["branches"].values()
               for s in b["subtasks"].values()
           )
-          print(f"Verified: {verified}/{total}")
+          task0_v = sum(
+              1 for b in state["dag"].get("Task 0", {}).get("branches", {}).values()
+              for s in b["subtasks"].values()
+              if s.get("status") == "Verified"
+          )
+          print(f"Verified: {verified}/{total}  (Task 0: {task0_v}/8)")
           assert verified >= 15, f"Expected >=15, got {verified}"
           print("PASS")
           EOF
 
       - name: Test stop_trigger cleared on startup
         run: |
-          # Plant a stale stop_trigger — CLI must clear it at startup, not abort
           mkdir -p state
           echo 1 > state/stop_trigger
           PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 1 --no-resume
           python - <<'EOF'
-          import os
+          import os, json
           assert not os.path.exists("state/stop_trigger"), \
               "stop_trigger was not consumed on startup"
-          import json
           with open("state/solo_builder_state.json") as f:
               state = json.load(f)
           verified = sum(
@@ -65,17 +68,16 @@ jobs:
               if s.get("status") == "Verified"
           )
           assert verified >= 1, "Expected pipeline to advance despite stale stop_trigger"
-          print(f"PASS: stop_trigger cleared on startup; {verified} subtasks verified")
+          print(f"PASS: stop_trigger cleared; {verified} subtasks verified")
           EOF
 
       - name: Test REVIEW_MODE produces Review-gated subtasks
         run: |
-          # Enable REVIEW_MODE
           python -c "
           import json
-          s = json.load(open('config/settings.json'))
-          s['REVIEW_MODE'] = True
-          json.dump(s, open('config/settings.json', 'w'), indent=4)
+          cfg = json.load(open('config/settings.json'))
+          cfg['REVIEW_MODE'] = True
+          json.dump(cfg, open('config/settings.json', 'w'), indent=4)
           "
           PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 2 --no-resume
           python - <<'EOF'
@@ -89,13 +91,12 @@ jobs:
               if s.get("status") == "Review"
           )
           print(f"Review-gated subtasks: {review}")
-          assert review >= 1, f"Expected >=1 Review subtask with REVIEW_MODE=on, got {review}"
+          assert review >= 1, f"Expected >=1 Review subtask with REVIEW_MODE=True, got {review}"
           print("PASS")
           EOF
-          # Restore REVIEW_MODE
           python -c "
           import json
-          s = json.load(open('config/settings.json'))
-          s['REVIEW_MODE'] = False
-          json.dump(s, open('config/settings.json', 'w'), indent=4)
+          cfg = json.load(open('config/settings.json'))
+          cfg['REVIEW_MODE'] = False
+          json.dump(cfg, open('config/settings.json', 'w'), indent=4)
           "

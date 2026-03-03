@@ -1295,6 +1295,7 @@ class SoloBuilderCLI:
         self.alerts: List[str] = []
         self._priority_cache: List = []
         self._last_priority_step: int = -(DAG_UPDATE_INTERVAL + 1)  # force first run
+        self._last_verified_tasks: int = 0   # triggers cache refresh when a task unblocks
 
         # Agents
         self.planner  = Planner(stall_threshold=STALL_THRESHOLD)
@@ -1321,10 +1322,16 @@ class SoloBuilderCLI:
         self.step += 1
         step_alerts: List[str] = []
 
-        # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps)
-        if (self.step - self._last_priority_step) >= DAG_UPDATE_INTERVAL:
-            self._priority_cache = self.planner.prioritize(self.dag, self.step)
+        # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps,
+        #    or immediately when a task flips to Verified — which unblocks dependents)
+        verified_tasks = sum(
+            1 for t in self.dag.values() if t.get("status") == "Verified"
+        )
+        if (self.step - self._last_priority_step) >= DAG_UPDATE_INTERVAL \
+                or verified_tasks > self._last_verified_tasks:
+            self._priority_cache     = self.planner.prioritize(self.dag, self.step)
             self._last_priority_step = self.step
+            self._last_verified_tasks = verified_tasks
         priority = self._priority_cache
 
         # 2. ShadowAgent: detect and resolve conflicts
