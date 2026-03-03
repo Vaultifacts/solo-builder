@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.2] — 2026-03-03
+
+### Fixed
+- **`on_ready` log buffering** — added `flush=True` to both `print()` calls in
+  `SoloBuilderBot.on_ready`; the ready message now appears immediately when the
+  bot runs redirected to a file instead of sitting in the stdout buffer
+- **Stale `run_trigger` cleared on startup** — symmetrical with the
+  `stop_trigger` cleanup added in v2.1.1; both stale triggers are now removed
+  together in a single loop at `main()` startup
+
+### Changed
+- `python-dotenv>=1.0` added to `requirements.txt` and `pyproject.toml`
+  `[project.dependencies]` — it was already a de-facto dependency for `.env`
+  loading in both the CLI and the Discord bot but was not declared
+
+---
+
 ## [v2.1.1] — 2026-03-03
 
 ### Added
