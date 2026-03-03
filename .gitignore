@@ -9,3 +9,4 @@ build/
 *.egg-info/
 agg.exe
 .env
+discord_bot/chat.log

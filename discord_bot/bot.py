@@ -123,9 +123,13 @@ async def _get_channel(channel_id: int) -> discord.abc.Messageable | None:
 # Bot setup
 # ---------------------------------------------------------------------------
 
+LOG_PATH = _ROOT / "discord_bot" / "chat.log"
+
+
 class SoloBuilderBot(discord.Client):
     def __init__(self) -> None:
         intents = discord.Intents.default()
+        intents.message_content = True
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
 
@@ -137,8 +141,100 @@ class SoloBuilderBot(discord.Client):
         print(f"Solo Builder Bot ready · logged in as {self.user}")
         print(f"Slash commands synced. Invite URL scope: bot+applications.commands")
 
+    async def on_message(self, message: discord.Message) -> None:
+        if CHANNEL_ID and message.channel.id != CHANNEL_ID:
+            return
+        if message.author == self.user:
+            return
+
+        # Log to chat.log
+        line = (
+            f"[{message.created_at.strftime('%Y-%m-%d %H:%M:%S')} UTC] "
+            f"#{message.channel} {message.author}: {message.content}\n"
+        )
+        LOG_PATH.parent.mkdir(exist_ok=True)
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+
+        # Natural language command parsing (no slash needed)
+        await _handle_text_command(message)
+
 
 bot = SoloBuilderBot()
+
+
+# ---------------------------------------------------------------------------
+# Natural language command handler
+# ---------------------------------------------------------------------------
+
+_HELP_TEXT = (
+    "**Solo Builder — plain-text commands**\n"
+    "`status`                  — DAG progress summary\n"
+    "`run`                     — trigger one step\n"
+    "`auto [n]`                — run N steps (default: until complete)\n"
+    "`verify <subtask> [note]` — approve a Review-gated subtask\n"
+    "`export`                  — download all Claude outputs\n"
+    "`help`                    — this message\n\n"
+    "*Slash commands (`/status`, `/run`, …) work too.*"
+)
+
+
+async def _handle_text_command(message: discord.Message) -> None:
+    text = message.content.strip()
+    low  = text.lower()
+
+    if low == "status":
+        await message.channel.send(_format_status(_load_state()))
+
+    elif low == "run":
+        state = _load_state()
+        if not _has_work(state.get("dag", {})):
+            await message.channel.send("✅ Pipeline already complete.")
+        else:
+            TRIGGER_PATH.parent.mkdir(exist_ok=True)
+            TRIGGER_PATH.write_text("1")
+            await message.channel.send(
+                f"▶ Step triggered (step {state.get('step', 0)} → next)"
+            )
+
+    elif low.startswith("auto"):
+        rest = text[4:].strip()
+        n: Optional[int] = None
+        if rest.isdigit():
+            n = int(rest)
+        label = f"{n} steps" if n is not None else "until complete"
+        asyncio.create_task(_run_auto(message.channel.id, n))
+        await message.channel.send(f"▶ Auto-run started: {label}")
+
+    elif low.startswith("verify"):
+        rest = text[6:].strip()
+        if not rest:
+            await message.channel.send("Usage: `verify <subtask> [note]`")
+            return
+        parts  = rest.split(" ", 1)
+        subtask = parts[0].upper()
+        note    = parts[1].strip() if len(parts) > 1 else "Discord verify"
+        VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
+        VERIFY_TRIGGER.write_text(
+            json.dumps({"subtask": subtask, "note": note}), encoding="utf-8"
+        )
+        await message.channel.send(
+            f"⏳ Verify queued: `{subtask}` — *{note}*\n"
+            f"CLI will process it at the next step boundary."
+        )
+
+    elif low == "export":
+        if not OUTPUTS_PATH.exists():
+            await message.channel.send("No export file yet. Run `export` in the CLI first.")
+        else:
+            size_kb = OUTPUTS_PATH.stat().st_size // 1024
+            await message.channel.send(
+                f"Solo Builder outputs · {size_kb} KB",
+                file=discord.File(str(OUTPUTS_PATH), filename="solo_builder_outputs.md"),
+            )
+
+    elif low in ("help", "?"):
+        await message.channel.send(_HELP_TEXT)
 
 
 # ---------------------------------------------------------------------------
