@@ -50,6 +50,7 @@ STATE_PATH     = _ROOT / "state" / "solo_builder_state.json"
 STEP_PATH      = _ROOT / "state" / "step.txt"
 TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
 VERIFY_TRIGGER = _ROOT / "state" / "verify_trigger.json"
+STOP_TRIGGER   = _ROOT / "state" / "stop_trigger"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -231,9 +232,9 @@ async def _handle_text_command(message: discord.Message) -> None:
     elif low == "stop":
         if _auto_running():
             _auto_task.cancel()
-            await _send(message, "⏹ Auto-run cancelled.")
-        else:
-            await _send(message, "No auto-run in progress.")
+        STOP_TRIGGER.parent.mkdir(exist_ok=True)
+        STOP_TRIGGER.write_text("1")
+        await _send(message, "⏹ Stop signal sent — CLI will halt after the current step.")
 
     elif low.startswith("verify"):
         rest = text[6:].strip()
@@ -363,9 +364,11 @@ async def stop_cmd(interaction: discord.Interaction) -> None:
         return
     if _auto_running():
         _auto_task.cancel()
-        await interaction.response.send_message("⏹ Auto-run cancelled.")
-    else:
-        await interaction.response.send_message("No auto-run in progress.", ephemeral=True)
+    STOP_TRIGGER.parent.mkdir(exist_ok=True)
+    STOP_TRIGGER.write_text("1")
+    await interaction.response.send_message(
+        "⏹ Stop signal sent — CLI will halt after the current step."
+    )
 
 
 @bot.tree.command(name="export", description="Download all Claude outputs as Markdown")

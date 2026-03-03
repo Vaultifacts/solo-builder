@@ -83,7 +83,7 @@ Both slash commands and plain-text work (no `/` prefix needed for plain-text):
 | `status` / `/status` | DAG progress summary with per-task bar charts |
 | `run` / `/run` | Trigger one step (same as the dashboard Run Step button) |
 | `auto [n]` / `/auto [n]` | Run N steps automatically; posts a per-step ticker after each step |
-| `stop` / `/stop` | Cancel an in-progress auto run |
+| `stop` / `/stop` | Cancel bot auto run + write `state/stop_trigger` so the CLI halts after the current step |
 | `verify <ST> [note]` / `/verify` | Approve a Review-gated subtask from Discord |
 | `export` / `/export` | Download `solo_builder_outputs.md` as a file attachment |
 | `help` / `/help` | Command list |

@@ -1502,7 +1502,8 @@ class SoloBuilderCLI:
         print(f"  {CYAN}Auto-run: {label}  │  delay={AUTO_STEP_DELAY}s  │  Ctrl+C to pause{RESET}")
         time.sleep(0.6)
 
-        _trigger = os.path.join(_HERE, "state", "run_trigger")
+        _trigger  = os.path.join(_HERE, "state", "run_trigger")
+        _stoptrig = os.path.join(_HERE, "state", "stop_trigger")
         try:
             while True:
                 self.run_step()
@@ -1520,9 +1521,17 @@ class SoloBuilderCLI:
                 # Honour external triggers (dashboard Run Step, Discord/Telegram verify)
                 # NOTE: check verify_trigger BEFORE breaking on run_trigger so that
                 # external verify requests aren't skipped when auto-mode is running.
-                _waited   = 0.0
+                _waited  = 0.0
+                _stopped = False
                 _vtrigger = os.path.join(_HERE, "state", "verify_trigger.json")
                 while _waited < AUTO_STEP_DELAY:
+                    if os.path.exists(_stoptrig):
+                        try:
+                            os.remove(_stoptrig)
+                        except OSError:
+                            pass
+                        _stopped = True
+                        break
                     if os.path.exists(_vtrigger):
                         try:
                             vdata = json.loads(
@@ -1543,6 +1552,15 @@ class SoloBuilderCLI:
                         break
                     time.sleep(0.05)
                     _waited += 0.05
+
+                if _stopped:
+                    print(f"\n  {YELLOW}Auto-run stopped remotely at step {self.step}.{RESET}")
+                    time.sleep(0.5)
+                    self.display.render(
+                        self.dag, self.memory_store, self.step,
+                        self.alerts, self.meta.forecast(self.dag),
+                    )
+                    break
 
         except KeyboardInterrupt:
             print(f"\n  {YELLOW}Auto-run paused at step {self.step}.{RESET}")
