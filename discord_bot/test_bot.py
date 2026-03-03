@@ -1022,6 +1022,131 @@ class TestStatusCommand(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestDependsUndepends
+# ---------------------------------------------------------------------------
+
+class TestDependsUndepends(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_depends and _cmd_undepends."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self._sleep_patcher = patch("time.sleep")
+        self._sleep_patcher.start()
+
+    def tearDown(self):
+        self._sleep_patcher.stop()
+
+    def _run(self, method, args: str) -> str:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            method(args)
+        return buf.getvalue()
+
+    def test_depends_no_args_prints_graph(self):
+        """No args prints the dependency graph (contains task names)."""
+        out = self._run(self.cli._cmd_depends, "")
+        self.assertIn("Task 0", out)
+        self.assertIn("Task 6", out)
+
+    def test_depends_adds_new_dependency(self):
+        """Digit form '0 6' adds Task 6 to Task 0's depends_on list."""
+        self._run(self.cli._cmd_depends, "0 6")
+        deps = self.cli.dag["Task 0"].get("depends_on", [])
+        self.assertIn("Task 6", deps)
+
+    def test_depends_digit_args_normalise_to_task_names(self):
+        """'1 3' normalises to 'Task 1' → 'Task 3'; success message printed."""
+        out = self._run(self.cli._cmd_depends, "1 3")
+        self.assertIn("now depends on", out)
+        deps = self.cli.dag["Task 1"].get("depends_on", [])
+        self.assertIn("Task 3", deps)
+
+    def test_depends_self_dependency_rejected(self):
+        """A task cannot depend on itself — error printed, no dep added."""
+        out = self._run(self.cli._cmd_depends, "0 0")
+        self.assertIn("cannot depend on itself", out)
+        deps = self.cli.dag["Task 0"].get("depends_on", [])
+        self.assertNotIn("Task 0", deps)
+
+    def test_depends_unknown_task_rejected(self):
+        """Unknown task number prints 'not found' and does not modify DAG."""
+        out = self._run(self.cli._cmd_depends, "99 0")
+        self.assertIn("not found", out)
+
+    def test_depends_duplicate_is_noop(self):
+        """Adding the same dependency twice leaves list unchanged and prints warning."""
+        self._run(self.cli._cmd_depends, "0 6")
+        out = self._run(self.cli._cmd_depends, "0 6")
+        self.assertIn("already depends on", out)
+        deps = self.cli.dag["Task 0"].get("depends_on", [])
+        self.assertEqual(deps.count("Task 6"), 1)
+
+    def test_undepends_removes_existing_dep(self):
+        """undepends removes a dependency that was added via depends."""
+        self._run(self.cli._cmd_depends, "0 6")
+        self.assertIn("Task 6", self.cli.dag["Task 0"].get("depends_on", []))
+        self._run(self.cli._cmd_undepends, "0 6")
+        self.assertNotIn("Task 6", self.cli.dag["Task 0"].get("depends_on", []))
+
+    def test_undepends_no_args_prints_usage(self):
+        """Missing args prints usage line."""
+        out = self._run(self.cli._cmd_undepends, "")
+        self.assertIn("Usage", out)
+
+    def test_undepends_unknown_task_prints_error(self):
+        """Unknown target task prints 'not found'."""
+        out = self._run(self.cli._cmd_undepends, "Task 99 Task 0")
+        self.assertIn("not found", out)
+
+    def test_undepends_dep_not_present_prints_error(self):
+        """Removing a dep that does not exist prints 'does not depend on'."""
+        out = self._run(self.cli._cmd_undepends, "0 6")
+        self.assertIn("does not depend on", out)
+
+
+# ---------------------------------------------------------------------------
+# TestOutputCommand
+# ---------------------------------------------------------------------------
+
+class TestOutputCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_output."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+
+    def _run(self, args: str) -> str:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_output(args)
+        return buf.getvalue()
+
+    def test_output_with_output_prints_content(self):
+        """Subtask with recorded output prints that text."""
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = \
+            "Auth module implemented."
+        out = self._run("A1")
+        self.assertIn("Auth module implemented.", out)
+
+    def test_output_no_output_prints_placeholder(self):
+        """Subtask with no output prints 'No output for ... yet'."""
+        out = self._run("A1")
+        self.assertIn("No output", out)
+        self.assertIn("A1", out)
+
+    def test_output_unknown_subtask_prints_error(self):
+        """Unknown subtask name prints 'not found'."""
+        out = self._run("ZZZ")
+        self.assertIn("not found", out)
+
+    def test_output_empty_arg_prints_usage(self):
+        """Empty argument string prints usage line."""
+        out = self._run("")
+        self.assertIn("Usage", out)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.16] — 2026-03-03
+
+### Added
+- **`TestDependsUndepends`** — 10 tests: no-args graph print; digit normalisation (`"0 6"` →
+  `"Task 0"/"Task 6"`); success message; self-dep rejected; unknown task rejected; duplicate
+  is no-op; `_cmd_undepends` removes dep; missing args prints usage; unknown target error;
+  dep not present error
+- **`TestOutputCommand`** — 4 tests: subtask with output prints content; no output → placeholder;
+  unknown subtask → "not found"; empty arg → usage. Total: **98 tests**, ~7.5 s
+
+### Changed
+- **README version badge** — `2.1.14` → `2.1.16`
+- **README CI table** — test count 84 → 98; added `_cmd_depends`, `_cmd_undepends`, `_cmd_output`
+- **`smoke-test.yml`** — step label → "(98 tests)"
+
+---
+
 ## [v2.1.15] — 2026-03-02
 
 ### Added
