@@ -1498,16 +1498,12 @@ class SoloBuilderCLI:
                 if limit is not None and ran >= limit:
                     break
 
-                # Honour external triggers (dashboard Run Step, Telegram verify)
+                # Honour external triggers (dashboard Run Step, Discord/Telegram verify)
+                # NOTE: check verify_trigger BEFORE breaking on run_trigger so that
+                # external verify requests aren't skipped when auto-mode is running.
                 _waited   = 0.0
                 _vtrigger = os.path.join(_HERE, "state", "verify_trigger.json")
                 while _waited < AUTO_STEP_DELAY:
-                    if os.path.exists(_trigger):
-                        try:
-                            os.remove(_trigger)
-                        except OSError:
-                            pass
-                        break
                     if os.path.exists(_vtrigger):
                         try:
                             vdata = json.loads(
@@ -1516,10 +1512,16 @@ class SoloBuilderCLI:
                             os.remove(_vtrigger)
                             for e in (vdata if isinstance(vdata, list) else [vdata]):
                                 self._cmd_verify(
-                                    f"{e.get('subtask', '')} {e.get('note', 'Telegram verify')}"
+                                    f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
                                 )
                         except Exception:
                             pass
+                    if os.path.exists(_trigger):
+                        try:
+                            os.remove(_trigger)
+                        except OSError:
+                            pass
+                        break
                     time.sleep(0.05)
                     _waited += 0.05
 

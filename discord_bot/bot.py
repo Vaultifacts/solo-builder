@@ -405,7 +405,20 @@ async def _run_auto(channel_id: int, n: Optional[int]) -> None:
 
     for _ in range(limit):
         if not _hb_has_work():
-            state = _load_state()
+            # Wait up to 6 s for the auto-save to flush the final JSON state
+            for _ in range(60):
+                await asyncio.sleep(0.1)
+                state = _load_state()
+                stats = state.get("dag", {})
+                if stats and all(
+                    s.get("status") == "Verified"
+                    for t in stats.values()
+                    for b in t["branches"].values()
+                    for s in b["subtasks"].values()
+                ):
+                    break
+            else:
+                state = _load_state()
             if ch:
                 msg = f"✅ Pipeline complete after {completed} steps.\n{_format_status(state)}"
                 await ch.send(msg)
