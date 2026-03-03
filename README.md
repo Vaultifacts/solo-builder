@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1.23-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.24-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 
@@ -22,7 +22,7 @@
 | **AnthropicRunner** | Subtasks without tools call `claude-sonnet-4-6` directly via SDK — no subprocess needed |
 | **Claude subprocess** | Fallback runner via `claude -p` headless CLI for tool-use when API key is absent |
 | **REVIEW_MODE** | Subtasks pause at magenta `Review` state; advance only via `verify` — full human-in-the-loop |
-| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/stop`, `/verify subtask`, `/output subtask`, `/add_task spec`, `/add_branch task spec`, `/prioritize_branch task branch`, `/export` — control the pipeline from Discord; also accepts plain-text commands without `/` prefix |
+| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/stop`, `/verify`, `/output`, `/describe`, `/tools`, `/add_task`, `/add_branch`, `/prioritize_branch`, `/reset`, `/snapshot`, `/export` — 14 commands; control the full pipeline from Discord; plain-text works too (no `/` needed) |
 | **Live web dashboard** | Dark-theme SPA at `http://localhost:5000` polls every 2 s; Run Step + Auto buttons |
 | **Self-healing** | SelfHealer detects stalled subtasks and resets them to Pending automatically |
 | **Shadow state** | ShadowAgent tracks expected vs actual status, resolves conflicts each step |
@@ -93,9 +93,12 @@ Both slash commands and plain-text work (no `/` prefix needed for plain-text):
 | `verify <ST> [note]` / `/verify` | Approve a Review-gated subtask from Discord |
 | `output <ST>` / `/output` | Show Claude output for a specific subtask |
 | `describe <ST> <prompt>` / `/describe` | Assign a custom Claude prompt to a subtask; queued at next step boundary |
+| `tools <ST> <tools>` / `/tools` | Set allowed tools for a subtask (e.g. `Read,Glob,Grep` or `none`) |
 | `add_task <spec>` / `/add_task` | Queue a new task; CLI adds it at the next step boundary |
 | `add_branch <task> <spec>` / `/add_branch` | Queue a new branch on an existing task |
 | `prioritize_branch <task> <branch>` / `/prioritize_branch` | Boost a branch's Pending subtasks to front of queue |
+| `reset confirm` / `/reset confirm:yes` | Reset DAG to initial state (destructive — requires confirmation) |
+| `snapshot` / `/snapshot` | Trigger a PDF timeline snapshot; attaches latest PDF if available |
 | `export` / `/export` | Download `solo_builder_outputs.md` as a file attachment |
 | `help` / `/help` | Command list |
 
@@ -261,7 +264,7 @@ The workflow at `.github/workflows/smoke-test.yml` runs on every push/PR to `mas
 | **15-step headless run** | `--auto 15 --no-resume` — asserts ≥ 18 subtasks Verified |
 | **Export command** | `--headless --export --no-resume --auto 2` — asserts `solo_builder_outputs.md` exists and is > 30 bytes |
 | **stop_trigger cleanup** | Plants a stale `state/stop_trigger` before startup; asserts it's consumed and pipeline advances |
-| **Bot unit tests** | 136 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`, `_handle_text_command`, `_run_auto`, `_fire_completion`, `_cmd_add_task`, `_cmd_add_branch`, `_cmd_verify`, `_cmd_describe`, `_cmd_tools`, `_cmd_set`, `_cmd_reset`, `_cmd_export`, `_cmd_status`, `_cmd_depends`, `_cmd_undepends`, `_cmd_output`, `save_state`, `load_state`, `_take_snapshot`, `_cmd_prioritize_branch`, `add_task` inline spec, `_find_subtask_output`, `output` bot command, `prioritize_branch` bot command |
+| **Bot unit tests** | 141 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`, `_handle_text_command`, `_run_auto`, `_fire_completion`, `_cmd_add_task`, `_cmd_add_branch`, `_cmd_verify`, `_cmd_describe`, `_cmd_tools`, `_cmd_set`, `_cmd_reset`, `_cmd_export`, `_cmd_status`, `_cmd_depends`, `_cmd_undepends`, `_cmd_output`, `save_state`, `load_state`, `_take_snapshot`, `_cmd_prioritize_branch`, `add_task` inline spec, `_find_subtask_output`, `output` bot command, `prioritize_branch` bot command |
 | **Profiler dry-run** | `profiler_harness.py --dry-run` runs 3 steps; asserts executor + planner patches fire without error |
 | **REVIEW_MODE gate** | Sets `REVIEW_MODE=True`, runs 2 steps, asserts ≥ 1 subtask in `Review` state |
 | **Webhook POST** | Starts a local `http.server`, calls `_fire_completion()` directly, asserts correct JSON payload received and no error log written |

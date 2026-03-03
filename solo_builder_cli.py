@@ -1519,6 +1519,9 @@ class SoloBuilderCLI:
         _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
         _pbtrigger   = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
         _dtrigger    = os.path.join(_HERE, "state", "describe_trigger.json")
+        _ttrigger    = os.path.join(_HERE, "state", "tools_trigger.json")
+        _rtrigger    = os.path.join(_HERE, "state", "reset_trigger")
+        _snaptrigger = os.path.join(_HERE, "state", "snapshot_trigger")
         try:
             while True:
                 self.run_step()
@@ -1607,6 +1610,30 @@ class SoloBuilderCLI:
                                 self._cmd_describe(f"{d_st} {d_desc}")
                         except Exception:
                             pass
+                    if os.path.exists(_ttrigger):
+                        try:
+                            tdata = json.loads(
+                                open(_ttrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_ttrigger)
+                            t_st    = tdata.get("subtask", "").strip().upper()
+                            t_tools = tdata.get("tools", "").strip()
+                            if t_st and t_tools:
+                                self._cmd_tools(f"{t_st} {t_tools}")
+                        except Exception:
+                            pass
+                    if os.path.exists(_rtrigger):
+                        try:
+                            os.remove(_rtrigger)
+                        except OSError:
+                            pass
+                        self._cmd_reset()
+                    if os.path.exists(_snaptrigger):
+                        try:
+                            os.remove(_snaptrigger)
+                        except OSError:
+                            pass
+                        self._take_snapshot(auto=False)
                     if os.path.exists(_trigger):
                         try:
                             os.remove(_trigger)
@@ -2738,9 +2765,13 @@ def main() -> None:
     _AB_PATH    = os.path.join(_HERE, "state", "add_branch_trigger.json")
     _PB_PATH    = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
     _D_PATH     = os.path.join(_HERE, "state", "describe_trigger.json")
+    _T_PATH     = os.path.join(_HERE, "state", "tools_trigger.json")
+    _R_PATH     = os.path.join(_HERE, "state", "reset_trigger")
+    _SNAP_PATH  = os.path.join(_HERE, "state", "snapshot_trigger")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
-    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH, _D_PATH):
+    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
+                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

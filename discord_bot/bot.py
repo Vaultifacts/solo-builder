@@ -55,6 +55,10 @@ ADD_TASK_TRIGGER        = _ROOT / "state" / "add_task_trigger.json"
 ADD_BRANCH_TRIGGER      = _ROOT / "state" / "add_branch_trigger.json"
 PRIORITY_BRANCH_TRIGGER = _ROOT / "state" / "prioritize_branch_trigger.json"
 DESCRIBE_TRIGGER        = _ROOT / "state" / "describe_trigger.json"
+TOOLS_TRIGGER           = _ROOT / "state" / "tools_trigger.json"
+RESET_TRIGGER           = _ROOT / "state" / "reset_trigger"
+SNAPSHOT_TRIGGER        = _ROOT / "state" / "snapshot_trigger"
+SNAPSHOTS_DIR           = _ROOT / "snapshots"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -215,9 +219,12 @@ _HELP_TEXT = (
     "`verify <subtask> [note]`          — approve a Review-gated subtask\n"
     "`output <subtask>`                 — show Claude output for a subtask\n"
     "`describe <subtask> <prompt>`      — set a custom Claude prompt for a subtask\n"
+    "`tools <subtask> <tool,list>`      — set allowed tools for a subtask\n"
     "`add_task <spec>`                  — queue a new task (added at next step)\n"
     "`add_branch <task> <spec>`         — queue a new branch on an existing task\n"
     "`prioritize_branch <task> <branch>` — boost a branch to front of queue\n"
+    "`reset confirm`                    — reset DAG to initial state (destructive!)\n"
+    "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
     "`help`                             — this message\n\n"
     "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
@@ -359,6 +366,49 @@ async def _handle_text_command(message: discord.Message) -> None:
             f"✅ Describe queued: `{st_target}` — *{desc[:80]}*\nCLI will apply it at the next step boundary."
         )
 
+    elif low.startswith("tools"):
+        rest = text[5:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `tools <subtask> <tool,list | none>` — e.g. `tools H1 Read,Glob,Grep`")
+            return
+        st_target, tool_val = parts[0].upper(), parts[1].strip()
+        TOOLS_TRIGGER.parent.mkdir(exist_ok=True)
+        TOOLS_TRIGGER.write_text(
+            json.dumps({"subtask": st_target, "tools": tool_val}), encoding="utf-8"
+        )
+        label = tool_val if tool_val.lower() != "none" else "(none — headless)"
+        await _send(
+            message,
+            f"✅ Tools queued: `{st_target}` → {label}\nCLI will apply at the next step boundary."
+        )
+
+    elif low == "reset confirm":
+        RESET_TRIGGER.parent.mkdir(exist_ok=True)
+        RESET_TRIGGER.write_text("1")
+        await _send(message, "⚠️ Reset queued — CLI will clear DAG and state at the next step boundary.")
+
+    elif low == "reset":
+        await _send(message, "⚠️ This will **destroy all progress**. Type `reset confirm` to proceed.")
+
+    elif low == "snapshot":
+        SNAPSHOT_TRIGGER.parent.mkdir(exist_ok=True)
+        SNAPSHOT_TRIGGER.write_text("1")
+        # Also send the latest existing PDF if available
+        latest = None
+        if SNAPSHOTS_DIR.is_dir():
+            pdfs = sorted(SNAPSHOTS_DIR.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if pdfs:
+                latest = pdfs[0]
+        if latest:
+            await _send(
+                message,
+                f"📸 Snapshot triggered. Latest existing PDF attached:",
+                file=discord.File(str(latest), filename=latest.name),
+            )
+        else:
+            await _send(message, "📸 Snapshot triggered — CLI will generate a PDF at the next step boundary.")
+
     elif low.startswith("prioritize_branch"):
         rest = text[17:].strip()
         parts = rest.split(None, 1)
@@ -397,9 +447,12 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/verify subtask [note]`            — approve a subtask (REVIEW_MODE)\n"
         "`/output subtask`                   — show Claude output for a subtask\n"
         "`/describe subtask prompt`          — set a custom Claude prompt for a subtask\n"
+        "`/tools subtask tools`              — set allowed tools for a subtask\n"
         "`/add_task spec`                    — queue a new task\n"
         "`/add_branch task spec`             — queue a new branch on a task\n"
         "`/prioritize_branch task branch`    — boost a branch to front of queue\n"
+        "`/reset confirm:yes`                — reset DAG (destructive!)\n"
+        "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
         "`/help`                             — this message"
     )
@@ -585,6 +638,69 @@ async def describe_cmd(interaction: discord.Interaction, subtask: str, prompt: s
     await interaction.response.send_message(
         f"✅ Describe queued: `{st_target}` — *{prompt[:80]}*\nCLI will apply it at the next step boundary."
     )
+
+
+@bot.tree.command(name="tools", description="Set allowed tools for a subtask")
+@app_commands.describe(subtask="Subtask name (e.g. H1)", tools="Comma-separated tools (e.g. Read,Glob,Grep) or 'none'")
+async def tools_cmd(interaction: discord.Interaction, subtask: str, tools: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st_target = subtask.strip().upper()
+    tool_val  = tools.strip()
+    if not st_target or not tool_val:
+        await interaction.response.send_message("Usage: `/tools <subtask> <tool,list>`", ephemeral=True)
+        return
+    TOOLS_TRIGGER.parent.mkdir(exist_ok=True)
+    TOOLS_TRIGGER.write_text(
+        json.dumps({"subtask": st_target, "tools": tool_val}), encoding="utf-8"
+    )
+    label = tool_val if tool_val.lower() != "none" else "(none — headless)"
+    await interaction.response.send_message(
+        f"✅ Tools queued: `{st_target}` → {label}\nCLI will apply at the next step boundary."
+    )
+
+
+@bot.tree.command(name="reset", description="Reset DAG to initial state (destructive!)")
+@app_commands.describe(confirm="Type 'yes' to confirm the reset")
+async def reset_cmd(interaction: discord.Interaction, confirm: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if confirm.strip().lower() not in ("yes", "confirm"):
+        await interaction.response.send_message(
+            "⚠️ This will **destroy all progress**. Use `/reset confirm:yes` to proceed.",
+            ephemeral=True,
+        )
+        return
+    RESET_TRIGGER.parent.mkdir(exist_ok=True)
+    RESET_TRIGGER.write_text("1")
+    await interaction.response.send_message(
+        "⚠️ Reset queued — CLI will clear DAG and state at the next step boundary."
+    )
+
+
+@bot.tree.command(name="snapshot", description="Trigger a PDF timeline snapshot")
+async def snapshot_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    SNAPSHOT_TRIGGER.parent.mkdir(exist_ok=True)
+    SNAPSHOT_TRIGGER.write_text("1")
+    latest = None
+    if SNAPSHOTS_DIR.is_dir():
+        pdfs = sorted(SNAPSHOTS_DIR.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if pdfs:
+            latest = pdfs[0]
+    if latest:
+        await interaction.response.send_message(
+            "📸 Snapshot triggered. Latest existing PDF attached:",
+            file=discord.File(str(latest), filename=latest.name),
+        )
+    else:
+        await interaction.response.send_message(
+            "📸 Snapshot triggered — CLI will generate a PDF at the next step boundary."
+        )
 
 
 @bot.tree.command(name="prioritize_branch", description="Boost a branch to the front of the execution queue")

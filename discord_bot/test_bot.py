@@ -1598,6 +1598,48 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         # BranchA branch row should appear in the code block
         self.assertIn("BranchA", result)
 
+    async def test_tools_queues_trigger(self):
+        """'tools H1 Read,Glob,Grep' writes the correct trigger file."""
+        mock_tt = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "TOOLS_TRIGGER", new=mock_tt):
+            await bot_module._handle_text_command(_make_msg("tools H1 Read,Glob,Grep"))
+        mock_tt.write_text.assert_called_once()
+        written = json.loads(mock_tt.write_text.call_args[0][0])
+        self.assertEqual(written["subtask"], "H1")
+        self.assertEqual(written["tools"], "Read,Glob,Grep")
+
+    async def test_tools_no_args_sends_usage(self):
+        """'tools' with no args sends a usage message."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("tools"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+    async def test_reset_bare_sends_warning(self):
+        """'reset' without 'confirm' sends a safety warning."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("reset"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("destroy", text.lower())
+
+    async def test_reset_confirm_writes_trigger(self):
+        """'reset confirm' writes the reset trigger file."""
+        mock_rt = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "RESET_TRIGGER", new=mock_rt):
+            await bot_module._handle_text_command(_make_msg("reset confirm"))
+        mock_rt.write_text.assert_called_once_with("1")
+
+    async def test_snapshot_writes_trigger(self):
+        """'snapshot' writes the snapshot trigger file."""
+        mock_st = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "SNAPSHOT_TRIGGER", new=mock_st), \
+             patch.object(bot_module, "SNAPSHOTS_DIR", new=MagicMock(is_dir=MagicMock(return_value=False))):
+            await bot_module._handle_text_command(_make_msg("snapshot"))
+        mock_st.write_text.assert_called_once_with("1")
+
 
 # ---------------------------------------------------------------------------
 # Entry point
