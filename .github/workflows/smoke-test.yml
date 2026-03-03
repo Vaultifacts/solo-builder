@@ -61,14 +61,16 @@ jobs:
               "stop_trigger was not consumed on startup"
           with open("state/solo_builder_state.json") as f:
               state = json.load(f)
-          verified = sum(
+          # After 1 step: Pending subtasks move to Running (dice-roll requires 2 steps).
+          # Check that at least one subtask is Running or Verified (pipeline advanced).
+          active = sum(
               1 for t in state["dag"].values()
               for b in t["branches"].values()
               for s in b["subtasks"].values()
-              if s.get("status") == "Verified"
+              if s.get("status") in ("Running", "Verified")
           )
-          assert verified >= 1, "Expected pipeline to advance despite stale stop_trigger"
-          print(f"PASS: stop_trigger cleared; {verified} subtasks verified")
+          assert active >= 1, "Expected subtasks to advance despite stale stop_trigger"
+          print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
       - name: Test REVIEW_MODE produces Review-gated subtasks
