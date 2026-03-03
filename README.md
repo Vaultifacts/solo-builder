@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 
@@ -22,7 +22,7 @@
 | **AnthropicRunner** | Subtasks without tools call `claude-sonnet-4-6` directly via SDK — no subprocess needed |
 | **Claude subprocess** | Fallback runner via `claude -p` headless CLI for tool-use when API key is absent |
 | **REVIEW_MODE** | Subtasks pause at magenta `Review` state; advance only via `verify` — full human-in-the-loop |
-| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/verify subtask`, `/export` — control the pipeline from Discord |
+| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/stop`, `/verify subtask`, `/export` — control the pipeline from Discord; also accepts plain-text commands without `/` prefix |
 | **Live web dashboard** | Dark-theme SPA at `http://localhost:5000` polls every 2 s; Run Step + Auto buttons |
 | **Self-healing** | SelfHealer detects stalled subtasks and resets them to Pending automatically |
 | **Shadow state** | ShadowAgent tracks expected vs actual status, resolves conflicts each step |
@@ -76,16 +76,19 @@ pip install "discord.py>=2.0"
 python discord_bot/bot.py
 ```
 
-| Bot Command | Description |
-|---|---|
-| `/status` | DAG progress summary with per-task bar charts |
-| `/run` | Trigger one step (same as the dashboard Run Step button) |
-| `/auto [n]` | Run N steps automatically; sends final status when done |
-| `/verify subtask [note]` | Approve a Review-gated subtask from Discord |
-| `/export` | Download `solo_builder_outputs.md` as a file attachment |
-| `/help` | Command list |
+Both slash commands and plain-text work (no `/` prefix needed for plain-text):
 
-The bot sends a 🎉 completion notification when all subtasks reach Verified.
+| Command | Description |
+|---|---|
+| `status` / `/status` | DAG progress summary with per-task bar charts |
+| `run` / `/run` | Trigger one step (same as the dashboard Run Step button) |
+| `auto [n]` / `/auto [n]` | Run N steps automatically; posts a per-step ticker after each step |
+| `stop` / `/stop` | Cancel an in-progress auto run |
+| `verify <ST> [note]` / `/verify` | Approve a Review-gated subtask from Discord |
+| `export` / `/export` | Download `solo_builder_outputs.md` as a file attachment |
+| `help` / `/help` | Command list |
+
+The bot sends a per-step progress ticker (`Step N — X✅ Y▶ Z⏸ W⏳ / 70`) during `auto` runs and a 🎉 completion notification when all subtasks reach Verified. All messages are logged to `discord_bot/chat.log`.
 
 ### Key commands
 
@@ -157,7 +160,8 @@ solo_builder/
 │   ├── app.py                   # Flask REST API (GET /status /tasks /journal /export, POST /run)
 │   └── dashboard.html           # Dark-theme SPA, live polling, Run Step + Auto + Export buttons
 ├── discord_bot/
-│   └── bot.py                   # Discord bot (/status /run /auto /verify /export)
+│   ├── bot.py                   # Discord bot (slash + plain-text commands, stop guard)
+│   └── chat.log                 # Two-way chat log (user messages + bot replies)
 ├── utils/
 │   └── helper_functions.py      # ANSI codes, bars, DAG stats, validators
 ├── config/
@@ -165,7 +169,12 @@ solo_builder/
 ├── solo_builder_live_multi_snapshot.py  # 4-page PDF via matplotlib
 ├── profiler_harness.py          # Standalone perf benchmark (patches async + sync paths)
 ├── solo_builder_outputs.md      # Exported Claude outputs (auto-generated)
-└── requirements.txt
+├── requirements.txt
+└── state/
+    ├── solo_builder_state.json  # DAG + step counter (auto-saved every 5 steps)
+    ├── step.txt                 # Heartbeat: step,verified,total,pending,running,review
+    ├── run_trigger              # Written by bot/dashboard to trigger one CLI step
+    └── verify_trigger.json      # Written by bot to queue a subtask verify
 ```
 
 ---
