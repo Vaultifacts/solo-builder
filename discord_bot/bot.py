@@ -126,6 +126,17 @@ async def _get_channel(channel_id: int) -> discord.abc.Messageable | None:
 LOG_PATH = _ROOT / "discord_bot" / "chat.log"
 
 
+def _log(channel: str, author: str, text: str) -> None:
+    from datetime import datetime, timezone
+    line = (
+        f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC] "
+        f"#{channel} {author}: {text}\n"
+    )
+    LOG_PATH.parent.mkdir(exist_ok=True)
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(line)
+
+
 class SoloBuilderBot(discord.Client):
     def __init__(self) -> None:
         intents = discord.Intents.default()
@@ -147,14 +158,7 @@ class SoloBuilderBot(discord.Client):
         if message.author == self.user:
             return
 
-        # Log to chat.log
-        line = (
-            f"[{message.created_at.strftime('%Y-%m-%d %H:%M:%S')} UTC] "
-            f"#{message.channel} {message.author}: {message.content}\n"
-        )
-        LOG_PATH.parent.mkdir(exist_ok=True)
-        with open(LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(line)
+        _log(str(message.channel), str(message.author), message.content)
 
         # Natural language command parsing (no slash needed)
         await _handle_text_command(message)
@@ -179,23 +183,28 @@ _HELP_TEXT = (
 )
 
 
+async def _send(message: discord.Message, text: str, **kwargs) -> None:
+    """Send a reply and log it to chat.log."""
+    await message.channel.send(text, **kwargs)
+    _log(str(message.channel), "BOT", text[:200])
+
+
 async def _handle_text_command(message: discord.Message) -> None:
     text = message.content.strip()
     low  = text.lower()
 
     if low == "status":
-        await message.channel.send(_format_status(_load_state()))
+        reply = _format_status(_load_state())
+        await _send(message, reply)
 
     elif low == "run":
         state = _load_state()
         if not _has_work(state.get("dag", {})):
-            await message.channel.send("✅ Pipeline already complete.")
+            await _send(message, "✅ Pipeline already complete.")
         else:
             TRIGGER_PATH.parent.mkdir(exist_ok=True)
             TRIGGER_PATH.write_text("1")
-            await message.channel.send(
-                f"▶ Step triggered (step {state.get('step', 0)} → next)"
-            )
+            await _send(message, f"▶ Step triggered (step {state.get('step', 0)} → next)")
 
     elif low.startswith("auto"):
         rest = text[4:].strip()
@@ -204,37 +213,39 @@ async def _handle_text_command(message: discord.Message) -> None:
             n = int(rest)
         label = f"{n} steps" if n is not None else "until complete"
         asyncio.create_task(_run_auto(message.channel.id, n))
-        await message.channel.send(f"▶ Auto-run started: {label}")
+        await _send(message, f"▶ Auto-run started: {label}")
 
     elif low.startswith("verify"):
         rest = text[6:].strip()
         if not rest:
-            await message.channel.send("Usage: `verify <subtask> [note]`")
+            await _send(message, "Usage: `verify <subtask> [note]`")
             return
-        parts  = rest.split(" ", 1)
+        parts   = rest.split(" ", 1)
         subtask = parts[0].upper()
         note    = parts[1].strip() if len(parts) > 1 else "Discord verify"
         VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
         VERIFY_TRIGGER.write_text(
             json.dumps({"subtask": subtask, "note": note}), encoding="utf-8"
         )
-        await message.channel.send(
+        await _send(
+            message,
             f"⏳ Verify queued: `{subtask}` — *{note}*\n"
             f"CLI will process it at the next step boundary."
         )
 
     elif low == "export":
         if not OUTPUTS_PATH.exists():
-            await message.channel.send("No export file yet. Run `export` in the CLI first.")
+            await _send(message, "No export file yet. Run `export` in the CLI first.")
         else:
             size_kb = OUTPUTS_PATH.stat().st_size // 1024
-            await message.channel.send(
+            await _send(
+                message,
                 f"Solo Builder outputs · {size_kb} KB",
                 file=discord.File(str(OUTPUTS_PATH), filename="solo_builder_outputs.md"),
             )
 
     elif low in ("help", "?"):
-        await message.channel.send(_HELP_TEXT)
+        await _send(message, _HELP_TEXT)
 
 
 # ---------------------------------------------------------------------------
@@ -338,20 +349,40 @@ async def export_cmd(interaction: discord.Interaction) -> None:
 # Background tasks
 # ---------------------------------------------------------------------------
 
+def _format_step_line(state: dict) -> str:
+    """One-line step ticker: Step 12 — 8✅ 3▶ 1⏸ 58⏳ / 70 (14.3%)"""
+    dag      = state.get("dag", {})
+    step     = state.get("step", 0)
+    total = verified = running = review = 0
+    for t in dag.values():
+        for b in t["branches"].values():
+            for s in b["subtasks"].values():
+                st = s.get("status", "")
+                total += 1
+                if st == "Verified": verified += 1
+                elif st == "Running": running += 1
+                elif st == "Review":  review += 1
+    pending = total - verified - running - review
+    pct = round(verified / total * 100, 1) if total else 0
+    return (
+        f"Step {step} — "
+        f"{verified}✅ {running}▶ {review}⏸ {pending}⏳ / {total} ({pct}%)"
+    )
+
+
 async def _run_auto(channel_id: int, n: Optional[int]) -> None:
     """Drive the CLI through n steps (or until complete) via trigger file."""
     limit     = n if n is not None else 200   # safety cap
     completed = 0
+    ch        = await _get_channel(channel_id)
 
     for _ in range(limit):
         state = _load_state()
         if not _has_work(state.get("dag", {})):
-            ch = await _get_channel(channel_id)
             if ch:
-                await ch.send(
-                    f"✅ Pipeline complete after {completed} steps.\n"
-                    f"{_format_status(state)}"
-                )
+                msg = f"✅ Pipeline complete after {completed} steps.\n{_format_status(state)}"
+                await ch.send(msg)
+                _log(str(ch), "BOT", msg[:200])
             return
 
         current_step = state.get("step", 0)
@@ -365,20 +396,24 @@ async def _run_auto(channel_id: int, n: Optional[int]) -> None:
                 completed += 1
                 break
         else:
-            ch = await _get_channel(channel_id)
             if ch:
-                await ch.send(
-                    f"⚠️ Step timeout after {completed} steps. Is the CLI running?"
-                )
+                msg = f"⚠️ Step timeout after {completed} steps. Is the CLI running?"
+                await ch.send(msg)
+                _log(str(ch), "BOT", msg)
             return
+
+        # Per-step ticker
+        if ch:
+            ticker = _format_step_line(_load_state())
+            await ch.send(ticker)
+            _log(str(ch), "BOT", ticker)
 
     # n-step run finished
     final = _load_state()
-    ch = await _get_channel(channel_id)
     if ch:
-        await ch.send(
-            f"✅ {completed}/{limit} steps done.\n{_format_status(final)}"
-        )
+        msg = f"✅ {completed}/{limit} steps done.\n{_format_status(final)}"
+        await ch.send(msg)
+        _log(str(ch), "BOT", msg[:200])
 
 
 async def _poll_completion(client: discord.Client) -> None:
