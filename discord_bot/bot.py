@@ -51,9 +51,10 @@ STEP_PATH      = _ROOT / "state" / "step.txt"
 TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
 VERIFY_TRIGGER   = _ROOT / "state" / "verify_trigger.json"
 STOP_TRIGGER     = _ROOT / "state" / "stop_trigger"
-ADD_TASK_TRIGGER       = _ROOT / "state" / "add_task_trigger.json"
-ADD_BRANCH_TRIGGER     = _ROOT / "state" / "add_branch_trigger.json"
+ADD_TASK_TRIGGER        = _ROOT / "state" / "add_task_trigger.json"
+ADD_BRANCH_TRIGGER      = _ROOT / "state" / "add_branch_trigger.json"
 PRIORITY_BRANCH_TRIGGER = _ROOT / "state" / "prioritize_branch_trigger.json"
+DESCRIBE_TRIGGER        = _ROOT / "state" / "describe_trigger.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -99,17 +100,29 @@ def _format_status(state: dict) -> str:
 
     for task_name, task in dag.items():
         tv = tr = trv = tt = 0
-        for b in task["branches"].values():
-            for s in b["subtasks"].values():
+        branch_rows: list[str] = []
+        for b_name, b in task.get("branches", {}).items():
+            bv = br = brv = bt = 0
+            for s in b.get("subtasks", {}).values():
                 st = s.get("status", "")
-                tt += 1
-                if st == "Verified": tv += 1
-                elif st == "Running": tr += 1
-                elif st == "Review":  trv += 1
+                bt += 1
+                if st == "Verified": bv += 1
+                elif st == "Running": br += 1
+                elif st == "Review":  brv += 1
+            tv += bv; tr += br; trv += brv; tt += bt
+            b_done = int((bv / bt) * 6) if bt else 0
+            b_bar  = "█" * b_done + "░" * (6 - b_done)
+            if bv == bt:      b_sym = "✓"
+            elif brv:         b_sym = "⏸"
+            elif br:          b_sym = "▶"
+            else:             b_sym = "·"
+            branch_rows.append(f"  {b_name:<14}{b_bar} {bv}/{bt} {b_sym}")
+
         total += tt; verified += tv; running += tr; review += trv
         done = int((tv / tt) * 10) if tt else 0
         bar  = "█" * done + "░" * (10 - done)
         rows.append(f"{task_name:<8} {bar} {tv}/{tt}")
+        rows.extend(branch_rows)
 
     pct = round(verified / total * 100, 1) if total else 0
     header = (
@@ -201,6 +214,7 @@ _HELP_TEXT = (
     "`stop`                             — cancel an in-progress auto run\n"
     "`verify <subtask> [note]`          — approve a Review-gated subtask\n"
     "`output <subtask>`                 — show Claude output for a subtask\n"
+    "`describe <subtask> <prompt>`      — set a custom Claude prompt for a subtask\n"
     "`add_task <spec>`                  — queue a new task (added at next step)\n"
     "`add_branch <task> <spec>`         — queue a new branch on an existing task\n"
     "`prioritize_branch <task> <branch>` — boost a branch to front of queue\n"
@@ -329,6 +343,22 @@ async def _handle_text_command(message: discord.Message) -> None:
             else:
                 await _send(message, f"**{st_target}** ({task_name}): no output recorded yet.")
 
+    elif low.startswith("describe"):
+        rest = text[8:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `describe <subtask> <prompt>` — e.g. `describe A3 Implement retry logic`")
+            return
+        st_target, desc = parts[0].upper(), parts[1].strip()
+        DESCRIBE_TRIGGER.parent.mkdir(exist_ok=True)
+        DESCRIBE_TRIGGER.write_text(
+            json.dumps({"subtask": st_target, "desc": desc}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Describe queued: `{st_target}` — *{desc[:80]}*\nCLI will apply it at the next step boundary."
+        )
+
     elif low.startswith("prioritize_branch"):
         rest = text[17:].strip()
         parts = rest.split(None, 1)
@@ -366,6 +396,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/stop`                             — cancel an in-progress auto run\n"
         "`/verify subtask [note]`            — approve a subtask (REVIEW_MODE)\n"
         "`/output subtask`                   — show Claude output for a subtask\n"
+        "`/describe subtask prompt`          — set a custom Claude prompt for a subtask\n"
         "`/add_task spec`                    — queue a new task\n"
         "`/add_branch task spec`             — queue a new branch on a task\n"
         "`/prioritize_branch task branch`    — boost a branch to front of queue\n"
@@ -534,6 +565,26 @@ async def output_cmd(interaction: discord.Interaction, subtask: str) -> None:
             await interaction.response.send_message(
                 f"**{st_target}** ({task_name}): no output recorded yet."
             )
+
+
+@bot.tree.command(name="describe", description="Set a custom Claude prompt for a subtask")
+@app_commands.describe(subtask="Subtask name (e.g. A3)", prompt="The custom description/prompt to assign")
+async def describe_cmd(interaction: discord.Interaction, subtask: str, prompt: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st_target = subtask.strip().upper()
+    prompt    = prompt.strip()
+    if not st_target or not prompt:
+        await interaction.response.send_message("Usage: `/describe <subtask> <prompt>`", ephemeral=True)
+        return
+    DESCRIBE_TRIGGER.parent.mkdir(exist_ok=True)
+    DESCRIBE_TRIGGER.write_text(
+        json.dumps({"subtask": st_target, "desc": prompt}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Describe queued: `{st_target}` — *{prompt[:80]}*\nCLI will apply it at the next step boundary."
+    )
 
 
 @bot.tree.command(name="prioritize_branch", description="Boost a branch to the front of the execution queue")

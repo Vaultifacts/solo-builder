@@ -894,6 +894,44 @@ class TestSetCommand(unittest.TestCase):
             self.cli._cmd_set("UNKNOWNKEY")
         self.assertIn("Usage", buf.getvalue())
 
+    def test_set_persists_review_mode_to_settings_json(self):
+        """set REVIEW_MODE=on writes the bool True to a settings JSON file."""
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        )
+        json.dump({"REVIEW_MODE": False}, tmp)
+        tmp.close()
+        orig = _cli_module._CFG_PATH
+        _cli_module._CFG_PATH = tmp.name
+        try:
+            self.cli._cmd_set("REVIEW_MODE=on")
+            with open(tmp.name, encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertTrue(data["REVIEW_MODE"])
+        finally:
+            _cli_module._CFG_PATH = orig
+            os.unlink(tmp.name)
+
+    def test_set_persists_webhook_url_to_settings_json(self):
+        """set WEBHOOK_URL=http://x writes the URL to a settings JSON file."""
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        )
+        json.dump({"WEBHOOK_URL": ""}, tmp)
+        tmp.close()
+        orig = _cli_module._CFG_PATH
+        _cli_module._CFG_PATH = tmp.name
+        try:
+            self.cli._cmd_set("WEBHOOK_URL=http://example.com/hook")
+            with open(tmp.name, encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(data["WEBHOOK_URL"], "http://example.com/hook")
+        finally:
+            _cli_module._CFG_PATH = orig
+            os.unlink(tmp.name)
+
 
 # ---------------------------------------------------------------------------
 # TestResetCommand
@@ -1534,6 +1572,31 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         written = json.loads(mock_pbt.write_text.call_args[0][0])
         self.assertEqual(written["task"], "0")
         self.assertEqual(written["branch"], "A")
+
+    async def test_describe_queues_trigger(self):
+        """'describe A3 Build retry logic' writes correct trigger JSON."""
+        mock_dt = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "DESCRIBE_TRIGGER", new=mock_dt):
+            await bot_module._handle_text_command(_make_msg("describe A3 Build retry logic"))
+        mock_dt.write_text.assert_called_once()
+        written = json.loads(mock_dt.write_text.call_args[0][0])
+        self.assertEqual(written["subtask"], "A3")
+        self.assertIn("retry", written["desc"])
+
+    async def test_describe_no_args_sends_usage(self):
+        """'describe' with no subtask sends a usage message."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("describe"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+    async def test_format_status_includes_branch_rows(self):
+        """_format_status output includes per-branch progress bars."""
+        state = _make_state({"A1": "Verified", "A2": "Pending"}, step=1)
+        result = bot_module._format_status(state)
+        # BranchA branch row should appear in the code block
+        self.assertIn("BranchA", result)
 
 
 # ---------------------------------------------------------------------------

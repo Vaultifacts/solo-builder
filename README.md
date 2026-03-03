@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1.22-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.23-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 
@@ -92,6 +92,7 @@ Both slash commands and plain-text work (no `/` prefix needed for plain-text):
 | `stop` / `/stop` | Cancel bot auto run + write `state/stop_trigger` so the CLI halts after the current step |
 | `verify <ST> [note]` / `/verify` | Approve a Review-gated subtask from Discord |
 | `output <ST>` / `/output` | Show Claude output for a specific subtask |
+| `describe <ST> <prompt>` / `/describe` | Assign a custom Claude prompt to a subtask; queued at next step boundary |
 | `add_task <spec>` / `/add_task` | Queue a new task; CLI adds it at the next step boundary |
 | `add_branch <task> <spec>` / `/add_branch` | Queue a new branch on an existing task |
 | `prioritize_branch <task> <branch>` / `/prioritize_branch` | Boost a branch's Pending subtasks to front of queue |
@@ -119,6 +120,8 @@ The bot sends a per-step progress ticker (`Step N — X✅ Y▶ Z⏸ W⏳ / 70`)
 | `exit` | Save and quit |
 
 ### Runtime settings
+Changes persist to `config/settings.json` automatically (survive restart).
+Use `set KEY` (no `=`) to print the current value.
 ```
 set STALL_THRESHOLD=5          # Steps before SelfHealer resets a subtask
 set DAG_UPDATE_INTERVAL=5      # Steps between Planner re-prioritization
@@ -258,7 +261,7 @@ The workflow at `.github/workflows/smoke-test.yml` runs on every push/PR to `mas
 | **15-step headless run** | `--auto 15 --no-resume` — asserts ≥ 18 subtasks Verified |
 | **Export command** | `--headless --export --no-resume --auto 2` — asserts `solo_builder_outputs.md` exists and is > 30 bytes |
 | **stop_trigger cleanup** | Plants a stale `state/stop_trigger` before startup; asserts it's consumed and pipeline advances |
-| **Bot unit tests** | 131 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`, `_handle_text_command`, `_run_auto`, `_fire_completion`, `_cmd_add_task`, `_cmd_add_branch`, `_cmd_verify`, `_cmd_describe`, `_cmd_tools`, `_cmd_set`, `_cmd_reset`, `_cmd_export`, `_cmd_status`, `_cmd_depends`, `_cmd_undepends`, `_cmd_output`, `save_state`, `load_state`, `_take_snapshot`, `_cmd_prioritize_branch`, `add_task` inline spec, `_find_subtask_output`, `output` bot command, `prioritize_branch` bot command |
+| **Bot unit tests** | 136 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`, `_handle_text_command`, `_run_auto`, `_fire_completion`, `_cmd_add_task`, `_cmd_add_branch`, `_cmd_verify`, `_cmd_describe`, `_cmd_tools`, `_cmd_set`, `_cmd_reset`, `_cmd_export`, `_cmd_status`, `_cmd_depends`, `_cmd_undepends`, `_cmd_output`, `save_state`, `load_state`, `_take_snapshot`, `_cmd_prioritize_branch`, `add_task` inline spec, `_find_subtask_output`, `output` bot command, `prioritize_branch` bot command |
 | **Profiler dry-run** | `profiler_harness.py --dry-run` runs 3 steps; asserts executor + planner patches fire without error |
 | **REVIEW_MODE gate** | Sets `REVIEW_MODE=True`, runs 2 steps, asserts ≥ 1 subtask in `Review` state |
 | **Webhook POST** | Starts a local `http.server`, calls `_fire_completion()` directly, asserts correct JSON payload received and no error log written |

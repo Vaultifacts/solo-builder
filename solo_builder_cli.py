@@ -1518,6 +1518,7 @@ class SoloBuilderCLI:
         _attrigger   = os.path.join(_HERE, "state", "add_task_trigger.json")
         _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
         _pbtrigger   = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
+        _dtrigger    = os.path.join(_HERE, "state", "describe_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1592,6 +1593,18 @@ class SoloBuilderCLI:
                             pb_branch = pbdata.get("branch", "").strip()
                             if pb_task and pb_branch:
                                 self._cmd_prioritize_branch(pb_task, pb_branch)
+                        except Exception:
+                            pass
+                    if os.path.exists(_dtrigger):
+                        try:
+                            ddata = json.loads(
+                                open(_dtrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_dtrigger)
+                            d_st   = ddata.get("subtask", "").strip().upper()
+                            d_desc = ddata.get("desc", "").strip()
+                            if d_st and d_desc:
+                                self._cmd_describe(f"{d_st} {d_desc}")
                         except Exception:
                             pass
                     if os.path.exists(_trigger):
@@ -2039,6 +2052,17 @@ class SoloBuilderCLI:
             self.alerts, self.meta.forecast(self.dag),
         )
 
+    def _persist_setting(self, cfg_key: str, value) -> None:
+        """Silently write one key back to config/settings.json."""
+        try:
+            with open(_CFG_PATH, encoding="utf-8") as f:
+                cfg = json.load(f)
+            cfg[cfg_key] = value
+            with open(_CFG_PATH, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=4)
+        except Exception:
+            pass
+
     def _cmd_set(self, args: str) -> None:
         """set KEY=VALUE — update runtime config."""
         global STALL_THRESHOLD, SNAPSHOT_INTERVAL, VERBOSITY
@@ -2075,52 +2099,63 @@ class SoloBuilderCLI:
                 self.planner.stall_threshold = STALL_THRESHOLD
                 self.display.stall_threshold = STALL_THRESHOLD
                 print(f"  {GREEN}STALL_THRESHOLD = {STALL_THRESHOLD}{RESET}")
+                self._persist_setting("STALL_THRESHOLD", STALL_THRESHOLD)
 
             elif key == "SNAPSHOT_INTERVAL":
                 SNAPSHOT_INTERVAL = int(val)
                 print(f"  {GREEN}SNAPSHOT_INTERVAL = {SNAPSHOT_INTERVAL}{RESET}")
+                self._persist_setting("SNAPSHOT_INTERVAL", SNAPSHOT_INTERVAL)
 
             elif key == "VERBOSITY":
                 VERBOSITY = val.upper()
                 print(f"  {GREEN}VERBOSITY = {VERBOSITY}{RESET}")
+                self._persist_setting("VERBOSITY", VERBOSITY)
 
             elif key == "VERIFY_PROB":
                 self.executor.verify_prob = float(val)
                 print(f"  {GREEN}VERIFY_PROB = {val}{RESET}")
+                self._persist_setting("EXECUTOR_VERIFY_PROBABILITY", self.executor.verify_prob)
 
             elif key == "AUTO_STEP_DELAY":
                 AUTO_STEP_DELAY = float(val)
                 print(f"  {GREEN}AUTO_STEP_DELAY = {AUTO_STEP_DELAY}s{RESET}")
+                self._persist_setting("AUTO_STEP_DELAY", AUTO_STEP_DELAY)
 
             elif key == "AUTO_SAVE_INTERVAL":
                 AUTO_SAVE_INTERVAL = int(val)
                 print(f"  {GREEN}AUTO_SAVE_INTERVAL = {AUTO_SAVE_INTERVAL}{RESET}")
+                self._persist_setting("AUTO_SAVE_INTERVAL", AUTO_SAVE_INTERVAL)
 
             elif key == "CLAUDE_ALLOWED_TOOLS":
                 CLAUDE_ALLOWED_TOOLS = val
                 self.executor.claude.allowed_tools = val
                 label = val if val else "(none — headless)"
                 print(f"  {GREEN}CLAUDE_ALLOWED_TOOLS = {label}{RESET}")
+                self._persist_setting("CLAUDE_ALLOWED_TOOLS", val)
 
             elif key == "ANTHROPIC_MAX_TOKENS":
                 self.executor.anthropic.max_tokens = int(val)
                 print(f"  {GREEN}ANTHROPIC_MAX_TOKENS = {val}{RESET}")
+                self._persist_setting("ANTHROPIC_MAX_TOKENS", int(val))
 
             elif key == "ANTHROPIC_MODEL":
                 self.executor.anthropic.model = val
                 print(f"  {GREEN}ANTHROPIC_MODEL = {val}{RESET}")
+                self._persist_setting("ANTHROPIC_MODEL", val)
 
             elif key == "CLAUDE_SUBPROCESS":
                 enabled = val.lower() not in ("0", "off", "false", "no")
                 self.executor.claude.available = enabled
                 label = "on (subprocess)" if enabled else "off (SDK/dice-roll fallback)"
                 print(f"  {GREEN}CLAUDE_SUBPROCESS = {label}{RESET}")
+                # CLAUDE_SUBPROCESS is not a config.json key — derived at runtime
 
             elif key == "REVIEW_MODE":
                 enabled = val.lower() not in ("0", "off", "false", "no")
                 self.executor.review_mode = enabled
                 label = "on (subtasks pause at Review for verify)" if enabled else "off (auto-Verified)"
                 print(f"  {GREEN}REVIEW_MODE = {label}{RESET}")
+                self._persist_setting("REVIEW_MODE", enabled)
 
             elif key == "WEBHOOK_URL":
                 if val and not val.startswith("http"):
@@ -2128,6 +2163,7 @@ class SoloBuilderCLI:
                           f"(got {val!r}). Setting anyway.{RESET}")
                 WEBHOOK_URL = val
                 print(f"  {GREEN}WEBHOOK_URL = {val or '(cleared)'}{RESET}")
+                self._persist_setting("WEBHOOK_URL", val)
 
             else:
                 print(f"  {YELLOW}Unknown key '{key}'. "
@@ -2701,9 +2737,10 @@ def main() -> None:
     _AT_PATH    = os.path.join(_HERE, "state", "add_task_trigger.json")
     _AB_PATH    = os.path.join(_HERE, "state", "add_branch_trigger.json")
     _PB_PATH    = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
+    _D_PATH     = os.path.join(_HERE, "state", "describe_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
-    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH):
+    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH, _D_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:
