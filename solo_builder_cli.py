@@ -2551,12 +2551,14 @@ def main() -> None:
     # ── Run ──────────────────────────────────────────────────────────────────
     _LOCK_PATH  = os.path.join(_HERE, "state", "solo_builder.lock")
     _STOP_PATH  = os.path.join(_HERE, "state", "stop_trigger")
+    _RUN_PATH   = os.path.join(_HERE, "state", "run_trigger")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
-    # Clear any stale stop_trigger so it doesn't silently kill the first auto run
-    try:
-        os.remove(_STOP_PATH)
-    except FileNotFoundError:
-        pass
+    # Clear stale triggers from previous runs
+    for _stale in (_STOP_PATH, _RUN_PATH):
+        try:
+            os.remove(_stale)
+        except FileNotFoundError:
+            pass
     _acquire_lock(_LOCK_PATH)
     cli = None
     try:
