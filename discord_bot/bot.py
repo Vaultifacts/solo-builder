@@ -167,6 +167,13 @@ class SoloBuilderBot(discord.Client):
 
 bot = SoloBuilderBot()
 
+# Running auto-task reference — prevents duplicate concurrent runs
+_auto_task: Optional[asyncio.Task] = None
+
+
+def _auto_running() -> bool:
+    return _auto_task is not None and not _auto_task.done()
+
 
 # ---------------------------------------------------------------------------
 # Natural language command handler
@@ -177,10 +184,11 @@ _HELP_TEXT = (
     "`status`                  — DAG progress summary\n"
     "`run`                     — trigger one step\n"
     "`auto [n]`                — run N steps (default: until complete)\n"
+    "`stop`                    — cancel an in-progress auto run\n"
     "`verify <subtask> [note]` — approve a Review-gated subtask\n"
     "`export`                  — download all Claude outputs\n"
     "`help`                    — this message\n\n"
-    "*Slash commands (`/status`, `/run`, …) work too.*"
+    "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
 )
 
 
@@ -208,13 +216,24 @@ async def _handle_text_command(message: discord.Message) -> None:
             await _send(message, f"▶ Step triggered (step {state.get('step', 0)} → next)")
 
     elif low.startswith("auto"):
+        if _auto_running():
+            await _send(message, "⚠️ Auto already running. Use `stop` to cancel or `status` to check progress.")
+            return
         rest = text[4:].strip()
         n: Optional[int] = None
         if rest.isdigit():
             n = int(rest)
         label = f"{n} steps" if n is not None else "until complete"
-        asyncio.create_task(_run_auto(message.channel.id, n))
+        global _auto_task
+        _auto_task = asyncio.create_task(_run_auto(message.channel.id, n))
         await _send(message, f"▶ Auto-run started: {label}")
+
+    elif low == "stop":
+        if _auto_running():
+            _auto_task.cancel()
+            await _send(message, "⏹ Auto-run cancelled.")
+        else:
+            await _send(message, "No auto-run in progress.")
 
     elif low.startswith("verify"):
         rest = text[6:].strip()
@@ -263,6 +282,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/status`                    — DAG progress summary\n"
         "`/run`                       — trigger one step\n"
         "`/auto [n]`                  — run N steps (default: until complete)\n"
+        "`/stop`                      — cancel an in-progress auto run\n"
         "`/verify subtask [note]`     — approve a subtask (REVIEW_MODE)\n"
         "`/export`                    — download all Claude outputs\n"
         "`/help`                      — this message"
@@ -322,11 +342,30 @@ async def auto_cmd(interaction: discord.Interaction, n: Optional[int] = None) ->
     if not _allowed(interaction):
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
+    if _auto_running():
+        await interaction.response.send_message(
+            "⚠️ Auto already running. Use `/stop` to cancel or `/status` to check progress.",
+            ephemeral=True,
+        )
+        return
+    global _auto_task
     label = f"{n} steps" if n is not None else "until complete"
-    asyncio.create_task(_run_auto(interaction.channel_id, n))
+    _auto_task = asyncio.create_task(_run_auto(interaction.channel_id, n))
     await interaction.response.send_message(
         f"▶ Auto-run started: {label}\nUse `/status` for progress."
     )
+
+
+@bot.tree.command(name="stop", description="Cancel an in-progress auto run")
+async def stop_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if _auto_running():
+        _auto_task.cancel()
+        await interaction.response.send_message("⏹ Auto-run cancelled.")
+    else:
+        await interaction.response.send_message("No auto-run in progress.", ephemeral=True)
 
 
 @bot.tree.command(name="export", description="Download all Claude outputs as Markdown")
