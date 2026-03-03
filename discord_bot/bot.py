@@ -59,6 +59,8 @@ TOOLS_TRIGGER           = _ROOT / "state" / "tools_trigger.json"
 RESET_TRIGGER           = _ROOT / "state" / "reset_trigger"
 SNAPSHOT_TRIGGER        = _ROOT / "state" / "snapshot_trigger"
 SET_TRIGGER             = _ROOT / "state" / "set_trigger.json"
+DEPENDS_TRIGGER         = _ROOT / "state" / "depends_trigger.json"
+UNDEPENDS_TRIGGER       = _ROOT / "state" / "undepends_trigger.json"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
 SETTINGS_PATH  = _ROOT / "config" / "settings.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
@@ -226,6 +228,8 @@ _HELP_TEXT = (
     "`add_branch <task> <spec>`         — queue a new branch on an existing task\n"
     "`prioritize_branch <task> <branch>` — boost a branch to front of queue\n"
     "`reset confirm`                    — reset DAG to initial state (destructive!)\n"
+    "`depends [<task> <dep>]`            — add a dependency or show dep graph\n"
+    "`undepends <task> <dep>`           — remove a dependency\n"
     "`set KEY=VALUE`                    — change a runtime setting\n"
     "`set KEY`                          — show current value of a setting\n"
     "`snapshot`                         — trigger a PDF snapshot\n"
@@ -429,6 +433,51 @@ async def _handle_text_command(message: discord.Message) -> None:
             f"✅ Priority boost queued: Task {pb_task} / {pb_branch}\nCLI will boost it at the next step boundary."
         )
 
+    elif low.startswith("undepends"):
+        rest = text[9:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `undepends <task> <dep>` — e.g. `undepends 1 0`")
+            return
+        UNDEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+        UNDEPENDS_TRIGGER.write_text(
+            json.dumps({"target": parts[0], "dep": parts[1].strip()}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Undepends queued: Task {parts[0]} no longer depends on Task {parts[1].strip()}\n"
+            f"CLI will apply at the next step boundary."
+        )
+
+    elif low.startswith("depends"):
+        rest = text[7:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            # Show dependency graph from state
+            state = _load_state()
+            dag = state.get("dag", {})
+            if not dag:
+                await _send(message, "No DAG loaded.")
+                return
+            lines = ["**Dependency Graph**"]
+            for t_name, t_data in dag.items():
+                deps = t_data.get("depends_on", [])
+                st = t_data.get("status", "?")
+                sym = {"Verified": "✅", "Running": "▶"}.get(st, "⏳")
+                dep_str = f" ← {', '.join(deps)}" if deps else " (root)"
+                lines.append(f"{sym} {t_name}{dep_str}")
+            await _send(message, "\n".join(lines))
+            return
+        DEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+        DEPENDS_TRIGGER.write_text(
+            json.dumps({"target": parts[0], "dep": parts[1].strip()}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Depends queued: Task {parts[0]} → Task {parts[1].strip()}\n"
+            f"CLI will apply at the next step boundary."
+        )
+
     elif low.startswith("set "):
         rest = text[4:].strip()
         if "=" in rest:
@@ -497,6 +546,8 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/add_branch task spec`             — queue a new branch on a task\n"
         "`/prioritize_branch task branch`    — boost a branch to front of queue\n"
         "`/set key [value]`                  — change or query a runtime setting\n"
+        "`/depends [target dep]`             — add dependency or show dep graph\n"
+        "`/undepends target dep`             — remove a dependency\n"
         "`/reset confirm:yes`                — reset DAG (destructive!)\n"
         "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
@@ -814,6 +865,65 @@ async def set_cmd(interaction: discord.Interaction, key: str, value: str = "") -
             await interaction.response.send_message(f"⚙️ `{key}` = `{val}`")
         except Exception:
             await interaction.response.send_message("❌ Could not read `config/settings.json`.", ephemeral=True)
+
+
+@bot.tree.command(name="depends", description="Add a task dependency or show the dep graph")
+@app_commands.describe(
+    target="Task to add dependency to (e.g. 1). Omit both to show the graph.",
+    dep="Task it should depend on (e.g. 0). Omit both to show the graph.",
+)
+async def depends_cmd(interaction: discord.Interaction, target: str = "", dep: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    target, dep = target.strip(), dep.strip()
+    if not target or not dep:
+        state = _load_state()
+        dag = state.get("dag", {})
+        if not dag:
+            await interaction.response.send_message("No DAG loaded.")
+            return
+        lines = ["**Dependency Graph**"]
+        for t_name, t_data in dag.items():
+            deps = t_data.get("depends_on", [])
+            st = t_data.get("status", "?")
+            sym = {"Verified": "✅", "Running": "▶"}.get(st, "⏳")
+            dep_str = f" ← {', '.join(deps)}" if deps else " (root)"
+            lines.append(f"{sym} {t_name}{dep_str}")
+        await interaction.response.send_message("\n".join(lines))
+        return
+    DEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+    DEPENDS_TRIGGER.write_text(
+        json.dumps({"target": target, "dep": dep}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Depends queued: Task {target} → Task {dep}\nCLI will apply at the next step boundary."
+    )
+
+
+@bot.tree.command(name="undepends", description="Remove a task dependency")
+@app_commands.describe(
+    target="Task to remove dependency from (e.g. 1)",
+    dep="Dependency to remove (e.g. 0)",
+)
+async def undepends_cmd(interaction: discord.Interaction, target: str, dep: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    target, dep = target.strip(), dep.strip()
+    if not target or not dep:
+        await interaction.response.send_message(
+            "Usage: `/undepends <task> <dep>`", ephemeral=True
+        )
+        return
+    UNDEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+    UNDEPENDS_TRIGGER.write_text(
+        json.dumps({"target": target, "dep": dep}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Undepends queued: Task {target} no longer depends on Task {dep}\n"
+        f"CLI will apply at the next step boundary."
+    )
 
 
 # ---------------------------------------------------------------------------

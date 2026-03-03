@@ -748,7 +748,20 @@
     el._t = setTimeout(() => el.classList.remove("show"), 2500);
   }
 
-  async function _postCmd(url, body, fbId) {
+  function _findTaskForSubtask(stName) {
+    // Search tasksCache for which task owns a subtask
+    stName = (stName || "").toUpperCase();
+    for (const [tid, t] of Object.entries(tasksCache)) {
+      for (const b of Object.values(t.branches || {})) {
+        for (const sn of Object.keys(b.subtasks || {})) {
+          if (sn.toUpperCase() === stName) return tid;
+        }
+      }
+    }
+    return null;
+  }
+
+  async function _postCmd(url, body, fbId, subtaskHint) {
     try {
       const r = await fetch(url, {
         method: "POST",
@@ -757,7 +770,14 @@
       });
       const d = await r.json();
       _flash(fbId, d.ok ? "✓" : "✗ " + (d.reason || "error"));
-      if (d.ok) setTimeout(tick, 600);
+      if (d.ok) {
+        // Auto-select the task containing this subtask
+        if (subtaskHint) {
+          const tid = _findTaskForSubtask(subtaskHint);
+          if (tid) selectTask(tid);
+        }
+        setTimeout(tick, 600);
+      }
     } catch (e) {
       _flash(fbId, "✗ Error");
     }
@@ -767,7 +787,7 @@
     const st   = document.getElementById("cmd-verify-st").value.trim();
     const note = document.getElementById("cmd-verify-note").value.trim() || "Dashboard verify";
     if (!st) { _flash("fb-verify", "Enter subtask"); return; }
-    _postCmd("/verify", {subtask: st, note: note}, "fb-verify");
+    _postCmd("/verify", {subtask: st, note: note}, "fb-verify", st);
     document.getElementById("cmd-verify-st").value = "";
     document.getElementById("cmd-verify-note").value = "";
   };
@@ -776,7 +796,7 @@
     const st   = document.getElementById("cmd-desc-st").value.trim();
     const desc = document.getElementById("cmd-desc-text").value.trim();
     if (!st || !desc) { _flash("fb-desc", "Enter subtask + prompt"); return; }
-    _postCmd("/describe", {subtask: st, desc: desc}, "fb-desc");
+    _postCmd("/describe", {subtask: st, desc: desc}, "fb-desc", st);
     document.getElementById("cmd-desc-st").value = "";
     document.getElementById("cmd-desc-text").value = "";
   };
@@ -785,7 +805,7 @@
     const st    = document.getElementById("cmd-tools-st").value.trim();
     const tools = document.getElementById("cmd-tools-list").value.trim();
     if (!st || !tools) { _flash("fb-tools", "Enter subtask + tools"); return; }
-    _postCmd("/tools", {subtask: st, tools: tools}, "fb-tools");
+    _postCmd("/tools", {subtask: st, tools: tools}, "fb-tools", st);
     document.getElementById("cmd-tools-st").value = "";
     document.getElementById("cmd-tools-list").value = "";
   };

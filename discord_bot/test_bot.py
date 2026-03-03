@@ -1687,6 +1687,46 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(cli.executor.review_mode)
         os.unlink(tmp.name)
 
+    async def test_depends_no_args_shows_graph(self):
+        """'depends' with no args shows the dependency graph from state."""
+        state = _make_state({"A1": "Verified"}, step=3)
+        state["dag"]["Task0"]["depends_on"] = []
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("depends"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Dependency Graph", text)
+        self.assertIn("Task0", text)
+
+    async def test_depends_with_args_writes_trigger(self):
+        """'depends 1 0' writes the depends trigger file."""
+        mock_trig = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "DEPENDS_TRIGGER", new=mock_trig):
+            await bot_module._handle_text_command(_make_msg("depends 1 0"))
+        mock_trig.write_text.assert_called_once()
+        written = json.loads(mock_trig.write_text.call_args[0][0])
+        self.assertEqual(written["target"], "1")
+        self.assertEqual(written["dep"], "0")
+
+    async def test_undepends_writes_trigger(self):
+        """'undepends 1 0' writes the undepends trigger file."""
+        mock_trig = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "UNDEPENDS_TRIGGER", new=mock_trig):
+            await bot_module._handle_text_command(_make_msg("undepends 1 0"))
+        mock_trig.write_text.assert_called_once()
+        written = json.loads(mock_trig.write_text.call_args[0][0])
+        self.assertEqual(written["target"], "1")
+        self.assertEqual(written["dep"], "0")
+
+    async def test_undepends_no_args_sends_usage(self):
+        """'undepends' with no args sends usage."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("undepends"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
 
 # ---------------------------------------------------------------------------
 # Entry point

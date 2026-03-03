@@ -1523,6 +1523,8 @@ class SoloBuilderCLI:
         _rtrigger    = os.path.join(_HERE, "state", "reset_trigger")
         _snaptrigger = os.path.join(_HERE, "state", "snapshot_trigger")
         _settrigger  = os.path.join(_HERE, "state", "set_trigger.json")
+        _deptrigger  = os.path.join(_HERE, "state", "depends_trigger.json")
+        _undeptrigger = os.path.join(_HERE, "state", "undepends_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1633,6 +1635,30 @@ class SoloBuilderCLI:
                             s_val = sdata.get("value", "").strip()
                             if s_key and s_val:
                                 self._cmd_set(f"{s_key}={s_val}")
+                        except Exception:
+                            pass
+                    if os.path.exists(_deptrigger):
+                        try:
+                            depdata = json.loads(
+                                open(_deptrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_deptrigger)
+                            dep_target = depdata.get("target", "").strip()
+                            dep_dep    = depdata.get("dep", "").strip()
+                            if dep_target and dep_dep:
+                                self._cmd_depends(f"{dep_target} {dep_dep}")
+                        except Exception:
+                            pass
+                    if os.path.exists(_undeptrigger):
+                        try:
+                            uddata = json.loads(
+                                open(_undeptrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_undeptrigger)
+                            ud_target = uddata.get("target", "").strip()
+                            ud_dep    = uddata.get("dep", "").strip()
+                            if ud_target and ud_dep:
+                                self._cmd_undepends(f"{ud_target} {ud_dep}")
                         except Exception:
                             pass
                     if os.path.exists(_rtrigger):
@@ -2782,10 +2808,13 @@ def main() -> None:
     _R_PATH     = os.path.join(_HERE, "state", "reset_trigger")
     _SNAP_PATH  = os.path.join(_HERE, "state", "snapshot_trigger")
     _SET_PATH   = os.path.join(_HERE, "state", "set_trigger.json")
+    _DEP_PATH   = os.path.join(_HERE, "state", "depends_trigger.json")
+    _UDEP_PATH  = os.path.join(_HERE, "state", "undepends_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
     for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
-                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH):
+                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH,
+                   _DEP_PATH, _UDEP_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

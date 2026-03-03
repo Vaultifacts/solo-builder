@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.26] — 2026-03-03
+
+### Added
+- **`depends`/`undepends` bot commands** — `depends [<task> <dep>]` shows dep graph
+  or adds a dependency; `undepends <task> <dep>` removes one. Both plain-text and
+  `/depends`, `/undepends` slash commands. Trigger-file IPC for mutations, direct
+  state read for the graph display. 18 Discord commands total — every CLI command
+  now has a Discord equivalent.
+- **Dashboard auto-refresh** — after Verify/Describe/Tools toolbar actions, the
+  detail panel auto-selects the task containing the affected subtask
+- **Flask API test suite** (`api/test_app.py`) — 25 tests covering all 12 routes:
+  GET /status, /tasks, /tasks/<id>, /journal, /export; POST /run, /verify,
+  /describe, /tools, /set, /export; error handlers and CORS
+
+### Changed
+- 149 bot tests (+4) + 25 API tests = **174 total tests**
+- CI: added "Run API unit tests (25 tests)" step
+- README: 18 commands, depends/undepends in bot table, version badge v2.1.26
+
+---
+
 ## [v2.1.25] — 2026-03-03
 
 ### Added
