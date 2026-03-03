@@ -29,7 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf      = ["matplotlib>=3.10", "numpy>=2.2"]
-telegram = ["python-telegram-bot>=20.0"]
+discord = ["discord.py>=2.0"]
 
 [project.scripts]
 solo-builder = "solo_builder_cli:main"
@@ -41,7 +41,7 @@ Changelog  = "https://github.com/Vaultifacts/solo-builder/blob/master/CHANGELOG.
 
 [tool.setuptools]
 py-modules = ["solo_builder_cli", "solo_builder_live_multi_snapshot", "profiler_harness"]
-packages   = ["utils", "telegram_bot"]
+packages   = ["utils", "discord_bot"]
 include-package-data = true
 
 [tool.setuptools.package-data]

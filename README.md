@@ -1,6 +1,6 @@
 # Solo Builder
 
-> A Python terminal CLI that uses six AI agents and the Anthropic SDK to manage DAG-based project tasks — with a live web dashboard and Telegram bot.
+> A Python terminal CLI that uses six AI agents and the Anthropic SDK to manage DAG-based project tasks — with a live web dashboard and Discord bot.
 
 [![Smoke Test](https://github.com/Vaultifacts/solo-builder/actions/workflows/smoke-test.yml/badge.svg)](https://github.com/Vaultifacts/solo-builder/actions/workflows/smoke-test.yml)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
@@ -22,7 +22,7 @@
 | **AnthropicRunner** | Subtasks without tools call `claude-sonnet-4-6` directly via SDK — no subprocess needed |
 | **Claude subprocess** | Fallback runner via `claude -p` headless CLI for tool-use when API key is absent |
 | **REVIEW_MODE** | Subtasks pause at magenta `Review` state; advance only via `verify` — full human-in-the-loop |
-| **Telegram bot** | `/status`, `/run`, `/auto [N]`, `/verify ST`, `/export` — control the pipeline from your phone |
+| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/verify subtask`, `/export` — control the pipeline from Discord |
 | **Live web dashboard** | Dark-theme SPA at `http://localhost:5000` polls every 2 s; Run Step + Auto buttons |
 | **Self-healing** | SelfHealer detects stalled subtasks and resets them to Pending automatically |
 | **Shadow state** | ShadowAgent tracks expected vs actual status, resolves conflicts each step |
@@ -63,22 +63,25 @@ python api/app.py
 # Open http://127.0.0.1:5000
 ```
 
-### Terminal 3 — Telegram Bot (optional)
+### Terminal 3 — Discord Bot (optional)
 ```bash
-# 1. Create a bot via @BotFather, copy the token
-# 2. Add to .env:
-#      TELEGRAM_BOT_TOKEN=<token>
-#      TELEGRAM_CHAT_ID=<your chat ID>   # optional, restricts to one user
-pip install "python-telegram-bot>=20.0"
-python telegram_bot/bot.py
+# 1. Go to https://discord.com/developers/applications → New Application → Bot
+# 2. Reset Token → copy it
+# 3. OAuth2 → URL Generator → scopes: bot + applications.commands
+#    permissions: Send Messages, Attach Files → invite URL → add to your server
+# 4. Add to .env:
+#      DISCORD_BOT_TOKEN=<token>
+#      DISCORD_CHANNEL_ID=<channel ID>   # optional, restricts to one channel
+pip install "discord.py>=2.0"
+python discord_bot/bot.py
 ```
 
 | Bot Command | Description |
 |---|---|
 | `/status` | DAG progress summary with per-task bar charts |
 | `/run` | Trigger one step (same as the dashboard Run Step button) |
-| `/auto [N]` | Run N steps automatically; sends final status when done |
-| `/verify ST [note]` | Approve a Review-gated subtask from your phone |
+| `/auto [n]` | Run N steps automatically; sends final status when done |
+| `/verify subtask [note]` | Approve a Review-gated subtask from Discord |
 | `/export` | Download `solo_builder_outputs.md` as a file attachment |
 | `/help` | Command list |
 
@@ -153,8 +156,8 @@ solo_builder/
 ├── api/
 │   ├── app.py                   # Flask REST API (GET /status /tasks /journal /export, POST /run)
 │   └── dashboard.html           # Dark-theme SPA, live polling, Run Step + Auto + Export buttons
-├── telegram_bot/
-│   └── bot.py                   # Telegram bot (/status /run /auto /verify /export)
+├── discord_bot/
+│   └── bot.py                   # Discord bot (/status /run /auto /verify /export)
 ├── utils/
 │   └── helper_functions.py      # ANSI codes, bars, DAG stats, validators
 ├── config/

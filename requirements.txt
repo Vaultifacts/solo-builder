@@ -11,5 +11,5 @@ anthropic>=0.40
 matplotlib>=3.10
 numpy>=2.2
 
-# Telegram bot (optional — only needed for telegram_bot/bot.py)
-python-telegram-bot>=20.0
+# Discord bot (optional — only needed for discord_bot/bot.py)
+discord.py>=2.0
