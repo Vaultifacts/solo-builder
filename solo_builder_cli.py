@@ -1532,6 +1532,30 @@ class SoloBuilderCLI:
         else:
             print(f"  {RED}Backup .{n} exists but failed to load.{RESET}")
 
+    def _cmd_undo(self) -> None:
+        """undo — restore state from the most recent backup (.1)."""
+        backup_path = f"{STATE_PATH}.1"
+        if not os.path.exists(backup_path):
+            print(f"  {YELLOW}No backup available to undo.{RESET}")
+            return
+        prev_step = self.step
+        try:
+            import shutil
+            shutil.copy2(backup_path, STATE_PATH)
+        except OSError as exc:
+            print(f"  {RED}Undo failed: {exc}{RESET}")
+            return
+        ok = self.load_state()
+        if ok:
+            print(f"  {GREEN}Undo: step {prev_step} → {self.step} "
+                  f"({dag_stats(self.dag)['verified']} verified){RESET}")
+            self.display.render(
+                self.dag, self.memory_store, self.step,
+                self.alerts, self.meta.forecast(self.dag),
+            )
+        else:
+            print(f"  {RED}Undo backup exists but failed to load.{RESET}")
+
     # ── Auto-run ─────────────────────────────────────────────────────────────
     def _cmd_auto(self, args: str) -> None:
         """
@@ -1787,6 +1811,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("load_backup"):
             self._cmd_load_backup(raw[12:].strip())
+
+        elif cmd == "undo":
+            self._cmd_undo()
 
         elif cmd == "reset":
             self._cmd_reset()
@@ -2549,6 +2576,7 @@ class SoloBuilderCLI:
             ("save",                   "Save current state to disk"),
             ("load",                   "Load last saved state from disk"),
             ("load_backup [1|2|3]",   "Restore from a backup (.1=newest, .3=oldest)"),
+            ("undo",                   "Undo last step (restore from .1 backup)"),
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),

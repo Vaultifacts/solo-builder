@@ -264,6 +264,7 @@ _HELP_TEXT = (
     "`set KEY`                          — show current value of a setting\n"
     "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
+    "`config`                           — show all current runtime settings\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -551,6 +552,17 @@ async def _handle_text_command(message: discord.Message) -> None:
             except Exception:
                 await _send(message, "❌ Could not read `config/settings.json`.")
 
+    elif low == "config":
+        try:
+            cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            lines = ["**Current Settings** (`config/settings.json`)", "```"]
+            for k, v in cfg.items():
+                lines.append(f"  {k:<30} = {v}")
+            lines.append("```")
+            await _send(message, "\n".join(lines))
+        except Exception:
+            await _send(message, "❌ Could not read `config/settings.json`.")
+
     elif low == "graph":
         state = _load_state()
         await _send(message, _format_graph(state))
@@ -602,6 +614,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/reset confirm:yes`                — reset DAG (destructive!)\n"
         "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
+        "`/config`                           — show all current settings\n"
         "`/graph`                            — visual ASCII DAG dependency graph\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
@@ -617,6 +630,22 @@ async def status_cmd(interaction: discord.Interaction) -> None:
     if _auto_running():
         msg += "\n▶ Auto-run in progress — use `/stop` to cancel."
     await interaction.response.send_message(msg)
+
+
+@bot.tree.command(name="config", description="Show all current runtime settings")
+async def config_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    try:
+        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        lines = ["**Current Settings** (`config/settings.json`)", "```"]
+        for k, v in cfg.items():
+            lines.append(f"  {k:<30} = {v}")
+        lines.append("```")
+        await interaction.response.send_message("\n".join(lines))
+    except Exception:
+        await interaction.response.send_message("❌ Could not read `config/settings.json`.")
 
 
 @bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")

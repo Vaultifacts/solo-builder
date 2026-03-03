@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1.29-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.30-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 

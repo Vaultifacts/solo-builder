@@ -1831,6 +1831,62 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         text = mock_send.call_args[0][1]
         self.assertIn("No tasks", text)
 
+    async def test_config_shows_settings(self):
+        """'config' reads settings.json and shows all keys."""
+        mock_settings = MagicMock()
+        mock_settings.read_text.return_value = json.dumps({
+            "STALL_THRESHOLD": 5, "REVIEW_MODE": False
+        })
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "SETTINGS_PATH", new=mock_settings):
+            await bot_module._handle_text_command(_make_msg("config"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Current Settings", text)
+        self.assertIn("STALL_THRESHOLD", text)
+        self.assertIn("REVIEW_MODE", text)
+
+
+class TestUndoCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_undo."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self.addCleanup(self._cleanup)
+
+    def _cleanup(self):
+        sp = _cli_module.STATE_PATH
+        if os.path.exists(sp):
+            os.remove(sp)
+        for i in range(1, 4):
+            p = f"{sp}.{i}"
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_undo_restores_previous_step(self):
+        """undo restores the previous state from .1 backup."""
+        self.cli.step = 5
+        self.cli.save_state(silent=True)
+        self.cli.step = 6
+        self.cli.save_state(silent=True)
+        self.assertEqual(self.cli.step, 6)
+        self.cli._cmd_undo()
+        self.assertEqual(self.cli.step, 5)
+
+    def test_undo_no_backup_shows_warning(self):
+        """undo with no .1 backup shows a warning."""
+        sp = _cli_module.STATE_PATH
+        # Ensure no backup
+        p1 = f"{sp}.1"
+        if os.path.exists(p1):
+            os.remove(p1)
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.cli._cmd_undo()
+        self.assertIn("No backup", buf.getvalue())
+
 
 # ---------------------------------------------------------------------------
 # Entry point

@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.30] — 2026-03-03
+
+### Added
+- **Dashboard SVG DAG graph view** — toggle Grid/Graph button in tasks panel; renders
+  interactive SVG with task nodes, dependency arrows, status colors, and verified counts.
+  Clicking a node selects the task in the detail panel. Auto-refreshes every poll.
+- **Bot `/config` command** — plain-text and `/config` slash command; displays all
+  `config/settings.json` keys in a formatted code block. 24 Discord commands total.
+- **CLI `undo` command** — restores state from the most recent `.1` backup, effectively
+  undoing the last step. Shows step transition and verified count.
+- **3 new tests** (config shows settings, undo restores step, undo no backup) → 159 bot + 28 API = 187 total
+
+---
+
 ## [v2.1.29] — 2026-03-03
 
 ### Added
