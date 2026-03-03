@@ -151,8 +151,8 @@ class SoloBuilderBot(discord.Client):
         self.loop.create_task(_poll_completion(self))
 
     async def on_ready(self) -> None:
-        print(f"Solo Builder Bot ready · logged in as {self.user}")
-        print(f"Slash commands synced. Invite URL scope: bot+applications.commands")
+        print(f"Solo Builder Bot ready · logged in as {self.user}", flush=True)
+        print(f"Slash commands synced. Invite URL scope: bot+applications.commands", flush=True)
 
     async def on_message(self, message: discord.Message) -> None:
         if CHANNEL_ID and message.channel.id != CHANNEL_ID:
