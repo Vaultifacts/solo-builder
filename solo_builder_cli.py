@@ -2063,6 +2063,9 @@ class SoloBuilderCLI:
 
             elif key == "WEBHOOK_URL":
                 global WEBHOOK_URL
+                if val and not val.startswith("http"):
+                    print(f"  {YELLOW}Warning: WEBHOOK_URL should start with http/https "
+                          f"(got {val!r}). Setting anyway.{RESET}")
                 WEBHOOK_URL = val
                 print(f"  {GREEN}WEBHOOK_URL = {val or '(cleared)'}{RESET}")
 

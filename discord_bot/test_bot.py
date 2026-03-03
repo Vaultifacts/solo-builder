@@ -850,6 +850,22 @@ class TestSetCommand(unittest.TestCase):
         self.cli._cmd_set("WEBHOOK_URL=http://example.com/hook")
         self.assertEqual(_cli_module.WEBHOOK_URL, "http://example.com/hook")
 
+    def test_set_webhook_url_non_http_warns_but_sets(self):
+        """Non-http WEBHOOK_URL prints a warning but still sets the value."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_set("WEBHOOK_URL=not-a-url")
+        self.assertEqual(_cli_module.WEBHOOK_URL, "not-a-url")
+        self.assertIn("Warning", buf.getvalue())
+
+    def test_set_webhook_url_clear_no_warning(self):
+        """Clearing WEBHOOK_URL (empty value) does not print a warning."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_set("WEBHOOK_URL=")
+        self.assertEqual(_cli_module.WEBHOOK_URL, "")
+        self.assertNotIn("Warning", buf.getvalue())
+
     def test_set_invalid_value_raises_no_exception(self):
         """Non-numeric value for int key prints error without raising."""
         orig = _cli_module.STALL_THRESHOLD

@@ -86,7 +86,7 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
-      - name: Run bot unit tests (119 tests)
+      - name: Run bot unit tests (121 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
       - name: Profiler dry-run (patch smoke test)
@@ -155,6 +155,36 @@ jobs:
           assert len(cli.dag) == n2 + 1, "handle_command add_task did not grow DAG"
 
           print(f"PASS: DAG grew {n_before} -> {n_before + 2} via inline add_task")
+          EOF
+
+      - name: Test add_task dep wiring (headless)
+        run: |
+          python - <<'EOF'
+          import sys
+          sys.path.insert(0, ".")
+          import solo_builder_cli as m
+
+          cli = m.SoloBuilderCLI()
+
+          # Explicit dep: new task should depend on Task 0, not last task (Task 6)
+          cli._cmd_add_task("Build auth | depends: 0")
+          new_task = list(cli.dag.values())[-1]
+          assert new_task["depends_on"] == ["Task 0"], \
+              f"Expected depends_on=['Task 0'], got {new_task['depends_on']}"
+
+          # Digit normalisation: '| depends: 6' → Task 6
+          cli._cmd_add_task("Deploy infra | depends: 6")
+          new_task2 = list(cli.dag.values())[-1]
+          assert new_task2["depends_on"] == ["Task 6"], \
+              f"Expected depends_on=['Task 6'], got {new_task2['depends_on']}"
+
+          # Spec stripped: description must not contain '| depends:'
+          branch = list(new_task["branches"].values())[0]
+          st = list(branch["subtasks"].values())[0]
+          assert "| depends:" not in st["description"], \
+              f"Pipe syntax leaked into description: {st['description']}"
+
+          print("PASS: add_task dep wiring — explicit dep, digit normalise, spec stripped")
           EOF
 
       - name: Test add_branch inline spec (headless)

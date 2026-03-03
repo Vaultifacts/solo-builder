@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1.18-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.20-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 
@@ -22,7 +22,7 @@
 | **AnthropicRunner** | Subtasks without tools call `claude-sonnet-4-6` directly via SDK — no subprocess needed |
 | **Claude subprocess** | Fallback runner via `claude -p` headless CLI for tool-use when API key is absent |
 | **REVIEW_MODE** | Subtasks pause at magenta `Review` state; advance only via `verify` — full human-in-the-loop |
-| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/stop`, `/verify subtask`, `/export` — control the pipeline from Discord; also accepts plain-text commands without `/` prefix |
+| **Discord bot** | `/status`, `/run`, `/auto [n]`, `/stop`, `/verify subtask`, `/add_task spec`, `/add_branch task spec`, `/export` — control the pipeline from Discord; also accepts plain-text commands without `/` prefix |
 | **Live web dashboard** | Dark-theme SPA at `http://localhost:5000` polls every 2 s; Run Step + Auto buttons |
 | **Self-healing** | SelfHealer detects stalled subtasks and resets them to Pending automatically |
 | **Shadow state** | ShadowAgent tracks expected vs actual status, resolves conflicts each step |
@@ -91,6 +91,8 @@ Both slash commands and plain-text work (no `/` prefix needed for plain-text):
 | `auto [n]` / `/auto [n]` | Run N steps automatically; posts a per-step ticker after each step |
 | `stop` / `/stop` | Cancel bot auto run + write `state/stop_trigger` so the CLI halts after the current step |
 | `verify <ST> [note]` / `/verify` | Approve a Review-gated subtask from Discord |
+| `add_task <spec>` / `/add_task` | Queue a new task; CLI adds it at the next step boundary |
+| `add_branch <task> <spec>` / `/add_branch` | Queue a new branch on an existing task |
 | `export` / `/export` | Download `solo_builder_outputs.md` as a file attachment |
 | `help` / `/help` | Command list |
 
@@ -105,8 +107,8 @@ The bot sends a per-step progress ticker (`Step N — X✅ Y▶ Z⏸ W⏳ / 70`)
 | `verify <ST> [note]` | Hard-set a subtask Verified (human gate) |
 | `describe <ST> <prompt>` | Assign a custom Claude prompt to a subtask |
 | `tools <ST> <tool,list>` | Give a subtask access to Claude tools (Read, Glob, Grep…) |
-| `add_task [spec]` | Append a new task; inline spec skips the prompt (e.g. `add_task Build OAuth2 flow`) |
-| `add_branch <Task N>` | Add a branch to an existing task |
+| `add_task [spec \| depends: N]` | Append a new task; inline spec skips the prompt; optional `\| depends: N` overrides auto-wiring |
+| `add_branch <Task N> [spec]` | Add a branch to an existing task; inline spec skips the prompt |
 | `set KEY=VALUE` | Change runtime settings (see below) |
 | `export` | Dump all subtask outputs to `solo_builder_outputs.md` |
 | `snapshot` | Save a PDF report |
