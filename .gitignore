@@ -10,3 +10,4 @@ build/
 agg.exe
 .env
 discord_bot/chat.log
+solo_builder_outputs.md
