@@ -1317,6 +1317,49 @@ class TestAddTaskInlineSpec(unittest.TestCase):
         self.assertEqual(len(self.cli.dag), n_before + 1)
 
 
+class TestAddTaskDepWiring(unittest.TestCase):
+    """Tests for 'add_task spec | depends: N' dependency override syntax."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self.cli.executor.claude.available = False
+        self._sleep_patcher = patch("time.sleep")
+        self._sleep_patcher.start()
+
+    def tearDown(self):
+        self._sleep_patcher.stop()
+
+    def _last_task(self) -> dict:
+        return list(self.cli.dag.values())[-1]
+
+    def test_explicit_dep_wired_correctly(self):
+        """'Build auth | depends: 0' creates task with depends_on=['Task 0']."""
+        self.cli._cmd_add_task("Build auth | depends: 0")
+        self.assertEqual(self._last_task()["depends_on"], ["Task 0"])
+
+    def test_digit_dep_normalised_to_task_name(self):
+        """'| depends: 6' normalises digit to 'Task 6'."""
+        self.cli._cmd_add_task("Deploy infra | depends: 6")
+        self.assertEqual(self._last_task()["depends_on"], ["Task 6"])
+
+    def test_unknown_dep_falls_back_to_default(self):
+        """'| depends: 99' prints warning and uses default (last task)."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_add_task("Build stuff | depends: 99")
+        self.assertIn("Unknown dependency", buf.getvalue())
+        self.assertNotEqual(self._last_task()["depends_on"], ["Task 99"])
+
+    def test_spec_stripped_of_pipe_syntax(self):
+        """Subtask description must not contain the '| depends:' suffix."""
+        self.cli._cmd_add_task("Build OAuth | depends: 0")
+        task   = self._last_task()
+        branch = list(task["branches"].values())[0]
+        st     = list(branch["subtasks"].values())[0]
+        self.assertNotIn("| depends:", st["description"])
+
+
 class TestAddBranchInlineSpec(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_add_branch with inline spec_override."""
 

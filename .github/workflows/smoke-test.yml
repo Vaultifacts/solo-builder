@@ -86,7 +86,7 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
-      - name: Run bot unit tests (115 tests)
+      - name: Run bot unit tests (119 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
       - name: Profiler dry-run (patch smoke test)
@@ -155,6 +155,42 @@ jobs:
           assert len(cli.dag) == n2 + 1, "handle_command add_task did not grow DAG"
 
           print(f"PASS: DAG grew {n_before} -> {n_before + 2} via inline add_task")
+          EOF
+
+      - name: Test add_branch inline spec (headless)
+        run: |
+          python - <<'EOF'
+          import sys, builtins
+          sys.path.insert(0, ".")
+          import solo_builder_cli as m
+
+          cli = m.SoloBuilderCLI()
+          n_branches_before = len(cli.dag["Task 0"]["branches"])
+
+          _real_input = builtins.input
+          def _no_input(prompt=""):
+              raise AssertionError(f"input() was called: {prompt!r}")
+          builtins.input = _no_input
+          try:
+              cli._cmd_add_branch("0", spec_override="Add error handling and retry logic")
+          finally:
+              builtins.input = _real_input
+
+          n_branches_after = len(cli.dag["Task 0"]["branches"])
+          assert n_branches_after == n_branches_before + 1, \
+              f"Expected Task 0 branches to grow by 1, got {n_branches_before} -> {n_branches_after}"
+
+          # handle_command dispatch variant
+          n2 = len(cli.dag["Task 0"]["branches"])
+          builtins.input = _no_input
+          try:
+              cli.handle_command("add_branch 0 Write integration tests for the API")
+          finally:
+              builtins.input = _real_input
+          assert len(cli.dag["Task 0"]["branches"]) == n2 + 1, \
+              "handle_command add_branch did not grow Task 0 branches"
+
+          print(f"PASS: Task 0 branches grew {n_branches_before} -> {n_branches_before + 2} via inline add_branch")
           EOF
 
       - name: Test webhook POST via _fire_completion

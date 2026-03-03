@@ -1516,6 +1516,7 @@ class SoloBuilderCLI:
         _trigger     = os.path.join(_HERE, "state", "run_trigger")
         _stoptrig    = os.path.join(_HERE, "state", "stop_trigger")
         _attrigger   = os.path.join(_HERE, "state", "add_task_trigger.json")
+        _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1566,6 +1567,18 @@ class SoloBuilderCLI:
                             spec = adata.get("spec", "").strip()
                             if spec:
                                 self._cmd_add_task(spec)
+                        except Exception:
+                            pass
+                    if os.path.exists(_abtrigger):
+                        try:
+                            abdata = json.loads(
+                                open(_abtrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_abtrigger)
+                            task_arg = abdata.get("task", "").strip()
+                            spec     = abdata.get("spec", "").strip()
+                            if task_arg and spec:
+                                self._cmd_add_branch(task_arg, spec_override=spec)
                         except Exception:
                             pass
                     if os.path.exists(_trigger):
@@ -1760,6 +1773,20 @@ class SoloBuilderCLI:
 
         spec = spec_override.strip() if spec_override.strip() else \
                input(f"  {BOLD}What should {task_name} accomplish?{RESET} ").strip()
+
+        # Parse optional dependency override: "My spec | depends: 5"
+        dep_task = None
+        if " | depends:" in spec:
+            head, dep_raw = spec.split(" | depends:", 1)
+            spec = head.strip()
+            dep_raw = dep_raw.strip()
+            if dep_raw.isdigit():
+                dep_raw = f"Task {dep_raw}"
+            if dep_raw in self.dag:
+                dep_task = dep_raw
+            else:
+                print(f"  {YELLOW}Unknown dependency '{dep_raw}' — using default (last task).{RESET}")
+
         if not spec:
             print(f"  {YELLOW}Cancelled — description cannot be empty.{RESET}")
             return
@@ -1817,8 +1844,8 @@ class SoloBuilderCLI:
                 del subtasks[k]
             print(f"  {YELLOW}Capped to {MAX_SUBTASKS_PER_BRANCH} subtasks (MAX_SUBTASKS_PER_BRANCH).{RESET}")
 
-        # Auto-wire: new task depends on the last existing task
-        last_task = list(self.dag.keys())[-1] if self.dag else None
+        # Auto-wire: new task depends on the last existing task (or explicit dep_task)
+        last_task = dep_task if dep_task else (list(self.dag.keys())[-1] if self.dag else None)
 
         self.dag[task_name] = {
             "status": "Pending",
@@ -2609,9 +2636,10 @@ def main() -> None:
     _STOP_PATH  = os.path.join(_HERE, "state", "stop_trigger")
     _RUN_PATH   = os.path.join(_HERE, "state", "run_trigger")
     _AT_PATH    = os.path.join(_HERE, "state", "add_task_trigger.json")
+    _AB_PATH    = os.path.join(_HERE, "state", "add_branch_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
-    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH):
+    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

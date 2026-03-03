@@ -51,7 +51,8 @@ STEP_PATH      = _ROOT / "state" / "step.txt"
 TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
 VERIFY_TRIGGER   = _ROOT / "state" / "verify_trigger.json"
 STOP_TRIGGER     = _ROOT / "state" / "stop_trigger"
-ADD_TASK_TRIGGER = _ROOT / "state" / "add_task_trigger.json"
+ADD_TASK_TRIGGER   = _ROOT / "state" / "add_task_trigger.json"
+ADD_BRANCH_TRIGGER = _ROOT / "state" / "add_branch_trigger.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -183,14 +184,15 @@ def _auto_running() -> bool:
 
 _HELP_TEXT = (
     "**Solo Builder — plain-text commands**\n"
-    "`status`                  — DAG progress summary\n"
-    "`run`                     — trigger one step\n"
-    "`auto [n]`                — run N steps (default: until complete)\n"
-    "`stop`                    — cancel an in-progress auto run\n"
-    "`verify <subtask> [note]` — approve a Review-gated subtask\n"
-    "`add_task <spec>`         — queue a new task (added at next step)\n"
-    "`export`                  — download all Claude outputs\n"
-    "`help`                    — this message\n\n"
+    "`status`                       — DAG progress summary\n"
+    "`run`                          — trigger one step\n"
+    "`auto [n]`                     — run N steps (default: until complete)\n"
+    "`stop`                         — cancel an in-progress auto run\n"
+    "`verify <subtask> [note]`      — approve a Review-gated subtask\n"
+    "`add_task <spec>`              — queue a new task (added at next step)\n"
+    "`add_branch <task> <spec>`     — queue a new branch on an existing task\n"
+    "`export`                       — download all Claude outputs\n"
+    "`help`                         — this message\n\n"
     "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
 )
 
@@ -281,6 +283,23 @@ async def _handle_text_command(message: discord.Message) -> None:
             f"✅ Task queued: *{spec[:80]}*\nCLI will add it at the next step boundary."
         )
 
+    elif low.startswith("add_branch"):
+        rest = text[10:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `add_branch <task> <spec>` — e.g. `add_branch 0 Add error handling`")
+            return
+        task_arg, spec = parts[0], parts[1].strip()
+        if not spec:
+            await _send(message, "Usage: `add_branch <task> <spec>` — e.g. `add_branch 0 Add error handling`")
+            return
+        ADD_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+        ADD_BRANCH_TRIGGER.write_text(json.dumps({"task": task_arg, "spec": spec}), encoding="utf-8")
+        await _send(
+            message,
+            f"✅ Branch queued on Task {task_arg}: *{spec[:80]}*\nCLI will add it at the next step boundary."
+        )
+
     elif low in ("help", "?"):
         await _send(message, _HELP_TEXT)
 
@@ -302,6 +321,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/stop`                      — cancel an in-progress auto run\n"
         "`/verify subtask [note]`     — approve a subtask (REVIEW_MODE)\n"
         "`/add_task spec`             — queue a new task\n"
+        "`/add_branch task spec`      — queue a new branch on a task\n"
         "`/export`                    — download all Claude outputs\n"
         "`/help`                      — this message"
     )
@@ -422,6 +442,24 @@ async def add_task_cmd(interaction: discord.Interaction, spec: str) -> None:
     ADD_TASK_TRIGGER.write_text(json.dumps({"spec": spec}), encoding="utf-8")
     await interaction.response.send_message(
         f"✅ Task queued: *{spec[:80]}*\nCLI will add it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="add_branch", description="Queue a new branch on an existing task")
+@app_commands.describe(task="Task number or name (e.g. 0 or Task 0)", spec="What the branch should cover")
+async def add_branch_cmd(interaction: discord.Interaction, task: str, spec: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    task = task.strip()
+    spec = spec.strip()
+    if not task or not spec:
+        await interaction.response.send_message("Usage: `/add_branch <task> <spec>`", ephemeral=True)
+        return
+    ADD_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+    ADD_BRANCH_TRIGGER.write_text(json.dumps({"task": task, "spec": spec}), encoding="utf-8")
+    await interaction.response.send_message(
+        f"✅ Branch queued on Task {task}: *{spec[:80]}*\nCLI will add it at the next step boundary."
     )
 
 
