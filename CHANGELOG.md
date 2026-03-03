@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.27] — 2026-03-03
+
+### Added
+- **Subtask output modal** — clicking any subtask row in the detail panel opens a
+  full-width modal showing description, Claude output, tools, and status. Action
+  buttons (Verify, Describe, Tools) work inline. Escape key or overlay click closes.
+- **Heartbeat-aware dashboard auto** — `GET /heartbeat` endpoint reads lightweight
+  `state/step.txt` (no JSON parse). Dashboard `runAuto()` polls heartbeat at 700ms
+  intervals for live counter updates during auto runs; shows verified count in button.
+- **3 new API tests** — `TestHeartbeat` class (missing file, parse, malformed) → 28 total
+
+---
+
 ## [v2.1.26] — 2026-03-03
 
 ### Added

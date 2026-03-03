@@ -36,6 +36,8 @@ class _Base(unittest.TestCase):
         self._journal_path  = Path(self._tmp) / "journal.md"
 
         # Patch all module-level paths
+        self._heartbeat_path = Path(self._tmp) / "state" / "step.txt"
+
         self._patches = [
             patch.object(app_module, "STATE_PATH", new=self._state_path),
             patch.object(app_module, "TRIGGER_PATH", new=self._trigger_path),
@@ -43,6 +45,7 @@ class _Base(unittest.TestCase):
             patch.object(app_module, "DESCRIBE_TRIGGER", new=self._describe_path),
             patch.object(app_module, "TOOLS_TRIGGER", new=self._tools_path),
             patch.object(app_module, "SET_TRIGGER", new=self._set_path),
+            patch.object(app_module, "HEARTBEAT_PATH", new=self._heartbeat_path),
             patch.object(app_module, "OUTPUTS_PATH", new=self._outputs_path),
             patch.object(app_module, "JOURNAL_PATH", new=self._journal_path),
         ]
@@ -247,6 +250,33 @@ class TestPostSet(_Base):
     def test_missing_value_returns_400(self):
         r = self.client.post("/set", json={"key": "REVIEW_MODE"})
         self.assertEqual(r.status_code, 400)
+
+
+# ---------------------------------------------------------------------------
+# GET /heartbeat
+# ---------------------------------------------------------------------------
+
+class TestHeartbeat(_Base):
+
+    def test_missing_step_txt_returns_zeros(self):
+        d = self.client.get("/heartbeat").get_json()
+        self.assertEqual(d["step"], 0)
+        self.assertEqual(d["total"], 0)
+
+    def test_parses_step_txt(self):
+        self._heartbeat_path.write_text("12,35,70,20,10,5")
+        d = self.client.get("/heartbeat").get_json()
+        self.assertEqual(d["step"], 12)
+        self.assertEqual(d["verified"], 35)
+        self.assertEqual(d["total"], 70)
+        self.assertEqual(d["pending"], 20)
+        self.assertEqual(d["running"], 10)
+        self.assertEqual(d["review"], 5)
+
+    def test_malformed_step_txt_returns_zeros(self):
+        self._heartbeat_path.write_text("garbage")
+        d = self.client.get("/heartbeat").get_json()
+        self.assertEqual(d["step"], 0)
 
 
 # ---------------------------------------------------------------------------

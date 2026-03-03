@@ -22,6 +22,7 @@ VERIFY_TRIGGER  = _PROJECT_ROOT / "state" / "verify_trigger.json"
 DESCRIBE_TRIGGER = _PROJECT_ROOT / "state" / "describe_trigger.json"
 TOOLS_TRIGGER   = _PROJECT_ROOT / "state" / "tools_trigger.json"
 SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
+HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
 
@@ -215,6 +216,27 @@ def set_setting():
         json.dumps({"key": key, "value": value}), encoding="utf-8"
     )
     return jsonify({"ok": True, "key": key, "value": value}), 202
+
+
+@app.get("/heartbeat")
+def heartbeat():
+    """Lightweight step counter from state/step.txt (no JSON parse)."""
+    if not HEARTBEAT_PATH.exists():
+        return jsonify({"step": 0, "verified": 0, "total": 0,
+                        "pending": 0, "running": 0, "review": 0})
+    try:
+        parts = HEARTBEAT_PATH.read_text().strip().split(",")
+        return jsonify({
+            "step":     int(parts[0]),
+            "verified": int(parts[1]),
+            "total":    int(parts[2]),
+            "pending":  int(parts[3]),
+            "running":  int(parts[4]),
+            "review":   int(parts[5]) if len(parts) > 5 else 0,
+        })
+    except (ValueError, IndexError):
+        return jsonify({"step": 0, "verified": 0, "total": 0,
+                        "pending": 0, "running": 0, "review": 0})
 
 
 @app.get("/export")
