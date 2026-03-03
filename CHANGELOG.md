@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.9] — 2026-03-03
+
+### Fixed
+- **`_cmd_export` always writes the file** — previously returned early when
+  no Claude outputs existed (`count == 0`), causing the CI export step to fail
+  with "file not created". Now writes a header-only file with a placeholder note.
+
+### Added
+- **`--export` flag** — `python solo_builder_cli.py --headless --auto N --export`
+  calls `_cmd_export()` after the run and exits; no stdin piping required
+- **CI webhook smoke test** — `smoke-test.yml` starts a Python `http.server`
+  in a background thread, runs `--auto 99 --no-resume --webhook <url>`,
+  asserts the completion payload (`event=complete`) was received and
+  `state/webhook_errors.log` was not created
+- **`TestRunAuto` async test class** — 4 tests via `IsolatedAsyncioTestCase`
+  covering: no-work → completion message; step advances → ticker + n-step
+  summary; step timeout → warning; pipeline completes mid-run → completion
+  message. Total: **25 tests**, 0.07 s
+
+### Changed
+- **CI export test** — now uses `--headless --export --no-resume --auto 2`
+  instead of piping `y\nexport\nexit` to interactive mode; assertion
+  lowered to `size > 30` (header-only export is ~150 bytes)
+
+---
+
 ## [v2.1.8] — 2026-03-03
 
 ### Added
