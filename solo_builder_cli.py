@@ -1511,6 +1511,7 @@ class SoloBuilderCLI:
 
                 stats = dag_stats(self.dag)
                 if stats["verified"] == stats["total"]:
+                    self.save_state(silent=True)   # flush JSON before bot reads it
                     _fire_completion(self.step, stats["verified"], stats["total"])
                     time.sleep(1.2)
                     break

@@ -20,10 +20,10 @@ jobs:
       - name: Install dependencies
         run: pip install anthropic flask python-dotenv
 
-      - name: Run CLI (headless 5 steps)
-        run: PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 5 --no-resume
+      - name: Run CLI (headless 10 steps)
+        run: PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 10 --no-resume
 
-      - name: Assert 12+ subtasks verified
+      - name: Assert 15+ subtasks verified
         run: |
           python - <<'EOF'
           import json
@@ -41,7 +41,7 @@ jobs:
               for s in b["subtasks"].values()
           )
           print(f"Verified: {verified}/{total}")
-          assert verified >= 12, f"Expected >=12, got {verified}"
+          assert verified >= 15, f"Expected >=15, got {verified}"
           print("PASS")
           EOF
 
@@ -64,6 +64,38 @@ jobs:
               for s in b["subtasks"].values()
               if s.get("status") == "Verified"
           )
-          assert verified >= 1, "Expected pipeline to advance despite stop_trigger plant"
+          assert verified >= 1, "Expected pipeline to advance despite stale stop_trigger"
           print(f"PASS: stop_trigger cleared on startup; {verified} subtasks verified")
           EOF
+
+      - name: Test REVIEW_MODE produces Review-gated subtasks
+        run: |
+          # Enable REVIEW_MODE
+          python -c "
+          import json
+          s = json.load(open('config/settings.json'))
+          s['REVIEW_MODE'] = True
+          json.dump(s, open('config/settings.json', 'w'), indent=4)
+          "
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 2 --no-resume
+          python - <<'EOF'
+          import json
+          with open("state/solo_builder_state.json") as f:
+              state = json.load(f)
+          review = sum(
+              1 for t in state["dag"].values()
+              for b in t["branches"].values()
+              for s in b["subtasks"].values()
+              if s.get("status") == "Review"
+          )
+          print(f"Review-gated subtasks: {review}")
+          assert review >= 1, f"Expected >=1 Review subtask with REVIEW_MODE=on, got {review}"
+          print("PASS")
+          EOF
+          # Restore REVIEW_MODE
+          python -c "
+          import json
+          s = json.load(open('config/settings.json'))
+          s['REVIEW_MODE'] = False
+          json.dump(s, open('config/settings.json', 'w'), indent=4)
+          "
