@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.37] — 2026-03-03
+
+### Added
+- **Bot `/search` command** — plain-text and `/search <keyword>` slash command; finds
+  subtasks by keyword in name, description, or output. 40 Discord commands total.
+- **Dashboard subtask search** — search box in detail panel header filters subtask rows
+  by name or output preview in real-time
+- **CLI `log [ST]` command** — show journal entries from `journal.md`, optionally filtered
+  by subtask name; displays last 15 entries with step/task/branch context
+- **API `GET /search` endpoint** — keyword search across subtask names/descriptions/outputs
+  as JSON with `?q=keyword` parameter
+- **5 new tests** (2 bot search + 3 API search) → 173 bot + 39 API = 212 total
+
+---
+
 ## [v2.1.36] — 2026-03-03
 
 ### Added

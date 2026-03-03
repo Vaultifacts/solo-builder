@@ -366,6 +366,30 @@ class TestStats(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /search
+# ---------------------------------------------------------------------------
+
+class TestSearch(_Base):
+
+    def test_search_missing_query(self):
+        r = self.client.get("/search")
+        self.assertEqual(r.status_code, 400)
+
+    def test_search_found(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        r = self.client.get("/search?q=A1")
+        d = r.get_json()
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["results"][0]["subtask"], "A1")
+
+    def test_search_not_found(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/search?q=zzzz")
+        d = r.get_json()
+        self.assertEqual(d["count"], 0)
+
+
+# ---------------------------------------------------------------------------
 # GET /history
 # ---------------------------------------------------------------------------
 

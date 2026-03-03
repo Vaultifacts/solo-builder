@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ search │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1877,6 +1877,12 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("search "):
             self._cmd_search(raw[7:])
+
+        elif cmd == "log":
+            self._cmd_log("")
+
+        elif cmd.startswith("log "):
+            self._cmd_log(raw[4:])
 
         elif cmd.startswith("set "):
             self._cmd_set(raw[4:])
@@ -2609,6 +2615,44 @@ class SoloBuilderCLI:
                 print(f"    {DIM}Step {step}{RESET}  {format_status(hstatus)}")
         print()
 
+    def _cmd_log(self, args: str) -> None:
+        """log [subtask] — show journal entries, optionally filtered by subtask name."""
+        import re as _re
+        target = args.strip().upper()
+        if not os.path.exists(JOURNAL_PATH):
+            print(f"  {YELLOW}No journal file found.{RESET}")
+            return
+        try:
+            content = open(JOURNAL_PATH, "r", encoding="utf-8").read()
+        except Exception as exc:
+            print(f"  {RED}Could not read journal: {exc}{RESET}")
+            return
+        blocks = _re.split(r"(?=^## )", content, flags=_re.MULTILINE)
+        entries: list = []
+        for block in blocks:
+            if not block.strip().startswith("## "):
+                continue
+            m = _re.match(r"^## (\w+) · (Task \d+) / (Branch \w+) · Step (\d+)", block)
+            if not m:
+                continue
+            st_name = m.group(1)
+            if target and st_name.upper() != target:
+                continue
+            body = block[m.end():].strip()
+            body = _re.sub(r"^\*\*Prompt:\*\*.*\n\n?", "", body).strip().rstrip("-").strip()
+            entries.append((st_name, m.group(2), m.group(3), int(m.group(4)), body[:120]))
+        label = f" for {target}" if target else ""
+        print(f"\n  {BOLD}{CYAN}Journal{label}{RESET}  ({len(entries)} entr{'ies' if len(entries) != 1 else 'y'})")
+        print(f"  {'─' * 50}")
+        if not entries:
+            print(f"  {DIM}No entries found.{RESET}")
+        else:
+            for st, task, branch, step, body in entries[-15:]:
+                print(f"  {DIM}Step {step:<4}{RESET} {CYAN}{st:<5}{RESET} {DIM}{task} / {branch}{RESET}")
+                if body:
+                    print(f"    {DIM}{body}{RESET}")
+        print()
+
     def _cmd_search(self, args: str) -> None:
         """search <text> — find subtasks matching keyword in description or output."""
         query = args.strip().lower()
@@ -2751,6 +2795,7 @@ class SoloBuilderCLI:
             ("stats",                  "Per-task breakdown (verified, avg steps)"),
             ("history [N]",            "Show last N status transitions (default 20)"),
             ("search <text>",          "Find subtasks by keyword (description/output)"),
+            ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
             ("export",                  "Write all Claude outputs to solo_builder_outputs.md"),
