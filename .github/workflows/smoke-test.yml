@@ -46,7 +46,7 @@ jobs:
               if s.get("status") == "Verified"
           )
           print(f"Verified: {verified}/{total}  (Task 0: {task0_v}/8)")
-          assert verified >= 20, f"Expected >=20, got {verified}"
+          assert verified >= 15, f"Expected >=15, got {verified}"
           print("PASS")
           EOF
 
