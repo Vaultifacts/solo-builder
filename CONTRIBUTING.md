@@ -22,7 +22,7 @@ profiler_harness.py     — standalone perf benchmark
 ## Running tests
 
 ```bash
-# Fast unit tests (no API key, no Discord, ~0.03 s)
+# Fast unit tests (no API key, no Discord, ~0.07 s, 35 tests)
 python discord_bot/test_bot.py
 
 # Full headless smoke test (mirrors CI)
@@ -30,6 +30,31 @@ python solo_builder_cli.py --headless --auto 10 --no-resume
 ```
 
 CI runs automatically on every push to `master` via GitHub Actions.
+
+## Headless / scripted flags
+
+| Flag | Effect |
+|---|---|
+| `--headless` | Non-interactive mode; auto-run then exit |
+| `--auto N` | Run N steps (omit for full pipeline until complete) |
+| `--no-resume` | Ignore saved state, start fresh |
+| `--export` | After the run, write `solo_builder_outputs.md`; print goes to stderr |
+| `--quiet` | Suppress all stderr output (use with `--headless`) |
+| `--output-format json` | Print `{"steps", "verified", "total", "complete"}` to stdout; all other output to stderr |
+| `--webhook URL` | POST `{"event":"complete", "steps", "verified", "total"}` to URL on pipeline completion |
+
+Combining flags for fully scriptable / CI-friendly invocations:
+
+```bash
+# Headless run, export file, silent stderr, JSON result to stdout:
+python solo_builder_cli.py --headless --auto 99 --no-resume \
+    --export --quiet --output-format json
+
+# Headless run with webhook and JSON output:
+python solo_builder_cli.py --headless --auto 99 --no-resume \
+    --webhook https://hooks.example.com/done \
+    --output-format json
+```
 
 ---
 

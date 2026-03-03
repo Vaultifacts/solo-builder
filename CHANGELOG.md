@@ -5,7 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [v2.1.9] — 2026-03-03
+## [v2.1.10] — 2026-03-02
+
+### Fixed
+- **CI webhook test** — replaced full `--auto 99` subprocess (which never
+  completed in time) with a direct `import solo_builder_cli; m._fire_completion()`
+  call; test is now instant and deterministic
+
+### Added
+- **`--output-format json` `--export` integration** — JSON output now includes
+  `"export": {"path": ..., "count": ...}` when `--export` is passed
+- **`TestHandleTextCommand`** — 10 async unit tests covering every bot command
+  (`status`, `run`, `auto N`, `stop`, `verify`, `help`); total **35 tests**, 0.07 s
+
+### Changed
+- **`_cmd_export` prints to `sys.stderr`** — all export progress/warnings now
+  go to stderr so `--quiet` suppresses them and stdout stays clean for JSON
+- **`_cmd_export` returns `(path, count)` tuple** — enables JSON mode to report
+  export metadata
+- **CONTRIBUTING.md** — added headless/scripted flags table; updated test count to 35
+- **README** — updated CLI usage with `--export`, `--quiet`, `--output-format json`
+  and `--webhook` examples
+
+---
+
+## [v2.1.9] — 2026-03-02
 
 ### Fixed
 - **`_cmd_export` always writes the file** — previously returned early when

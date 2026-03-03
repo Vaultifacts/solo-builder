@@ -236,6 +236,119 @@ class TestLoadState(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# _handle_text_command tests (async, full command dispatcher)
+# ---------------------------------------------------------------------------
+
+def _make_msg(content: str) -> MagicMock:
+    """Minimal discord.Message stand-in."""
+    msg = MagicMock()
+    msg.content = content
+    msg.channel.id = 123
+    return msg
+
+
+class TestHandleTextCommand(unittest.IsolatedAsyncioTestCase):
+
+    async def test_status_no_auto(self):
+        state = _make_state({"A1": "Verified"}, step=3)
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_auto_running", return_value=False), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("status"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Step 3", text)
+        self.assertNotIn("Auto-run", text)
+
+    async def test_status_auto_running_appends_banner(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_auto_running", return_value=True), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("status"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Auto-run in progress", text)
+
+    async def test_run_no_work_sends_complete(self):
+        state = _make_state({"A1": "Verified"}, step=5)
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "TRIGGER_PATH", new=MagicMock()):
+            await bot_module._handle_text_command(_make_msg("run"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("complete", text.lower())
+
+    async def test_run_with_work_writes_trigger(self):
+        state = _make_state({"A1": "Pending"}, step=1)
+        mock_tp = MagicMock()
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "TRIGGER_PATH", new=mock_tp):
+            await bot_module._handle_text_command(_make_msg("run"))
+        mock_tp.write_text.assert_called_once_with("1")
+
+    async def test_auto_already_running_sends_warning(self):
+        with patch.object(bot_module, "_auto_running", return_value=True), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("auto 5"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("already running", text.lower())
+
+    async def test_auto_n_creates_task(self):
+        bot_module._auto_task = None
+        created = []
+
+        def _fake_create_task(coro):
+            try:
+                coro.close()   # suppress "coroutine never awaited" RuntimeWarning
+            except Exception:
+                pass
+            m = MagicMock()
+            created.append(m)
+            return m
+
+        with patch.object(bot_module, "_auto_running", return_value=False), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch("asyncio.create_task", side_effect=_fake_create_task):
+            await bot_module._handle_text_command(_make_msg("auto 7"))
+        self.assertEqual(len(created), 1)
+        text = mock_send.call_args[0][1]
+        self.assertIn("7 steps", text)
+
+    async def test_stop_with_auto_running_cancels(self):
+        task_mock = MagicMock()
+        bot_module._auto_task = task_mock
+        mock_st = MagicMock()
+        with patch.object(bot_module, "_auto_running", return_value=True), \
+             patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "STOP_TRIGGER", new=mock_st):
+            await bot_module._handle_text_command(_make_msg("stop"))
+        task_mock.cancel.assert_called_once()
+        mock_st.write_text.assert_called_once_with("1")
+
+    async def test_verify_queues_trigger(self):
+        mock_vt = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "VERIFY_TRIGGER", new=mock_vt):
+            await bot_module._handle_text_command(_make_msg("verify A3 looks good"))
+        mock_vt.write_text.assert_called_once()
+        written = json.loads(mock_vt.write_text.call_args[0][0])
+        self.assertEqual(written["subtask"], "A3")
+        self.assertEqual(written["note"], "looks good")
+
+    async def test_verify_no_args_sends_usage(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("verify"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+    async def test_help_sends_help_text(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("help"))
+        text = mock_send.call_args[0][1]
+        self.assertEqual(text, bot_module._HELP_TEXT)
+
+
+# ---------------------------------------------------------------------------
 # _run_auto integration tests (async, no Discord, no filesystem I/O)
 # ---------------------------------------------------------------------------
 

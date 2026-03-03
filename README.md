@@ -55,6 +55,12 @@ Or `export ANTHROPIC_API_KEY=sk-ant-...` in your shell.
 ```bash
 cd solo_builder
 python solo_builder_cli.py
+
+# Headless / scripted:
+python solo_builder_cli.py --headless --auto 99 --no-resume
+python solo_builder_cli.py --headless --auto 99 --no-resume --export        # write outputs.md after run
+python solo_builder_cli.py --headless --auto 99 --no-resume --export \
+    --quiet --output-format json                                            # silent, JSON result to stdout
 ```
 
 ### Terminal 2 — Dashboard (optional)

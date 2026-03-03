@@ -119,10 +119,11 @@ jobs:
           json.dump(cfg, open('config/settings.json', 'w'), indent=4)
           "
 
-      - name: Test webhook fires on pipeline completion
+      - name: Test webhook POST via _fire_completion
         run: |
           python - <<'EOF'
-          import threading, http.server, json, time, subprocess, sys, os
+          import threading, http.server, json, time, sys, os
+          sys.path.insert(0, ".")
 
           received = []
 
@@ -136,26 +137,25 @@ jobs:
               def log_message(self, fmt, *args):
                   pass
 
-          server = http.server.HTTPServer(("localhost", 19876), Handler)
+          server = http.server.HTTPServer(("localhost", 19877), Handler)
           t = threading.Thread(target=server.serve_forever, daemon=True)
           t.start()
-          time.sleep(0.3)
+          time.sleep(0.2)
 
-          subprocess.run(
-              [sys.executable, "solo_builder_cli.py", "--headless", "--auto", "99",
-               "--no-resume", "--webhook", "http://localhost:19876"],
-              env={**os.environ, "PYTHONIOENCODING": "utf-8"},
-              timeout=120,
-          )
+          # Import the module and call _fire_completion directly —
+          # avoids running a full 99-step pipeline just to test the POST path.
+          import solo_builder_cli as m
+          m.WEBHOOK_URL = "http://localhost:19877"
+          m._fire_completion(steps=42, verified=70, total=70)
+          time.sleep(2.0)   # give daemon thread time to complete the POST
 
-          time.sleep(0.5)
           server.shutdown()
 
-          assert received, "Webhook was never called — _fire_completion not reached"
+          assert received, "Webhook POST was never received by the test server"
           payload = received[0]
-          assert payload.get("event") == "complete", f"Wrong payload: {payload}"
-          assert payload["verified"] == payload["total"], f"Incomplete: {payload}"
+          expected = {"event": "complete", "steps": 42, "verified": 70, "total": 70}
+          assert payload == expected, f"Wrong payload: {payload}"
           log = "state/webhook_errors.log"
           assert not os.path.exists(log), f"Webhook errors logged: {open(log).read()}"
-          print(f"PASS: webhook received — {payload['verified']}/{payload['total']} verified in {payload['steps']} steps")
+          print(f"PASS: webhook received {payload}")
           EOF

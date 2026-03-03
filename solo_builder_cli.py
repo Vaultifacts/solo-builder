@@ -2030,8 +2030,11 @@ class SoloBuilderCLI:
             self.alerts, self.meta.forecast(self.dag),
         )
 
-    def _cmd_export(self) -> None:
-        """export — write all Claude outputs to solo_builder_outputs.md"""
+    def _cmd_export(self) -> tuple:
+        """export — write all Claude outputs to solo_builder_outputs.md.
+
+        Returns (path, count) so callers can include export info in JSON output.
+        """
         stats = dag_stats(self.dag)
         lines = [
             "# Solo Builder — Claude Outputs\n",
@@ -2057,9 +2060,10 @@ class SoloBuilderCLI:
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
         if count == 0:
-            print(f"  {YELLOW}No outputs yet — wrote header to {path}{RESET}")
+            print(f"  {YELLOW}No outputs yet — wrote header to {path}{RESET}", file=sys.stderr)
         else:
-            print(f"  {GREEN}Exported {count} outputs → {path}{RESET}")
+            print(f"  {GREEN}Exported {count} outputs → {path}{RESET}", file=sys.stderr)
+        return path, count
 
     def _cmd_depends(self, args: str) -> None:
         """depends [<Task N> <Task M>] — add dependency, or print dep graph."""
@@ -2598,8 +2602,9 @@ def main() -> None:
             no_resume=args.no_resume,
         )
     finally:
+        _export_path, _export_count = (None, 0)
         if args.export and cli is not None:
-            cli._cmd_export()
+            _export_path, _export_count = cli._cmd_export()
         _release_lock(_LOCK_PATH)
         if _quiet_mode:
             sys.stderr = sys.__stderr__
@@ -2609,12 +2614,15 @@ def main() -> None:
             sys.stdout = sys.__stdout__
             if cli is not None:
                 stats = dag_stats(cli.dag)
-                print(json.dumps({
+                out = {
                     "steps":    cli.step,
                     "verified": stats["verified"],
                     "total":    stats["total"],
                     "complete": stats["verified"] == stats["total"],
-                }))
+                }
+                if args.export:
+                    out["export"] = {"path": _export_path, "count": _export_count}
+                print(json.dumps(out))
 
 
 if __name__ == "__main__":
