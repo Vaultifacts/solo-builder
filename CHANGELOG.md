@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.41] — 2026-03-03
+
+### Added
+- **Dashboard rename action** — "Rename" button in subtask modal with inline text
+  input; POSTs to `/rename` and refreshes timeline on save
+- **Bot `/timeline` command** — plain-text and `/timeline subtask` slash command;
+  shows status history with icons and step numbers. 44 Discord commands total.
+- **CLI `filter <status>` command** — show only subtasks matching a status
+  (Verified/Running/Pending/Review) with color-coded output
+- **API `GET /config` endpoint** — expose runtime settings.json as JSON for
+  dashboard settings panel
+- **4 new tests** (2 bot timeline + 2 API config)
+  → 180 bot + 50 API = 230 total
+
+---
+
 ## [v2.1.40] — 2026-03-03
 
 ### Added

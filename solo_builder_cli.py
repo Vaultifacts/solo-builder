@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1893,6 +1893,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("search "):
             self._cmd_search(raw[7:])
+
+        elif cmd.startswith("filter "):
+            self._cmd_filter(raw[7:])
 
         elif cmd == "log":
             self._cmd_log("")
@@ -2761,6 +2764,30 @@ class SoloBuilderCLI:
                 print(f"  {CYAN}{st_name:<5}{RESET} {format_status(status)}  {DIM}{task_name} — {desc}{RESET}")
         print()
 
+    def _cmd_filter(self, args: str) -> None:
+        """filter <status> — show only subtasks matching a status."""
+        target = args.strip().capitalize()
+        valid = ("Verified", "Running", "Pending", "Review")
+        if target not in valid:
+            print(f"  Usage: filter <{' | '.join(valid)}>")
+            return
+        matches: list = []
+        for task_name, task_data in self.dag.items():
+            for branch_data in task_data.get("branches", {}).values():
+                for st_name, st_data in branch_data.get("subtasks", {}).items():
+                    if st_data.get("status", "Pending") == target:
+                        desc = (st_data.get("description") or "")[:50]
+                        matches.append((st_name, task_name, desc))
+        color = {"Verified": GREEN, "Running": CYAN, "Pending": YELLOW, "Review": YELLOW}.get(target, WHITE)
+        print(f"\n  {BOLD}{color}{target} Subtasks{RESET}  ({len(matches)})")
+        print(f"  {'─' * 50}")
+        if not matches:
+            print(f"  {DIM}None.{RESET}")
+        else:
+            for st_name, task_name, desc in matches:
+                print(f"  {CYAN}{st_name:<5}{RESET} {DIM}{task_name} — {desc}{RESET}")
+        print()
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -2905,6 +2932,7 @@ class SoloBuilderCLI:
             ("history [N]",            "Show last N status transitions (default 20)"),
             ("branches [Task N]",      "List all branches for a task with subtask detail"),
             ("search <text>",          "Find subtasks by keyword (description/output)"),
+            ("filter <status>",        "Show only subtasks matching a status"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),

@@ -565,6 +565,24 @@ class TestTimeline(_Base):
 
 
 # ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+class TestConfig(_Base):
+
+    def test_returns_settings(self):
+        r = self.client.get("/config")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIsInstance(d, dict)
+
+    def test_has_expected_keys(self):
+        r = self.client.get("/config")
+        d = r.get_json()
+        self.assertIn("STALL_THRESHOLD", d)
+        self.assertIn("VERIFY_PROB", d)
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 

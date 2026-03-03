@@ -89,7 +89,7 @@ jobs:
       - name: Run bot unit tests (180 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
-      - name: Run API unit tests (48 tests)
+      - name: Run API unit tests (50 tests)
         run: PYTHONIOENCODING=utf-8 python api/test_app.py
 
       - name: Profiler dry-run (patch smoke test)

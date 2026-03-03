@@ -22,6 +22,7 @@ VERIFY_TRIGGER  = _PROJECT_ROOT / "state" / "verify_trigger.json"
 DESCRIBE_TRIGGER = _PROJECT_ROOT / "state" / "describe_trigger.json"
 TOOLS_TRIGGER   = _PROJECT_ROOT / "state" / "tools_trigger.json"
 SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
+SETTINGS_PATH   = _PROJECT_ROOT / "config" / "settings.json"
 RENAME_TRIGGER  = _PROJECT_ROOT / "state" / "rename_trigger.json"
 HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
@@ -473,6 +474,18 @@ def journal():
             "output":  body[:600],
         })
     return jsonify({"entries": entries[-30:]})
+
+
+@app.get("/config")
+def config():
+    """Expose runtime settings as JSON."""
+    if not SETTINGS_PATH.exists():
+        return jsonify({"error": "Settings file not found."}), 404
+    try:
+        data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        return jsonify(data)
+    except Exception:
+        return jsonify({"error": "Could not read settings."}), 500
 
 
 # ---------------------------------------------------------------------------

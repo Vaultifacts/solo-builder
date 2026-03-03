@@ -659,9 +659,19 @@
       <div class="modal-label">Tools</div>
       <div class="modal-text" id="modal-tools">—</div>
     </div>
+    <div class="modal-field" id="modal-rename-wrap" style="display:none">
+      <div class="modal-label">Rename</div>
+      <input id="modal-rename-input" class="cmd-input" style="width:100%;margin-top:4px" placeholder="New description…">
+      <div style="margin-top:4px;display:flex;gap:6px">
+        <button class="cmd-btn" onclick="modalRenameSubmit()">Save</button>
+        <button class="cmd-btn" onclick="document.getElementById('modal-rename-wrap').style.display='none'" style="background:var(--surface)">Cancel</button>
+      </div>
+      <span class="feedback" id="fb-rename"></span>
+    </div>
     <div class="modal-actions">
       <button class="cmd-btn btn-verify" onclick="modalVerify()">✓ Verify</button>
       <button class="cmd-btn btn-describe" onclick="modalDescribe()">✎ Describe</button>
+      <button class="cmd-btn" onclick="modalRenameShow()">✏ Rename</button>
       <button class="cmd-btn btn-tools" onclick="modalTools()">⚙ Tools</button>
     </div>
   </div>
@@ -1354,6 +1364,26 @@
     if (!tools) return;
     _postCmd("/tools", {subtask: _modalSt, tools: tools}, "fb-tools", _modalSt);
     closeModal();
+  };
+
+  window.modalRenameShow = function () {
+    const wrap = document.getElementById("modal-rename-wrap");
+    const input = document.getElementById("modal-rename-input");
+    input.value = document.getElementById("modal-desc").textContent || "";
+    wrap.style.display = "";
+    input.focus();
+  };
+  window.modalRenameSubmit = function () {
+    if (!_modalSt) return;
+    const desc = document.getElementById("modal-rename-input").value.trim();
+    if (!desc) { _flash("fb-rename", "Enter a description"); return; }
+    _postCmd("/rename", {subtask: _modalSt, desc: desc}, "fb-rename", _modalSt);
+    document.getElementById("modal-rename-wrap").style.display = "none";
+    setTimeout(() => {
+      api("/timeline/" + encodeURIComponent(_modalSt))
+        .then(d => { if (_modalSt) _renderModal(_modalSt, d); })
+        .catch(() => {});
+    }, 800);
   };
 
   /* ── Search / filter ──────────────────────────────────────── */
