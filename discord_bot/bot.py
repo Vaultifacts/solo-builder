@@ -102,6 +102,29 @@ def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None
     return None
 
 
+def _format_search(state: dict, query: str) -> str:
+    """Search subtasks by keyword in name, description, or output."""
+    query = query.strip().lower()
+    if not query:
+        return "Usage: `search <keyword>`"
+    dag = state.get("dag", {})
+    matches = []
+    for task_name, task_data in dag.items():
+        for b in task_data.get("branches", {}).values():
+            for st_name, st_data in b.get("subtasks", {}).items():
+                desc = (st_data.get("description") or "").lower()
+                out = (st_data.get("output") or "").lower()
+                if query in desc or query in out or query in st_name.lower():
+                    icon = {"Verified": "✅", "Running": "▶", "Review": "⏸"}.get(st_data.get("status", "Pending"), "⏳")
+                    preview = (st_data.get("description") or "")[:50]
+                    matches.append(f"{icon} `{st_name}` ({task_name}) — {preview}")
+    n = len(matches)
+    header = f"**Search: '{query}'** — {n} match{'es' if n != 1 else ''}"
+    if not matches:
+        return header + "\n_No matches found._"
+    return header + "\n" + "\n".join(matches[:20])
+
+
 def _format_history(state: dict, limit: int = 20) -> str:
     """Return a formatted recent activity log across all subtasks."""
     dag = state.get("dag", {})
@@ -391,6 +414,7 @@ _HELP_TEXT = (
     "`timeline <subtask>`               — show status history timeline\n"
     "`stats`                            — per-task breakdown (verified, avg steps)\n"
     "`history [N]`                      — last N status transitions (default 20)\n"
+    "`search <keyword>`                 — find subtasks by keyword\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -739,6 +763,11 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_history(state, n))
 
+    elif low.startswith("search "):
+        q = text[7:].strip()
+        state = _load_state()
+        await _send(message, _format_search(state, q))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -865,6 +894,15 @@ async def stats_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_stats(_load_state()))
+
+
+@bot.tree.command(name="search", description="Find subtasks by keyword in name/description/output")
+@app_commands.describe(query="Keyword to search for")
+async def search_cmd(interaction: discord.Interaction, query: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_search(_load_state(), query))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")
