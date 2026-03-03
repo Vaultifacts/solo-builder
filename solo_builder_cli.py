@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1915,6 +1915,9 @@ class SoloBuilderCLI:
         elif cmd.startswith("set "):
             self._cmd_set(raw[4:])
 
+        elif cmd == "config":
+            self._cmd_config()
+
         elif cmd == "help":
             self._cmd_help()
 
@@ -2256,6 +2259,29 @@ class SoloBuilderCLI:
                 json.dump(cfg, f, indent=4)
         except Exception:
             pass
+
+    def _cmd_config(self) -> None:
+        """config — display all runtime settings in a formatted table."""
+        settings: dict = {
+            "STALL_THRESHOLD":     str(STALL_THRESHOLD),
+            "SNAPSHOT_INTERVAL":   str(SNAPSHOT_INTERVAL),
+            "VERBOSITY":           VERBOSITY,
+            "VERIFY_PROB":         str(self.executor.verify_prob),
+            "AUTO_STEP_DELAY":     str(AUTO_STEP_DELAY),
+            "AUTO_SAVE_INTERVAL":  str(AUTO_SAVE_INTERVAL),
+            "CLAUDE_ALLOWED_TOOLS": CLAUDE_ALLOWED_TOOLS or "(none)",
+            "ANTHROPIC_MAX_TOKENS": str(self.executor.anthropic.max_tokens),
+            "ANTHROPIC_MODEL":     self.executor.anthropic.model,
+            "CLAUDE_SUBPROCESS":   "on" if self.executor.claude.available else "off",
+            "REVIEW_MODE":         "on" if self.executor.review_mode else "off",
+            "WEBHOOK_URL":         WEBHOOK_URL or "(not set)",
+        }
+        print(f"\n  {BOLD}{CYAN}Runtime Settings{RESET}")
+        print(f"  {'─' * 50}")
+        for k, v in settings.items():
+            print(f"  {CYAN}{k:<22}{RESET} {v}")
+        print(f"  {'─' * 50}")
+        print(f"  {DIM}Use: set KEY=VALUE to change{RESET}\n")
 
     def _cmd_set(self, args: str) -> None:
         """set KEY=VALUE — update runtime config."""
@@ -2963,6 +2989,7 @@ class SoloBuilderCLI:
             ("search <text>",          "Find subtasks by keyword (description/output)"),
             ("filter <status>",        "Show only subtasks matching a status"),
             ("graph",                  "ASCII dependency graph with progress counters"),
+            ("config",                 "Display all runtime settings"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),

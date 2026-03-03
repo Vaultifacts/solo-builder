@@ -508,6 +508,39 @@ def update_config():
         return jsonify({"error": "Could not update settings."}), 500
 
 
+@app.get("/graph")
+def graph():
+    """Return ASCII dependency graph as JSON."""
+    dag = _load_dag()
+    if not dag:
+        return jsonify({"nodes": [], "text": "No tasks in DAG."})
+    sym = {"Verified": "V", "Running": "R", "Review": "W", "Pending": "P", "Blocked": "B"}
+    nodes = []
+    lines = []
+    task_names = list(dag.keys())
+    for t_name in task_names:
+        t = dag[t_name]
+        st = t.get("status", "Pending")
+        deps = t.get("depends_on", [])
+        branches = t.get("branches", {})
+        n_st = sum(len(b.get("subtasks", {})) for b in branches.values())
+        n_v = sum(1 for b in branches.values()
+                  for s in b.get("subtasks", {}).values()
+                  if s.get("status") == "Verified")
+        nodes.append({"task": t_name, "status": st, "verified": n_v,
+                       "total": n_st, "depends_on": deps})
+        tag = sym.get(st, "?")
+        line = f"[{tag}] {t_name} [{n_v}/{n_st}]"
+        if deps:
+            line += f"  <- {', '.join(deps)}"
+        lines.append(line)
+        dependents = [tn for tn in task_names
+                      if t_name in dag[tn].get("depends_on", [])]
+        for d in dependents:
+            lines.append(f"     +-> {d}")
+    return jsonify({"nodes": nodes, "text": "\n".join(lines)})
+
+
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------

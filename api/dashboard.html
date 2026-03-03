@@ -1085,22 +1085,43 @@
     } catch (_) {}
   }
 
+  let _settingsCache = {};
   function renderSettings(d) {
     const el = document.getElementById("settings-content");
     if (!d || typeof d !== "object") {
       el.innerHTML = `<div class="detail-placeholder">Could not load settings.</div>`;
       return;
     }
+    _settingsCache = d;
     let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${Object.keys(d).length} settings</div>`;
     Object.entries(d).forEach(([k, v]) => {
       const vStr = typeof v === "string" ? v : JSON.stringify(v);
-      html += `<div class="diff-entry" style="display:flex;justify-content:space-between;gap:8px">`;
-      html += `<span style="color:var(--cyan);font-size:11px">${k}</span>`;
-      html += `<span style="color:var(--text);font-size:11px;text-align:right;word-break:break-all">${vStr}</span>`;
+      const inputId = "cfg-" + k;
+      html += `<div class="diff-entry" style="display:flex;align-items:center;gap:6px">`;
+      html += `<span style="color:var(--cyan);font-size:10px;min-width:120px;flex-shrink:0">${k}</span>`;
+      if (typeof v === "boolean") {
+        const chk = v ? "checked" : "";
+        html += `<input type="checkbox" id="${inputId}" ${chk} onchange="saveSetting('${k}',this.checked)" style="accent-color:var(--cyan)">`;
+      } else {
+        html += `<input id="${inputId}" value="${vStr.replace(/"/g,'&quot;')}" style="flex:1;min-width:0;padding:1px 4px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)" onchange="saveSetting('${k}',this.value)">`;
+      }
       html += `</div>`;
     });
+    html += `<span class="feedback" id="fb-settings"></span>`;
     el.innerHTML = html;
   }
+  window.saveSetting = async function(key, val) {
+    if (typeof val === "string") {
+      const n = Number(val);
+      if (!isNaN(n) && val.trim() !== "") val = n;
+    }
+    try {
+      const r = await fetch(BASE + "/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({[key]: val})});
+      const d = await r.json();
+      if (d.ok) { _flash("fb-settings", key + " saved"); _settingsCache = d; }
+      else _flash("fb-settings", d.reason || "Error");
+    } catch(e) { _flash("fb-settings", "Network error"); }
+  };
 
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {

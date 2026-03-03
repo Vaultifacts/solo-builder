@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.43] — 2026-03-03
+
+### Added
+- **Dashboard settings editor** — Settings tab now shows editable inputs for
+  each config key; changes POST to `/config` and save inline with feedback
+- **CLI `config` command** — formatted table of all 12 runtime settings with
+  current values; hints `set KEY=VALUE` for changes
+- **CLI `graph` command** — ASCII dependency graph with emoji status icons,
+  progress counters `[V/T]`, and dependent arrows
+- **API `GET /graph` endpoint** — returns structured JSON `{nodes, text}` with
+  per-task status, progress, and dependency data
+- **6 new tests** (3 API graph + 3 API config POST)
+  → 183 bot + 56 API = 239 total
+
+---
+
 ## [v2.1.42] — 2026-03-03
 
 ### Added

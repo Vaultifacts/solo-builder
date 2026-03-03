@@ -600,6 +600,40 @@ class TestConfig(_Base):
         self.assertEqual(r.status_code, 400)
 
 
+# Graph
+# ---------------------------------------------------------------------------
+
+class TestGraph(_Base):
+
+    def setUp(self):
+        super().setUp()
+        self._write_state(self._make_state())
+
+    def test_returns_nodes(self):
+        r = self.client.get("/graph")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("nodes", d)
+        self.assertIsInstance(d["nodes"], list)
+        self.assertGreater(len(d["nodes"]), 0)
+
+    def test_has_text(self):
+        r = self.client.get("/graph")
+        d = r.get_json()
+        self.assertIn("text", d)
+        self.assertIn("Task 0", d["text"])
+
+    def test_node_structure(self):
+        r = self.client.get("/graph")
+        d = r.get_json()
+        node = d["nodes"][0]
+        self.assertIn("task", node)
+        self.assertIn("status", node)
+        self.assertIn("verified", node)
+        self.assertIn("total", node)
+        self.assertIn("depends_on", node)
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 
