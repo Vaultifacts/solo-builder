@@ -234,6 +234,7 @@ _HELP_TEXT = (
     "`set KEY`                          — show current value of a setting\n"
     "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
+    "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
     "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
 )
@@ -519,6 +520,21 @@ async def _handle_text_command(message: discord.Message) -> None:
             except Exception:
                 await _send(message, "❌ Could not read `config/settings.json`.")
 
+    elif low == "heartbeat":
+        hb = _read_heartbeat()
+        if hb:
+            step, v, tot, p, r, rv = hb
+            pct = round(v / tot * 100, 1) if tot else 0
+            lines = [
+                f"**Heartbeat** · Step {step}",
+                f"✅ {v}  ▶ {r}  ⏸ {rv}  ⏳ {p} / {tot}  ({pct}%)",
+            ]
+            if _auto_running():
+                lines.append("▶ Auto-run in progress")
+            await _send(message, "\n".join(lines))
+        else:
+            await _send(message, "⚠️ No heartbeat — is the CLI running?")
+
     elif low in ("help", "?"):
         await _send(message, _HELP_TEXT)
 
@@ -551,6 +567,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/reset confirm:yes`                — reset DAG (destructive!)\n"
         "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
+        "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
 
@@ -564,6 +581,26 @@ async def status_cmd(interaction: discord.Interaction) -> None:
     if _auto_running():
         msg += "\n▶ Auto-run in progress — use `/stop` to cancel."
     await interaction.response.send_message(msg)
+
+
+@bot.tree.command(name="heartbeat", description="Show live heartbeat counters from step.txt")
+async def heartbeat_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    hb = _read_heartbeat()
+    if hb:
+        step, v, tot, p, r, rv = hb
+        pct = round(v / tot * 100, 1) if tot else 0
+        lines = [
+            f"**Heartbeat** · Step {step}",
+            f"✅ {v}  ▶ {r}  ⏸ {rv}  ⏳ {p} / {tot}  ({pct}%)",
+        ]
+        if _auto_running():
+            lines.append("▶ Auto-run in progress")
+        await interaction.response.send_message("\n".join(lines))
+    else:
+        await interaction.response.send_message("⚠️ No heartbeat — is the CLI running?")
 
 
 @bot.tree.command(name="run", description="Trigger one CLI step")

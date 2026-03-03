@@ -1264,6 +1264,29 @@ class TestSaveLoadState(unittest.TestCase):
         result = self.cli.load_state()
         self.assertTrue(result)
 
+    def test_save_creates_backup_rotation(self):
+        """save_state rotates .1 .2 .3 backup files."""
+        sp = _cli_module.STATE_PATH
+        self.cli.step = 1
+        self.cli.save_state(silent=True)
+        self.cli.step = 2
+        self.cli.save_state(silent=True)
+        self.assertTrue(os.path.exists(f"{sp}.1"))
+        b1 = json.load(open(f"{sp}.1", encoding="utf-8"))
+        self.assertEqual(b1["step"], 1)
+        self.cli.step = 3
+        self.cli.save_state(silent=True)
+        self.assertTrue(os.path.exists(f"{sp}.2"))
+        b2 = json.load(open(f"{sp}.2", encoding="utf-8"))
+        self.assertEqual(b2["step"], 1)
+        b1 = json.load(open(f"{sp}.1", encoding="utf-8"))
+        self.assertEqual(b1["step"], 2)
+        # Cleanup backups
+        for i in range(1, 4):
+            p = f"{sp}.{i}"
+            if os.path.exists(p):
+                os.remove(p)
+
 
 # ---------------------------------------------------------------------------
 # TestSnapshotCommand
@@ -1726,6 +1749,26 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
             await bot_module._handle_text_command(_make_msg("undepends"))
         text = mock_send.call_args[0][1]
         self.assertIn("Usage", text)
+
+    async def test_heartbeat_with_data(self):
+        """'heartbeat' with valid step.txt shows live counters."""
+        hb = (12, 35, 70, 20, 10, 5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_read_heartbeat", return_value=hb), \
+             patch.object(bot_module, "_auto_running", return_value=False):
+            await bot_module._handle_text_command(_make_msg("heartbeat"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Heartbeat", text)
+        self.assertIn("Step 12", text)
+        self.assertIn("35", text)
+
+    async def test_heartbeat_no_data(self):
+        """'heartbeat' with no step.txt sends warning."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_read_heartbeat", return_value=None):
+            await bot_module._handle_text_command(_make_msg("heartbeat"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No heartbeat", text)
 
 
 # ---------------------------------------------------------------------------

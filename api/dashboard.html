@@ -551,6 +551,7 @@
 
   let selectedTask  = null;
   let tasksCache    = {};    // id → task data from /tasks/<id> (detailed)
+  let _taskIds      = [];    // ordered task IDs for j/k navigation
   let _rateEma      = null;  // exponential moving avg of verified/step rate
   let _prevVerified = 0;
   let _prevStep     = 0;
@@ -635,6 +636,7 @@
   }
 
   function renderGrid(tasks) {
+    _taskIds = tasks.map(t => t.id);
     const grid = document.getElementById("task-grid");
     // Build set of existing card ids
     const existing = new Set([...grid.querySelectorAll(".task-card")].map(el => el.dataset.id));
@@ -956,9 +958,49 @@
     _modalSt = null;
   };
 
-  // Escape key closes modal
+  /* ── Keyboard shortcuts ───────────────────────────────────── */
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeModal();
+    // Ignore when typing in inputs
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    if (e.key === "Escape") { closeModal(); return; }
+
+    // j/k — navigate tasks
+    if (e.key === "j" || e.key === "k") {
+      if (_taskIds.length === 0) return;
+      const cur = _taskIds.indexOf(selectedTask);
+      let next;
+      if (e.key === "j") next = cur < 0 ? 0 : Math.min(cur + 1, _taskIds.length - 1);
+      else               next = cur <= 0 ? _taskIds.length - 1 : cur - 1;
+      selectTask(_taskIds[next]);
+      return;
+    }
+
+    // v — verify first non-verified subtask of selected task
+    if (e.key === "v" && selectedTask && tasksCache[selectedTask]) {
+      const t = tasksCache[selectedTask];
+      for (const b of Object.values(t.branches || {})) {
+        for (const [sn, s] of Object.entries(b.subtasks || {})) {
+          if (s.status !== "Verified") {
+            _postCmd("/verify", {subtask: sn, note: "Keyboard verify"}, "fb-verify", sn);
+            return;
+          }
+        }
+      }
+      return;
+    }
+
+    // Enter — open modal for first non-verified subtask
+    if (e.key === "Enter" && selectedTask && tasksCache[selectedTask] && !_modalSt) {
+      const t = tasksCache[selectedTask];
+      for (const b of Object.values(t.branches || {})) {
+        for (const [sn, s] of Object.entries(b.subtasks || {})) {
+          if (s.status !== "Verified") { showModal(sn, s); return; }
+        }
+      }
+      return;
+    }
   });
 
   window.modalVerify = function () {

@@ -1437,6 +1437,21 @@ class SoloBuilderCLI:
     def save_state(self, silent: bool = False) -> None:
         """Serialize full runtime state to JSON on disk."""
         os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+        # Rotate backups: .3 → delete, .2 → .3, .1 → .2, current → .1
+        if os.path.exists(STATE_PATH):
+            for i in range(3, 1, -1):
+                src = f"{STATE_PATH}.{i - 1}"
+                dst = f"{STATE_PATH}.{i}"
+                if os.path.exists(src):
+                    try:
+                        os.replace(src, dst)
+                    except OSError:
+                        pass
+            try:
+                import shutil
+                shutil.copy2(STATE_PATH, f"{STATE_PATH}.1")
+            except OSError:
+                pass
         payload = {
             "step":             self.step,
             "snapshot_counter": self.snapshot_counter,

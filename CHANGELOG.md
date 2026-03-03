@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.28] — 2026-03-03
+
+### Added
+- **Dashboard keyboard shortcuts** — `j`/`k` navigate tasks, `v` verifies first
+  non-verified subtask, `Enter` opens subtask modal, `Escape` closes it. Ignores
+  keypresses when typing in input fields.
+- **`heartbeat` bot command** — plain-text and `/heartbeat` slash command; shows
+  live step.txt counters (step, verified, running, review, pending) from Discord.
+  20 Discord commands total.
+- **State file backup rotation** — `save_state()` rotates `.1` → `.2` → `.3`
+  before each write, keeping the last 3 state snapshots to prevent corruption.
+- **3 new bot tests** (heartbeat with data, heartbeat no data, backup rotation) → 152 bot + 28 API = 180 total
+
+---
+
 ## [v2.1.27] — 2026-03-03
 
 ### Added
