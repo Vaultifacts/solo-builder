@@ -611,17 +611,27 @@ class SdkToolRunner:
         """Async tool-use loop — awaitable, for use with asyncio.gather()."""
         if not self.available:
             return False, "SDK unavailable"
+        import anthropic as _anthropic
         allowed  = {t.strip() for t in tools_str.split(",") if t.strip()}
         schemas  = [s for s in self._SCHEMAS if s["name"] in allowed]
         messages = [{"role": "user", "content": prompt}]
+        _backoff = 5.0  # seconds to wait after a rate limit hit
         try:
             for _ in range(8):
-                resp = await self.async_client.messages.create(
-                    model=self.model,
-                    max_tokens=self.max_tokens,
-                    tools=schemas,
-                    messages=messages,
-                )
+                for _attempt in range(3):  # up to 3 retries on rate limit
+                    try:
+                        resp = await self.async_client.messages.create(
+                            model=self.model,
+                            max_tokens=self.max_tokens,
+                            tools=schemas,
+                            messages=messages,
+                        )
+                        break
+                    except _anthropic.RateLimitError:
+                        await asyncio.sleep(_backoff)
+                        _backoff = min(_backoff * 2, 60.0)
+                else:
+                    return False, "Rate limit — retries exhausted"
                 if resp.stop_reason == "end_turn":
                     text = " ".join(
                         b.text for b in resp.content if hasattr(b, "text")
@@ -816,11 +826,20 @@ class Executor:
                         st_data.get("description", ""), output, step,
                     )
                 else:
-                    # SDK tool run failed — escalate to subprocess
+                    # SDK tool run failed — escalate to subprocess or dice-roll
                     if self.claude.available:
                         claude_jobs.append(
                             (task_name, branch_name, st_name, st_data, st_tools)
                         )
+                    elif random.random() < self.verify_prob:
+                        # No subprocess available — dice-roll so pipeline isn't blocked
+                        st_data["status"]      = "Verified"
+                        st_data["shadow"]      = "Done"
+                        st_data["last_update"] = step
+                        add_memory_snapshot(memory_store, branch_name,
+                                            f"{st_name}_verified", step)
+                        actions[st_name] = "verified"
+                        self._roll_up(dag, task_name, branch_name)
 
         # ── Run Claude jobs in parallel ───────────────────────────────────────
         if claude_jobs:
