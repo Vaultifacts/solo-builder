@@ -102,6 +102,40 @@ def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None
     return None
 
 
+def _format_stats(state: dict) -> str:
+    """Return a formatted per-task stats table."""
+    dag = state.get("dag", {})
+    lines = ["**Per-Task Statistics**", "```"]
+    lines.append(f"{'Task':<12} {'V':>4} {'Tot':>4} {'Pct':>5}  {'Avg':>5}")
+    lines.append("─" * 38)
+    grand_v = grand_t = 0
+    all_dur: list = []
+    for task_name, task_data in dag.items():
+        tv = tt = 0
+        durs: list = []
+        for b in task_data.get("branches", {}).values():
+            for st in b.get("subtasks", {}).values():
+                tt += 1
+                if st.get("status") == "Verified":
+                    tv += 1
+                    h = st.get("history", [])
+                    if len(h) >= 2:
+                        durs.append(h[-1].get("step", 0) - h[0].get("step", 0))
+        pct = round(tv / tt * 100, 1) if tt else 0
+        avg = f"{sum(durs)/len(durs):.1f}" if durs else "—"
+        mark = "✅" if tv == tt and tt > 0 else "▶" if tv > 0 else "⏳"
+        lines.append(f"{mark} {task_name:<10} {tv:>4} {tt:>4} {pct:>4}%  {avg:>5}")
+        grand_v += tv
+        grand_t += tt
+        all_dur.extend(durs)
+    lines.append("─" * 38)
+    gp = round(grand_v / grand_t * 100, 1) if grand_t else 0
+    ga = f"{sum(all_dur)/len(all_dur):.1f}" if all_dur else "—"
+    lines.append(f"  {'TOTAL':<10} {grand_v:>4} {grand_t:>4} {gp:>4}%  {ga:>5}")
+    lines.append("```")
+    return "\n".join(lines)
+
+
 def _format_timeline(state: dict, st_target: str) -> str:
     """Return a formatted timeline string for a subtask's history array."""
     st_target = st_target.strip().upper()
@@ -334,6 +368,7 @@ _HELP_TEXT = (
     "`config`                           — show all current runtime settings\n"
     "`diff`                             — show what changed since last save\n"
     "`timeline <subtask>`               — show status history timeline\n"
+    "`stats`                            — per-task breakdown (verified, avg steps)\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -670,6 +705,10 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_timeline(state, st))
 
+    elif low == "stats":
+        state = _load_state()
+        await _send(message, _format_stats(state))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -788,6 +827,14 @@ async def config_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("\n".join(lines))
     except Exception:
         await interaction.response.send_message("❌ Could not read `config/settings.json`.")
+
+
+@bot.tree.command(name="stats", description="Per-task breakdown (verified, avg steps)")
+async def stats_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_stats(_load_state()))
 
 
 @bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")

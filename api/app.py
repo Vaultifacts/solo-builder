@@ -295,6 +295,42 @@ def generate_export():
     )
 
 
+@app.get("/stats")
+def stats():
+    """Per-task breakdown: verified, total, pct, avg steps to complete."""
+    dag = _load_dag()
+    tasks = []
+    grand_v = grand_t = 0
+    all_dur: list = []
+    for task_id, task_data in dag.items():
+        tv = tt = 0
+        durs: list = []
+        for b in task_data.get("branches", {}).values():
+            for st in b.get("subtasks", {}).values():
+                tt += 1
+                if st.get("status") == "Verified":
+                    tv += 1
+                    h = st.get("history", [])
+                    if len(h) >= 2:
+                        durs.append(h[-1].get("step", 0) - h[0].get("step", 0))
+        pct = round(tv / tt * 100, 1) if tt else 0
+        avg = round(sum(durs) / len(durs), 1) if durs else None
+        tasks.append({
+            "id": task_id, "verified": tv, "total": tt,
+            "pct": pct, "avg_steps": avg,
+            "status": task_data.get("status"),
+        })
+        grand_v += tv
+        grand_t += tt
+        all_dur.extend(durs)
+    return jsonify({
+        "tasks": tasks,
+        "grand_verified": grand_v, "grand_total": grand_t,
+        "grand_pct": round(grand_v / grand_t * 100, 1) if grand_t else 0,
+        "grand_avg_steps": round(sum(all_dur) / len(all_dur), 1) if all_dur else None,
+    })
+
+
 @app.get("/diff")
 def diff():
     """Compare current state to .1 backup and return JSON diff."""

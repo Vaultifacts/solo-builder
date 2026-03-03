@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1568,6 +1568,23 @@ class SoloBuilderCLI:
         else:
             print(f"  {RED}Undo backup exists but failed to load.{RESET}")
 
+    # ── Trigger helpers ────────────────────────────────────────────────────
+    @staticmethod
+    def _consume_json_trigger(path: str):
+        """Read, parse, and atomically delete a JSON trigger file.
+
+        Returns the parsed dict/list on success, or *None* if the file
+        doesn't exist or can't be read.
+        """
+        if not os.path.exists(path):
+            return None
+        try:
+            data = json.loads(open(path, encoding="utf-8").read())
+            os.remove(path)
+            return data
+        except Exception:
+            return None
+
     # ── Auto-run ─────────────────────────────────────────────────────────────
     def _cmd_auto(self, args: str) -> None:
         """
@@ -1649,101 +1666,53 @@ class SoloBuilderCLI:
                         # Still honour stop during pause
                         if os.path.exists(_stoptrig):
                             break
-                    if os.path.exists(_vtrigger):
-                        try:
-                            vdata = json.loads(
-                                open(_vtrigger, encoding="utf-8").read()
+                    vdata = self._consume_json_trigger(_vtrigger)
+                    if vdata:
+                        for e in (vdata if isinstance(vdata, list) else [vdata]):
+                            self._cmd_verify(
+                                f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
                             )
-                            os.remove(_vtrigger)
-                            for e in (vdata if isinstance(vdata, list) else [vdata]):
-                                self._cmd_verify(
-                                    f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
-                                )
-                        except Exception:
-                            pass
-                    if os.path.exists(_attrigger):
-                        try:
-                            adata = json.loads(
-                                open(_attrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_attrigger)
-                            spec = adata.get("spec", "").strip()
-                            if spec:
-                                self._cmd_add_task(spec)
-                        except Exception:
-                            pass
-                    if os.path.exists(_abtrigger):
-                        try:
-                            abdata = json.loads(
-                                open(_abtrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_abtrigger)
-                            task_arg = abdata.get("task", "").strip()
-                            spec     = abdata.get("spec", "").strip()
-                            if task_arg and spec:
-                                self._cmd_add_branch(task_arg, spec_override=spec)
-                        except Exception:
-                            pass
-                    if os.path.exists(_pbtrigger):
-                        try:
-                            pbdata = json.loads(
-                                open(_pbtrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_pbtrigger)
-                            pb_task   = pbdata.get("task", "").strip()
-                            pb_branch = pbdata.get("branch", "").strip()
-                            if pb_task and pb_branch:
-                                self._cmd_prioritize_branch(pb_task, pb_branch)
-                        except Exception:
-                            pass
-                    if os.path.exists(_dtrigger):
-                        try:
-                            ddata = json.loads(
-                                open(_dtrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_dtrigger)
-                            d_st   = ddata.get("subtask", "").strip().upper()
-                            d_desc = ddata.get("desc", "").strip()
-                            if d_st and d_desc:
-                                self._cmd_describe(f"{d_st} {d_desc}")
-                        except Exception:
-                            pass
-                    if os.path.exists(_ttrigger):
-                        try:
-                            tdata = json.loads(
-                                open(_ttrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_ttrigger)
-                            t_st    = tdata.get("subtask", "").strip().upper()
-                            t_tools = tdata.get("tools", "").strip()
-                            if t_st and t_tools:
-                                self._cmd_tools(f"{t_st} {t_tools}")
-                        except Exception:
-                            pass
-                    if os.path.exists(_settrigger):
-                        try:
-                            sdata = json.loads(
-                                open(_settrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_settrigger)
-                            s_key = sdata.get("key", "").strip()
-                            s_val = sdata.get("value", "").strip()
-                            if s_key and s_val:
-                                self._cmd_set(f"{s_key}={s_val}")
-                        except Exception:
-                            pass
-                    if os.path.exists(_deptrigger):
-                        try:
-                            depdata = json.loads(
-                                open(_deptrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_deptrigger)
-                            dep_target = depdata.get("target", "").strip()
-                            dep_dep    = depdata.get("dep", "").strip()
-                            if dep_target and dep_dep:
-                                self._cmd_depends(f"{dep_target} {dep_dep}")
-                        except Exception:
-                            pass
+                    adata = self._consume_json_trigger(_attrigger)
+                    if adata:
+                        spec = adata.get("spec", "").strip()
+                        if spec:
+                            self._cmd_add_task(spec)
+                    abdata = self._consume_json_trigger(_abtrigger)
+                    if abdata:
+                        task_arg = abdata.get("task", "").strip()
+                        spec     = abdata.get("spec", "").strip()
+                        if task_arg and spec:
+                            self._cmd_add_branch(task_arg, spec_override=spec)
+                    pbdata = self._consume_json_trigger(_pbtrigger)
+                    if pbdata:
+                        pb_task   = pbdata.get("task", "").strip()
+                        pb_branch = pbdata.get("branch", "").strip()
+                        if pb_task and pb_branch:
+                            self._cmd_prioritize_branch(pb_task, pb_branch)
+                    ddata = self._consume_json_trigger(_dtrigger)
+                    if ddata:
+                        d_st   = ddata.get("subtask", "").strip().upper()
+                        d_desc = ddata.get("desc", "").strip()
+                        if d_st and d_desc:
+                            self._cmd_describe(f"{d_st} {d_desc}")
+                    tdata = self._consume_json_trigger(_ttrigger)
+                    if tdata:
+                        t_st    = tdata.get("subtask", "").strip().upper()
+                        t_tools = tdata.get("tools", "").strip()
+                        if t_st and t_tools:
+                            self._cmd_tools(f"{t_st} {t_tools}")
+                    sdata = self._consume_json_trigger(_settrigger)
+                    if sdata:
+                        s_key = sdata.get("key", "").strip()
+                        s_val = sdata.get("value", "").strip()
+                        if s_key and s_val:
+                            self._cmd_set(f"{s_key}={s_val}")
+                    depdata = self._consume_json_trigger(_deptrigger)
+                    if depdata:
+                        dep_target = depdata.get("target", "").strip()
+                        dep_dep    = depdata.get("dep", "").strip()
+                        if dep_target and dep_dep:
+                            self._cmd_depends(f"{dep_target} {dep_dep}")
                     if os.path.exists(_undeptrigger):
                         try:
                             uddata = json.loads(
@@ -1858,6 +1827,12 @@ class SoloBuilderCLI:
 
         elif cmd == "stats":
             self._cmd_stats()
+
+        elif cmd == "history":
+            self._cmd_history("")
+
+        elif cmd.startswith("history "):
+            self._cmd_history(raw[8:])
 
         elif cmd == "add_task":
             self._cmd_add_task()
@@ -2631,6 +2606,28 @@ class SoloBuilderCLI:
                 print(f"    {DIM}Step {step}{RESET}  {format_status(hstatus)}")
         print()
 
+    def _cmd_history(self, args: str) -> None:
+        """history [N] — show the last N status transitions across all subtasks (default 20)."""
+        limit = 20
+        if args.strip().isdigit():
+            limit = int(args.strip())
+        events: list = []
+        for task_name, task_data in self.dag.items():
+            for branch_data in task_data.get("branches", {}).values():
+                for st_name, st_data in branch_data.get("subtasks", {}).items():
+                    for h in st_data.get("history", []):
+                        events.append((h.get("step", 0), st_name, task_name, h.get("status", "?")))
+        events.sort(key=lambda x: x[0], reverse=True)
+        events = events[:limit]
+        print(f"\n  {BOLD}{CYAN}Recent Activity (last {limit}){RESET}")
+        print(f"  {'─' * 50}")
+        if not events:
+            print(f"  {DIM}No history recorded yet.{RESET}")
+        else:
+            for step, st_name, task_name, status in events:
+                print(f"  {DIM}Step {step:<4}{RESET} {CYAN}{st_name:<5}{RESET} {format_status(status)}  {DIM}({task_name}){RESET}")
+        print()
+
     def _cmd_stats(self) -> None:
         """stats — per-task breakdown: subtasks verified, avg steps to complete."""
         print(f"\n  {BOLD}{CYAN}Per-Task Statistics{RESET}")
@@ -2725,6 +2722,7 @@ class SoloBuilderCLI:
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("stats",                  "Per-task breakdown (verified, avg steps)"),
+            ("history [N]",            "Show last N status transitions (default 20)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
             ("export",                  "Write all Claude outputs to solo_builder_outputs.md"),

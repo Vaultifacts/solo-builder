@@ -338,6 +338,34 @@ class TestJournal(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /stats
+# ---------------------------------------------------------------------------
+
+class TestStats(_Base):
+
+    def test_stats_empty(self):
+        r = self.client.get("/stats")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["tasks"], [])
+        self.assertEqual(d["grand_total"], 0)
+
+    def test_stats_with_data(self):
+        state = self._make_state({"A1": "Verified", "A2": "Pending"})
+        # Add history to A1
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [{"status": "Running", "step": 1}, {"status": "Verified", "step": 3}]
+        self._write_state(state)
+        r = self.client.get("/stats")
+        d = r.get_json()
+        self.assertEqual(len(d["tasks"]), 1)
+        self.assertEqual(d["tasks"][0]["verified"], 1)
+        self.assertEqual(d["tasks"][0]["total"], 2)
+        self.assertEqual(d["tasks"][0]["avg_steps"], 2.0)
+        self.assertEqual(d["grand_verified"], 1)
+
+
+# ---------------------------------------------------------------------------
 # GET /diff
 # ---------------------------------------------------------------------------
 

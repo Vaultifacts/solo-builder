@@ -1962,6 +1962,36 @@ class TestTimelineCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("not found", text)
 
 
+class TestStatsCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot stats command."""
+
+    async def test_stats_shows_table(self):
+        """'stats' shows per-task breakdown table."""
+        state = {
+            "dag": {
+                "Task 0": {
+                    "status": "Verified",
+                    "branches": {
+                        "Branch A": {
+                            "subtasks": {
+                                "A1": {"status": "Verified", "history": [
+                                    {"status": "Running", "step": 1},
+                                    {"status": "Verified", "step": 3},
+                                ]},
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("stats"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Task 0", text)
+        self.assertIn("100", text)
+
+
 class TestUndoCommand(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_undo."""
 

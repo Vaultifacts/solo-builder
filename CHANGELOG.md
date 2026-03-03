@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.35] — 2026-03-03
+
+### Added
+- **Dashboard diff panel** — live diff panel in sidebar shows subtask status transitions
+  from `GET /diff` endpoint; updates on every 2s poll cycle with color-coded statuses
+- **Bot `/stats` command** — plain-text and `/stats` slash command; per-task breakdown
+  table showing verified/total, completion %, and avg steps. 37 Discord commands total.
+- **CLI `history [N]` command** — shows last N status transitions across all subtasks
+  (default 20), sorted by step number descending
+- **API `GET /stats` endpoint** — per-task stats as JSON (verified, total, pct, avg_steps)
+  with grand totals for dashboard integration
+- **4 new tests** (1 bot stats + 2 API stats + 1 existing timeline) → 169 bot + 33 API = 202 total
+
+---
+
 ## [v2.1.34] — 2026-03-03
 
 ### Added
