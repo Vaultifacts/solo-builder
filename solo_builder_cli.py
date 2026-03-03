@@ -2549,8 +2549,14 @@ def main() -> None:
         sys.stdout = sys.stderr       # ANSI display → (possibly devnull) stderr; JSON → real stdout
 
     # ── Run ──────────────────────────────────────────────────────────────────
-    _LOCK_PATH = os.path.join(_HERE, "state", "solo_builder.lock")
+    _LOCK_PATH  = os.path.join(_HERE, "state", "solo_builder.lock")
+    _STOP_PATH  = os.path.join(_HERE, "state", "stop_trigger")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
+    # Clear any stale stop_trigger so it doesn't silently kill the first auto run
+    try:
+        os.remove(_STOP_PATH)
+    except FileNotFoundError:
+        pass
     _acquire_lock(_LOCK_PATH)
     cli = None
     try:
