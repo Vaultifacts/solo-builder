@@ -880,6 +880,20 @@ class TestSetCommand(unittest.TestCase):
         """Unknown key prints error message without raising."""
         self.cli._cmd_set("BADKEY=123")   # should not raise
 
+    def test_set_bare_known_key_prints_current_value(self):
+        """Bare known key (no '=') prints its current value."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_set("REVIEW_MODE")
+        self.assertIn("REVIEW_MODE", buf.getvalue())
+
+    def test_set_bare_unknown_key_prints_usage(self):
+        """Bare unknown key (no '=') prints usage hint."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_set("UNKNOWNKEY")
+        self.assertIn("Usage", buf.getvalue())
+
 
 # ---------------------------------------------------------------------------
 # TestResetCommand
@@ -1280,10 +1294,34 @@ class TestPrioritizeBranch(unittest.TestCase):
         self.assertIn("Branch B", out)
 
     def test_prioritize_branch_calls_display_render(self):
-        """display.render is called once after the branch listing."""
-        with patch("builtins.input", return_value=""):
+        """display.render is called after a successful boost."""
+        with patch("builtins.input", side_effect=["Task 0", "Branch A"]):
             self.cli._cmd_prioritize_branch()
         self.cli.display.render.assert_called_once()
+
+    def test_prioritize_branch_boosts_pending_last_update(self):
+        """Pending subtasks in the target branch get last_update = step - 500."""
+        # Task 0 / Branch A has Pending subtasks in INITIAL_DAG
+        branch = self.cli.dag["Task 0"]["branches"]["Branch A"]
+        pending_before = {
+            k: v["last_update"]
+            for k, v in branch["subtasks"].items()
+            if v.get("status") == "Pending"
+        }
+        self.cli._cmd_prioritize_branch("Task 0", "Branch A")
+        for st_name in pending_before:
+            self.assertEqual(
+                branch["subtasks"][st_name]["last_update"],
+                self.cli.step - 500,
+            )
+
+    def test_prioritize_branch_unknown_task_prints_error(self):
+        """Unknown task arg prints error and does not call display.render."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._cmd_prioritize_branch("Task 999", "Branch A")
+        self.assertIn("not found", buf.getvalue())
+        self.cli.display.render.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1412,6 +1450,90 @@ class TestAddBranchInlineSpec(unittest.TestCase):
         with patch("builtins.input", return_value="Write integration tests"):
             self.cli.handle_command("add_branch 0")
         self.assertEqual(self._count_branches("Task 0"), before + 1)
+
+
+# ---------------------------------------------------------------------------
+# TestFindSubtaskOutput
+# ---------------------------------------------------------------------------
+
+class TestFindSubtaskOutput(unittest.TestCase):
+    """Tests for bot_module._find_subtask_output helper."""
+
+    def _make_state(self, output: str) -> dict:
+        return {
+            "dag": {
+                "Task 0": {
+                    "branches": {
+                        "Branch A": {
+                            "subtasks": {
+                                "A1": {"status": "Verified", "output": output}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    def test_found_with_output_returns_task_and_text(self):
+        """Returns (task_name, output) when subtask exists and has output."""
+        state = self._make_state("Great work!")
+        result = bot_module._find_subtask_output(state, "A1")
+        self.assertIsNotNone(result)
+        task_name, out = result
+        self.assertEqual(task_name, "Task 0")
+        self.assertEqual(out, "Great work!")
+
+    def test_found_no_output_returns_empty_string(self):
+        """Returns (task_name, '') when subtask exists but has no output."""
+        state = self._make_state("")
+        result = bot_module._find_subtask_output(state, "A1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result[1], "")
+
+    def test_not_found_returns_none(self):
+        """Returns None when the subtask name is not in the DAG."""
+        state = self._make_state("some output")
+        result = bot_module._find_subtask_output(state, "Z99")
+        self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# Extra TestHandleTextCommand tests for output / prioritize_branch
+# ---------------------------------------------------------------------------
+
+class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
+
+    async def test_output_found_sends_content(self):
+        """'output A1' with output sends the output text."""
+        state = {"dag": {}, "step": 0}
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_find_subtask_output",
+                          return_value=("Task 0", "Great work!")), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("output A1"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Great work!", text)
+
+    async def test_output_not_found_sends_error(self):
+        """'output Z99' for unknown subtask sends an error message."""
+        state = {"dag": {}, "step": 0}
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_find_subtask_output", return_value=None), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("output Z99"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Z99", text)
+
+    async def test_prioritize_branch_queues_trigger(self):
+        """'prioritize_branch 0 A' writes the correct trigger file."""
+        mock_pbt = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()), \
+             patch.object(bot_module, "PRIORITY_BRANCH_TRIGGER", new=mock_pbt):
+            await bot_module._handle_text_command(_make_msg("prioritize_branch 0 A"))
+        mock_pbt.write_text.assert_called_once()
+        written = json.loads(mock_pbt.write_text.call_args[0][0])
+        self.assertEqual(written["task"], "0")
+        self.assertEqual(written["branch"], "A")
 
 
 # ---------------------------------------------------------------------------

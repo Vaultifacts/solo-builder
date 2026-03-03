@@ -1517,6 +1517,7 @@ class SoloBuilderCLI:
         _stoptrig    = os.path.join(_HERE, "state", "stop_trigger")
         _attrigger   = os.path.join(_HERE, "state", "add_task_trigger.json")
         _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
+        _pbtrigger   = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1579,6 +1580,18 @@ class SoloBuilderCLI:
                             spec     = abdata.get("spec", "").strip()
                             if task_arg and spec:
                                 self._cmd_add_branch(task_arg, spec_override=spec)
+                        except Exception:
+                            pass
+                    if os.path.exists(_pbtrigger):
+                        try:
+                            pbdata = json.loads(
+                                open(_pbtrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_pbtrigger)
+                            pb_task   = pbdata.get("task", "").strip()
+                            pb_branch = pbdata.get("branch", "").strip()
+                            if pb_task and pb_branch:
+                                self._cmd_prioritize_branch(pb_task, pb_branch)
                         except Exception:
                             pass
                     if os.path.exists(_trigger):
@@ -1664,8 +1677,9 @@ class SoloBuilderCLI:
             else:
                 self._cmd_add_branch(raw[10:])
 
-        elif cmd == "prioritize_branch":
-            self._cmd_prioritize_branch()
+        elif cmd.startswith("prioritize_branch"):
+            _pb_parts = raw[17:].strip().split(None, 1)
+            self._cmd_prioritize_branch(*_pb_parts)
 
         elif cmd == "export":
             self._cmd_export()
@@ -1976,19 +1990,50 @@ class SoloBuilderCLI:
             self.alerts, self.meta.forecast(self.dag),
         )
 
-    def _cmd_prioritize_branch(self) -> None:
-        """Print available branches (hook for future interactive selection)."""
+    def _cmd_prioritize_branch(self, task_arg: str = "", branch_arg: str = "") -> None:
+        """prioritize_branch [<task> <branch>] — boost a branch to the front of the queue."""
         branches = [
             (task_name, branch_name)
             for task_name, task_data in self.dag.items()
             for branch_name in task_data.get("branches", {})
         ]
-        print(f"\n  {BOLD}Available branches:{RESET}")
-        for t, b in branches:
-            print(f"    {CYAN}{t}{RESET} / {b}")
-        print(f"\n  {DIM}Extend _cmd_prioritize_branch() to select and "
-              f"boost priority for a specific branch.{RESET}")
-        input(f"  {DIM}Press Enter…{RESET}")
+
+        if not task_arg:
+            print(f"\n  {BOLD}Available branches:{RESET}")
+            for t, b in branches:
+                print(f"    {CYAN}{t}{RESET} / {b}")
+            print()
+            task_arg   = input(f"  Task (e.g. 0 or 'Task 0'): ").strip()
+            branch_arg = input(f"  Branch name: ").strip()
+
+        if task_arg.isdigit():
+            task_arg = f"Task {task_arg}"
+
+        if task_arg not in self.dag:
+            print(f"  {YELLOW}Task '{task_arg}' not found.{RESET}")
+            return
+
+        branches_in_task = self.dag[task_arg].get("branches", {})
+        if branch_arg not in branches_in_task:
+            matches = [b for b in branches_in_task if branch_arg.upper() in b.upper()]
+            if len(matches) == 1:
+                branch_arg = matches[0]
+            else:
+                print(f"  {YELLOW}Branch '{branch_arg}' not found in {task_arg}. "
+                      f"Available: {list(branches_in_task)}{RESET}")
+                return
+
+        boosted = 0
+        for st_data in branches_in_task[branch_arg]["subtasks"].values():
+            if st_data.get("status") == "Pending":
+                st_data["last_update"] = self.step - 500
+                boosted += 1
+
+        # Force priority cache refresh so next step picks up the boost
+        self._last_priority_step = -(DAG_UPDATE_INTERVAL + 1)
+
+        print(f"  {GREEN}Boosted {boosted} Pending subtask(s) in {task_arg}/{branch_arg} "
+              f"— they will be scheduled first.{RESET}")
         self.display.render(
             self.dag, self.memory_store, self.step,
             self.alerts, self.meta.forecast(self.dag),
@@ -1997,10 +2042,29 @@ class SoloBuilderCLI:
     def _cmd_set(self, args: str) -> None:
         """set KEY=VALUE — update runtime config."""
         global STALL_THRESHOLD, SNAPSHOT_INTERVAL, VERBOSITY
+        global AUTO_STEP_DELAY, AUTO_SAVE_INTERVAL, CLAUDE_ALLOWED_TOOLS, WEBHOOK_URL
 
         parts = args.split("=", 1)
         if len(parts) != 2:
-            print(f"  {YELLOW}Usage: set KEY=VALUE{RESET}")
+            bare = args.strip().upper()
+            _current: dict = {
+                "STALL_THRESHOLD":    str(STALL_THRESHOLD),
+                "SNAPSHOT_INTERVAL":  str(SNAPSHOT_INTERVAL),
+                "VERBOSITY":          VERBOSITY,
+                "VERIFY_PROB":        str(self.executor.verify_prob),
+                "AUTO_STEP_DELAY":    str(AUTO_STEP_DELAY),
+                "AUTO_SAVE_INTERVAL": str(AUTO_SAVE_INTERVAL),
+                "CLAUDE_ALLOWED_TOOLS": CLAUDE_ALLOWED_TOOLS or "(none)",
+                "ANTHROPIC_MAX_TOKENS": str(self.executor.anthropic.max_tokens),
+                "ANTHROPIC_MODEL":    self.executor.anthropic.model,
+                "CLAUDE_SUBPROCESS":  "on" if self.executor.claude.available else "off",
+                "REVIEW_MODE":        "on" if self.executor.review_mode else "off",
+                "WEBHOOK_URL":        WEBHOOK_URL or "(not set)",
+            }
+            if bare in _current:
+                print(f"  {CYAN}{bare} = {_current[bare]}{RESET}")
+            else:
+                print(f"  {YELLOW}Usage: set KEY=VALUE{RESET}")
             return
 
         key, val = parts[0].strip().upper(), parts[1].strip()
@@ -2025,17 +2089,14 @@ class SoloBuilderCLI:
                 print(f"  {GREEN}VERIFY_PROB = {val}{RESET}")
 
             elif key == "AUTO_STEP_DELAY":
-                global AUTO_STEP_DELAY
                 AUTO_STEP_DELAY = float(val)
                 print(f"  {GREEN}AUTO_STEP_DELAY = {AUTO_STEP_DELAY}s{RESET}")
 
             elif key == "AUTO_SAVE_INTERVAL":
-                global AUTO_SAVE_INTERVAL
                 AUTO_SAVE_INTERVAL = int(val)
                 print(f"  {GREEN}AUTO_SAVE_INTERVAL = {AUTO_SAVE_INTERVAL}{RESET}")
 
             elif key == "CLAUDE_ALLOWED_TOOLS":
-                global CLAUDE_ALLOWED_TOOLS
                 CLAUDE_ALLOWED_TOOLS = val
                 self.executor.claude.allowed_tools = val
                 label = val if val else "(none — headless)"
@@ -2062,7 +2123,6 @@ class SoloBuilderCLI:
                 print(f"  {GREEN}REVIEW_MODE = {label}{RESET}")
 
             elif key == "WEBHOOK_URL":
-                global WEBHOOK_URL
                 if val and not val.startswith("http"):
                     print(f"  {YELLOW}Warning: WEBHOOK_URL should start with http/https "
                           f"(got {val!r}). Setting anyway.{RESET}")
@@ -2640,9 +2700,10 @@ def main() -> None:
     _RUN_PATH   = os.path.join(_HERE, "state", "run_trigger")
     _AT_PATH    = os.path.join(_HERE, "state", "add_task_trigger.json")
     _AB_PATH    = os.path.join(_HERE, "state", "add_branch_trigger.json")
+    _PB_PATH    = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
-    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH):
+    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

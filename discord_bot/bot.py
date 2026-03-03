@@ -51,8 +51,9 @@ STEP_PATH      = _ROOT / "state" / "step.txt"
 TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
 VERIFY_TRIGGER   = _ROOT / "state" / "verify_trigger.json"
 STOP_TRIGGER     = _ROOT / "state" / "stop_trigger"
-ADD_TASK_TRIGGER   = _ROOT / "state" / "add_task_trigger.json"
-ADD_BRANCH_TRIGGER = _ROOT / "state" / "add_branch_trigger.json"
+ADD_TASK_TRIGGER       = _ROOT / "state" / "add_task_trigger.json"
+ADD_BRANCH_TRIGGER     = _ROOT / "state" / "add_branch_trigger.json"
+PRIORITY_BRANCH_TRIGGER = _ROOT / "state" / "prioritize_branch_trigger.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -78,6 +79,16 @@ def _has_work(dag: dict) -> bool:
         for b in t["branches"].values()
         for s in b["subtasks"].values()
     )
+
+
+def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None":
+    """Return (task_name, output) for a subtask by name, or None if not found."""
+    for task_name, task in state.get("dag", {}).items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_name.upper() == st_target.upper():
+                    return task_name, st_data.get("output", "")
+    return None
 
 
 def _format_status(state: dict) -> str:
@@ -184,15 +195,17 @@ def _auto_running() -> bool:
 
 _HELP_TEXT = (
     "**Solo Builder — plain-text commands**\n"
-    "`status`                       — DAG progress summary\n"
-    "`run`                          — trigger one step\n"
-    "`auto [n]`                     — run N steps (default: until complete)\n"
-    "`stop`                         — cancel an in-progress auto run\n"
-    "`verify <subtask> [note]`      — approve a Review-gated subtask\n"
-    "`add_task <spec>`              — queue a new task (added at next step)\n"
-    "`add_branch <task> <spec>`     — queue a new branch on an existing task\n"
-    "`export`                       — download all Claude outputs\n"
-    "`help`                         — this message\n\n"
+    "`status`                           — DAG progress summary\n"
+    "`run`                              — trigger one step\n"
+    "`auto [n]`                         — run N steps (default: until complete)\n"
+    "`stop`                             — cancel an in-progress auto run\n"
+    "`verify <subtask> [note]`          — approve a Review-gated subtask\n"
+    "`output <subtask>`                 — show Claude output for a subtask\n"
+    "`add_task <spec>`                  — queue a new task (added at next step)\n"
+    "`add_branch <task> <spec>`         — queue a new branch on an existing task\n"
+    "`prioritize_branch <task> <branch>` — boost a branch to front of queue\n"
+    "`export`                           — download all Claude outputs\n"
+    "`help`                             — this message\n\n"
     "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
 )
 
@@ -300,6 +313,38 @@ async def _handle_text_command(message: discord.Message) -> None:
             f"✅ Branch queued on Task {task_arg}: *{spec[:80]}*\nCLI will add it at the next step boundary."
         )
 
+    elif low.startswith("output"):
+        st_target = text[6:].strip().upper()
+        if not st_target:
+            await _send(message, "Usage: `output <subtask>` — e.g. `output A3`")
+            return
+        state = _load_state()
+        result = _find_subtask_output(state, st_target)
+        if result is None:
+            await _send(message, f"❌ Subtask `{st_target}` not found.")
+        else:
+            task_name, out = result
+            if out:
+                await _send(message, f"**{st_target}** ({task_name}):\n```\n{out[:1800]}\n```")
+            else:
+                await _send(message, f"**{st_target}** ({task_name}): no output recorded yet.")
+
+    elif low.startswith("prioritize_branch"):
+        rest = text[17:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `prioritize_branch <task> <branch>` — e.g. `prioritize_branch 0 A`")
+            return
+        pb_task, pb_branch = parts[0], parts[1].strip()
+        PRIORITY_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+        PRIORITY_BRANCH_TRIGGER.write_text(
+            json.dumps({"task": pb_task, "branch": pb_branch}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Priority boost queued: Task {pb_task} / {pb_branch}\nCLI will boost it at the next step boundary."
+        )
+
     elif low in ("help", "?"):
         await _send(message, _HELP_TEXT)
 
@@ -315,15 +360,17 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         return
     await interaction.response.send_message(
         "**Solo Builder Bot**\n\n"
-        "`/status`                    — DAG progress summary\n"
-        "`/run`                       — trigger one step\n"
-        "`/auto [n]`                  — run N steps (default: until complete)\n"
-        "`/stop`                      — cancel an in-progress auto run\n"
-        "`/verify subtask [note]`     — approve a subtask (REVIEW_MODE)\n"
-        "`/add_task spec`             — queue a new task\n"
-        "`/add_branch task spec`      — queue a new branch on a task\n"
-        "`/export`                    — download all Claude outputs\n"
-        "`/help`                      — this message"
+        "`/status`                           — DAG progress summary\n"
+        "`/run`                              — trigger one step\n"
+        "`/auto [n]`                         — run N steps (default: until complete)\n"
+        "`/stop`                             — cancel an in-progress auto run\n"
+        "`/verify subtask [note]`            — approve a subtask (REVIEW_MODE)\n"
+        "`/output subtask`                   — show Claude output for a subtask\n"
+        "`/add_task spec`                    — queue a new task\n"
+        "`/add_branch task spec`             — queue a new branch on a task\n"
+        "`/prioritize_branch task branch`    — boost a branch to front of queue\n"
+        "`/export`                           — download all Claude outputs\n"
+        "`/help`                             — this message"
     )
 
 
@@ -460,6 +507,52 @@ async def add_branch_cmd(interaction: discord.Interaction, task: str, spec: str)
     ADD_BRANCH_TRIGGER.write_text(json.dumps({"task": task, "spec": spec}), encoding="utf-8")
     await interaction.response.send_message(
         f"✅ Branch queued on Task {task}: *{spec[:80]}*\nCLI will add it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="output", description="Show Claude output for a specific subtask")
+@app_commands.describe(subtask="Subtask name (e.g. A3)")
+async def output_cmd(interaction: discord.Interaction, subtask: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st_target = subtask.strip().upper()
+    if not st_target:
+        await interaction.response.send_message("Usage: `/output <subtask>`", ephemeral=True)
+        return
+    state = _load_state()
+    result = _find_subtask_output(state, st_target)
+    if result is None:
+        await interaction.response.send_message(f"❌ Subtask `{st_target}` not found.")
+    else:
+        task_name, out = result
+        if out:
+            await interaction.response.send_message(
+                f"**{st_target}** ({task_name}):\n```\n{out[:1800]}\n```"
+            )
+        else:
+            await interaction.response.send_message(
+                f"**{st_target}** ({task_name}): no output recorded yet."
+            )
+
+
+@bot.tree.command(name="prioritize_branch", description="Boost a branch to the front of the execution queue")
+@app_commands.describe(task="Task number or name (e.g. 0)", branch="Branch name (e.g. A)")
+async def prioritize_branch_cmd(interaction: discord.Interaction, task: str, branch: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    task   = task.strip()
+    branch = branch.strip()
+    if not task or not branch:
+        await interaction.response.send_message("Usage: `/prioritize_branch <task> <branch>`", ephemeral=True)
+        return
+    PRIORITY_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+    PRIORITY_BRANCH_TRIGGER.write_text(
+        json.dumps({"task": task, "branch": branch}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Priority boost queued: Task {task} / {branch}\nCLI will boost it at the next step boundary."
     )
 
 
