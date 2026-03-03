@@ -46,7 +46,7 @@ jobs:
               if s.get("status") == "Verified"
           )
           print(f"Verified: {verified}/{total}  (Task 0: {task0_v}/8)")
-          assert verified >= 15, f"Expected >=15, got {verified}"
+          assert verified >= 20, f"Expected >=20, got {verified}"
           print("PASS")
           EOF
 
@@ -86,7 +86,7 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
-      - name: Run bot unit tests (98 tests)
+      - name: Run bot unit tests (106 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
       - name: Profiler dry-run (patch smoke test)

@@ -1147,6 +1147,100 @@ class TestOutputCommand(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestSaveLoadState
+# ---------------------------------------------------------------------------
+
+class TestSaveLoadState(unittest.TestCase):
+    """Tests for SoloBuilderCLI.save_state and load_state."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self.addCleanup(self._remove_state)
+
+    def _remove_state(self):
+        if os.path.exists(_cli_module.STATE_PATH):
+            os.remove(_cli_module.STATE_PATH)
+
+    def test_save_creates_state_file(self):
+        """save_state creates the JSON state file on disk."""
+        self.cli.save_state(silent=True)
+        self.assertTrue(os.path.exists(_cli_module.STATE_PATH))
+
+    def test_save_writes_step_number(self):
+        """Saved JSON contains the current step number."""
+        self.cli.step = 42
+        self.cli.save_state(silent=True)
+        with open(_cli_module.STATE_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual(data["step"], 42)
+
+    def test_load_returns_false_when_no_file(self):
+        """load_state returns False when no state file exists."""
+        if os.path.exists(_cli_module.STATE_PATH):
+            os.remove(_cli_module.STATE_PATH)
+        result = self.cli.load_state()
+        self.assertFalse(result)
+
+    def test_load_restores_step(self):
+        """After save + load the step number is restored."""
+        self.cli.step = 7
+        self.cli.save_state(silent=True)
+        self.cli.step = 99
+        self.cli.load_state()
+        self.assertEqual(self.cli.step, 7)
+
+    def test_load_returns_true_on_success(self):
+        """load_state returns True when file exists and is valid JSON."""
+        self.cli.save_state(silent=True)
+        result = self.cli.load_state()
+        self.assertTrue(result)
+
+
+# ---------------------------------------------------------------------------
+# TestSnapshotCommand
+# ---------------------------------------------------------------------------
+
+class TestSnapshotCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._take_snapshot."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+
+    def _run_snapshot(self, **kw) -> str:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.cli._take_snapshot(**kw)
+        return buf.getvalue()
+
+    def test_snapshot_prints_unavailable_when_pdf_not_ok(self):
+        """When _PDF_OK is False a 'PDF unavailable' message is printed."""
+        with patch.object(_cli_module, "_PDF_OK", new=False):
+            out = self._run_snapshot()
+        self.assertIn("PDF unavailable", out)
+
+    def test_snapshot_calls_generate_pdf_when_available(self):
+        """When _PDF_OK is True generate_live_multi_pdf is called once."""
+        mock_gen = MagicMock()
+        with patch.object(_cli_module, "_PDF_OK", new=True), \
+             patch("solo_builder_cli.generate_live_multi_pdf", new=mock_gen,
+                   create=True):
+            self._run_snapshot()
+        mock_gen.assert_called_once()
+
+    def test_snapshot_increments_counter(self):
+        """Each successful snapshot increments snapshot_counter by 1."""
+        mock_gen = MagicMock()
+        before = self.cli.snapshot_counter
+        with patch.object(_cli_module, "_PDF_OK", new=True), \
+             patch("solo_builder_cli.generate_live_multi_pdf", new=mock_gen,
+                   create=True):
+            self._run_snapshot()
+        self.assertEqual(self.cli.snapshot_counter, before + 1)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

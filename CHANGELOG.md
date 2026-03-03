@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.17] — 2026-03-03
+
+### Added
+- **`TestSaveLoadState`** — 5 tests: save creates file; JSON contains step number;
+  load returns False with no file; load restores step; load returns True on success
+- **`TestSnapshotCommand`** — 3 tests: PDF unavailable message when `_PDF_OK=False`;
+  `generate_live_multi_pdf` called once when `_PDF_OK=True`; counter increments.
+  Total: **106 tests**, ~8.5 s
+
+### Changed
+- **README version badge** — `2.1.16` → `2.1.17`
+- **README CI table** — test count 98 → 106; added `save_state`, `load_state`, `_take_snapshot`
+- **README CI table** — headless assertion `≥ 15` → `≥ 20`
+- **`smoke-test.yml`** — step label → "(106 tests)"; headless assert `>= 20`
+- **`review_mode_demo.gif`** — refreshed from `gen_review_cast.py` (378 KB, 80×26, 126 frames)
+
+---
+
 ## [v2.1.16] — 2026-03-03
 
 ### Added
