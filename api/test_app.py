@@ -580,7 +580,7 @@ class TestConfig(_Base):
         r = self.client.get("/config")
         d = r.get_json()
         self.assertIn("STALL_THRESHOLD", d)
-        self.assertIn("VERIFY_PROB", d)
+        self.assertIn("EXECUTOR_VERIFY_PROBABILITY", d)
 
 
 # Error handlers
