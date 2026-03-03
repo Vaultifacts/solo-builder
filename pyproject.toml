@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "solo-builder"
-version = "2.0.1"
+version = "2.1"
 description = "AI agent CLI that manages DAG-based project tasks with six agents and the Anthropic SDK"
 readme = "README.md"
 license = { text = "MIT" }

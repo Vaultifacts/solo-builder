@@ -2353,7 +2353,7 @@ class SoloBuilderCLI:
 def _splash() -> None:
     lines = [
         "╔══════════════════════════════════════════════════════╗",
-        "║      SOLO BUILDER — AI AGENT CLI  v2.0.1             ║",
+        "║      SOLO BUILDER — AI AGENT CLI  v2.1               ║",
         "║                                                       ║",
         "║  DAG · Shadow · Self-Heal · Auto-Run · Persistence   ║",
         "╚══════════════════════════════════════════════════════╝",
