@@ -791,13 +791,15 @@ class Executor:
                     sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
                     advanced += 1
                 elif random.random() < self.verify_prob:
-                        st_data["status"]      = "Verified"
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
                         add_memory_snapshot(memory_store, branch_name, f"{st_name}_verified", step)
-                        actions[st_name] = "verified"
+                        actions[st_name] = "review" if self.review_mode else "verified"
                         advanced += 1
-                        self._roll_up(dag, task_name, branch_name)
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
 
         # ── SDK tool-use jobs (async, no subprocess) ─────────────────────────
         if sdk_tool_jobs:
@@ -833,13 +835,15 @@ class Executor:
                         )
                     elif random.random() < self.verify_prob:
                         # No subprocess available — dice-roll so pipeline isn't blocked
-                        st_data["status"]      = "Verified"
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["last_update"] = step
                         add_memory_snapshot(memory_store, branch_name,
                                             f"{st_name}_verified", step)
-                        actions[st_name] = "verified"
-                        self._roll_up(dag, task_name, branch_name)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
 
         # ── Run Claude jobs in parallel ───────────────────────────────────────
         if claude_jobs:
