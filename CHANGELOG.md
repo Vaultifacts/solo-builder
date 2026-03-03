@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.7] — 2026-03-03
+
+### Added
+- **`CONTRIBUTING.md`** — four-tier executor routing table, DAG structure,
+  how to add CLI commands, commit style guide
+- **README Development section** — CI test table, profiler usage, priority cache
+  architecture note, REVIEW_MODE usage example; version badge bumped to 2.1.6
+
+### Changed
+- **CI smoke test** — `Run bot unit tests` step added
+  (`PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py`)
+
+---
+
 ## [v2.1.6] — 2026-03-03
 
 ### Fixed
