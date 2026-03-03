@@ -1513,8 +1513,9 @@ class SoloBuilderCLI:
         print(f"  {CYAN}Auto-run: {label}  │  delay={AUTO_STEP_DELAY}s  │  Ctrl+C to pause{RESET}")
         time.sleep(0.6)
 
-        _trigger  = os.path.join(_HERE, "state", "run_trigger")
-        _stoptrig = os.path.join(_HERE, "state", "stop_trigger")
+        _trigger     = os.path.join(_HERE, "state", "run_trigger")
+        _stoptrig    = os.path.join(_HERE, "state", "stop_trigger")
+        _attrigger   = os.path.join(_HERE, "state", "add_task_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1554,6 +1555,17 @@ class SoloBuilderCLI:
                                 self._cmd_verify(
                                     f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
                                 )
+                        except Exception:
+                            pass
+                    if os.path.exists(_attrigger):
+                        try:
+                            adata = json.loads(
+                                open(_attrigger, encoding="utf-8").read()
+                            )
+                            os.remove(_attrigger)
+                            spec = adata.get("spec", "").strip()
+                            if spec:
+                                self._cmd_add_task(spec)
                         except Exception:
                             pass
                     if os.path.exists(_trigger):
@@ -1633,7 +1645,11 @@ class SoloBuilderCLI:
             self._cmd_add_task(raw[9:])
 
         elif cmd.startswith("add_branch"):
-            self._cmd_add_branch(raw[10:])
+            _ab_parts = raw[10:].strip().split(None, 1)
+            if len(_ab_parts) >= 2:
+                self._cmd_add_branch(_ab_parts[0], spec_override=_ab_parts[1])
+            else:
+                self._cmd_add_branch(raw[10:])
 
         elif cmd == "prioritize_branch":
             self._cmd_prioritize_branch()
@@ -1825,8 +1841,8 @@ class SoloBuilderCLI:
             self.alerts, self.meta.forecast(self.dag),
         )
 
-    def _cmd_add_branch(self, args: str) -> None:
-        """add_branch <Task N> — Claude-decompose a spec into a new branch on an existing task."""
+    def _cmd_add_branch(self, args: str, spec_override: str = "") -> None:
+        """add_branch <Task N> [spec] — Claude-decompose a spec into a new branch on an existing task."""
         # Normalise task name
         arg = args.strip().strip("'\"")
         if arg.isdigit():
@@ -1858,7 +1874,11 @@ class SoloBuilderCLI:
         )
         branch_name = f"Branch {branch_letter}"
 
-        spec = input(f"  {BOLD}What should {branch_name} of {task_name} cover?{RESET} ").strip()
+        spec = (
+            spec_override.strip()
+            if spec_override.strip()
+            else input(f"  {BOLD}What should {branch_name} of {task_name} cover?{RESET} ").strip()
+        )
         if not spec:
             print(f"  {YELLOW}Cancelled.{RESET}")
             return
@@ -2288,7 +2308,7 @@ class SoloBuilderCLI:
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
-            ("add_branch <Task N>",    "Add a new branch to an existing task"),
+            ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
             ("export",                  "Write all Claude outputs to solo_builder_outputs.md"),
             ("depends",                 "Print dependency graph"),
             ("depends <T> <dep>",      "Add dependency: Task T depends on dep"),
@@ -2588,9 +2608,10 @@ def main() -> None:
     _LOCK_PATH  = os.path.join(_HERE, "state", "solo_builder.lock")
     _STOP_PATH  = os.path.join(_HERE, "state", "stop_trigger")
     _RUN_PATH   = os.path.join(_HERE, "state", "run_trigger")
+    _AT_PATH    = os.path.join(_HERE, "state", "add_task_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
-    for _stale in (_STOP_PATH, _RUN_PATH):
+    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

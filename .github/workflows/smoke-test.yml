@@ -86,7 +86,7 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
-      - name: Run bot unit tests (112 tests)
+      - name: Run bot unit tests (115 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
       - name: Profiler dry-run (patch smoke test)
@@ -121,6 +121,41 @@ jobs:
           cfg['REVIEW_MODE'] = False
           json.dump(cfg, open('config/settings.json', 'w'), indent=4)
           "
+
+      - name: Test add_task inline spec (headless)
+        run: |
+          python - <<'EOF'
+          import sys, builtins
+          sys.path.insert(0, ".")
+          import solo_builder_cli as m
+
+          cli = m.SoloBuilderCLI()
+          n_before = len(cli.dag)
+
+          # Inline spec must NOT call input() — patch it to error if called
+          _real_input = builtins.input
+          def _no_input(prompt=""):
+              raise AssertionError(f"input() was called: {prompt!r}")
+          builtins.input = _no_input
+          try:
+              cli._cmd_add_task("Build the CI integration layer")
+          finally:
+              builtins.input = _real_input
+
+          n_after = len(cli.dag)
+          assert n_after == n_before + 1, f"Expected DAG to grow by 1, got {n_before} -> {n_after}"
+
+          # handle_command dispatch variant also skips input()
+          n2 = len(cli.dag)
+          builtins.input = _no_input
+          try:
+              cli.handle_command("add_task Deploy the staging environment")
+          finally:
+              builtins.input = _real_input
+          assert len(cli.dag) == n2 + 1, "handle_command add_task did not grow DAG"
+
+          print(f"PASS: DAG grew {n_before} -> {n_before + 2} via inline add_task")
+          EOF
 
       - name: Test webhook POST via _fire_completion
         run: |

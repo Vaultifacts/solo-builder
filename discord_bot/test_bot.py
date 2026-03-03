@@ -1317,6 +1317,44 @@ class TestAddTaskInlineSpec(unittest.TestCase):
         self.assertEqual(len(self.cli.dag), n_before + 1)
 
 
+class TestAddBranchInlineSpec(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_add_branch with inline spec_override."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self.cli.executor.claude.available = False   # force fallback path
+        self._sleep_patcher = patch("time.sleep")
+        self._sleep_patcher.start()
+
+    def tearDown(self):
+        self._sleep_patcher.stop()
+
+    def _count_branches(self, task_name: str) -> int:
+        return len(self.cli.dag.get(task_name, {}).get("branches", {}))
+
+    def test_inline_spec_skips_input_prompt(self):
+        """Passing spec_override adds a branch without calling input()."""
+        before = self._count_branches("Task 0")
+        # If input() were called it would block; error would surface
+        self.cli._cmd_add_branch("0", spec_override="Add CI integration tests")
+        self.assertEqual(self._count_branches("Task 0"), before + 1)
+
+    def test_handle_command_add_branch_with_inline_spec(self):
+        """'add_branch 0 <spec>' dispatches without prompting for spec."""
+        before = self._count_branches("Task 0")
+        with patch("builtins.input", side_effect=AssertionError("input() should not be called")):
+            self.cli.handle_command("add_branch 0 Deploy staging environment")
+        self.assertEqual(self._count_branches("Task 0"), before + 1)
+
+    def test_handle_command_add_branch_bare_still_prompts(self):
+        """'add_branch 0' (no inline spec) still calls input() for the spec."""
+        before = self._count_branches("Task 0")
+        with patch("builtins.input", return_value="Write integration tests"):
+            self.cli.handle_command("add_branch 0")
+        self.assertEqual(self._count_branches("Task 0"), before + 1)
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------

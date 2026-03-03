@@ -49,8 +49,9 @@ _ROOT          = Path(__file__).resolve().parent.parent   # solo_builder/
 STATE_PATH     = _ROOT / "state" / "solo_builder_state.json"
 STEP_PATH      = _ROOT / "state" / "step.txt"
 TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
-VERIFY_TRIGGER = _ROOT / "state" / "verify_trigger.json"
-STOP_TRIGGER   = _ROOT / "state" / "stop_trigger"
+VERIFY_TRIGGER   = _ROOT / "state" / "verify_trigger.json"
+STOP_TRIGGER     = _ROOT / "state" / "stop_trigger"
+ADD_TASK_TRIGGER = _ROOT / "state" / "add_task_trigger.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -187,6 +188,7 @@ _HELP_TEXT = (
     "`auto [n]`                — run N steps (default: until complete)\n"
     "`stop`                    — cancel an in-progress auto run\n"
     "`verify <subtask> [note]` — approve a Review-gated subtask\n"
+    "`add_task <spec>`         — queue a new task (added at next step)\n"
     "`export`                  — download all Claude outputs\n"
     "`help`                    — this message\n\n"
     "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
@@ -267,6 +269,18 @@ async def _handle_text_command(message: discord.Message) -> None:
                 file=discord.File(str(OUTPUTS_PATH), filename="solo_builder_outputs.md"),
             )
 
+    elif low.startswith("add_task"):
+        spec = text[8:].strip()
+        if not spec:
+            await _send(message, "Usage: `add_task <spec>` — e.g. `add_task Build the OAuth2 flow`")
+            return
+        ADD_TASK_TRIGGER.parent.mkdir(exist_ok=True)
+        ADD_TASK_TRIGGER.write_text(json.dumps({"spec": spec}), encoding="utf-8")
+        await _send(
+            message,
+            f"✅ Task queued: *{spec[:80]}*\nCLI will add it at the next step boundary."
+        )
+
     elif low in ("help", "?"):
         await _send(message, _HELP_TEXT)
 
@@ -287,6 +301,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/auto [n]`                  — run N steps (default: until complete)\n"
         "`/stop`                      — cancel an in-progress auto run\n"
         "`/verify subtask [note]`     — approve a subtask (REVIEW_MODE)\n"
+        "`/add_task spec`             — queue a new task\n"
         "`/export`                    — download all Claude outputs\n"
         "`/help`                      — this message"
     )
@@ -390,6 +405,23 @@ async def export_cmd(interaction: discord.Interaction) -> None:
     await interaction.response.send_message(
         f"Solo Builder outputs · {size_kb} KB",
         file=discord.File(str(OUTPUTS_PATH), filename="solo_builder_outputs.md"),
+    )
+
+
+@bot.tree.command(name="add_task", description="Queue a new task to be added at the next step")
+@app_commands.describe(spec="What the task should accomplish")
+async def add_task_cmd(interaction: discord.Interaction, spec: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    spec = spec.strip()
+    if not spec:
+        await interaction.response.send_message("Usage: `/add_task <spec>`", ephemeral=True)
+        return
+    ADD_TASK_TRIGGER.parent.mkdir(exist_ok=True)
+    ADD_TASK_TRIGGER.write_text(json.dumps({"spec": spec}), encoding="utf-8")
+    await interaction.response.send_message(
+        f"✅ Task queued: *{spec[:80]}*\nCLI will add it at the next step boundary."
     )
 
 
