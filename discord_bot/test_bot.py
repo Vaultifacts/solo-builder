@@ -1287,6 +1287,34 @@ class TestSaveLoadState(unittest.TestCase):
             if os.path.exists(p):
                 os.remove(p)
 
+    def test_load_backup_restores_from_backup(self):
+        """load_backup 1 restores state from .1 backup file."""
+        sp = _cli_module.STATE_PATH
+        # Save step 10, then step 20 (creates .1 with step 10)
+        self.cli.step = 10
+        self.cli.save_state(silent=True)
+        self.cli.step = 20
+        self.cli.save_state(silent=True)
+        self.assertEqual(self.cli.step, 20)
+        # Restore from .1
+        self.cli._cmd_load_backup("1")
+        self.assertEqual(self.cli.step, 10)
+        # Cleanup
+        for i in range(1, 4):
+            p = f"{sp}.{i}"
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_load_backup_missing_shows_warning(self):
+        """load_backup 3 when no .3 exists shows a warning."""
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.cli._cmd_load_backup("3")
+        output = buf.getvalue()
+        self.assertIn("not found", output)
+
 
 # ---------------------------------------------------------------------------
 # TestSnapshotCommand
@@ -1769,6 +1797,30 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
             await bot_module._handle_text_command(_make_msg("heartbeat"))
         text = mock_send.call_args[0][1]
         self.assertIn("No heartbeat", text)
+
+    async def test_graph_shows_dag_structure(self):
+        """'graph' renders ASCII DAG with task names and dependency arrows."""
+        state = _make_state({"A1": "Verified", "A2": "Pending"}, step=5)
+        state["dag"]["Task1"] = {
+            "status": "Pending",
+            "depends_on": ["Task0"],
+            "branches": {"BranchC": {"subtasks": {"C1": {"status": "Pending"}}}},
+        }
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("graph"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("DAG Graph", text)
+        self.assertIn("Task0", text)
+        self.assertIn("Task1", text)
+
+    async def test_graph_empty_dag(self):
+        """'graph' with empty DAG shows appropriate message."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value={"dag": {}, "step": 0}):
+            await bot_module._handle_text_command(_make_msg("graph"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No tasks", text)
 
 
 # ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1.28-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.29-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 
@@ -41,11 +41,80 @@ cd solo-builder/solo_builder
 pip install -r requirements.txt
 ```
 
-Create a `.env` file (never committed) with your API key:
+---
+
+## Setup
+
+### Prerequisites
+
+| Requirement | Version | Notes |
+|---|---|---|
+| **Python** | 3.13+ | `python --version` to verify |
+| **pip** | any | Bundled with Python |
+| **Git** | 2.x+ | For cloning and CI |
+| **Anthropic API key** | — | Optional — without it, subtasks fall back to dice-roll mode |
+| **Discord bot token** | — | Optional — only needed for the Discord bot |
+
+### 1. Create a virtual environment (recommended)
+
+```bash
+python -m venv venv
+# Activate:
+source venv/bin/activate        # Linux / macOS / Git Bash
+venv\Scripts\activate            # Windows cmd / PowerShell
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+For the Discord bot (optional):
+```bash
+pip install "discord.py>=2.0" python-dotenv
+```
+
+### 3. Configure environment variables
+
+Create a `.env` file in the `solo_builder/` directory (never committed):
+
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 ```
-Or `export ANTHROPIC_API_KEY=sk-ant-...` in your shell.
+
+Or export directly in your shell:
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+For the Discord bot, add these to `.env` as well:
+```
+DISCORD_BOT_TOKEN=<your bot token>
+DISCORD_CHANNEL_ID=<channel ID>   # optional — restricts bot to one channel
+```
+
+### 4. Verify the install
+
+```bash
+# Quick smoke test — runs 3 steps in dice-roll mode, no API key needed:
+python profiler_harness.py --dry-run
+
+# Or start the CLI interactively:
+python solo_builder_cli.py
+```
+
+You should see the Solo Builder banner and the `solo-builder >` prompt. Type `help` to list commands, or `auto 5` to run 5 steps.
+
+### 5. Optional components
+
+| Component | How to start | Default URL |
+|---|---|---|
+| **Web dashboard** | `python api/app.py` | `http://127.0.0.1:5000` |
+| **Discord bot** | `python discord_bot/bot.py` | — |
+| **PDF snapshots** | `snapshot` command in CLI | Saves to `solo_builder/` |
+
+All three are optional and can run alongside the CLI in separate terminals.
 
 ---
 

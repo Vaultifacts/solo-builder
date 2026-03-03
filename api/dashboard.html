@@ -18,6 +18,13 @@
     --blue:     #2196f3;
     --font:     'Courier New', Courier, monospace;
   }
+  [data-theme="light"] {
+    --bg:       #f5f5f5;
+    --surface:  #ffffff;
+    --border:   #ddd;
+    --text:     #1a1a1a;
+    --dim:      #888;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: var(--bg);
@@ -421,6 +428,30 @@
   }
   .cmd-feedback.show { opacity: 1; }
 
+  /* ── Theme toggle ────────────────────────────────────────── */
+  #btn-theme {
+    margin-left: 8px; padding: 4px 10px; font-size: 14px;
+    background: transparent; color: var(--dim); border: 1px solid var(--border);
+    border-radius: 4px; cursor: pointer; transition: background 0.15s;
+    font-family: var(--font);
+  }
+  #btn-theme:hover { background: var(--border); }
+  [data-theme="light"] .subtask-row:hover { background: #e8eef4; }
+  [data-theme="light"] .s-verified { background: #e0f5e0; }
+  [data-theme="light"] .s-running  { background: #e0f2f5; }
+  [data-theme="light"] .s-pending  { background: #fff8e0; }
+  [data-theme="light"] .s-blocked  { background: #fff0e0; }
+  [data-theme="light"] .badge-complete { background: #e0f5e0; }
+  [data-theme="light"] .badge-running  { background: #e0f2f5; }
+  [data-theme="light"] .badge-pending  { background: #fff8e0; }
+  [data-theme="light"] .btn-verify   { background: #e0f5e0; }
+  [data-theme="light"] .btn-describe { background: #f0e8f5; }
+  [data-theme="light"] .btn-tools    { background: #e0eef5; }
+  [data-theme="light"] .btn-set      { background: #fff8e0; }
+  [data-theme="light"] #btn-run      { background: #e0f5e0; }
+  [data-theme="light"] #btn-auto     { background: #f0e8f5; }
+  [data-theme="light"] .task-card.active { background: #e0f2f5; }
+
   /* ── Error toast ─────────────────────────────────────────── */
   #toast {
     position: fixed;
@@ -458,6 +489,7 @@
     <input id="auto-n" type="number" value="10" min="1" max="300" title="Steps to run automatically">
     <button id="btn-auto" onclick="runAuto()" title="Run N steps automatically">⏩ Auto</button>
   </div>
+  <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
 </header>
 
 <div class="cmd-toolbar">
@@ -1023,6 +1055,19 @@
     if (!tools) return;
     _postCmd("/tools", {subtask: _modalSt, tools: tools}, "fb-tools", _modalSt);
     closeModal();
+  };
+
+  /* ── Theme toggle ─────────────────────────────────────────── */
+  function _applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.getElementById("btn-theme").textContent = theme === "dark" ? "🌙" : "☀️";
+  }
+  _applyTheme(localStorage.getItem("sb-theme") || "dark");
+
+  window.toggleTheme = function () {
+    const next = (localStorage.getItem("sb-theme") || "dark") === "dark" ? "light" : "dark";
+    localStorage.setItem("sb-theme", next);
+    _applyTheme(next);
   };
 
   tick();

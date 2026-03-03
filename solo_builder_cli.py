@@ -1499,6 +1499,39 @@ class SoloBuilderCLI:
             print(f"  {RED}Load failed: {exc}{RESET}")
             return False
 
+    def _cmd_load_backup(self, args: str) -> None:
+        """load_backup [1|2|3] — restore state from a backup file."""
+        n = args.strip() or "1"
+        if n not in ("1", "2", "3"):
+            print(f"  Usage: load_backup [1|2|3]  (default: 1 = most recent)")
+            return
+        backup_path = f"{STATE_PATH}.{n}"
+        if not os.path.exists(backup_path):
+            print(f"  {YELLOW}Backup {backup_path} not found.{RESET}")
+            avail = [str(i) for i in range(1, 4) if os.path.exists(f"{STATE_PATH}.{i}")]
+            if avail:
+                print(f"  Available backups: {', '.join(avail)}")
+            else:
+                print(f"  No backup files found.")
+            return
+        # Copy backup over main state, then load
+        try:
+            import shutil
+            shutil.copy2(backup_path, STATE_PATH)
+        except OSError as exc:
+            print(f"  {RED}Copy failed: {exc}{RESET}")
+            return
+        ok = self.load_state()
+        if ok:
+            print(f"  {GREEN}Restored from backup .{n} — step {self.step}, "
+                  f"{dag_stats(self.dag)['verified']} verified.{RESET}")
+            self.display.render(
+                self.dag, self.memory_store, self.step,
+                self.alerts, self.meta.forecast(self.dag),
+            )
+        else:
+            print(f"  {RED}Backup .{n} exists but failed to load.{RESET}")
+
     # ── Auto-run ─────────────────────────────────────────────────────────────
     def _cmd_auto(self, args: str) -> None:
         """
@@ -1751,6 +1784,9 @@ class SoloBuilderCLI:
                 self.dag, self.memory_store, self.step,
                 self.alerts, self.meta.forecast(self.dag),
             )
+
+        elif cmd.startswith("load_backup"):
+            self._cmd_load_backup(raw[12:].strip())
 
         elif cmd == "reset":
             self._cmd_reset()
@@ -2512,6 +2548,7 @@ class SoloBuilderCLI:
             ("snapshot",               "Generate a PDF timeline snapshot"),
             ("save",                   "Save current state to disk"),
             ("load",                   "Load last saved state from disk"),
+            ("load_backup [1|2|3]",   "Restore from a backup (.1=newest, .3=oldest)"),
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),

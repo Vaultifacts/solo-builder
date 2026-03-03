@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.29] — 2026-03-03
+
+### Added
+- **Dashboard dark/light theme toggle** — toggle button in header; persists to
+  localStorage; light theme overrides CSS vars with appropriate backgrounds
+- **Bot `/graph` command** — plain-text and `/graph` slash command; renders ASCII
+  DAG dependency graph with status icons and dependency arrows; 22 Discord commands total
+- **CLI `load_backup [1|2|3]` command** — restore state from backup files created by
+  save_state rotation (.1=newest, .2, .3=oldest); shows available backups if target missing
+- **4 new tests** (graph with data, graph empty DAG, load_backup restore, load_backup missing) → 156 bot + 28 API = 184 total
+
+---
+
 ## [v2.1.28] — 2026-03-03
 
 ### Added

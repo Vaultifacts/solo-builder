@@ -141,6 +141,36 @@ def _format_status(state: dict) -> str:
     return header + "```\n" + "\n".join(rows) + "\n```"
 
 
+def _format_graph(state: dict) -> str:
+    """Build an ASCII dependency graph of the DAG."""
+    dag = state.get("dag", {})
+    if not dag:
+        return "No tasks in DAG."
+    sym = {"Verified": "✅", "Running": "▶️", "Review": "⏸", "Pending": "⏳", "Blocked": "🔒"}
+    lines = ["**DAG Graph**", "```"]
+    task_names = list(dag.keys())
+    for i, t_name in enumerate(task_names):
+        t = dag[t_name]
+        st = t.get("status", "Pending")
+        icon = sym.get(st, "⏳")
+        deps = t.get("depends_on", [])
+        branches = t.get("branches", {})
+        n_st = sum(len(b.get("subtasks", {})) for b in branches.values())
+        n_v = sum(1 for b in branches.values() for s in b.get("subtasks", {}).values()
+                  if s.get("status") == "Verified")
+        line = f"{icon} {t_name} [{n_v}/{n_st}]"
+        if deps:
+            line += f"  ← {', '.join(deps)}"
+        lines.append(line)
+        # Draw arrows to dependents
+        dependents = [tn for tn in task_names if t_name in dag[tn].get("depends_on", [])]
+        if dependents:
+            for d in dependents:
+                lines.append(f"   └──▶ {d}")
+    lines.append("```")
+    return "\n".join(lines)
+
+
 def _allowed(interaction: discord.Interaction) -> bool:
     return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
 
@@ -234,6 +264,7 @@ _HELP_TEXT = (
     "`set KEY`                          — show current value of a setting\n"
     "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
+    "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
     "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
@@ -520,6 +551,10 @@ async def _handle_text_command(message: discord.Message) -> None:
             except Exception:
                 await _send(message, "❌ Could not read `config/settings.json`.")
 
+    elif low == "graph":
+        state = _load_state()
+        await _send(message, _format_graph(state))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -567,6 +602,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/reset confirm:yes`                — reset DAG (destructive!)\n"
         "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
+        "`/graph`                            — visual ASCII DAG dependency graph\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -581,6 +617,14 @@ async def status_cmd(interaction: discord.Interaction) -> None:
     if _auto_running():
         msg += "\n▶ Auto-run in progress — use `/stop` to cancel."
     await interaction.response.send_message(msg)
+
+
+@bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")
+async def graph_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_graph(_load_state()))
 
 
 @bot.tree.command(name="heartbeat", description="Show live heartbeat counters from step.txt")
