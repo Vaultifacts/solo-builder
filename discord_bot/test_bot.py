@@ -1229,6 +1229,10 @@ class TestSaveLoadState(unittest.TestCase):
     def _remove_state(self):
         if os.path.exists(_cli_module.STATE_PATH):
             os.remove(_cli_module.STATE_PATH)
+        for i in range(1, 4):
+            p = f"{_cli_module.STATE_PATH}.{i}"
+            if os.path.exists(p):
+                os.remove(p)
 
     def test_save_creates_state_file(self):
         """save_state creates the JSON state file on disk."""
@@ -1307,6 +1311,11 @@ class TestSaveLoadState(unittest.TestCase):
 
     def test_load_backup_missing_shows_warning(self):
         """load_backup 3 when no .3 exists shows a warning."""
+        # Ensure no stale .3 backup from previous tests
+        sp = _cli_module.STATE_PATH
+        p3 = f"{sp}.3"
+        if os.path.exists(p3):
+            os.remove(p3)
         import io
         from contextlib import redirect_stdout
         buf = io.StringIO()
