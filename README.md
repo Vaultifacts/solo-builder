@@ -364,3 +364,110 @@ solo-builder > verify A3 checked and looks correct
 ```
 
 ![REVIEW_MODE demo](review_mode_demo.gif)
+
+---
+
+## Troubleshooting (Windows)
+
+### Garbled Unicode / encoding errors in the terminal
+
+Windows terminals default to a legacy code page. Set the encoding before running:
+
+```bash
+export PYTHONIOENCODING=utf-8          # Git Bash
+set PYTHONIOENCODING=utf-8             # cmd
+$env:PYTHONIOENCODING = "utf-8"        # PowerShell
+```
+
+Or add `PYTHONIOENCODING=utf-8` to your `.env` file. Without this, progress bars and status icons may render as `?` or cause `UnicodeEncodeError`.
+
+### `python` is not recognized / opens the Microsoft Store
+
+Windows may alias `python` to the Store installer. Fix:
+
+1. **Settings → Apps → Advanced app execution aliases** → turn off the two Python entries.
+2. Verify with `python --version` — should print `Python 3.13.x`.
+3. If `python` still fails, use the full path: `"/c/Program Files/Python313/python"` (Git Bash) or `"C:\Program Files\Python313\python.exe"` (cmd/PowerShell).
+
+### Virtual environment won't activate
+
+The activation command differs by shell:
+
+| Shell | Command |
+|---|---|
+| **Git Bash / MSYS2** | `source venv/bin/activate` |
+| **cmd** | `venv\Scripts\activate.bat` |
+| **PowerShell** | `venv\Scripts\Activate.ps1` |
+
+PowerShell may also block scripts by default. Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once to allow it.
+
+### Paths with spaces cause failures
+
+The project lives inside `Solo Builder/` which contains a space. Always quote paths in shell commands:
+
+```bash
+cd "/c/Users/Matt1/OneDrive/Desktop/Solo Builder/solo_builder"
+```
+
+If a tool still chokes on the space, consider cloning the repo to a path without spaces (e.g., `C:\dev\solo-builder`).
+
+### Lockfile errors (`state/solo_builder.lock`)
+
+If the CLI exits uncleanly (crash, Ctrl+C, power loss) the lockfile may remain:
+
+```bash
+rm state/solo_builder.lock
+```
+
+The lockfile prevents two CLI instances from corrupting `solo_builder_state.json`. Only delete it when you are sure no other instance is running.
+
+### `asyncio` event loop errors
+
+On Python < 3.13 for Windows you may see `RuntimeError: Event loop is closed` or `NotImplementedError` from the default `ProactorEventLoop`. Upgrade to Python 3.13+ where this is resolved. If you cannot upgrade, add this before any async code runs:
+
+```python
+import asyncio, sys
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+```
+
+### Port 5000 already in use (dashboard)
+
+Another process (often another Flask instance or a Windows service) is holding port 5000:
+
+```bash
+# Find the process:
+netstat -ano | findstr :5000
+
+# Kill it by PID (replace 12345):
+taskkill /PID 12345 /F
+```
+
+Or change the dashboard port in `api/app.py` by passing a different port to `app.run()`.
+
+### Long-path errors (> 260 characters)
+
+Windows has a 260-character path limit by default. If state files or exports fail with `FileNotFoundError` on deeply nested paths:
+
+1. **Enable long paths** (requires admin):
+   ```
+   reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f
+   ```
+2. Restart your terminal.
+3. Also enable in Git: `git config --system core.longpaths true`
+
+### Line-ending issues (CRLF vs LF)
+
+Git on Windows defaults to `core.autocrlf=true`, converting LF → CRLF on checkout. This can break shell scripts or cause noisy diffs. Recommended:
+
+```bash
+git config --global core.autocrlf input   # convert CRLF→LF on commit, leave LF on checkout
+```
+
+### Antivirus blocks `claude` subprocess calls
+
+Windows Defender or third-party AV may quarantine or slow down the `claude -p` subprocess fallback. If subtasks time out only on Windows:
+
+1. Add your project directory to the AV exclusion list.
+2. Check Windows Security → Virus & Threat Protection → Protection History for blocked items.
+3. The SDK runners (`SdkToolRunner`, `AnthropicRunner`) are not affected since they use HTTP, not subprocesses.
