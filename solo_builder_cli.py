@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ search │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1874,6 +1874,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("output "):
             self._cmd_output(raw[7:])
+
+        elif cmd.startswith("search "):
+            self._cmd_search(raw[7:])
 
         elif cmd.startswith("set "):
             self._cmd_set(raw[4:])
@@ -2606,6 +2609,30 @@ class SoloBuilderCLI:
                 print(f"    {DIM}Step {step}{RESET}  {format_status(hstatus)}")
         print()
 
+    def _cmd_search(self, args: str) -> None:
+        """search <text> — find subtasks matching keyword in description or output."""
+        query = args.strip().lower()
+        if not query:
+            print(f"  Usage: search <keyword>")
+            return
+        matches: list = []
+        for task_name, task_data in self.dag.items():
+            for branch_data in task_data.get("branches", {}).values():
+                for st_name, st_data in branch_data.get("subtasks", {}).items():
+                    desc = (st_data.get("description") or "").lower()
+                    out = (st_data.get("output") or "").lower()
+                    if query in desc or query in out or query in st_name.lower():
+                        matches.append((st_name, task_name, st_data.get("status", "Pending"),
+                                        (st_data.get("description") or "")[:60]))
+        print(f"\n  {BOLD}{CYAN}Search: '{args.strip()}'{RESET}  ({len(matches)} match{'es' if len(matches) != 1 else ''})")
+        print(f"  {'─' * 50}")
+        if not matches:
+            print(f"  {DIM}No matches found.{RESET}")
+        else:
+            for st_name, task_name, status, desc in matches:
+                print(f"  {CYAN}{st_name:<5}{RESET} {format_status(status)}  {DIM}{task_name} — {desc}{RESET}")
+        print()
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -2723,6 +2750,7 @@ class SoloBuilderCLI:
             ("status",                 "Show detailed DAG statistics"),
             ("stats",                  "Per-task breakdown (verified, avg steps)"),
             ("history [N]",            "Show last N status transitions (default 20)"),
+            ("search <text>",          "Find subtasks by keyword (description/output)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
             ("export",                  "Write all Claude outputs to solo_builder_outputs.md"),

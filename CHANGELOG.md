@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.36] — 2026-03-03
+
+### Added
+- **Dashboard stats tab** — sidebar bottom now uses tabbed layout (Journal / Diff / Stats);
+  Stats tab shows per-task progress bars, verified counts, and avg steps from `GET /stats`
+- **Bot `/history` command** — plain-text and `/history [N]` slash command; shows last N
+  status transitions across all subtasks in chronological order. 39 Discord commands total.
+- **CLI `search <text>` command** — find subtasks by keyword match in name, description,
+  or output; case-insensitive
+- **API `GET /history` endpoint** — aggregated step-by-step activity log as JSON with
+  `?limit=N` parameter (default 30)
+- **5 new tests** (2 bot history + 3 API history) → 171 bot + 36 API = 207 total
+
+---
+
 ## [v2.1.35] — 2026-03-03
 
 ### Added

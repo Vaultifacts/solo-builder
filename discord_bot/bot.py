@@ -102,6 +102,27 @@ def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None
     return None
 
 
+def _format_history(state: dict, limit: int = 20) -> str:
+    """Return a formatted recent activity log across all subtasks."""
+    dag = state.get("dag", {})
+    events: list = []
+    for task_name, task_data in dag.items():
+        for b in task_data.get("branches", {}).values():
+            for st_name, st_data in b.get("subtasks", {}).items():
+                for h in st_data.get("history", []):
+                    icon = {"Running": "▶", "Verified": "✅", "Review": "⏸"}.get(h.get("status", "?"), "❓")
+                    events.append((h.get("step", 0), st_name, task_name, h.get("status", "?"), icon))
+    events.sort(key=lambda x: x[0], reverse=True)
+    events = events[:limit]
+    if not events:
+        return "**Recent Activity**\n_No history recorded yet._"
+    lines = [f"**Recent Activity** (last {limit})", "```"]
+    for step, st_name, task_name, status, icon in events:
+        lines.append(f"  Step {step:<4} {st_name:<5} {status:<10} ({task_name})")
+    lines.append("```")
+    return "\n".join(lines)
+
+
 def _format_stats(state: dict) -> str:
     """Return a formatted per-task stats table."""
     dag = state.get("dag", {})
@@ -369,6 +390,7 @@ _HELP_TEXT = (
     "`diff`                             — show what changed since last save\n"
     "`timeline <subtask>`               — show status history timeline\n"
     "`stats`                            — per-task breakdown (verified, avg steps)\n"
+    "`history [N]`                      — last N status transitions (default 20)\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -709,6 +731,14 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_stats(state))
 
+    elif low == "history" or low.startswith("history "):
+        n = 20
+        rest = text[7:].strip() if low.startswith("history ") else ""
+        if rest.isdigit():
+            n = int(rest)
+        state = _load_state()
+        await _send(message, _format_history(state, n))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -835,6 +865,15 @@ async def stats_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_stats(_load_state()))
+
+
+@bot.tree.command(name="history", description="Show recent status transitions across all subtasks")
+@app_commands.describe(limit="Number of entries to show (default 20)")
+async def history_cmd(interaction: discord.Interaction, limit: int = 20) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_history(_load_state(), limit))
 
 
 @bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")

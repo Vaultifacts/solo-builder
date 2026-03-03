@@ -366,6 +366,46 @@ class TestStats(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /history
+# ---------------------------------------------------------------------------
+
+class TestHistory(_Base):
+
+    def test_history_empty(self):
+        r = self.client.get("/history")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["events"], [])
+
+    def test_history_with_events(self):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [
+            {"status": "Running", "step": 2},
+            {"status": "Verified", "step": 4},
+        ]
+        self._write_state(state)
+        r = self.client.get("/history")
+        d = r.get_json()
+        self.assertEqual(len(d["events"]), 2)
+        # Should be sorted descending by step
+        self.assertEqual(d["events"][0]["step"], 4)
+        self.assertEqual(d["events"][0]["subtask"], "A1")
+
+    def test_history_respects_limit(self):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [
+            {"status": "Running", "step": 1},
+            {"status": "Verified", "step": 2},
+        ]
+        self._write_state(state)
+        r = self.client.get("/history?limit=1")
+        d = r.get_json()
+        self.assertEqual(len(d["events"]), 1)
+
+
+# ---------------------------------------------------------------------------
 # GET /diff
 # ---------------------------------------------------------------------------
 

@@ -43,6 +43,25 @@ def _load_dag() -> dict:
     return _load_state().get("dag", {})
 
 
+def _write_trigger(path: Path, fields: dict[str, bool],
+                   defaults: dict | None = None) -> tuple:
+    """Parse body, validate, write trigger JSON.  fields maps name→uppercase."""
+    body = request.get_json(silent=True) or {}
+    defs = defaults or {}
+    payload = {}
+    for key, upper in fields.items():
+        val = (body.get(key) or defs.get(key, "")).strip()
+        if upper:
+            val = val.upper()
+        if not val:
+            return jsonify({"ok": False,
+                            "reason": f"Missing '{key}' field."}), 400
+        payload[key] = val
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return jsonify({"ok": True, **payload}), 202
+
+
 def _task_summary(task_id: str, task: dict) -> dict:
     branches      = task.get("branches", {})
     subtask_count = sum(len(b.get("subtasks", {})) for b in branches.values())
@@ -161,61 +180,26 @@ def run_step():
 @app.post("/verify")
 def verify_subtask():
     """Queue a subtask verify via trigger file."""
-    data = request.get_json(silent=True) or {}
-    subtask = (data.get("subtask") or "").strip().upper()
-    note = (data.get("note") or "Dashboard verify").strip()
-    if not subtask:
-        return jsonify({"ok": False, "reason": "Missing 'subtask' field."}), 400
-    VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
-    VERIFY_TRIGGER.write_text(
-        json.dumps({"subtask": subtask, "note": note}), encoding="utf-8"
-    )
-    return jsonify({"ok": True, "subtask": subtask, "note": note}), 202
+    return _write_trigger(VERIFY_TRIGGER, {"subtask": True, "note": False},
+                          defaults={"note": "Dashboard verify"})
 
 
 @app.post("/describe")
 def describe_subtask():
     """Queue a subtask describe via trigger file."""
-    data = request.get_json(silent=True) or {}
-    subtask = (data.get("subtask") or "").strip().upper()
-    desc = (data.get("desc") or "").strip()
-    if not subtask or not desc:
-        return jsonify({"ok": False, "reason": "Missing 'subtask' or 'desc' field."}), 400
-    DESCRIBE_TRIGGER.parent.mkdir(exist_ok=True)
-    DESCRIBE_TRIGGER.write_text(
-        json.dumps({"subtask": subtask, "desc": desc}), encoding="utf-8"
-    )
-    return jsonify({"ok": True, "subtask": subtask, "desc": desc}), 202
+    return _write_trigger(DESCRIBE_TRIGGER, {"subtask": True, "desc": False})
 
 
 @app.post("/tools")
 def tools_subtask():
     """Queue a subtask tools change via trigger file."""
-    data = request.get_json(silent=True) or {}
-    subtask = (data.get("subtask") or "").strip().upper()
-    tools = (data.get("tools") or "").strip()
-    if not subtask or not tools:
-        return jsonify({"ok": False, "reason": "Missing 'subtask' or 'tools' field."}), 400
-    TOOLS_TRIGGER.parent.mkdir(exist_ok=True)
-    TOOLS_TRIGGER.write_text(
-        json.dumps({"subtask": subtask, "tools": tools}), encoding="utf-8"
-    )
-    return jsonify({"ok": True, "subtask": subtask, "tools": tools}), 202
+    return _write_trigger(TOOLS_TRIGGER, {"subtask": True, "tools": False})
 
 
 @app.post("/set")
 def set_setting():
     """Queue a settings change via trigger file."""
-    data = request.get_json(silent=True) or {}
-    key = (data.get("key") or "").strip().upper()
-    value = (data.get("value") or "").strip()
-    if not key or not value:
-        return jsonify({"ok": False, "reason": "Missing 'key' or 'value' field."}), 400
-    SET_TRIGGER.parent.mkdir(exist_ok=True)
-    SET_TRIGGER.write_text(
-        json.dumps({"key": key, "value": value}), encoding="utf-8"
-    )
-    return jsonify({"ok": True, "key": key, "value": value}), 202
+    return _write_trigger(SET_TRIGGER, {"key": True, "value": False})
 
 
 @app.get("/heartbeat")
@@ -329,6 +313,27 @@ def stats():
         "grand_pct": round(grand_v / grand_t * 100, 1) if grand_t else 0,
         "grand_avg_steps": round(sum(all_dur) / len(all_dur), 1) if all_dur else None,
     })
+
+
+@app.get("/history")
+def history():
+    """Aggregated step-by-step activity log across all subtasks."""
+    dag = _load_dag()
+    limit = request.args.get("limit", 30, type=int)
+    events = []
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                for h in st_data.get("history", []):
+                    events.append({
+                        "step": h.get("step", 0),
+                        "subtask": st_name,
+                        "task": task_id,
+                        "branch": branch_name,
+                        "status": h.get("status", "?"),
+                    })
+    events.sort(key=lambda e: e["step"], reverse=True)
+    return jsonify({"events": events[:limit]})
 
 
 @app.get("/diff")
