@@ -1597,6 +1597,7 @@ class SoloBuilderCLI:
         _settrigger  = os.path.join(_HERE, "state", "set_trigger.json")
         _deptrigger  = os.path.join(_HERE, "state", "depends_trigger.json")
         _undeptrigger = os.path.join(_HERE, "state", "undepends_trigger.json")
+        _undotrigger  = os.path.join(_HERE, "state", "undo_trigger")
         try:
             while True:
                 self.run_step()
@@ -1745,6 +1746,12 @@ class SoloBuilderCLI:
                         except OSError:
                             pass
                         self._take_snapshot(auto=False)
+                    if os.path.exists(_undotrigger):
+                        try:
+                            os.remove(_undotrigger)
+                        except OSError:
+                            pass
+                        self._cmd_undo()
                     if os.path.exists(_trigger):
                         try:
                             os.remove(_trigger)
@@ -2890,11 +2897,12 @@ def main() -> None:
     _SET_PATH   = os.path.join(_HERE, "state", "set_trigger.json")
     _DEP_PATH   = os.path.join(_HERE, "state", "depends_trigger.json")
     _UDEP_PATH  = os.path.join(_HERE, "state", "undepends_trigger.json")
+    _UNDO_PATH  = os.path.join(_HERE, "state", "undo_trigger")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
     for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
                    _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH,
-                   _DEP_PATH, _UDEP_PATH):
+                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

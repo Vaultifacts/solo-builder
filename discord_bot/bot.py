@@ -61,6 +61,7 @@ SNAPSHOT_TRIGGER        = _ROOT / "state" / "snapshot_trigger"
 SET_TRIGGER             = _ROOT / "state" / "set_trigger.json"
 DEPENDS_TRIGGER         = _ROOT / "state" / "depends_trigger.json"
 UNDEPENDS_TRIGGER       = _ROOT / "state" / "undepends_trigger.json"
+UNDO_TRIGGER            = _ROOT / "state" / "undo_trigger"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
 SETTINGS_PATH  = _ROOT / "config" / "settings.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
@@ -264,6 +265,7 @@ _HELP_TEXT = (
     "`set KEY`                          — show current value of a setting\n"
     "`snapshot`                         — trigger a PDF snapshot\n"
     "`export`                           — download all Claude outputs\n"
+    "`undo`                             — undo last step (restore from backup)\n"
     "`config`                           — show all current runtime settings\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -552,6 +554,11 @@ async def _handle_text_command(message: discord.Message) -> None:
             except Exception:
                 await _send(message, "❌ Could not read `config/settings.json`.")
 
+    elif low == "undo":
+        UNDO_TRIGGER.parent.mkdir(exist_ok=True)
+        UNDO_TRIGGER.write_text("1")
+        await _send(message, "↩️ Undo queued — CLI will restore from last backup at next step boundary.")
+
     elif low == "config":
         try:
             cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
@@ -614,6 +621,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/reset confirm:yes`                — reset DAG (destructive!)\n"
         "`/snapshot`                         — trigger a PDF snapshot\n"
         "`/export`                           — download all Claude outputs\n"
+        "`/undo`                             — undo last step (restore from backup)\n"
         "`/config`                           — show all current settings\n"
         "`/graph`                            — visual ASCII DAG dependency graph\n"
         "`/heartbeat`                       — live counters from step.txt\n"
@@ -630,6 +638,16 @@ async def status_cmd(interaction: discord.Interaction) -> None:
     if _auto_running():
         msg += "\n▶ Auto-run in progress — use `/stop` to cancel."
     await interaction.response.send_message(msg)
+
+
+@bot.tree.command(name="undo", description="Undo last step (restore from backup)")
+async def undo_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    UNDO_TRIGGER.parent.mkdir(exist_ok=True)
+    UNDO_TRIGGER.write_text("1")
+    await interaction.response.send_message("↩️ Undo queued — CLI will restore from last backup at next step boundary.")
 
 
 @bot.tree.command(name="config", description="Show all current runtime settings")

@@ -1831,6 +1831,16 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         text = mock_send.call_args[0][1]
         self.assertIn("No tasks", text)
 
+    async def test_undo_writes_trigger(self):
+        """'undo' writes the undo trigger file."""
+        mock_trig = MagicMock()
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "UNDO_TRIGGER", new=mock_trig):
+            await bot_module._handle_text_command(_make_msg("undo"))
+        mock_trig.write_text.assert_called_once_with("1")
+        text = mock_send.call_args[0][1]
+        self.assertIn("Undo", text)
+
     async def test_config_shows_settings(self):
         """'config' reads settings.json and shows all keys."""
         mock_settings = MagicMock()

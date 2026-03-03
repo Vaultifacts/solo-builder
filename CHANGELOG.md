@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.31] — 2026-03-03
+
+### Added
+- **Dashboard search/filter** — input in tasks panel header filters task cards by
+  name or status; also filters subtask rows in the detail panel by name or output
+- **Bot `/undo` command** — plain-text and `/undo` slash command; writes undo trigger
+  file consumed by CLI at next step boundary. 26 Discord commands total.
+- **CLI undo trigger IPC** — auto loop consumes `state/undo_trigger`, calls `_cmd_undo()`;
+  cleared at startup with other stale triggers
+- **1 new test** (undo writes trigger) → 160 bot + 28 API = 188 total
+
+---
+
 ## [v2.1.30] — 2026-03-03
 
 ### Added

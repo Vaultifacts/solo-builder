@@ -524,8 +524,9 @@
 
 <div class="layout">
   <div class="tasks-panel">
-    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       Tasks
+      <input id="search-input" type="text" placeholder="Filter…" oninput="applyFilter()" style="flex:1;max-width:140px;padding:1px 6px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)">
       <button id="btn-view" onclick="toggleView()" style="background:transparent;border:1px solid var(--border);color:var(--dim);font-size:10px;padding:1px 8px;border-radius:3px;cursor:pointer;font-family:var(--font)">Graph</button>
     </div>
     <div class="task-grid" id="task-grid">
@@ -1060,6 +1061,27 @@
     if (!tools) return;
     _postCmd("/tools", {subtask: _modalSt, tools: tools}, "fb-tools", _modalSt);
     closeModal();
+  };
+
+  /* ── Search / filter ──────────────────────────────────────── */
+  let _filterText = "";
+
+  window.applyFilter = function () {
+    _filterText = (document.getElementById("search-input").value || "").toLowerCase();
+    // Filter task cards
+    document.querySelectorAll(".task-card").forEach(card => {
+      const id = (card.dataset.id || "").toLowerCase();
+      const badge = (card.querySelector(".card-mini-badge")?.textContent || "").toLowerCase();
+      const match = !_filterText || id.includes(_filterText) || badge.includes(_filterText);
+      card.style.display = match ? "" : "none";
+    });
+    // Filter subtask rows in detail panel
+    document.querySelectorAll(".subtask-row").forEach(row => {
+      const name = (row.querySelector(".st-name")?.textContent || "").toLowerCase();
+      const output = (row.querySelector(".st-output")?.textContent || "").toLowerCase();
+      const match = !_filterText || name.includes(_filterText) || output.includes(_filterText);
+      row.style.display = match ? "" : "none";
+    });
   };
 
   /* ── DAG graph view ───────────────────────────────────────── */
