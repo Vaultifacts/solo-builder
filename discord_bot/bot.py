@@ -102,6 +102,41 @@ def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None
     return None
 
 
+def _format_diff() -> str:
+    """Compare current state to .1 backup and return a formatted diff string."""
+    backup_path = Path(str(STATE_PATH) + ".1")
+    if not backup_path.exists():
+        return "⚠️ No backup to diff against (need at least 2 saves)."
+    try:
+        old = json.loads(backup_path.read_text(encoding="utf-8"))
+    except Exception:
+        return "❌ Could not read backup file."
+    current = _load_state()
+    old_dag = old.get("dag", {})
+    new_dag = current.get("dag", {})
+    old_step = old.get("step", 0)
+    new_step = current.get("step", 0)
+    changes = []
+    for task_name, task_data in new_dag.items():
+        old_task = old_dag.get(task_name, {})
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            old_branch = old_task.get("branches", {}).get(branch_name, {})
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                old_st = old_branch.get("subtasks", {}).get(st_name, {})
+                old_status = old_st.get("status", "?")
+                new_status = st_data.get("status", "?")
+                if old_status != new_status:
+                    out = st_data.get("output", "")
+                    preview = f" — {out[:50]}" if out and new_status in ("Verified", "Review") else ""
+                    changes.append(f"`{st_name}` {old_status} → {new_status}{preview}")
+    if not changes:
+        return f"**Diff** · Step {old_step} → {new_step}\nNo subtask status changes."
+    lines = [f"**Diff** · Step {old_step} → {new_step}"]
+    for c in changes:
+        lines.append(c)
+    return "\n".join(lines)
+
+
 def _format_status(state: dict) -> str:
     dag   = state.get("dag", {})
     step  = state.get("step", 0)
@@ -270,6 +305,7 @@ _HELP_TEXT = (
     "`pause`                            — pause auto-run (resume continues)\n"
     "`resume`                           — resume a paused auto-run\n"
     "`config`                           — show all current runtime settings\n"
+    "`diff`                             — show what changed since last save\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -598,6 +634,9 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_graph(state))
 
+    elif low == "diff":
+        await _send(message, _format_diff())
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -724,6 +763,14 @@ async def graph_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_graph(_load_state()))
+
+
+@bot.tree.command(name="diff", description="Show what changed since last save")
+async def diff_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_diff())
 
 
 @bot.tree.command(name="heartbeat", description="Show live heartbeat counters from step.txt")

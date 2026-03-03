@@ -1856,6 +1856,28 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         self.assertIn("REVIEW_MODE", text)
 
 
+    async def test_diff_no_backup(self):
+        """'diff' with no backup shows warning."""
+        mock_path = MagicMock()
+        mock_path.__str__ = lambda self: "/fake/state.json.1"
+        mock_path.exists.return_value = False
+        # We need to patch Path(str(STATE_PATH) + ".1") — patch _format_diff
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_format_diff", return_value="⚠️ No backup to diff against (need at least 2 saves)."):
+            await bot_module._handle_text_command(_make_msg("diff"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No backup", text)
+
+    async def test_diff_with_changes(self):
+        """'diff' with state changes shows subtask transitions."""
+        result = "**Diff** · Step 4 → 5\n`A1` Pending → Running"
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_format_diff", return_value=result):
+            await bot_module._handle_text_command(_make_msg("diff"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Diff", text)
+        self.assertIn("A1", text)
+
     async def test_pause_writes_trigger(self):
         """'pause' writes the pause trigger file when auto is running."""
         mock_trig = MagicMock()

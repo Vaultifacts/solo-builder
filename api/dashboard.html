@@ -97,6 +97,18 @@
   .badge-pending    { background: #2a2200; color: var(--yellow); border: 1px solid var(--yellow); }
 
   .step-info { color: var(--dim); font-size: 11px; margin-left: auto; }
+  .notif-badge {
+    display: inline-block;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .notif-badge.hidden { display: none; }
   #btn-run {
     margin-left: 12px; padding: 4px 14px; font-size: 12px; font-weight: 600;
     background: #1a3a1a; color: var(--green); border: 1px solid var(--green);
@@ -495,7 +507,7 @@
     <div class="progress-pct" id="hdr-pct">0%</div>
   </div>
   <span id="hdr-badge" class="status-badge badge-pending">—</span>
-  <span class="step-info" id="hdr-step">Step —</span>
+  <span class="step-info" id="hdr-step">Step —</span><span class="notif-badge hidden" id="notif-badge" title="Unread steps">0</span>
   <button id="btn-run" onclick="runStep()" title="Signal CLI to run one step">▶ Run Step</button>
   <button id="btn-export" onclick="exportOutputs()" title="Download all subtask outputs as Markdown">⬇ Export</button>
   <div class="auto-wrap">
@@ -609,6 +621,28 @@
   let _rateEma      = null;  // exponential moving avg of verified/step rate
   let _prevVerified = 0;
   let _prevStep     = 0;
+  let _lastSeenStep = parseInt(localStorage.getItem("sb-last-seen-step") || "0", 10);
+  let _tabFocused   = true;
+
+  /* ── Notification badge ─────────────────────────────────── */
+  function _updateNotifBadge(currentStep) {
+    const badge = document.getElementById("notif-badge");
+    if (!_tabFocused && currentStep > _lastSeenStep) {
+      const unread = currentStep - _lastSeenStep;
+      badge.textContent = unread > 99 ? "99+" : String(unread);
+      badge.classList.remove("hidden");
+      document.title = `(${unread}) Solo Builder — Step ${currentStep}`;
+    } else {
+      _lastSeenStep = currentStep;
+      localStorage.setItem("sb-last-seen-step", String(currentStep));
+      badge.classList.add("hidden");
+    }
+  }
+  window.addEventListener("focus", function () {
+    _tabFocused = true;
+    _updateNotifBadge(_prevStep);
+  });
+  window.addEventListener("blur", function () { _tabFocused = false; });
 
   /* ── Utilities ───────────────────────────────────────────── */
   function statusClass(s) {
@@ -659,6 +693,7 @@
         _prevVerified = d.verified;
         _prevStep     = d.step;
       }
+      _updateNotifBadge(d.step);
       document.getElementById("hdr-rate").textContent =
         _rateEma !== null ? _rateEma.toFixed(1) : "—";
       document.title = d.complete
@@ -890,6 +925,8 @@
   }
 
   async function runStep() {
+    _tabFocused = true;
+    _updateNotifBadge(_prevStep);
     const btn = document.getElementById("btn-run");
     btn.disabled = true;
     btn.textContent = "⏳ Sent…";

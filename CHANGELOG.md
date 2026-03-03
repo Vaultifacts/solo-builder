@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.33] — 2026-03-03
+
+### Added
+- **Dashboard notification badge** — red badge next to step counter shows unread step
+  count when the tab is not focused; clears on focus or button click. Uses localStorage
+  for persistence.
+- **Bot `/diff` command** — plain-text and `/diff` slash command; compares current state
+  to `.1` backup and shows subtask status transitions. 32 Discord commands total.
+- **CLI `timeline <ST>` command** — prints the full status history of a specific subtask
+  (Pending → Running → Verified with step numbers)
+- **6 new tests** (diff, pause/resume) → 166 bot + 28 API = 194 total
+
+---
+
 ## [v2.1.32] — 2026-03-03
 
 ### Added

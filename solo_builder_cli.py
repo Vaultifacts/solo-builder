@@ -1847,6 +1847,9 @@ class SoloBuilderCLI:
         elif cmd == "diff":
             self._cmd_diff()
 
+        elif cmd.startswith("timeline "):
+            self._cmd_timeline(raw[9:])
+
         elif cmd == "reset":
             self._cmd_reset()
 
@@ -2598,6 +2601,33 @@ class SoloBuilderCLI:
         else:
             print(f"  {YELLOW}No output for {st_target} ({task_name}) yet.{RESET}\n")
 
+    def _cmd_timeline(self, args: str) -> None:
+        """timeline <subtask> — print the full status history of a subtask."""
+        st_target = args.strip().upper()
+        if not st_target:
+            print(f"  Usage: timeline <subtask_name>")
+            return
+        found = self._find_subtask(st_target)
+        if not found:
+            print(f"  {YELLOW}Subtask '{st_target}' not found.{RESET}")
+            return
+        task_name, _, _, _, st = found
+        history = st.get("history", [])
+        status = st.get("status", "Pending")
+        print(f"\n  {BOLD}{CYAN}Timeline for {st_target} ({task_name}){RESET}")
+        print(f"  Current: {format_status(status)}")
+        if not history:
+            print(f"  {DIM}No transitions recorded (subtask may predate history tracking).{RESET}")
+        else:
+            print(f"  {DIM}{'─' * 40}{RESET}")
+            # Always show initial Pending
+            print(f"    {DIM}Step 0{RESET}  {format_status('Pending')}  (initial)")
+            for h in history:
+                step = h.get("step", "?")
+                hstatus = h.get("status", "?")
+                print(f"    {DIM}Step {step}{RESET}  {format_status(hstatus)}")
+        print()
+
     def _cmd_diff(self) -> None:
         """diff — show what changed in the last step vs the .1 backup."""
         backup_path = f"{STATE_PATH}.1"
@@ -2654,6 +2684,7 @@ class SoloBuilderCLI:
             ("load_backup [1|2|3]",   "Restore from a backup (.1=newest, .3=oldest)"),
             ("undo",                   "Undo last step (restore from .1 backup)"),
             ("diff",                   "Show what changed since last save"),
+            ("timeline <ST>",          "Print full status history of a subtask"),
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
