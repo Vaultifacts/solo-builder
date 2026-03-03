@@ -772,6 +772,143 @@ class TestVerifyDescribeTools(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestSetCommand
+# ---------------------------------------------------------------------------
+
+class TestSetCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_set (runtime config changes)."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        # Suppress sleep calls in every _cmd_set invocation
+        self._sleep_patcher = patch("time.sleep")
+        self._sleep_patcher.start()
+        # Save module globals that _cmd_set may mutate
+        self._orig = {
+            "STALL_THRESHOLD":   _cli_module.STALL_THRESHOLD,
+            "AUTO_STEP_DELAY":   _cli_module.AUTO_STEP_DELAY,
+            "AUTO_SAVE_INTERVAL":_cli_module.AUTO_SAVE_INTERVAL,
+            "CLAUDE_ALLOWED_TOOLS": _cli_module.CLAUDE_ALLOWED_TOOLS,
+            "WEBHOOK_URL":       _cli_module.WEBHOOK_URL,
+            "VERBOSITY":         _cli_module.VERBOSITY,
+            "SNAPSHOT_INTERVAL": _cli_module.SNAPSHOT_INTERVAL,
+        }
+
+    def tearDown(self):
+        self._sleep_patcher.stop()
+        for k, v in self._orig.items():
+            setattr(_cli_module, k, v)
+
+    def test_set_stall_threshold_updates_module_and_agents(self):
+        """STALL_THRESHOLD changes module global and healer/planner/display."""
+        self.cli._cmd_set("STALL_THRESHOLD=10")
+        self.assertEqual(_cli_module.STALL_THRESHOLD, 10)
+        self.assertEqual(self.cli.healer.stall_threshold, 10)
+        self.assertEqual(self.cli.planner.stall_threshold, 10)
+        self.assertEqual(self.cli.display.stall_threshold, 10)
+
+    def test_set_verify_prob_updates_executor(self):
+        """VERIFY_PROB changes executor.verify_prob."""
+        self.cli._cmd_set("VERIFY_PROB=0.9")
+        self.assertAlmostEqual(self.cli.executor.verify_prob, 0.9)
+
+    def test_set_auto_step_delay_updates_module_global(self):
+        """AUTO_STEP_DELAY changes module-level global."""
+        self.cli._cmd_set("AUTO_STEP_DELAY=1.5")
+        self.assertAlmostEqual(_cli_module.AUTO_STEP_DELAY, 1.5)
+
+    def test_set_auto_save_interval(self):
+        """AUTO_SAVE_INTERVAL changes module-level global."""
+        self.cli._cmd_set("AUTO_SAVE_INTERVAL=10")
+        self.assertEqual(_cli_module.AUTO_SAVE_INTERVAL, 10)
+
+    def test_set_review_mode_on(self):
+        """REVIEW_MODE=on sets executor.review_mode to True."""
+        self.cli._cmd_set("REVIEW_MODE=on")
+        self.assertTrue(self.cli.executor.review_mode)
+
+    def test_set_review_mode_off(self):
+        """REVIEW_MODE=off sets executor.review_mode to False."""
+        self.cli.executor.review_mode = True
+        self.cli._cmd_set("REVIEW_MODE=off")
+        self.assertFalse(self.cli.executor.review_mode)
+
+    def test_set_claude_subprocess_off(self):
+        """CLAUDE_SUBPROCESS=off sets executor.claude.available to False."""
+        self.cli.executor.claude.available = True
+        self.cli._cmd_set("CLAUDE_SUBPROCESS=off")
+        self.assertFalse(self.cli.executor.claude.available)
+
+    def test_set_anthropic_max_tokens(self):
+        """ANTHROPIC_MAX_TOKENS changes executor.anthropic.max_tokens."""
+        self.cli._cmd_set("ANTHROPIC_MAX_TOKENS=256")
+        self.assertEqual(self.cli.executor.anthropic.max_tokens, 256)
+
+    def test_set_webhook_url(self):
+        """WEBHOOK_URL changes module-level WEBHOOK_URL global."""
+        self.cli._cmd_set("WEBHOOK_URL=http://example.com/hook")
+        self.assertEqual(_cli_module.WEBHOOK_URL, "http://example.com/hook")
+
+    def test_set_invalid_value_raises_no_exception(self):
+        """Non-numeric value for int key prints error without raising."""
+        orig = _cli_module.STALL_THRESHOLD
+        self.cli._cmd_set("STALL_THRESHOLD=notanint")   # should not raise
+        self.assertEqual(_cli_module.STALL_THRESHOLD, orig)   # unchanged
+
+    def test_set_missing_equals_prints_usage(self):
+        """Missing '=' prints usage; display.render still called."""
+        self.cli._cmd_set("NOEQUALSSIGN")   # should not raise
+
+    def test_set_unknown_key_prints_error(self):
+        """Unknown key prints error message without raising."""
+        self.cli._cmd_set("BADKEY=123")   # should not raise
+
+
+# ---------------------------------------------------------------------------
+# TestResetCommand
+# ---------------------------------------------------------------------------
+
+class TestResetCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_reset."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self._sleep_patcher = patch("time.sleep")
+        self._sleep_patcher.start()
+
+    def tearDown(self):
+        self._sleep_patcher.stop()
+
+    def test_reset_restores_initial_dag_and_zeroes_step(self):
+        """After reset, dag equals INITIAL_DAG and step == 0."""
+        self.cli.step = 5
+        self.cli.dag["Task 0"]["status"] = "Verified"
+        self.cli._cmd_reset()
+        import copy as _c
+        self.assertEqual(self.cli.dag, _c.deepcopy(_cli_module.INITIAL_DAG))
+        self.assertEqual(self.cli.step, 0)
+
+    def test_reset_clears_alerts_and_healer_total(self):
+        """reset clears alerts list and resets healer.healed_total."""
+        self.cli.alerts = ["stall in A1", "stall in B2"]
+        self.cli.healer.healed_total = 7
+        self.cli._cmd_reset()
+        self.assertEqual(self.cli.alerts, [])
+        self.assertEqual(self.cli.healer.healed_total, 0)
+
+    def test_reset_removes_state_file_if_present(self):
+        """reset deletes the state file when it exists."""
+        state_path = _cli_module.STATE_PATH
+        os.makedirs(os.path.dirname(state_path), exist_ok=True)
+        open(state_path, "w").close()   # create an empty sentinel file
+        self.cli._cmd_reset()
+        self.assertFalse(os.path.exists(state_path),
+                         f"State file still present after reset: {state_path}")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

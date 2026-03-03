@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.14] — 2026-03-02
+
+### Added
+- **`TestSetCommand`** — 12 tests for `_cmd_set`: STALL_THRESHOLD propagates to
+  healer/planner/display, VERIFY_PROB, AUTO_STEP_DELAY, AUTO_SAVE_INTERVAL,
+  REVIEW_MODE on/off, CLAUDE_SUBPROCESS off, ANTHROPIC_MAX_TOKENS, WEBHOOK_URL,
+  invalid value (no raise), missing `=` (no raise), unknown key (no raise)
+- **`TestResetCommand`** — 3 tests: DAG restored + step zeroed, alerts + healer
+  total cleared, state file deleted. Total: **76 tests**, 5.2 s
+
+### Changed
+- **smoke-test.yml** bot step label → "(76 tests)"
+- **README CI table** — test count 61 → 76; added `_cmd_set`, `_cmd_reset`
+
+---
+
 ## [v2.1.13] — 2026-03-02
 
 ### Added
