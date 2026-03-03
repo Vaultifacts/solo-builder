@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.12] — 2026-03-02
+
+### Added
+- **`test_notify_calls_popen_with_message`** — asserts `_fire_completion` launches
+  `powershell.exe` with the correct `verified/total` and `steps` message via
+  `subprocess.Popen` (mocked; no PowerShell required)
+- **`TestCLICommands`** — 9 unit tests for `_cmd_add_task` and `_cmd_add_branch`:
+  fallback subtask creation, Claude JSON decomposition, empty spec cancel,
+  dependency wiring, unknown task usage, digit-arg resolution, max-branch limit,
+  branch fallback, re-open Verified task. Total: **48 tests**, 2.4 s
+
+### Changed
+- **README CI table** — test count updated 38 → 48
+- **`smoke-test.yml`** step label updated to "(48 tests)"
+
+---
+
 ## [v2.1.11] — 2026-03-02
 
 ### Added

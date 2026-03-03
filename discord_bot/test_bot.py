@@ -517,6 +517,143 @@ class TestFireCompletion(unittest.TestCase):
         self.assertIn("connection refused", content)
         self.assertIn("http://bad-host.invalid", content)
 
+    def test_notify_calls_popen_with_message(self):
+        """_notify launches powershell.exe with a message string via subprocess.Popen."""
+        self._set_url("")   # webhook off — only _notify fires
+        popen_calls = []
+
+        def fake_popen(cmd, **kwargs):
+            popen_calls.append(cmd)
+            return MagicMock()
+
+        with patch.object(_cli_module.subprocess, "Popen", side_effect=fake_popen):
+            _cli_module._fire_completion(steps=7, verified=42, total=70)
+            import time; time.sleep(0.3)
+
+        self.assertEqual(len(popen_calls), 1)
+        cmd = popen_calls[0]
+        self.assertEqual(cmd[0], "powershell.exe")
+        joined = " ".join(cmd)
+        self.assertIn("42/70", joined)
+        self.assertIn("7 steps", joined)
+
+
+# ---------------------------------------------------------------------------
+# TestCLICommands
+# ---------------------------------------------------------------------------
+
+import copy as _copy
+
+
+class TestCLICommands(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_add_task and _cmd_add_branch."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()    # suppress terminal rendering
+        self.cli.executor.claude.available = False
+
+    def test_add_task_fallback_creates_single_subtask(self):
+        """No Claude: creates one subtask whose description is the input spec."""
+        idx = len(self.cli.dag)
+        letter = chr(ord("A") + idx % 26)
+        with patch("builtins.input", return_value="build a login page"), \
+             patch("time.sleep"):
+            self.cli._cmd_add_task()
+        new_task = f"Task {idx}"
+        branch   = f"Branch {letter}"
+        st_key   = f"{letter}1"
+        self.assertIn(new_task, self.cli.dag)
+        subtasks = self.cli.dag[new_task]["branches"][branch]["subtasks"]
+        self.assertIn(st_key, subtasks)
+        self.assertEqual(subtasks[st_key]["description"], "build a login page")
+        self.assertEqual(subtasks[st_key]["status"], "Pending")
+
+    def test_add_task_claude_decompose_creates_subtasks(self):
+        """Claude JSON response: subtasks are created from the parsed array."""
+        idx    = len(self.cli.dag)
+        letter = chr(ord("A") + idx % 26)
+        decomp = (f'[{{"name": "{letter}1", "description": "Set up auth"}}, '
+                  f'{{"name": "{letter}2", "description": "Write tests"}}]')
+        self.cli.executor.claude.available = True
+        self.cli.executor.claude.run = MagicMock(return_value=(True, decomp))
+        with patch("builtins.input", return_value="build auth system"), \
+             patch("time.sleep"):
+            self.cli._cmd_add_task()
+        branch   = f"Branch {letter}"
+        subtasks = self.cli.dag[f"Task {idx}"]["branches"][branch]["subtasks"]
+        self.assertEqual(len(subtasks), 2)
+        self.assertIn(f"{letter}1", subtasks)
+        self.assertIn(f"{letter}2", subtasks)
+        self.assertEqual(subtasks[f"{letter}1"]["description"], "Set up auth")
+
+    def test_add_task_empty_spec_cancels(self):
+        """Empty input cancels without modifying the DAG."""
+        initial_count = len(self.cli.dag)
+        with patch("builtins.input", return_value=""), \
+             patch("time.sleep"):
+            self.cli._cmd_add_task()
+        self.assertEqual(len(self.cli.dag), initial_count)
+
+    def test_add_task_wires_dependency_on_last_task(self):
+        """Newly added task depends on the last existing task."""
+        last_task = list(self.cli.dag.keys())[-1]
+        idx = len(self.cli.dag)
+        with patch("builtins.input", return_value="deploy to prod"), \
+             patch("time.sleep"):
+            self.cli._cmd_add_task()
+        new_task = f"Task {idx}"
+        self.assertIn(last_task, self.cli.dag[new_task]["depends_on"])
+
+    def test_add_branch_unknown_task_prints_usage(self):
+        """Unknown task name returns without changing the DAG."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_add_branch("Nonexistent Task 99")
+        self.assertEqual(list(self.cli.dag.keys()), list(snapshot.keys()))
+
+    def test_add_branch_digit_arg_resolves_task_name(self):
+        """'add_branch 0' resolves to 'Task 0' and adds a branch."""
+        initial_branches = len(self.cli.dag["Task 0"]["branches"])
+        with patch("builtins.input", return_value="add caching layer"), \
+             patch("time.sleep"):
+            self.cli._cmd_add_branch("0")
+        self.assertEqual(
+            len(self.cli.dag["Task 0"]["branches"]), initial_branches + 1
+        )
+
+    def test_add_branch_at_max_branches_blocked(self):
+        """Task already at MAX_BRANCHES_PER_TASK limit is rejected."""
+        task = self.cli.dag["Task 0"]
+        while len(task["branches"]) < _cli_module.MAX_BRANCHES_PER_TASK:
+            n = len(task["branches"])
+            task["branches"][f"Branch X{n}"] = {"status": "Pending", "subtasks": {}}
+        initial_count = len(task["branches"])
+        self.cli._cmd_add_branch("Task 0")
+        self.assertEqual(len(task["branches"]), initial_count)
+
+    def test_add_branch_fallback_creates_single_subtask(self):
+        """No Claude: new branch gets one subtask with the input spec."""
+        initial_branches = len(self.cli.dag["Task 0"]["branches"])
+        with patch("builtins.input", return_value="improve error handling"), \
+             patch("time.sleep"):
+            self.cli._cmd_add_branch("Task 0")
+        branches = self.cli.dag["Task 0"]["branches"]
+        self.assertEqual(len(branches), initial_branches + 1)
+        new_branch = list(branches.keys())[-1]
+        subtasks   = branches[new_branch]["subtasks"]
+        self.assertEqual(len(subtasks), 1)
+        st = list(subtasks.values())[0]
+        self.assertEqual(st["description"], "improve error handling")
+        self.assertEqual(st["status"], "Pending")
+
+    def test_add_branch_reopens_verified_task(self):
+        """Adding a branch to a Verified task sets it back to Running."""
+        self.cli.dag["Task 0"]["status"] = "Verified"
+        with patch("builtins.input", return_value="new concern"), \
+             patch("time.sleep"):
+            self.cli._cmd_add_branch("Task 0")
+        self.assertEqual(self.cli.dag["Task 0"]["status"], "Running")
+
 
 # ---------------------------------------------------------------------------
 # Entry point
