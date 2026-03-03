@@ -6,7 +6,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![Anthropic SDK](https://img.shields.io/badge/anthropic-sdk-orange.svg)](https://docs.anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.6-blueviolet.svg)](CHANGELOG.md)
 
 ![Solo Builder demo](demo.gif)
 
@@ -223,4 +223,50 @@ solo-builder > verify E1 output looks correct
   "REVIEW_MODE": false,
   "WEBHOOK_URL": ""
 }
+```
+
+---
+
+## Development
+
+### Running tests
+
+```bash
+# Bot unit tests (21 tests, no Discord connection needed, ~0.03 s)
+python discord_bot/test_bot.py
+
+# Or via pytest
+python -m pytest discord_bot/test_bot.py -v
+```
+
+### CI smoke test (GitHub Actions)
+
+The workflow at `.github/workflows/smoke-test.yml` runs on every push/PR to `master`:
+
+| Step | What it checks |
+|---|---|
+| **10-step headless run** | `--auto 10 --no-resume` — asserts ≥ 15 subtasks Verified |
+| **stop_trigger cleanup** | Plants a stale `state/stop_trigger` before startup; asserts it's consumed and pipeline advances |
+| **Bot unit tests** | 21 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state` |
+| **REVIEW_MODE gate** | Sets `REVIEW_MODE=True`, runs 2 steps, asserts ≥ 1 subtask in `Review` state |
+
+### Performance profiling
+
+```bash
+python profiler_harness.py
+```
+
+Patches all SDK/subprocess paths at module level — no production code changes. Outputs per-agent timing, concurrency stats, and planner cache hit rate. Optimal config: `EXECUTOR_MAX_PER_STEP=6` (157 s wall / 70 subtasks with live API; 29 s in dice-roll mode).
+
+### Priority cache architecture
+
+The Planner's `prioritize()` result is cached for `DAG_UPDATE_INTERVAL` steps (default 5). The cache also refreshes immediately when the count of fully-Verified tasks increases — this prevents a stall where newly-unlocked tasks (e.g. Tasks 1–5 after Task 0 completes) are invisible to the executor until the next scheduled refresh.
+
+### REVIEW_MODE
+
+Set `REVIEW_MODE=true` in `config/settings.json` (or `set REVIEW_MODE=true` at the CLI prompt) to enable human-in-the-loop gating. Subtasks that would normally auto-verify are paused at `Review` status. Advance them individually:
+
+```
+solo-builder > verify A3 checked and looks correct
+  ✓ A3 (Task 0) verified (was Review). Note: checked and looks correct
 ```

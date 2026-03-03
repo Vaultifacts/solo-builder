@@ -73,6 +73,9 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
+      - name: Run bot unit tests
+        run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
+
       - name: Test REVIEW_MODE produces Review-gated subtasks
         run: |
           python -c "
