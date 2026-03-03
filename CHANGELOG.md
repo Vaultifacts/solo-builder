@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.3] — 2026-03-03
+
+### Fixed
+- **Stale completion summary (100%)** — `_run_auto` now waits up to **30 s** (was 6 s)
+  for the auto-save JSON to reflect all-Verified; if JSON still lags, falls back to
+  `step.txt` heartbeat data for the final counts so the completion message always
+  shows the correct 70/70 instead of 69/70
+
+### Changed
+- **CI smoke test** (`smoke-test.yml`) — three improvements:
+  - `python-dotenv` added to `pip install` (it is now a declared dependency)
+  - Headless run bumped from `--auto 3` → `--auto 5`; assertion raised from
+    `>= 6` → `>= 12` verified subtasks
+  - New **stop_trigger startup-cleanup** step: plants a stale `state/stop_trigger`
+    before the CLI starts, then asserts the trigger was silently consumed and the
+    pipeline still advanced at least one step
+
+---
+
 ## [v2.1.2] — 2026-03-03
 
 ### Fixed
