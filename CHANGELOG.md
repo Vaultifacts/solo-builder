@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.11] — 2026-03-02
+
+### Added
+- **`TestFireCompletion`** — 3 unit tests for `_fire_completion` webhook logic:
+  empty URL → no POST, correct payload/headers, failure → `webhook_errors.log`
+  written. Total: **38 tests**, 1.1 s
+
+### Changed
+- **README CI table** — added Export and Webhook POST rows; updated bot test
+  count from 21 → 35 → 38; added `_fire_completion` to covered functions list
+- **`smoke-test.yml` step name** — "Run bot unit tests" annotated with "(38 tests)"
+
+---
+
 ## [v2.1.10] — 2026-03-02
 
 ### Fixed

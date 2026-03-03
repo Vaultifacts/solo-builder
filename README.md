@@ -252,9 +252,11 @@ The workflow at `.github/workflows/smoke-test.yml` runs on every push/PR to `mas
 | Step | What it checks |
 |---|---|
 | **10-step headless run** | `--auto 10 --no-resume` — asserts ≥ 15 subtasks Verified |
+| **Export command** | `--headless --export --no-resume --auto 2` — asserts `solo_builder_outputs.md` exists and is > 30 bytes |
 | **stop_trigger cleanup** | Plants a stale `state/stop_trigger` before startup; asserts it's consumed and pipeline advances |
-| **Bot unit tests** | 21 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state` |
+| **Bot unit tests** | 35 tests covering `_has_work`, `_format_status`, `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`, `_handle_text_command`, `_run_auto`, `_fire_completion` |
 | **REVIEW_MODE gate** | Sets `REVIEW_MODE=True`, runs 2 steps, asserts ≥ 1 subtask in `Review` state |
+| **Webhook POST** | Starts a local `http.server`, calls `_fire_completion()` directly, asserts correct JSON payload received and no error log written |
 
 ### Performance profiling
 

@@ -445,6 +445,80 @@ class TestRunAuto(unittest.IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestFireCompletion
+# ---------------------------------------------------------------------------
+
+import solo_builder_cli as _cli_module
+
+
+class TestFireCompletion(unittest.TestCase):
+    """Tests for solo_builder_cli._fire_completion (webhook POST logic)."""
+
+    def setUp(self):
+        # Ensure a clean state dir exists for the error log path
+        os.makedirs(os.path.join(os.path.dirname(_cli_module.__file__), "state"),
+                    exist_ok=True)
+        # Remove any leftover error log from a previous test run
+        self._log = os.path.join(_cli_module._HERE, "state", "webhook_errors.log")
+        if os.path.exists(self._log):
+            os.remove(self._log)
+
+    def _set_url(self, url: str):
+        _cli_module.WEBHOOK_URL = url
+
+    def tearDown(self):
+        _cli_module.WEBHOOK_URL = ""
+        if os.path.exists(self._log):
+            os.remove(self._log)
+
+    def test_no_post_when_url_empty(self):
+        """No HTTP call is made when WEBHOOK_URL is empty."""
+        self._set_url("")
+        with patch("urllib.request.urlopen") as mock_open:
+            _cli_module._fire_completion(1, 1, 1)
+            import time; time.sleep(0.3)
+        mock_open.assert_not_called()
+
+    def test_post_correct_payload(self):
+        """urlopen is called with the correct JSON payload and Content-Type."""
+        self._set_url("http://localhost:19999")
+        captured = []
+
+        def fake_open(req, timeout=None):
+            captured.append({
+                "url": req.full_url,
+                "data": json.loads(req.data),
+                "ct": req.get_header("Content-type"),
+            })
+
+        with patch("urllib.request.urlopen", side_effect=fake_open):
+            _cli_module._fire_completion(steps=5, verified=70, total=70)
+            import time; time.sleep(0.3)
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["url"], "http://localhost:19999")
+        self.assertEqual(captured[0]["data"],
+                         {"event": "complete", "steps": 5, "verified": 70, "total": 70})
+        self.assertEqual(captured[0]["ct"], "application/json")
+        self.assertFalse(os.path.exists(self._log))
+
+    def test_post_failure_writes_error_log(self):
+        """When urlopen raises, the error is written to webhook_errors.log."""
+        self._set_url("http://bad-host.invalid")
+
+        with patch("urllib.request.urlopen",
+                   side_effect=Exception("connection refused")):
+            _cli_module._fire_completion(steps=1, verified=1, total=1)
+            import time; time.sleep(0.3)
+
+        self.assertTrue(os.path.exists(self._log),
+                        "webhook_errors.log not created on failure")
+        content = open(self._log).read()
+        self.assertIn("connection refused", content)
+        self.assertIn("http://bad-host.invalid", content)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
