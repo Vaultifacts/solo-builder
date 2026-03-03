@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.18] — 2026-03-03
+
+### Added
+- **`TestPrioritizeBranch`** — 2 tests: lists all branches from initial DAG;
+  `display.render` called once after listing
+- **`TestAddTaskInlineSpec`** — 4 tests: inline spec skips `input()`; spec used as
+  subtask description; `add_task <spec>` dispatches correctly; bare `add_task` still
+  prompts. Total: **112 tests**, ~9 s
+- **`add_task [spec]` inline form** — `add_task Build OAuth2 flow` skips the interactive
+  prompt; backward-compatible (bare `add_task` still calls `input()` as before)
+
+### Changed
+- **README** — version badge `2.1.17` → `2.1.18`; CI table 106 → 112 tests; `add_task`
+  command row updated to show `[spec]`; headless CI step label `10` → `15`
+- **`smoke-test.yml`** — `--auto 10` → `--auto 15`; assert `>= 15` → `>= 18`;
+  step label → "(112 tests)"
+
+---
+
 ## [v2.1.17] — 2026-03-03
 
 ### Added

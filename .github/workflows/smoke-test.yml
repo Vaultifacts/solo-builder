@@ -20,10 +20,10 @@ jobs:
       - name: Install dependencies
         run: pip install anthropic flask python-dotenv
 
-      - name: Run CLI (headless 10 steps)
-        run: PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 10 --no-resume
+      - name: Run CLI (headless 15 steps)
+        run: PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 15 --no-resume
 
-      - name: Assert 15+ subtasks verified
+      - name: Assert 18+ subtasks verified
         run: |
           python - <<'EOF'
           import json
@@ -46,7 +46,7 @@ jobs:
               if s.get("status") == "Verified"
           )
           print(f"Verified: {verified}/{total}  (Task 0: {task0_v}/8)")
-          assert verified >= 15, f"Expected >=15, got {verified}"
+          assert verified >= 18, f"Expected >=18, got {verified}"
           print("PASS")
           EOF
 
@@ -86,7 +86,7 @@ jobs:
           print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
           EOF
 
-      - name: Run bot unit tests (106 tests)
+      - name: Run bot unit tests (112 tests)
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
       - name: Profiler dry-run (patch smoke test)

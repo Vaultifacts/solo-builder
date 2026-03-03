@@ -1241,6 +1241,83 @@ class TestSnapshotCommand(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestPrioritizeBranch
+# ---------------------------------------------------------------------------
+
+class TestPrioritizeBranch(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_prioritize_branch."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+
+    def _run(self) -> str:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), patch("builtins.input", return_value=""):
+            self.cli._cmd_prioritize_branch()
+        return buf.getvalue()
+
+    def test_prioritize_branch_lists_all_branches(self):
+        """Output contains every branch name present in the initial DAG."""
+        out = self._run()
+        self.assertIn("Branch A", out)
+        self.assertIn("Branch B", out)
+
+    def test_prioritize_branch_calls_display_render(self):
+        """display.render is called once after the branch listing."""
+        with patch("builtins.input", return_value=""):
+            self.cli._cmd_prioritize_branch()
+        self.cli.display.render.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# TestAddTaskInlineSpec
+# ---------------------------------------------------------------------------
+
+class TestAddTaskInlineSpec(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_add_task with inline spec_override."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self.cli.executor.claude.available = False   # force fallback path
+        self._sleep_patcher = patch("time.sleep")
+        self._sleep_patcher.start()
+
+    def tearDown(self):
+        self._sleep_patcher.stop()
+
+    def test_inline_spec_skips_input_prompt(self):
+        """Passing spec_override creates the task without calling input()."""
+        n_before = len(self.cli.dag)
+        # If input() were called it would block; no patch needed if override works
+        self.cli._cmd_add_task("Build the auth module")
+        self.assertEqual(len(self.cli.dag), n_before + 1)
+
+    def test_inline_spec_used_as_subtask_description(self):
+        """The spec_override string becomes the fallback subtask description."""
+        self.cli._cmd_add_task("Implement OAuth2 flow")
+        new_task = list(self.cli.dag.values())[-1]
+        branch   = list(new_task["branches"].values())[0]
+        subtask  = list(branch["subtasks"].values())[0]
+        self.assertIn("Implement OAuth2 flow", subtask["description"])
+
+    def test_handle_command_add_task_with_inline_spec(self):
+        """'add_task <spec>' dispatches to _cmd_add_task with the spec text."""
+        n_before = len(self.cli.dag)
+        with patch("builtins.input", side_effect=AssertionError("input() should not be called")):
+            self.cli.handle_command("add_task Deploy the API server")
+        self.assertEqual(len(self.cli.dag), n_before + 1)
+
+    def test_handle_command_add_task_bare_still_prompts(self):
+        """'add_task' (no inline spec) still calls input() for the spec."""
+        n_before = len(self.cli.dag)
+        with patch("builtins.input", return_value="Bare task spec"):
+            self.cli.handle_command("add_task")
+        self.assertEqual(len(self.cli.dag), n_before + 1)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

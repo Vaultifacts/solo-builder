@@ -1629,6 +1629,9 @@ class SoloBuilderCLI:
         elif cmd == "add_task":
             self._cmd_add_task()
 
+        elif cmd.startswith("add_task "):
+            self._cmd_add_task(raw[9:])
+
         elif cmd.startswith("add_branch"):
             self._cmd_add_branch(raw[10:])
 
@@ -1729,7 +1732,7 @@ class SoloBuilderCLI:
             self.dag, self.memory_store, self.step, self.alerts, "N/A"
         )
 
-    def _cmd_add_task(self) -> None:
+    def _cmd_add_task(self, spec_override: str = "") -> None:
         task_idx  = len(self.dag)
         task_name = f"Task {task_idx}"
         if task_name in self.dag:
@@ -1739,7 +1742,8 @@ class SoloBuilderCLI:
         letter      = chr(ord("A") + task_idx % 26)
         branch_name = f"Branch {letter}"
 
-        spec = input(f"  {BOLD}What should {task_name} accomplish?{RESET} ").strip()
+        spec = spec_override.strip() if spec_override.strip() else \
+               input(f"  {BOLD}What should {task_name} accomplish?{RESET} ").strip()
         if not spec:
             print(f"  {YELLOW}Cancelled — description cannot be empty.{RESET}")
             return
@@ -2283,7 +2287,7 @@ class SoloBuilderCLI:
             ("load",                   "Load last saved state from disk"),
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
-            ("add_task",               "Append a new Task (Claude decomposes spec)"),
+            ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N>",    "Add a new branch to an existing task"),
             ("export",                  "Write all Claude outputs to solo_builder_outputs.md"),
             ("depends",                 "Print dependency graph"),
