@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.13] — 2026-03-02
+
+### Added
+- **`TestVerifyDescribeTools`** — 13 unit tests covering `_cmd_verify` (flip status,
+  default note, unknown subtask, empty arg), `_cmd_describe` (sets description +
+  Running, propagates to branch/task, missing text, unknown subtask), `_cmd_tools`
+  (set list, clear to empty, requeue Verified, missing arg, unknown subtask)
+- **`profiler_harness.py --dry-run`** — runs 3 steps then exits with PASS; asserts
+  executor and planner patches fire; wired as CI step "Profiler dry-run"
+- **CI step** — "Profiler dry-run (patch smoke test)" added to `smoke-test.yml`
+
+### Fixed
+- **`datetime.utcnow()` deprecation** — replaced with
+  `datetime.now(datetime.timezone.utc)` in `_fire_completion` webhook error log
+- **`TestFireCompletion` ResourceWarning** — class-level `subprocess.Popen` mock
+  added to `setUp` prevents real `powershell.exe` spawns in non-notify tests;
+  unclosed file handle in failure test closed with `with` block
+
+### Changed
+- **Test count** — 48 → 61; all clean (no warnings)
+- **`smoke-test.yml` bot step label** — "(48 tests)" → "(61 tests)"
+- **README CI table** — updated test count, functions list, added Profiler row
+
+---
+
 ## [v2.1.12] — 2026-03-02
 
 ### Added

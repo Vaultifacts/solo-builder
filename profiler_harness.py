@@ -5,8 +5,13 @@ Run against any settings; reports structured metrics.
 Patches both sync (.run) and async (.arun) methods so timing is captured
 regardless of which execution path is active.
 """
-import os, sys, time, tracemalloc, contextlib, statistics
+import os, sys, time, tracemalloc, contextlib, statistics, argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+_ap = argparse.ArgumentParser(add_help=False)
+_ap.add_argument("--dry-run", action="store_true",
+                 help="Run 3 steps and exit with PASS; confirms patches apply cleanly.")
+_profiler_args, _ = _ap.parse_known_args()
 
 tracemalloc.start()
 
@@ -162,7 +167,8 @@ def _qdepth(dag):
 
 wall0 = time.perf_counter(); cpu0 = time.process_time()
 step = 0
-while step < 300:
+_step_limit = 3 if _profiler_args.dry_run else 300
+while step < _step_limit:
     depth = _qdepth(instance.dag)
     cur, peak = tracemalloc.get_traced_memory()
     M["queue_depth"].append((step, depth))
@@ -186,6 +192,27 @@ while step < 300:
 wall_total = time.perf_counter() - wall0
 cpu_total  = time.process_time() - cpu0
 null_out.close(); tracemalloc.stop()
+
+if _profiler_args.dry_run:
+    verified_dry = sum(
+        1 for t in instance.dag.values()
+        for b in t.get("branches", {}).values()
+        for s in b.get("subtasks", {}).values()
+        if s.get("status") == "Verified"
+    )
+    active_dry = sum(
+        1 for t in instance.dag.values()
+        for b in t.get("branches", {}).values()
+        for s in b.get("subtasks", {}).values()
+        if s.get("status") in ("Running", "Verified")
+    )
+    print(f"  DRY-RUN: {instance.step} steps, {verified_dry} verified, "
+          f"{active_dry} active — patches OK")
+    assert instance.step >= 1, "No steps executed — pipeline may be stalled"
+    assert len(M["executor_t"]) >= 1, "Executor patch never fired"
+    assert len(M["planner_t"]) >= 1, "Planner patch never fired"
+    print("  PASS")
+    sys.exit(0)
 
 total_steps = instance.step
 verified_f  = sum(1 for t in instance.dag.values()

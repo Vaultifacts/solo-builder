@@ -2412,7 +2412,7 @@ def _fire_completion(steps: int, verified: int, total: int) -> None:
                 _log = os.path.join(_HERE, "state", "webhook_errors.log")
                 with open(_log, "a", encoding="utf-8") as _wf:
                     _wf.write(
-                        f"{datetime.datetime.utcnow().isoformat()} "
+                        f"{datetime.datetime.now(datetime.timezone.utc).isoformat()} "
                         f"POST {WEBHOOK_URL!r} failed: {exc}\n"
                     )
             except Exception:

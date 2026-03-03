@@ -455,18 +455,21 @@ class TestFireCompletion(unittest.TestCase):
     """Tests for solo_builder_cli._fire_completion (webhook POST logic)."""
 
     def setUp(self):
-        # Ensure a clean state dir exists for the error log path
         os.makedirs(os.path.join(os.path.dirname(_cli_module.__file__), "state"),
                     exist_ok=True)
-        # Remove any leftover error log from a previous test run
         self._log = os.path.join(_cli_module._HERE, "state", "webhook_errors.log")
         if os.path.exists(self._log):
             os.remove(self._log)
+        # Suppress real powershell.exe spawns in tests that don't test _notify
+        self._popen_patcher = patch.object(_cli_module.subprocess, "Popen",
+                                           new=MagicMock())
+        self._popen_patcher.start()
 
     def _set_url(self, url: str):
         _cli_module.WEBHOOK_URL = url
 
     def tearDown(self):
+        self._popen_patcher.stop()
         _cli_module.WEBHOOK_URL = ""
         if os.path.exists(self._log):
             os.remove(self._log)
@@ -513,13 +516,15 @@ class TestFireCompletion(unittest.TestCase):
 
         self.assertTrue(os.path.exists(self._log),
                         "webhook_errors.log not created on failure")
-        content = open(self._log).read()
+        with open(self._log) as _f:
+            content = _f.read()
         self.assertIn("connection refused", content)
         self.assertIn("http://bad-host.invalid", content)
 
     def test_notify_calls_popen_with_message(self):
         """_notify launches powershell.exe with a message string via subprocess.Popen."""
         self._set_url("")   # webhook off — only _notify fires
+        self._popen_patcher.stop()   # remove class-level no-op mock for this test
         popen_calls = []
 
         def fake_popen(cmd, **kwargs):
@@ -529,6 +534,7 @@ class TestFireCompletion(unittest.TestCase):
         with patch.object(_cli_module.subprocess, "Popen", side_effect=fake_popen):
             _cli_module._fire_completion(steps=7, verified=42, total=70)
             import time; time.sleep(0.3)
+        self._popen_patcher.start()  # restore for tearDown
 
         self.assertEqual(len(popen_calls), 1)
         cmd = popen_calls[0]
@@ -653,6 +659,116 @@ class TestCLICommands(unittest.TestCase):
              patch("time.sleep"):
             self.cli._cmd_add_branch("Task 0")
         self.assertEqual(self.cli.dag["Task 0"]["status"], "Running")
+
+
+# ---------------------------------------------------------------------------
+# TestVerifyDescribeTools
+# ---------------------------------------------------------------------------
+
+class TestVerifyDescribeTools(unittest.TestCase):
+    """Tests for _cmd_verify, _cmd_describe, and _cmd_tools."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+
+    def _st(self, name: str) -> dict:
+        for task_data in self.cli.dag.values():
+            for branch_data in task_data.get("branches", {}).values():
+                if name in branch_data.get("subtasks", {}):
+                    return branch_data["subtasks"][name]
+        return {}
+
+    # ── _cmd_verify ──────────────────────────────────────────────────────────
+
+    def test_verify_flips_status_and_sets_output(self):
+        """verify <ST> <note> sets status=Verified, shadow=Done, output=note."""
+        self.cli._cmd_verify("A1 output looks correct")
+        st = self._st("A1")
+        self.assertEqual(st["status"], "Verified")
+        self.assertEqual(st["shadow"], "Done")
+        self.assertEqual(st["output"], "output looks correct")
+
+    def test_verify_default_note_when_omitted(self):
+        """verify <ST> with no note defaults to 'Manually verified'."""
+        self.cli._cmd_verify("A1")
+        self.assertEqual(self._st("A1")["output"], "Manually verified")
+
+    def test_verify_unknown_subtask_leaves_dag_unchanged(self):
+        """Unknown subtask name leaves DAG identical."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_verify("ZZZZ99")
+        self.assertEqual(self.cli.dag, snapshot)
+
+    def test_verify_empty_arg_prints_usage(self):
+        """Empty arg leaves DAG identical."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_verify("")
+        self.assertEqual(self.cli.dag, snapshot)
+
+    # ── _cmd_describe ─────────────────────────────────────────────────────────
+
+    def test_describe_sets_description_and_running(self):
+        """describe <ST> <text> sets description, status=Running, clears output."""
+        self.cli._cmd_describe("A1 rewrite login with OAuth2")
+        st = self._st("A1")
+        self.assertEqual(st["description"], "rewrite login with OAuth2")
+        self.assertEqual(st["status"], "Running")
+        self.assertEqual(st["shadow"], "Pending")
+        self.assertEqual(st["output"], "")
+
+    def test_describe_propagates_running_to_branch_and_task(self):
+        """describe sets branch status and parent task status to Running."""
+        self.cli._cmd_describe("A1 do the thing")
+        branch = self.cli.dag["Task 0"]["branches"]["Branch A"]
+        self.assertEqual(branch["status"], "Running")
+        self.assertEqual(self.cli.dag["Task 0"]["status"], "Running")
+
+    def test_describe_missing_text_prints_usage(self):
+        """Single token with no description text leaves DAG unchanged."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_describe("A1")
+        self.assertEqual(self.cli.dag, snapshot)
+
+    def test_describe_unknown_subtask_leaves_dag_unchanged(self):
+        """Unknown subtask name leaves DAG identical."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_describe("ZZZZ99 some text")
+        self.assertEqual(self.cli.dag, snapshot)
+
+    # ── _cmd_tools ────────────────────────────────────────────────────────────
+
+    def test_tools_sets_tool_list(self):
+        """tools <ST> Read,Glob,Grep stores the tool string on the subtask."""
+        self.cli._cmd_tools("A1 Read,Glob,Grep")
+        self.assertEqual(self._st("A1").get("tools"), "Read,Glob,Grep")
+
+    def test_tools_none_clears_to_empty_string(self):
+        """tools <ST> none stores empty string (headless mode)."""
+        self.cli._cmd_tools("A1 none")
+        self.assertEqual(self._st("A1").get("tools"), "")
+
+    def test_tools_requeues_verified_subtask(self):
+        """tools on a Verified subtask re-sets it to Running."""
+        self.cli._cmd_verify("A1")
+        self.assertEqual(self._st("A1")["status"], "Verified")
+        self.cli._cmd_tools("A1 Bash,Read")
+        st = self._st("A1")
+        self.assertEqual(st["status"], "Running")
+        self.assertEqual(st["shadow"], "Pending")
+        self.assertEqual(st["output"], "")
+
+    def test_tools_missing_toollist_prints_usage(self):
+        """Single token with no tool list leaves DAG unchanged."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_tools("A1")
+        self.assertEqual(self.cli.dag, snapshot)
+
+    def test_tools_unknown_subtask_leaves_dag_unchanged(self):
+        """Unknown subtask name leaves DAG identical."""
+        snapshot = _copy.deepcopy(self.cli.dag)
+        self.cli._cmd_tools("ZZZZ99 Read")
+        self.assertEqual(self.cli.dag, snapshot)
 
 
 # ---------------------------------------------------------------------------
