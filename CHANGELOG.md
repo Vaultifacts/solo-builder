@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.1] — 2026-03-03
+
+### Added
+- **Auto-run indicator in `/status`** — when a bot auto-run is in progress,
+  status replies append `▶ Auto-run in progress — use stop to cancel`
+  (both plain-text and `/status` slash command)
+
+### Fixed
+- **Stale `stop_trigger` cleared on startup** — a leftover `state/stop_trigger`
+  from a crashed or interrupted run would silently halt the very first `auto`
+  command. CLI now removes it during `main()` startup before acquiring the
+  lockfile.
+
+### Changed
+- Version bumped to **2.1** in `pyproject.toml` and CLI splash banner
+
+---
+
 ## [v2.1] — 2026-03-03
 
 ### Added

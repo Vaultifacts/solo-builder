@@ -205,6 +205,8 @@ async def _handle_text_command(message: discord.Message) -> None:
 
     if low == "status":
         reply = _format_status(_load_state())
+        if _auto_running():
+            reply += "\n▶ Auto-run in progress — use `stop` to cancel."
         await _send(message, reply)
 
     elif low == "run":
@@ -295,7 +297,10 @@ async def status_cmd(interaction: discord.Interaction) -> None:
     if not _allowed(interaction):
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
-    await interaction.response.send_message(_format_status(_load_state()))
+    msg = _format_status(_load_state())
+    if _auto_running():
+        msg += "\n▶ Auto-run in progress — use `/stop` to cancel."
+    await interaction.response.send_message(msg)
 
 
 @bot.tree.command(name="run", description="Trigger one CLI step")
