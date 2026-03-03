@@ -2154,6 +2154,27 @@ class TestBranchesCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("not found", text)
 
 
+class TestRenameCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot rename command."""
+
+    async def test_rename_queued(self):
+        """'rename A1 new desc' writes trigger and sends confirmation."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "RENAME_TRIGGER") as mock_path:
+            mock_path.parent.mkdir = MagicMock()
+            await bot_module._handle_text_command(_make_msg("rename A1 Build the new auth module"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("A1", text)
+        self.assertIn("Rename queued", text)
+
+    async def test_rename_usage(self):
+        """'rename A1' with no desc shows usage."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("rename A1"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+
 class TestUndoCommand(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_undo."""
 

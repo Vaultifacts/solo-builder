@@ -606,6 +606,7 @@
       <button class="sidebar-tab" onclick="switchTab('diff')">Diff</button>
       <button class="sidebar-tab" onclick="switchTab('stats')">Stats</button>
       <button class="sidebar-tab" onclick="switchTab('history')">History</button>
+      <button class="sidebar-tab" onclick="switchTab('branches')">Branches</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -625,6 +626,11 @@
     <div class="sidebar-tab-content" id="tab-history">
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-branches">
+      <div id="branches-content">
+        <div class="detail-placeholder">No branches yet.</div>
       </div>
     </div>
   </div>
@@ -1023,9 +1029,42 @@
     el.innerHTML = html;
   }
 
+  /* ── Branches panel ─────────────────────────────────────── */
+  let _branchesTask = null;  // track which task's branches to show
+
+  async function pollBranches() {
+    try {
+      if (!selectedTask) {
+        document.getElementById("branches-content").innerHTML = `<div class="detail-placeholder">Select a task to see branches.</div>`;
+        return;
+      }
+      const d = await api("/branches/" + encodeURIComponent(selectedTask));
+      renderBranches(d);
+    } catch (_) {}
+  }
+
+  function renderBranches(d) {
+    const el = document.getElementById("branches-content");
+    if (!d.branches || d.branches.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No branches.</div>`;
+      return;
+    }
+    const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.task} — ${d.branch_count} branches</div>`;
+    d.branches.forEach(br => {
+      html += `<div style="margin-bottom:8px"><span style="color:var(--cyan);font-weight:bold">${br.branch}</span> <span style="color:var(--dim);font-size:10px">${br.subtask_count} STs</span>`;
+      html += ` <span style="font-size:10px;color:var(--green)">${br.verified}✓</span> <span style="font-size:10px;color:var(--cyan)">${br.running}▶</span> <span style="font-size:10px;color:var(--yellow)">${br.pending}●</span>`;
+      br.subtasks.forEach(st => {
+        html += `<div class="diff-entry" style="padding-left:12px"><span class="diff-st">${st.name}</span> <span style="color:${statusColor(st.status)}">${st.status}</span></div>`;
+      });
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {

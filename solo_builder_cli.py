@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1620,6 +1620,7 @@ class SoloBuilderCLI:
         _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
         _pbtrigger   = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
         _dtrigger    = os.path.join(_HERE, "state", "describe_trigger.json")
+        _rntrigger   = os.path.join(_HERE, "state", "rename_trigger.json")
         _ttrigger    = os.path.join(_HERE, "state", "tools_trigger.json")
         _rtrigger    = os.path.join(_HERE, "state", "reset_trigger")
         _snaptrigger = os.path.join(_HERE, "state", "snapshot_trigger")
@@ -1695,6 +1696,12 @@ class SoloBuilderCLI:
                         d_desc = ddata.get("desc", "").strip()
                         if d_st and d_desc:
                             self._cmd_describe(f"{d_st} {d_desc}")
+                    rndata = self._consume_json_trigger(_rntrigger)
+                    if rndata:
+                        rn_st   = rndata.get("subtask", "").strip().upper()
+                        rn_desc = rndata.get("desc", "").strip()
+                        if rn_st and rn_desc:
+                            self._cmd_rename(f"{rn_st} {rn_desc}")
                     tdata = self._consume_json_trigger(_ttrigger)
                     if tdata:
                         t_st    = tdata.get("subtask", "").strip().upper()
@@ -1892,6 +1899,12 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("log "):
             self._cmd_log(raw[4:])
+
+        elif cmd == "pause":
+            self._cmd_pause()
+
+        elif cmd == "resume":
+            self._cmd_resume()
 
         elif cmd.startswith("set "):
             self._cmd_set(raw[4:])
@@ -2770,6 +2783,29 @@ class SoloBuilderCLI:
                 print(f"  {DIM}Step {step:<4}{RESET} {CYAN}{st_name:<5}{RESET} {format_status(status)}  {DIM}({task_name}){RESET}")
         print()
 
+    def _cmd_pause(self) -> None:
+        """pause — write pause_trigger to pause a running auto loop."""
+        p = os.path.join(_HERE, "state", "pause_trigger")
+        if os.path.exists(p):
+            print(f"  {YELLOW}Already paused.{RESET}")
+            return
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w") as f:
+            f.write("1")
+        print(f"  {YELLOW}Pause signal written — auto-run will pause after the current step.{RESET}")
+
+    def _cmd_resume(self) -> None:
+        """resume — remove pause_trigger to resume a paused auto loop."""
+        p = os.path.join(_HERE, "state", "pause_trigger")
+        if not os.path.exists(p):
+            print(f"  {YELLOW}Not paused.{RESET}")
+            return
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+        print(f"  {GREEN}Resumed — auto-run will continue.{RESET}")
+
     def _cmd_stats(self) -> None:
         """stats — per-task breakdown: subtasks verified, avg steps to complete."""
         print(f"\n  {BOLD}{CYAN}Per-Task Statistics{RESET}")
@@ -2854,6 +2890,8 @@ class SoloBuilderCLI:
         rows = [
             ("run",                    "Execute one agent pipeline step"),
             ("auto [N]",               "Run N steps automatically (default: until done)"),
+            ("pause",                  "Pause a running auto loop after current step"),
+            ("resume",                 "Resume a paused auto loop"),
             ("snapshot",               "Generate a PDF timeline snapshot"),
             ("save",                   "Save current state to disk"),
             ("load",                   "Load last saved state from disk"),

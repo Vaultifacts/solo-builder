@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.40] — 2026-03-03
+
+### Added
+- **Bot `/rename` command** — plain-text and `/rename subtask desc` slash command;
+  writes rename_trigger.json consumed by CLI auto loop. 43 Discord commands total.
+- **Dashboard branches panel** — fifth sidebar tab showing per-task branch tree with
+  subtask detail, polls `GET /branches/<task>` for selected task
+- **CLI `pause`/`resume` commands** — write/remove `state/pause_trigger` from the
+  interactive prompt (previously only available via Discord bot)
+- **API `POST /rename` endpoint** — trigger-file IPC for remote subtask description
+  updates from dashboard or bot
+- **10 new tests** (2 bot rename + 3 API rename + 3 bot branches + 2 bot log)
+  → 180 bot + 48 API = 228 total
+
+---
+
 ## [v2.1.39] — 2026-03-03
 
 ### Added

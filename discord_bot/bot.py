@@ -62,6 +62,7 @@ SET_TRIGGER             = _ROOT / "state" / "set_trigger.json"
 DEPENDS_TRIGGER         = _ROOT / "state" / "depends_trigger.json"
 UNDEPENDS_TRIGGER       = _ROOT / "state" / "undepends_trigger.json"
 UNDO_TRIGGER            = _ROOT / "state" / "undo_trigger"
+RENAME_TRIGGER          = _ROOT / "state" / "rename_trigger.json"
 PAUSE_TRIGGER           = _ROOT / "state" / "pause_trigger"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
 SETTINGS_PATH  = _ROOT / "config" / "settings.json"
@@ -849,6 +850,16 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_branches(state, task_arg))
 
+    elif low.startswith("rename "):
+        parts = text[7:].strip().split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `rename <subtask> <new description>`")
+        else:
+            st, desc = parts[0].strip().upper(), parts[1].strip()
+            RENAME_TRIGGER.parent.mkdir(exist_ok=True)
+            RENAME_TRIGGER.write_text(json.dumps({"subtask": st, "desc": desc}))
+            await _send(message, f"✎ Rename queued: `{st}` → {desc[:80]}")
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -885,6 +896,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/stop`                             — cancel an in-progress auto run\n"
         "`/verify subtask [note]`            — approve a subtask (REVIEW_MODE)\n"
         "`/output subtask`                   — show Claude output for a subtask\n"
+        "`/rename subtask desc`              — update a subtask's description\n"
         "`/describe subtask prompt`          — set a custom Claude prompt for a subtask\n"
         "`/tools subtask tools`              — set allowed tools for a subtask\n"
         "`/add_task spec`                    — queue a new task\n"
@@ -1012,6 +1024,18 @@ async def branches_cmd(interaction: discord.Interaction, task: str = "") -> None
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_branches(_load_state(), task))
+
+
+@bot.tree.command(name="rename", description="Update a subtask's description")
+@app_commands.describe(subtask="Subtask name (e.g. A1)", description="New description text")
+async def rename_cmd(interaction: discord.Interaction, subtask: str, description: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st = subtask.strip().upper()
+    RENAME_TRIGGER.parent.mkdir(exist_ok=True)
+    RENAME_TRIGGER.write_text(json.dumps({"subtask": st, "desc": description.strip()}))
+    await interaction.response.send_message(f"✎ Rename queued: `{st}` → {description.strip()[:80]}")
 
 
 @bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")

@@ -22,6 +22,7 @@ VERIFY_TRIGGER  = _PROJECT_ROOT / "state" / "verify_trigger.json"
 DESCRIBE_TRIGGER = _PROJECT_ROOT / "state" / "describe_trigger.json"
 TOOLS_TRIGGER   = _PROJECT_ROOT / "state" / "tools_trigger.json"
 SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
+RENAME_TRIGGER  = _PROJECT_ROOT / "state" / "rename_trigger.json"
 HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
@@ -200,6 +201,12 @@ def tools_subtask():
 def set_setting():
     """Queue a settings change via trigger file."""
     return _write_trigger(SET_TRIGGER, {"key": True, "value": False})
+
+
+@app.post("/rename")
+def rename_subtask():
+    """Queue a subtask rename via trigger file."""
+    return _write_trigger(RENAME_TRIGGER, {"subtask": True, "desc": False})
 
 
 @app.get("/heartbeat")

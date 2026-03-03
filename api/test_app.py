@@ -504,6 +504,28 @@ class TestBranches(_Base):
 
 
 # ---------------------------------------------------------------------------
+# POST /rename
+# ---------------------------------------------------------------------------
+
+class TestRename(_Base):
+
+    def test_rename_writes_trigger(self):
+        r = self.client.post("/rename", json={"subtask": "A1", "desc": "New description"})
+        self.assertEqual(r.status_code, 202)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["subtask"], "A1")
+
+    def test_rename_missing_subtask(self):
+        r = self.client.post("/rename", json={"desc": "New description"})
+        self.assertEqual(r.status_code, 400)
+
+    def test_rename_missing_desc(self):
+        r = self.client.post("/rename", json={"subtask": "A1"})
+        self.assertEqual(r.status_code, 400)
+
+
+# ---------------------------------------------------------------------------
 # GET /timeline/<subtask>
 # ---------------------------------------------------------------------------
 
