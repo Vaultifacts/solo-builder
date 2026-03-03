@@ -236,6 +236,102 @@ class TestLoadState(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# _run_auto integration tests (async, no Discord, no filesystem I/O)
+# ---------------------------------------------------------------------------
+
+class TestRunAuto(unittest.IsolatedAsyncioTestCase):
+    """Test _run_auto logic by mocking _read_heartbeat, _load_state, channel."""
+
+    def _all_verified_state(self) -> dict:
+        return _make_state({"A1": "Verified", "A2": "Verified"}, step=5)
+
+    def _pending_state(self) -> dict:
+        return _make_state({"A1": "Pending", "A2": "Pending"}, step=1)
+
+    async def test_no_work_sends_completion_message(self):
+        """If pipeline is already complete, sends completion message immediately."""
+        ch = AsyncMock()
+        with patch.object(bot_module, "_read_heartbeat",
+                          return_value=(5, 2, 2, 0, 0, 0)), \
+             patch.object(bot_module, "_load_state",
+                          return_value=self._all_verified_state()), \
+             patch.object(bot_module, "_get_channel",
+                          new=AsyncMock(return_value=ch)), \
+             patch("asyncio.sleep", new=AsyncMock()):
+            await bot_module._run_auto(0, 5)
+        ch.send.assert_called()
+        text = ch.send.call_args_list[-1][0][0]
+        self.assertIn("complete", text.lower())
+
+    async def test_step_completes_ticker_then_summary(self):
+        """A single completed step sends a ticker, then a summary at n-step limit."""
+        ch = AsyncMock()
+        call_count = [0]
+
+        def mock_hb():
+            call_count[0] += 1
+            # calls 1-2: has_work + current_step (step=1, pending=2)
+            # calls 3+: step advanced to 2
+            if call_count[0] <= 2:
+                return (1, 0, 2, 2, 0, 0)
+            return (2, 1, 2, 1, 0, 0)
+
+        with patch.object(bot_module, "_read_heartbeat", side_effect=mock_hb), \
+             patch.object(bot_module, "_load_state",
+                          return_value=self._pending_state()), \
+             patch.object(bot_module, "_get_channel",
+                          new=AsyncMock(return_value=ch)), \
+             patch("asyncio.sleep", new=AsyncMock()), \
+             patch.object(bot_module, "TRIGGER_PATH", new=MagicMock()):
+            await bot_module._run_auto(0, 1)
+        # Should send: ticker after step, then n-step summary
+        self.assertGreaterEqual(ch.send.call_count, 2)
+
+    async def test_step_timeout_sends_warning(self):
+        """If heartbeat never advances, sends a timeout warning."""
+        ch = AsyncMock()
+
+        def mock_hb():
+            # Always returns step=1 — heartbeat never advances
+            return (1, 0, 2, 2, 0, 0)
+
+        with patch.object(bot_module, "_read_heartbeat", side_effect=mock_hb), \
+             patch.object(bot_module, "_load_state",
+                          return_value=self._pending_state()), \
+             patch.object(bot_module, "_get_channel",
+                          new=AsyncMock(return_value=ch)), \
+             patch("asyncio.sleep", new=AsyncMock()), \
+             patch.object(bot_module, "TRIGGER_PATH", new=MagicMock()):
+            await bot_module._run_auto(0, 5)
+        text = ch.send.call_args_list[-1][0][0]
+        self.assertIn("timeout", text.lower())
+
+    async def test_pipeline_completes_mid_run_sends_complete(self):
+        """When pipeline finishes before n-step limit, sends completion message."""
+        ch = AsyncMock()
+        call_count = [0]
+
+        def mock_hb():
+            call_count[0] += 1
+            if call_count[0] <= 2:
+                return (1, 0, 2, 2, 0, 0)   # step=1, has work
+            return (2, 2, 2, 0, 0, 0)        # step=2, all verified
+
+        all_verified = _make_state({"A1": "Verified", "A2": "Verified"}, step=2)
+
+        with patch.object(bot_module, "_read_heartbeat", side_effect=mock_hb), \
+             patch.object(bot_module, "_load_state",
+                          return_value=all_verified), \
+             patch.object(bot_module, "_get_channel",
+                          new=AsyncMock(return_value=ch)), \
+             patch("asyncio.sleep", new=AsyncMock()), \
+             patch.object(bot_module, "TRIGGER_PATH", new=MagicMock()):
+            await bot_module._run_auto(0, 10)
+        last_msg = ch.send.call_args_list[-1][0][0]
+        self.assertIn("complete", last_msg.lower())
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

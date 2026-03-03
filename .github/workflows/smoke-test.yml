@@ -52,14 +52,14 @@ jobs:
 
       - name: Test export command
         run: |
-          printf "y\nexport\nexit\n" | PYTHONIOENCODING=utf-8 python solo_builder_cli.py
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --export --no-resume --auto 2
           python - <<'EOF'
           import os
           path = "solo_builder_outputs.md"
-          assert os.path.exists(path), f"{path} not created by export command"
+          assert os.path.exists(path), f"{path} not created by --export flag"
           size = os.path.getsize(path)
           print(f"{path}: {size} bytes")
-          assert size > 100, f"Export file too small: {size} bytes"
+          assert size > 30, f"Export file too small: {size} bytes"
           print("PASS")
           EOF
 
@@ -118,3 +118,44 @@ jobs:
           cfg['REVIEW_MODE'] = False
           json.dump(cfg, open('config/settings.json', 'w'), indent=4)
           "
+
+      - name: Test webhook fires on pipeline completion
+        run: |
+          python - <<'EOF'
+          import threading, http.server, json, time, subprocess, sys, os
+
+          received = []
+
+          class Handler(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  length = int(self.headers.get("Content-Length", 0))
+                  body = self.rfile.read(length)
+                  received.append(json.loads(body))
+                  self.send_response(200)
+                  self.end_headers()
+              def log_message(self, fmt, *args):
+                  pass
+
+          server = http.server.HTTPServer(("localhost", 19876), Handler)
+          t = threading.Thread(target=server.serve_forever, daemon=True)
+          t.start()
+          time.sleep(0.3)
+
+          subprocess.run(
+              [sys.executable, "solo_builder_cli.py", "--headless", "--auto", "99",
+               "--no-resume", "--webhook", "http://localhost:19876"],
+              env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+              timeout=120,
+          )
+
+          time.sleep(0.5)
+          server.shutdown()
+
+          assert received, "Webhook was never called — _fire_completion not reached"
+          payload = received[0]
+          assert payload.get("event") == "complete", f"Wrong payload: {payload}"
+          assert payload["verified"] == payload["total"], f"Incomplete: {payload}"
+          log = "state/webhook_errors.log"
+          assert not os.path.exists(log), f"Webhook errors logged: {open(log).read()}"
+          print(f"PASS: webhook received — {payload['verified']}/{payload['total']} verified in {payload['steps']} steps")
+          EOF

@@ -2052,12 +2052,14 @@ class SoloBuilderCLI:
                     lines.append(f"{out}\n\n")
                     count += 1
         if count == 0:
-            print(f"  {YELLOW}No Claude outputs to export yet.{RESET}")
-            return
+            lines.append("*No Claude outputs recorded yet — run steps with ANTHROPIC_API_KEY set.*\n")
         path = os.path.join(_HERE, "solo_builder_outputs.md")
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        print(f"  {GREEN}Exported {count} outputs → {path}{RESET}")
+        if count == 0:
+            print(f"  {YELLOW}No outputs yet — wrote header to {path}{RESET}")
+        else:
+            print(f"  {GREEN}Exported {count} outputs → {path}{RESET}")
 
     def _cmd_depends(self, args: str) -> None:
         """depends [<Task N> <Task M>] — add dependency, or print dep graph."""
@@ -2554,6 +2556,10 @@ def main() -> None:
         help="Suppress all display output (headless only). Combine with --output-format json "
              "for completely silent runs where only the JSON result reaches stdout.",
     )
+    parser.add_argument(
+        "--export", action="store_true",
+        help="After the run, write all Claude outputs to solo_builder_outputs.md.",
+    )
     args = parser.parse_args()
 
     # ── Apply flag overrides ─────────────────────────────────────────────────
@@ -2592,6 +2598,8 @@ def main() -> None:
             no_resume=args.no_resume,
         )
     finally:
+        if args.export and cli is not None:
+            cli._cmd_export()
         _release_lock(_LOCK_PATH)
         if _quiet_mode:
             sys.stderr = sys.__stderr__
