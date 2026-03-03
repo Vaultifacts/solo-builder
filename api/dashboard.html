@@ -819,7 +819,32 @@
       html += `</div>`;
     });
 
+    // Track previous subtask statuses for auto-scroll
+    const _prevStatuses = window._prevSubtaskStatuses || {};
+    const _newStatuses = {};
+    let _changedSt = null;
+    Object.entries(branches).forEach(([bname, bdata]) => {
+      Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+        _newStatuses[sname] = s.status || "Pending";
+        if (_prevStatuses[sname] && _prevStatuses[sname] !== _newStatuses[sname]) {
+          _changedSt = sname;
+        }
+      });
+    });
+    window._prevSubtaskStatuses = _newStatuses;
+
     el.innerHTML = html;
+
+    // Auto-scroll to the last changed subtask
+    if (_changedSt) {
+      const rows = el.querySelectorAll(".subtask-row .st-name");
+      for (const r of rows) {
+        if (r.textContent === _changedSt) {
+          r.closest(".subtask-row").scrollIntoView({ behavior: "smooth", block: "nearest" });
+          break;
+        }
+      }
+    }
   }
 
   /* ── Journal ─────────────────────────────────────────────── */

@@ -102,6 +102,33 @@ def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None
     return None
 
 
+def _format_timeline(state: dict, st_target: str) -> str:
+    """Return a formatted timeline string for a subtask's history array."""
+    st_target = st_target.strip().upper()
+    if not st_target:
+        return "Usage: `timeline <subtask>` (e.g. `timeline A1`)"
+    for task_name, task in state.get("dag", {}).items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_name.upper() == st_target:
+                    history = st_data.get("history", [])
+                    status = st_data.get("status", "Pending")
+                    icon = {"Pending": "⏳", "Running": "▶", "Verified": "✅", "Review": "⏸"}.get(status, "❓")
+                    lines = [f"**Timeline: {st_name}** ({task_name})", f"Current: {icon} {status}"]
+                    if not history:
+                        lines.append("_No transitions recorded yet._")
+                    else:
+                        parts = ["⏳ Pending"]
+                        for h in history:
+                            s = h.get("status", "?")
+                            step = h.get("step", "?")
+                            hi = {"Running": "▶", "Verified": "✅", "Review": "⏸"}.get(s, "❓")
+                            parts.append(f"{hi} {s} (step {step})")
+                        lines.append(" → ".join(parts))
+                    return "\n".join(lines)
+    return f"⚠️ Subtask `{st_target}` not found."
+
+
 def _format_diff() -> str:
     """Compare current state to .1 backup and return a formatted diff string."""
     backup_path = Path(str(STATE_PATH) + ".1")
@@ -306,6 +333,7 @@ _HELP_TEXT = (
     "`resume`                           — resume a paused auto-run\n"
     "`config`                           — show all current runtime settings\n"
     "`diff`                             — show what changed since last save\n"
+    "`timeline <subtask>`               — show status history timeline\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -637,6 +665,11 @@ async def _handle_text_command(message: discord.Message) -> None:
     elif low == "diff":
         await _send(message, _format_diff())
 
+    elif low.startswith("timeline "):
+        st = text[9:].strip()
+        state = _load_state()
+        await _send(message, _format_timeline(state, st))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -771,6 +804,15 @@ async def diff_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_diff())
+
+
+@bot.tree.command(name="timeline", description="Show status history timeline for a subtask")
+@app_commands.describe(subtask="Subtask name (e.g. A1)")
+async def timeline_cmd(interaction: discord.Interaction, subtask: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_timeline(_load_state(), subtask))
 
 
 @bot.tree.command(name="heartbeat", description="Show live heartbeat counters from step.txt")

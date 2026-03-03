@@ -295,6 +295,43 @@ def generate_export():
     )
 
 
+@app.get("/diff")
+def diff():
+    """Compare current state to .1 backup and return JSON diff."""
+    backup_path = Path(str(STATE_PATH) + ".1")
+    if not backup_path.exists():
+        return jsonify({"changes": [], "old_step": 0, "new_step": 0,
+                        "message": "No backup to diff against."})
+    try:
+        old = json.loads(backup_path.read_text(encoding="utf-8"))
+    except Exception:
+        return jsonify({"error": "Could not read backup file."}), 500
+    current = _load_state()
+    old_dag = old.get("dag", {})
+    new_dag = current.get("dag", {})
+    changes = []
+    for task_name, task_data in new_dag.items():
+        old_task = old_dag.get(task_name, {})
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            old_branch = old_task.get("branches", {}).get(branch_name, {})
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                old_st = old_branch.get("subtasks", {}).get(st_name, {})
+                old_status = old_st.get("status", "Pending")
+                new_status = st_data.get("status", "Pending")
+                if old_status != new_status:
+                    changes.append({
+                        "subtask": st_name, "task": task_name,
+                        "branch": branch_name,
+                        "old_status": old_status, "new_status": new_status,
+                        "output": (st_data.get("output") or "")[:200],
+                    })
+    return jsonify({
+        "changes": changes,
+        "old_step": old.get("step", 0),
+        "new_step": current.get("step", 0),
+    })
+
+
 @app.get("/journal")
 def journal():
     if not JOURNAL_PATH.exists():

@@ -338,6 +338,48 @@ class TestJournal(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /diff
+# ---------------------------------------------------------------------------
+
+class TestDiff(_Base):
+
+    def test_diff_no_backup_returns_empty(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/diff")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["changes"], [])
+        self.assertIn("message", d)
+
+    def test_diff_with_changes(self):
+        # Write backup (.1) with A1=Pending
+        backup = self._make_state({"A1": "Pending", "A2": "Pending"}, step=3)
+        backup_path = Path(str(self._state_path) + ".1")
+        backup_path.write_text(json.dumps(backup), encoding="utf-8")
+        # Write current state with A1=Verified
+        current = self._make_state({"A1": "Verified", "A2": "Pending"}, step=5)
+        self._write_state(current)
+        r = self.client.get("/diff")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(len(d["changes"]), 1)
+        self.assertEqual(d["changes"][0]["subtask"], "A1")
+        self.assertEqual(d["changes"][0]["old_status"], "Pending")
+        self.assertEqual(d["changes"][0]["new_status"], "Verified")
+        self.assertEqual(d["old_step"], 3)
+        self.assertEqual(d["new_step"], 5)
+
+    def test_diff_no_changes(self):
+        state = self._make_state({"A1": "Verified"}, step=4)
+        backup_path = Path(str(self._state_path) + ".1")
+        backup_path.write_text(json.dumps(state), encoding="utf-8")
+        self._write_state(state)
+        r = self.client.get("/diff")
+        d = r.get_json()
+        self.assertEqual(d["changes"], [])
+
+
+# ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
 

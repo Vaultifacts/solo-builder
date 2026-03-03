@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.34] — 2026-03-03
+
+### Added
+- **Bot `/timeline` command** — plain-text and `/timeline` slash command; shows subtask
+  status history timeline (Pending → Running → Verified with step numbers). 35 Discord commands.
+- **Dashboard auto-scroll** — detail panel auto-scrolls to the most recently changed
+  subtask on each poll refresh
+- **CLI `stats` command** — per-task breakdown table showing verified/total counts,
+  completion percentage, and average steps to complete (from history data)
+- **API `GET /diff` endpoint** — returns JSON diff of current state vs `.1` backup;
+  includes subtask status transitions with task/branch context and output preview
+- **5 new tests** (2 bot timeline + 3 API diff) → 168 bot + 31 API = 199 total
+
+---
+
 ## [v2.1.33] — 2026-03-03
 
 ### Added

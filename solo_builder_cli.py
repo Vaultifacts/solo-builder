@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1855,6 +1855,9 @@ class SoloBuilderCLI:
 
         elif cmd == "status":
             self._cmd_status()
+
+        elif cmd == "stats":
+            self._cmd_stats()
 
         elif cmd == "add_task":
             self._cmd_add_task()
@@ -2628,6 +2631,40 @@ class SoloBuilderCLI:
                 print(f"    {DIM}Step {step}{RESET}  {format_status(hstatus)}")
         print()
 
+    def _cmd_stats(self) -> None:
+        """stats — per-task breakdown: subtasks verified, avg steps to complete."""
+        print(f"\n  {BOLD}{CYAN}Per-Task Statistics{RESET}")
+        print(f"  {'─' * 60}")
+        print(f"  {BOLD}{'Task':<12} {'Verified':>8} {'Total':>6} {'Pct':>6} {'Avg Steps':>10}{RESET}")
+        print(f"  {'─' * 60}")
+        grand_v = grand_t = 0
+        all_durations: list = []
+        for task_name, task_data in self.dag.items():
+            t_verified = t_total = 0
+            durations: list = []
+            for branch_data in task_data.get("branches", {}).values():
+                for st_data in branch_data.get("subtasks", {}).values():
+                    t_total += 1
+                    if st_data.get("status") == "Verified":
+                        t_verified += 1
+                        history = st_data.get("history", [])
+                        if len(history) >= 2:
+                            first_step = history[0].get("step", 0)
+                            last_step = history[-1].get("step", 0)
+                            durations.append(last_step - first_step)
+            pct = round(t_verified / t_total * 100, 1) if t_total else 0
+            avg = f"{sum(durations) / len(durations):.1f}" if durations else "—"
+            color = GREEN if t_verified == t_total and t_total > 0 else CYAN if t_verified > 0 else WHITE
+            print(f"  {color}{task_name:<12}{RESET} {t_verified:>8} {t_total:>6} {pct:>5}% {avg:>10}")
+            grand_v += t_verified
+            grand_t += t_total
+            all_durations.extend(durations)
+        print(f"  {'─' * 60}")
+        g_pct = round(grand_v / grand_t * 100, 1) if grand_t else 0
+        g_avg = f"{sum(all_durations) / len(all_durations):.1f}" if all_durations else "—"
+        print(f"  {BOLD}{'TOTAL':<12}{RESET} {grand_v:>8} {grand_t:>6} {g_pct:>5}% {g_avg:>10}")
+        print()
+
     def _cmd_diff(self) -> None:
         """diff — show what changed in the last step vs the .1 backup."""
         backup_path = f"{STATE_PATH}.1"
@@ -2687,6 +2724,7 @@ class SoloBuilderCLI:
             ("timeline <ST>",          "Print full status history of a subtask"),
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
+            ("stats",                  "Per-task breakdown (verified, avg steps)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
             ("export",                  "Write all Claude outputs to solo_builder_outputs.md"),
