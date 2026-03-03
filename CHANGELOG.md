@@ -5,6 +5,63 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.6] — 2026-03-03
+
+### Fixed
+- **Priority cache stale after task unlock** — when Task 0 completes
+  mid-interval, Tasks 1–5 were invisible to the executor until the next
+  5-step cache refresh, causing wasted steps. The Planner cache now also
+  refreshes immediately whenever the count of fully-Verified tasks increases
+  (task-level, not subtask-level — negligible overhead)
+- **Dice-roll fallback ignores REVIEW_MODE** — both dice-roll paths in
+  `execute_step` hardcoded `"Verified"` regardless of `self.review_mode`.
+  Now consistent with the SDK/Claude paths: uses `"Review"` when
+  `REVIEW_MODE=True` and skips `_roll_up` so the gate is actually enforced
+
+### Changed
+- **CI smoke test** — all three new test steps now pass (green ✅):
+  - 10-step headless run asserts `>= 15` verified; prints per-task breakdown
+  - stop_trigger startup-cleanup: asserts trigger consumed + any subtask
+    Running/Verified (corrected from `>= 1 Verified`, which wasn't reachable
+    in 1 step)
+  - REVIEW_MODE step: works end-to-end with the dice-roll fix
+- **Bot unit tests** (`discord_bot/test_bot.py`) — 21 tests, 0.03 s,
+  no Discord connection; covers `_has_work`, `_format_status`,
+  `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`
+
+---
+
+## [v2.1.5] — 2026-03-03
+
+### Fixed
+- **Priority cache stale after task unlock** (initial fix — superseded by v2.1.6)
+- **Force-save on pipeline completion** — `save_state(silent=True)` called
+  before `_fire_completion()` so JSON is always current when bot reads it
+
+### Added
+- `discord_bot/test_bot.py` — 21 unit tests (see v2.1.6 above)
+
+---
+
+## [v2.1.4] — 2026-03-03
+
+### Fixed
+- **Force-save on pipeline completion** — `save_state(silent=True)` called
+  immediately before `_fire_completion()` in `_cmd_auto` so the JSON is
+  always up-to-date by the time the Discord bot reads it — eliminates the
+  stale-count root cause
+
+### Added
+- `discord_bot/test_bot.py` — 21 unit tests covering bot helper functions,
+  no Discord connection required; run with `python discord_bot/test_bot.py`
+
+### Changed
+- **CI smoke test** — `python-dotenv` added to pip install; headless run
+  bumped to `--auto 10`, assertion `>= 15`; REVIEW_MODE and stop_trigger
+  steps added (full green reached in v2.1.6)
+
+---
+
 ## [v2.1.3] — 2026-03-03
 
 ### Fixed
