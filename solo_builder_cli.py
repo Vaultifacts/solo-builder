@@ -2399,8 +2399,18 @@ def _fire_completion(steps: int, verified: int, total: int) -> None:
                 headers={"Content-Type": "application/json"},
             )
             urllib.request.urlopen(req, timeout=10)
-        except Exception:
-            pass   # Webhook failures are silent — don't interrupt the user
+        except Exception as exc:
+            # Log failures — silent to the user but auditable
+            try:
+                import datetime
+                _log = os.path.join(_HERE, "state", "webhook_errors.log")
+                with open(_log, "a", encoding="utf-8") as _wf:
+                    _wf.write(
+                        f"{datetime.datetime.utcnow().isoformat()} "
+                        f"POST {WEBHOOK_URL!r} failed: {exc}\n"
+                    )
+            except Exception:
+                pass
 
     def _notify() -> None:
         try:

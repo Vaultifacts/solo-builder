@@ -50,6 +50,19 @@ jobs:
           print("PASS")
           EOF
 
+      - name: Test export command
+        run: |
+          printf "y\nexport\nexit\n" | PYTHONIOENCODING=utf-8 python solo_builder_cli.py
+          python - <<'EOF'
+          import os
+          path = "solo_builder_outputs.md"
+          assert os.path.exists(path), f"{path} not created by export command"
+          size = os.path.getsize(path)
+          print(f"{path}: {size} bytes")
+          assert size > 100, f"Export file too small: {size} bytes"
+          print("PASS")
+          EOF
+
       - name: Test stop_trigger cleared on startup
         run: |
           mkdir -p state

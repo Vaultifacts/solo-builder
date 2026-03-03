@@ -270,3 +270,5 @@ Set `REVIEW_MODE=true` in `config/settings.json` (or `set REVIEW_MODE=true` at t
 solo-builder > verify A3 checked and looks correct
   ✓ A3 (Task 0) verified (was Review). Note: checked and looks correct
 ```
+
+![REVIEW_MODE demo](review_mode_demo.gif)
