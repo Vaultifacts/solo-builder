@@ -472,6 +472,45 @@ class TestDiff(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /timeline/<subtask>
+# ---------------------------------------------------------------------------
+
+class TestTimeline(_Base):
+
+    def test_timeline_found(self):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["description"] = "Test the auth module"
+        st["output"] = "Auth module tested OK"
+        st["history"] = [
+            {"status": "Running", "step": 1},
+            {"status": "Verified", "step": 3},
+        ]
+        self._write_state(state)
+        r = self.client.get("/timeline/A1")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["subtask"], "A1")
+        self.assertEqual(d["task"], "Task 0")
+        self.assertEqual(d["status"], "Verified")
+        self.assertEqual(len(d["history"]), 2)
+        self.assertEqual(d["description"], "Test the auth module")
+        self.assertEqual(d["output"], "Auth module tested OK")
+
+    def test_timeline_not_found(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/timeline/ZZZZ")
+        self.assertEqual(r.status_code, 404)
+
+    def test_timeline_case_insensitive(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        r = self.client.get("/timeline/a1")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["subtask"], "A1")
+
+
+# ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
 

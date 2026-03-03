@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ add_task │ add_branch │ depends │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1874,6 +1874,12 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("output "):
             self._cmd_output(raw[7:])
+
+        elif cmd == "branches":
+            self._cmd_branches("")
+
+        elif cmd.startswith("branches "):
+            self._cmd_branches(raw[9:])
 
         elif cmd.startswith("search "):
             self._cmd_search(raw[7:])
@@ -2653,6 +2659,49 @@ class SoloBuilderCLI:
                     print(f"    {DIM}{body}{RESET}")
         print()
 
+    def _cmd_branches(self, args: str) -> None:
+        """branches [Task N] — list all branches for a task with subtask counts and statuses."""
+        target = args.strip()
+        if not target:
+            # Show all tasks with branch counts
+            print(f"\n  {BOLD}{CYAN}Branches Overview{RESET}")
+            print(f"  {'─' * 60}")
+            for task_name, task_data in self.dag.items():
+                branches = task_data.get("branches", {})
+                print(f"  {BOLD}{task_name}{RESET}  ({len(branches)} branch{'es' if len(branches) != 1 else ''})")
+                for br_name, br_data in branches.items():
+                    subs = br_data.get("subtasks", {})
+                    v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+                    r = sum(1 for s in subs.values() if s.get("status") == "Running")
+                    p = len(subs) - v - r
+                    bar = f"{GREEN}{v}✓{RESET} {CYAN}{r}▶{RESET} {YELLOW}{p}●{RESET}" if subs else f"{DIM}empty{RESET}"
+                    print(f"    {CYAN}{br_name:<14}{RESET} {len(subs)} subtasks  {bar}")
+            print()
+            return
+        # Normalise: "0" → "Task 0", "Task 0" kept as-is
+        if target.isdigit():
+            target = f"Task {target}"
+        task_data = self.dag.get(target)
+        if not task_data:
+            print(f"  {YELLOW}Task '{target}' not found.{RESET}")
+            return
+        branches = task_data.get("branches", {})
+        print(f"\n  {BOLD}{CYAN}{target} — Branches{RESET}  ({len(branches)})")
+        print(f"  {'─' * 60}")
+        for br_name, br_data in branches.items():
+            subs = br_data.get("subtasks", {})
+            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r = sum(1 for s in subs.values() if s.get("status") == "Running")
+            rv = sum(1 for s in subs.values() if s.get("status") == "Review")
+            p = len(subs) - v - r - rv
+            print(f"  {BOLD}{br_name}{RESET}  ({len(subs)} subtasks: "
+                  f"{GREEN}{v}✓{RESET} {CYAN}{r}▶{RESET} {YELLOW}{p}●{RESET}"
+                  f"{f' {YELLOW}{rv}⏳{RESET}' if rv else ''})")
+            for st_name, st_data in subs.items():
+                print(f"    {CYAN}{st_name:<5}{RESET} {format_status(st_data.get('status', 'Pending'))}"
+                      f"  {DIM}{(st_data.get('description') or '')[:50]}{RESET}")
+        print()
+
     def _cmd_search(self, args: str) -> None:
         """search <text> — find subtasks matching keyword in description or output."""
         query = args.strip().lower()
@@ -2794,6 +2843,7 @@ class SoloBuilderCLI:
             ("status",                 "Show detailed DAG statistics"),
             ("stats",                  "Per-task breakdown (verified, avg steps)"),
             ("history [N]",            "Show last N status transitions (default 20)"),
+            ("branches [Task N]",      "List all branches for a task with subtask detail"),
             ("search <text>",          "Find subtasks by keyword (description/output)"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),

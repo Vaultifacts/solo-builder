@@ -65,6 +65,7 @@ UNDO_TRIGGER            = _ROOT / "state" / "undo_trigger"
 PAUSE_TRIGGER           = _ROOT / "state" / "pause_trigger"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
 SETTINGS_PATH  = _ROOT / "config" / "settings.json"
+JOURNAL_PATH   = _ROOT / "journal.md"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
 
 TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
@@ -100,6 +101,37 @@ def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None
                 if st_name.upper() == st_target.upper():
                     return task_name, st_data.get("output", "")
     return None
+
+
+def _format_log(st_filter: str = "") -> str:
+    """Return formatted journal entries, optionally filtered by subtask name."""
+    import re as _re
+    st_filter = st_filter.strip().upper()
+    if not JOURNAL_PATH.exists():
+        return "⚠️ No journal file found."
+    try:
+        content = JOURNAL_PATH.read_text(encoding="utf-8")
+    except Exception:
+        return "❌ Could not read journal."
+    blocks = _re.split(r"(?=^## )", content, flags=_re.MULTILINE)
+    entries = []
+    for block in blocks:
+        if not block.strip().startswith("## "):
+            continue
+        m = _re.match(r"^## (\w+) · (Task \d+) / (Branch \w+) · Step (\d+)", block)
+        if not m:
+            continue
+        st_name = m.group(1)
+        if st_filter and st_name.upper() != st_filter:
+            continue
+        body = block[m.end():].strip()
+        body = _re.sub(r"^\*\*Prompt:\*\*.*\n\n?", "", body).strip().rstrip("-").strip()
+        entries.append(f"`{st_name}` · {m.group(2)} / {m.group(3)} · Step {m.group(4)}\n{body[:100]}")
+    label = f" for `{st_filter}`" if st_filter else ""
+    header = f"**Journal{label}** — {len(entries)} entr{'ies' if len(entries) != 1 else 'y'}"
+    if not entries:
+        return header + "\n_No entries found._"
+    return header + "\n" + "\n".join(entries[-10:])
 
 
 def _format_search(state: dict, query: str) -> str:
@@ -415,6 +447,7 @@ _HELP_TEXT = (
     "`stats`                            — per-task breakdown (verified, avg steps)\n"
     "`history [N]`                      — last N status transitions (default 20)\n"
     "`search <keyword>`                 — find subtasks by keyword\n"
+    "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
     "`help`                             — this message\n\n"
@@ -768,6 +801,10 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_search(state, q))
 
+    elif low == "log" or low.startswith("log "):
+        st = text[3:].strip() if low.startswith("log ") else ""
+        await _send(message, _format_log(st))
+
     elif low == "heartbeat":
         hb = _read_heartbeat()
         if hb:
@@ -894,6 +931,15 @@ async def stats_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_stats(_load_state()))
+
+
+@bot.tree.command(name="log", description="Show journal entries (optionally for one subtask)")
+@app_commands.describe(subtask="Optional subtask name to filter by (e.g. A1)")
+async def log_cmd(interaction: discord.Interaction, subtask: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_log(subtask))
 
 
 @bot.tree.command(name="search", description="Find subtasks by keyword in name/description/output")

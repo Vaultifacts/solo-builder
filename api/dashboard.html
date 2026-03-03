@@ -605,6 +605,7 @@
       <button class="sidebar-tab active" onclick="switchTab('journal')">Journal</button>
       <button class="sidebar-tab" onclick="switchTab('diff')">Diff</button>
       <button class="sidebar-tab" onclick="switchTab('stats')">Stats</button>
+      <button class="sidebar-tab" onclick="switchTab('history')">History</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -619,6 +620,11 @@
     <div class="sidebar-tab-content" id="tab-stats">
       <div id="stats-content">
         <div class="detail-placeholder">No stats yet.</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-history">
+      <div id="history-content">
+        <div class="detail-placeholder">No history yet.</div>
       </div>
     </div>
   </div>
@@ -995,9 +1001,31 @@
     el.innerHTML = html;
   }
 
+  /* ── History panel ────────────────────────────────────────── */
+  async function pollHistory() {
+    try {
+      const d = await api("/history?limit=30");
+      renderHistory(d);
+    } catch (_) {}
+  }
+
+  function renderHistory(d) {
+    const el = document.getElementById("history-content");
+    if (!d.events || d.events.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No history yet.</div>`;
+      return;
+    }
+    const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
+    let html = "";
+    d.events.forEach(e => {
+      html += `<div class="diff-entry"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
+    });
+    el.innerHTML = html;
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {

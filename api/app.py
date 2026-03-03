@@ -397,6 +397,28 @@ def diff():
     })
 
 
+@app.get("/timeline/<subtask>")
+def timeline(subtask: str):
+    """Individual subtask timeline: current status, history, description, output."""
+    st_upper = subtask.strip().upper()
+    dag = _load_dag()
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                if st_name.upper() == st_upper:
+                    return jsonify({
+                        "subtask": st_name,
+                        "task": task_id,
+                        "branch": branch_name,
+                        "status": st_data.get("status", "Pending"),
+                        "description": st_data.get("description", ""),
+                        "output": st_data.get("output", ""),
+                        "history": st_data.get("history", []),
+                        "tools": st_data.get("tools", ""),
+                    })
+    abort(404, description=f"Subtask '{subtask}' not found.")
+
+
 @app.get("/journal")
 def journal():
     if not JOURNAL_PATH.exists():

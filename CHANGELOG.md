@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.38] — 2026-03-03
+
+### Added
+- **Bot `/log` command** — plain-text and `/log [subtask]` slash command; shows journal
+  entries from `journal.md`, optionally filtered by subtask name. 41 Discord commands total.
+- **Dashboard history tab** — fourth sidebar tab (Journal / Diff / Stats / History);
+  polls `GET /history?limit=30` and renders color-coded status transitions
+- **CLI `branches [Task N]` command** — list all branches with subtask counts and status
+  breakdown; shows per-branch detail when a task is specified
+- **API `GET /timeline/<subtask>` endpoint** — individual subtask timeline as JSON:
+  status, description, output, history array, and tools
+- **7 new tests** (3 API timeline + 2 bot log + 2 existing) → 175 bot + 42 API = 217 total
+
+---
+
 ## [v2.1.37] — 2026-03-03
 
 ### Added

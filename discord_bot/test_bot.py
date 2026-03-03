@@ -2069,6 +2069,31 @@ class TestStatsCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("100", text)
 
 
+class TestLogCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot log command."""
+
+    async def test_log_no_journal(self):
+        """'log' with no journal file shows warning."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "JOURNAL_PATH") as mock_path:
+            mock_path.exists.return_value = False
+            await bot_module._handle_text_command(_make_msg("log"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No journal", text)
+
+    async def test_log_with_entries(self):
+        """'log' with journal content shows entries."""
+        journal = "## A1 · Task 0 / Branch A · Step 3\n**Prompt:** test\n\nDid something cool\n"
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "JOURNAL_PATH") as mock_path:
+            mock_path.exists.return_value = True
+            mock_path.read_text.return_value = journal
+            await bot_module._handle_text_command(_make_msg("log"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("A1", text)
+        self.assertIn("Journal", text)
+
+
 class TestUndoCommand(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_undo."""
 
