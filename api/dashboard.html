@@ -591,7 +591,10 @@
   </div>
 
   <div class="detail-panel">
-    <div class="section-title">Detail</div>
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      Detail
+      <input id="st-search" type="text" placeholder="Search subtasks…" oninput="filterSubtasks()" style="flex:1;max-width:140px;padding:1px 6px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)">
+    </div>
     <div id="detail-content">
       <div class="detail-placeholder">Click a task card to inspect branches &amp; subtasks.</div>
     </div>
@@ -891,6 +894,15 @@
         }
       }
     }
+  }
+
+  function filterSubtasks() {
+    const q = (document.getElementById("st-search").value || "").toLowerCase();
+    document.querySelectorAll("#detail-content .subtask-row").forEach(row => {
+      const name = (row.querySelector(".st-name")?.textContent || "").toLowerCase();
+      const output = (row.querySelector(".st-output")?.textContent || "").toLowerCase();
+      row.style.display = (!q || name.includes(q) || output.includes(q)) ? "" : "none";
+    });
   }
 
   /* ── Journal ─────────────────────────────────────────────── */
