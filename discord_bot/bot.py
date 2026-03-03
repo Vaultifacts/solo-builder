@@ -452,8 +452,10 @@ async def _run_auto(channel_id: int, n: Optional[int]) -> None:
 
     for _ in range(limit):
         if not _hb_has_work():
-            # Wait up to 6 s for the auto-save to flush the final JSON state
-            for _ in range(60):
+            # Wait up to 30 s for the auto-save JSON to reflect all-Verified.
+            # The JSON saves every 5 steps so can lag well behind the heartbeat.
+            state = _load_state()
+            for _ in range(300):
                 await asyncio.sleep(0.1)
                 state = _load_state()
                 stats = state.get("dag", {})
@@ -464,10 +466,28 @@ async def _run_auto(channel_id: int, n: Optional[int]) -> None:
                     for s in b["subtasks"].values()
                 ):
                     break
-            else:
-                state = _load_state()
             if ch:
-                msg = f"✅ Pipeline complete after {completed} steps.\n{_format_status(state)}"
+                # Use heartbeat for accurate counts if JSON is still stale
+                hb = _read_heartbeat()
+                if hb and hb[1] == hb[2] and hb[2] > 0:
+                    _, v, tot, _, _, _ = hb
+                    status_line = _format_status(state)
+                    # Patch header counts if JSON still shows wrong numbers
+                    dag_v = sum(
+                        1 for t in state.get("dag", {}).values()
+                        for b in t["branches"].values()
+                        for s in b["subtasks"].values()
+                        if s.get("status") == "Verified"
+                    )
+                    if dag_v < tot:
+                        status_line = (
+                            f"**Solo Builder** · Step {hb[0]}\n"
+                            f"✅ {v}  ▶ 0  ⏸ 0  ⏳ 0 / {tot}  (100.0%)\n"
+                            f"*(JSON still flushing — counts from heartbeat)*"
+                        )
+                    msg = f"✅ Pipeline complete after {completed} steps.\n{status_line}"
+                else:
+                    msg = f"✅ Pipeline complete after {completed} steps.\n{_format_status(state)}"
                 await ch.send(msg)
                 _log(str(ch), "BOT", msg[:200])
             return
