@@ -315,6 +315,30 @@ def stats():
     })
 
 
+@app.get("/search")
+def search():
+    """Search subtasks by keyword in name, description, or output."""
+    q = (request.args.get("q") or "").strip().lower()
+    if not q:
+        return jsonify({"error": "Missing 'q' query parameter."}), 400
+    dag = _load_dag()
+    matches = []
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                desc = (st_data.get("description") or "").lower()
+                out = (st_data.get("output") or "").lower()
+                if q in desc or q in out or q in st_name.lower():
+                    matches.append({
+                        "subtask": st_name, "task": task_id,
+                        "branch": branch_name,
+                        "status": st_data.get("status", "Pending"),
+                        "description": (st_data.get("description") or "")[:200],
+                        "output": (st_data.get("output") or "")[:200],
+                    })
+    return jsonify({"query": q, "count": len(matches), "results": matches})
+
+
 @app.get("/history")
 def history():
     """Aggregated step-by-step activity log across all subtasks."""
