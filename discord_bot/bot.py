@@ -47,6 +47,7 @@ from discord import app_commands
 
 _ROOT          = Path(__file__).resolve().parent.parent   # solo_builder/
 STATE_PATH     = _ROOT / "state" / "solo_builder_state.json"
+STEP_PATH      = _ROOT / "state" / "step.txt"
 TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
 VERIFY_TRIGGER = _ROOT / "state" / "verify_trigger.json"
 OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
@@ -349,20 +350,35 @@ async def export_cmd(interaction: discord.Interaction) -> None:
 # Background tasks
 # ---------------------------------------------------------------------------
 
+def _read_heartbeat() -> tuple[int, int, int, int, int, int] | None:
+    """Returns (step, verified, total, pending, running, review) from step.txt, or None."""
+    try:
+        parts = STEP_PATH.read_text().strip().split(",")
+        if len(parts) == 6:
+            return tuple(int(x) for x in parts)  # type: ignore[return-value]
+        return int(parts[0]), 0, 0, 0, 0, 0
+    except Exception:
+        return None
+
+
 def _format_step_line(state: dict) -> str:
     """One-line step ticker: Step 12 — 8✅ 3▶ 1⏸ 58⏳ / 70 (14.3%)"""
-    dag      = state.get("dag", {})
-    step     = state.get("step", 0)
-    total = verified = running = review = 0
-    for t in dag.values():
-        for b in t["branches"].values():
-            for s in b["subtasks"].values():
-                st = s.get("status", "")
-                total += 1
-                if st == "Verified": verified += 1
-                elif st == "Running": running += 1
-                elif st == "Review":  review += 1
-    pending = total - verified - running - review
+    hb = _read_heartbeat()
+    if hb:
+        step, verified, total, pending, running, review = hb
+    else:
+        dag = state.get("dag", {})
+        step = state.get("step", 0)
+        total = verified = running = review = 0
+        for t in dag.values():
+            for b in t["branches"].values():
+                for s in b["subtasks"].values():
+                    st = s.get("status", "")
+                    total += 1
+                    if st == "Verified": verified += 1
+                    elif st == "Running": running += 1
+                    elif st == "Review":  review += 1
+        pending = total - verified - running - review
     pct = round(verified / total * 100, 1) if total else 0
     return (
         f"Step {step} — "
@@ -376,23 +392,34 @@ async def _run_auto(channel_id: int, n: Optional[int]) -> None:
     completed = 0
     ch        = await _get_channel(channel_id)
 
+    def _hb_step() -> int:
+        hb = _read_heartbeat()
+        return hb[0] if hb else _load_state().get("step", 0)
+
+    def _hb_has_work() -> bool:
+        hb = _read_heartbeat()
+        if hb:
+            _, _, _, pending, running, _ = hb
+            return (pending + running) > 0
+        return _has_work(_load_state().get("dag", {}))
+
     for _ in range(limit):
-        state = _load_state()
-        if not _has_work(state.get("dag", {})):
+        if not _hb_has_work():
+            state = _load_state()
             if ch:
                 msg = f"✅ Pipeline complete after {completed} steps.\n{_format_status(state)}"
                 await ch.send(msg)
                 _log(str(ch), "BOT", msg[:200])
             return
 
-        current_step = state.get("step", 0)
+        current_step = _hb_step()
         TRIGGER_PATH.parent.mkdir(exist_ok=True)
         TRIGGER_PATH.write_text("1")
 
-        # Wait up to 15 s for the CLI to process the step
-        for _ in range(150):
+        # Wait up to 60 s for the CLI heartbeat (step.txt) to advance
+        for _ in range(600):
             await asyncio.sleep(0.1)
-            if _load_state().get("step", 0) > current_step:
+            if _hb_step() > current_step:
                 completed += 1
                 break
         else:

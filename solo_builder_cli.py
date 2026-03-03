@@ -1359,6 +1359,24 @@ class SoloBuilderCLI:
         if self.step % AUTO_SAVE_INTERVAL == 0:
             self.save_state(silent=True)
 
+        # Heartbeat: write live counters every step for Discord bot real-time tracking
+        _hb = os.path.join(_HERE, "state", "step.txt")
+        try:
+            _hb_v = _hb_t = _hb_p = _hb_r = _hb_rv = 0
+            for _ht in self.dag.values():
+                for _hb2 in _ht["branches"].values():
+                    for _hs in _hb2["subtasks"].values():
+                        _hb_t += 1
+                        _st = _hs.get("status", "")
+                        if _st == "Verified":  _hb_v  += 1
+                        elif _st == "Pending": _hb_p  += 1
+                        elif _st == "Running": _hb_r  += 1
+                        elif _st == "Review":  _hb_rv += 1
+            with open(_hb, "w") as _f:
+                _f.write(f"{self.step},{_hb_v},{_hb_t},{_hb_p},{_hb_r},{_hb_rv}")
+        except OSError:
+            pass
+
         # Accumulate alerts
         self.alerts = (self.alerts + step_alerts)[-MAX_ALERTS:]
 
