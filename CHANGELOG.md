@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.8] — 2026-03-03
+
+### Added
+- **`review_mode_demo.gif`** — 126-frame animated GIF (monokai theme) showing
+  the full REVIEW_MODE workflow: `set REVIEW_MODE=true` → `run` → Review subtasks
+  appear → `verify` advances them → Verified; embedded in README Development section
+- **CI export test** — `smoke-test.yml` step pipes `export\nexit` to CLI after
+  the 10-step run; asserts `solo_builder_outputs.md` exists and is > 100 bytes
+
+### Fixed
+- **Webhook failures now logged** — `_fire_completion` `except Exception: pass`
+  was silently swallowing all POST errors; failures are now appended to
+  `state/webhook_errors.log` with UTC timestamp (stays auditable, never interrupts
+  the user, gitignored via `state/`)
+
+---
+
 ## [v2.1.7] — 2026-03-03
 
 ### Added
