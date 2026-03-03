@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.15] — 2026-03-02
+
+### Added
+- **`TestExportCommand`** — 5 tests: no outputs → placeholder text; subtasks with
+  outputs → `## ST — Task / Branch` headings; correct (path, count) return; count
+  matches subtasks with output; header includes step and verified/total
+- **`TestStatusCommand`** — 3 tests: "Total subtasks" + 70; Verified line reflects
+  post-verify count; Forecast string present. Total: **84 tests**, 6.0 s
+
+### Changed
+- **README version badge** — `2.1.6` → `2.1.14`
+- **README CI table** — test count 76 → 84; added `_cmd_export`, `_cmd_status`
+- **`smoke-test.yml`** — step label → "(84 tests)"
+
+---
+
 ## [v2.1.14] — 2026-03-02
 
 ### Added

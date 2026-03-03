@@ -909,6 +909,119 @@ class TestResetCommand(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestExportCommand
+# ---------------------------------------------------------------------------
+
+import io, contextlib
+
+
+class TestExportCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_export."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+        self._export_path = os.path.join(_cli_module._HERE, "solo_builder_outputs.md")
+        self.addCleanup(self._remove_export)
+
+    def _remove_export(self):
+        if os.path.exists(self._export_path):
+            os.remove(self._export_path)
+
+    def _read_export(self) -> str:
+        with open(self._export_path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_export_no_outputs_writes_placeholder(self):
+        """Fresh DAG (no outputs) writes header + placeholder; returns count 0."""
+        path, count = self.cli._cmd_export()
+        self.assertEqual(count, 0)
+        self.assertTrue(os.path.exists(path))
+        content = self._read_export()
+        self.assertIn("Solo Builder", content)
+        self.assertIn("No Claude outputs recorded yet", content)
+
+    def test_export_with_outputs_writes_subtask_sections(self):
+        """Subtasks with output produce ## headings and output text in the file."""
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = \
+            "OAuth2 flow implemented with PKCE."
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A2"]["output"] = \
+            "Unit tests for auth module written."
+        path, count = self.cli._cmd_export()
+        self.assertEqual(count, 2)
+        content = self._read_export()
+        self.assertIn("## A1 — Task 0 / Branch A", content)
+        self.assertIn("OAuth2 flow implemented with PKCE.", content)
+        self.assertIn("## A2 — Task 0 / Branch A", content)
+        self.assertIn("Unit tests for auth module written.", content)
+
+    def test_export_returns_correct_path(self):
+        """Return tuple path matches the known output file location."""
+        path, _ = self.cli._cmd_export()
+        self.assertEqual(path, self._export_path)
+
+    def test_export_count_matches_subtasks_with_output(self):
+        """Count reflects exactly how many subtasks have non-empty output."""
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "done"
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A3"]["output"] = "done"
+        self.cli.dag["Task 0"]["branches"]["Branch B"]["subtasks"]["B1"]["output"] = "done"
+        _, count = self.cli._cmd_export()
+        self.assertEqual(count, 3)
+
+    def test_export_includes_step_and_verified_in_header(self):
+        """Header line contains step number and verified/total counts."""
+        self.cli.step = 7
+        _, _ = self.cli._cmd_export()
+        content = self._read_export()
+        self.assertIn("Step: 7", content)
+        self.assertIn("/70", content)
+
+
+# ---------------------------------------------------------------------------
+# TestStatusCommand
+# ---------------------------------------------------------------------------
+
+class TestStatusCommand(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_status."""
+
+    def setUp(self):
+        self.cli = _cli_module.SoloBuilderCLI()
+        self.cli.display = MagicMock()
+
+    def _run_status(self) -> str:
+        """Capture stdout from _cmd_status (patches input to avoid blocking)."""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+             patch("builtins.input", return_value=""):
+            self.cli._cmd_status()
+        return buf.getvalue()
+
+    def test_status_prints_total_subtask_count(self):
+        """Output contains 'Total subtasks' and the correct count (70)."""
+        out = self._run_status()
+        self.assertIn("Total subtasks", out)
+        self.assertIn("70", out)
+
+    def test_status_reflects_verified_count_after_verify(self):
+        """After verifying one subtask, Verified line shows 1."""
+        self.cli._cmd_verify("A1 checked")
+        out = self._run_status()
+        self.assertIn("Verified", out)
+        # The line "Verified       : N" should show 1
+        lines = [l for l in out.splitlines() if "Verified" in l and ":" in l]
+        self.assertTrue(lines, "No 'Verified : N' line found")
+        # Strip ANSI codes and check the count
+        import re
+        plain = re.sub(r'\x1b\[[0-9;]*m', '', lines[0])
+        self.assertIn("1", plain)
+
+    def test_status_shows_forecast(self):
+        """Output contains 'Forecast' (MetaOptimizer forecast string)."""
+        out = self._run_status()
+        self.assertIn("Forecast", out)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
