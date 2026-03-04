@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1917,6 +1917,9 @@ class SoloBuilderCLI:
 
         elif cmd == "config":
             self._cmd_config()
+
+        elif cmd == "priority":
+            self._cmd_priority()
 
         elif cmd == "help":
             self._cmd_help()
@@ -2843,6 +2846,26 @@ class SoloBuilderCLI:
                 print(f"     └──▶ {d}")
         print(f"  {'─' * 50}\n")
 
+    def _cmd_priority(self) -> None:
+        """priority — show the planner's cached priority queue."""
+        queue = self._priority_cache
+        print(f"\n  {BOLD}{CYAN}Priority Queue{RESET}  ({len(queue)} candidates, step {self.step})")
+        print(f"  {'─' * 60}")
+        if not queue:
+            print(f"  {DIM}Empty — all subtasks are Verified or blocked.{RESET}")
+        else:
+            for i, (task_name, branch_name, st_name, risk) in enumerate(queue[:20]):
+                st_data = self.dag[task_name]["branches"][branch_name]["subtasks"][st_name]
+                status = st_data.get("status", "Pending")
+                color = STATUS_COLORS.get(status, WHITE)
+                marker = f"{BOLD}▶{RESET} " if i < self.executor.max_per_step else "  "
+                print(f"  {marker}{CYAN}{st_name:<5}{RESET} {color}{status:<9}{RESET} "
+                      f"risk={YELLOW}{risk:<5}{RESET} {DIM}{task_name} / {branch_name}{RESET}")
+            if len(queue) > 20:
+                print(f"  {DIM}… and {len(queue) - 20} more{RESET}")
+        print(f"  {'─' * 60}")
+        print(f"  {DIM}Top {self.executor.max_per_step} (▶) will execute next step{RESET}\n")
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -2990,6 +3013,7 @@ class SoloBuilderCLI:
             ("filter <status>",        "Show only subtasks matching a status"),
             ("graph",                  "ASCII dependency graph with progress counters"),
             ("config",                 "Display all runtime settings"),
+            ("priority",               "Show the planner's priority queue (next to execute)"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),

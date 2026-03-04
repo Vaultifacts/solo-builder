@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.44] — 2026-03-03
+
+### Added
+- **Dashboard graph progress bars** — SVG graph nodes now show per-task
+  progress bars with percentage alongside verified/total counters
+- **Bot pause/resume heartbeat feedback** — `/pause` and `/resume` (slash +
+  plain-text) now include step.txt counters in response
+- **CLI `priority` command** — shows planner's cached priority queue with
+  risk scores, top N marked with ▶ indicator for next execution
+- **CLI `config` command** — formatted table of all 12 runtime settings
+
+---
+
 ## [v2.1.43] — 2026-03-03
 
 ### Added

@@ -811,7 +811,13 @@ async def _handle_text_command(message: discord.Message) -> None:
             return
         PAUSE_TRIGGER.parent.mkdir(exist_ok=True)
         PAUSE_TRIGGER.write_text("1")
-        await _send(message, "⏸ Pause signal sent — auto-run will pause after the current step. Use `resume` to continue.")
+        hb = _read_heartbeat()
+        extra = ""
+        if hb:
+            step, v, t, p, r, w = hb
+            pct = round(v / t * 100, 1) if t else 0
+            extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+        await _send(message, f"⏸ Pause signal sent — auto-run will pause after the current step. Use `resume` to continue.{extra}")
 
     elif low == "resume":
         if PAUSE_TRIGGER.exists():
@@ -819,7 +825,13 @@ async def _handle_text_command(message: discord.Message) -> None:
                 PAUSE_TRIGGER.unlink()
             except OSError:
                 pass
-            await _send(message, "▶ Resumed — auto-run will continue.")
+            hb = _read_heartbeat()
+            extra = ""
+            if hb:
+                step, v, t, p, r, w = hb
+                pct = round(v / t * 100, 1) if t else 0
+                extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+            await _send(message, f"▶ Resumed — auto-run will continue.{extra}")
         else:
             await _send(message, "⚠️ Not paused.")
 
@@ -976,7 +988,13 @@ async def pause_cmd(interaction: discord.Interaction) -> None:
         return
     PAUSE_TRIGGER.parent.mkdir(exist_ok=True)
     PAUSE_TRIGGER.write_text("1")
-    await interaction.response.send_message("⏸ Pause signal sent — auto-run will pause after the current step. Use `/resume` to continue.")
+    hb = _read_heartbeat()
+    extra = ""
+    if hb:
+        step, v, t, p, r, w = hb
+        pct = round(v / t * 100, 1) if t else 0
+        extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+    await interaction.response.send_message(f"⏸ Pause signal sent — auto-run will pause after the current step. Use `/resume` to continue.{extra}")
 
 
 @bot.tree.command(name="resume", description="Resume a paused auto-run")
@@ -989,7 +1007,13 @@ async def resume_cmd(interaction: discord.Interaction) -> None:
             PAUSE_TRIGGER.unlink()
         except OSError:
             pass
-        await interaction.response.send_message("▶ Resumed — auto-run will continue.")
+        hb = _read_heartbeat()
+        extra = ""
+        if hb:
+            step, v, t, p, r, w = hb
+            pct = round(v / t * 100, 1) if t else 0
+            extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+        await interaction.response.send_message(f"▶ Resumed — auto-run will continue.{extra}")
     else:
         await interaction.response.send_message("⚠️ Not paused.", ephemeral=True)
 
