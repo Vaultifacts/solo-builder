@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.45] — 2026-03-03
+
+### Added
+- **Dashboard stop button** — `⏹ Stop` button in header bar posts to `POST /stop`
+  endpoint, writes `state/stop_trigger` for CLI auto-run cancellation
+- **Bot `/priority` command** — shows planner's priority queue with risk scores,
+  top 6 marked with ▶ indicator (slash + plain-text)
+- **CLI `stalled` command** — shows subtasks stuck longer than STALL_THRESHOLD
+  using SelfHealer's perspective with age counters
+- **API `GET /priority` endpoint** — returns sorted priority queue as JSON with
+  per-subtask risk scores, age, and status
+- **API `POST /stop` endpoint** — writes stop_trigger for IPC with CLI auto-run
+- **6 new tests** (1 stop + 3 priority API + 2 priority bot)
+  → 185 bot + 60 API = 245 total
+
+---
+
 ## [v2.1.44] — 2026-03-03
 
 ### Added

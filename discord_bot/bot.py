@@ -252,6 +252,41 @@ def _format_stats(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_priority(state: dict) -> str:
+    """Show which subtasks would execute next, ranked by risk score."""
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    if not dag:
+        return "No tasks in DAG."
+    candidates = []
+    for task_name, task in dag.items():
+        deps_met = all(dag.get(d, {}).get("status") == "Verified"
+                       for d in task.get("depends_on", []))
+        if not deps_met:
+            continue
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                status = st_data.get("status", "Pending")
+                if status not in ("Pending", "Running"):
+                    continue
+                age = step - st_data.get("last_update", 0)
+                risk = 1000 + age * 10 if status == "Running" else age * 8
+                candidates.append((st_name, task_name, status, risk))
+    candidates.sort(key=lambda x: x[3], reverse=True)
+    if not candidates:
+        return "✅ **Priority Queue** — empty (all subtasks Verified or blocked)"
+    lines = [f"**Priority Queue** ({len(candidates)} candidates, step {step})", "```"]
+    for i, (st_name, task_name, status, risk) in enumerate(candidates[:15]):
+        marker = "▶ " if i < 6 else "  "
+        icon = "▶" if status == "Running" else "⏳"
+        lines.append(f"{marker}{icon} {st_name:<5} {status:<9} risk={risk:<5} {task_name}")
+    if len(candidates) > 15:
+        lines.append(f"… and {len(candidates) - 15} more")
+    lines.append("```")
+    lines.append("_Top 6 (▶) execute next step_")
+    return "\n".join(lines)
+
+
 def _format_filter(state: dict, status: str) -> str:
     """Return subtasks matching a given status."""
     target = status.strip().capitalize()
@@ -509,6 +544,7 @@ _HELP_TEXT = (
     "`history [N]`                      — last N status transitions (default 20)\n"
     "`search <keyword>`                 — find subtasks by keyword\n"
     "`filter <status>`                  — show subtasks matching a status\n"
+    "`priority`                         — show what executes next (ranked by risk)\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -850,6 +886,10 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_graph(state))
 
+    elif low == "priority":
+        state = _load_state()
+        await _send(message, _format_priority(state))
+
     elif low == "diff":
         await _send(message, _format_diff())
 
@@ -952,6 +992,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/branches [task]`                  — list branches for a task (or overview)\n"
         "`/graph`                            — visual ASCII DAG dependency graph\n"
         "`/filter <status>`                  — show subtasks matching a status\n"
+        "`/priority`                         — show what executes next (ranked by risk)\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -1067,6 +1108,14 @@ async def filter_cmd(interaction: discord.Interaction, status: str) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_filter(_load_state(), status))
+
+
+@bot.tree.command(name="priority", description="Show which subtasks execute next (ranked by risk)")
+async def priority_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_priority(_load_state()))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")

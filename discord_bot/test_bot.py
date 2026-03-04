@@ -1993,6 +1993,29 @@ class TestFilterCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("0", text)
 
 
+class TestPriorityCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot priority command."""
+
+    async def test_priority_shows_queue(self):
+        """'priority' returns a priority queue with candidates."""
+        state = _make_state({"A1": "Running", "A2": "Pending"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("priority"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Priority", text)
+        self.assertIn("A1", text)
+
+    async def test_priority_empty(self):
+        """'priority' with all verified shows empty."""
+        state = _make_state({"A1": "Verified"}, step=1)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("priority"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("empty", text)
+
+
 class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot history command."""
 

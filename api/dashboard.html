@@ -543,6 +543,7 @@
   <div class="auto-wrap">
     <input id="auto-n" type="number" value="10" min="1" max="300" title="Steps to run automatically">
     <button id="btn-auto" onclick="runAuto()" title="Run N steps automatically">⏩ Auto</button>
+    <button id="btn-stop" onclick="stopRun()" title="Stop auto-run after current step" style="background:#3a1a1a;color:#f77;border:1px solid #733;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏹ Stop</button>
   </div>
   <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
 </header>
@@ -1218,6 +1219,21 @@
     } catch (_) {
       btn.textContent = "✗ Error";
       setTimeout(() => { btn.textContent = "▶ Run Step"; btn.disabled = false; }, 1500);
+    }
+  }
+
+  async function stopRun() {
+    const btn = document.getElementById("btn-stop");
+    btn.disabled = true;
+    btn.textContent = "⏳ Stopping…";
+    try {
+      const r = await fetch("/stop", { method: "POST" });
+      const d = await r.json();
+      btn.textContent = d.ok ? "✓ Stopped" : "⏹ Stop";
+      setTimeout(() => { btn.textContent = "⏹ Stop"; btn.disabled = false; }, 2000);
+    } catch (_) {
+      btn.textContent = "✗ Error";
+      setTimeout(() => { btn.textContent = "⏹ Stop"; btn.disabled = false; }, 2000);
     }
   }
 

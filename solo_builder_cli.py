@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1920,6 +1920,9 @@ class SoloBuilderCLI:
 
         elif cmd == "priority":
             self._cmd_priority()
+
+        elif cmd == "stalled":
+            self._cmd_stalled()
 
         elif cmd == "help":
             self._cmd_help()
@@ -2866,6 +2869,22 @@ class SoloBuilderCLI:
         print(f"  {'─' * 60}")
         print(f"  {DIM}Top {self.executor.max_per_step} (▶) will execute next step{RESET}\n")
 
+    def _cmd_stalled(self) -> None:
+        """stalled — show subtasks stuck longer than STALL_THRESHOLD."""
+        stalled = self.healer.find_stalled(self.dag, self.step)
+        print(f"\n  {BOLD}{YELLOW}Stalled Subtasks{RESET}  (threshold: {STALL_THRESHOLD} steps)")
+        print(f"  {'─' * 55}")
+        if not stalled:
+            print(f"  {DIM}None — all Running subtasks are progressing normally.{RESET}")
+        else:
+            for task_name, branch_name, st_name, age in stalled:
+                desc = (self.dag[task_name]["branches"][branch_name]["subtasks"][st_name]
+                        .get("description") or "")[:40]
+                print(f"  {YELLOW}{st_name:<5}{RESET} stalled {RED}{age}{RESET} steps  "
+                      f"{DIM}{task_name} — {desc}{RESET}")
+        print(f"  {'─' * 55}")
+        print(f"  {DIM}SelfHealer auto-resets after {STALL_THRESHOLD} steps{RESET}\n")
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -3014,6 +3033,7 @@ class SoloBuilderCLI:
             ("graph",                  "ASCII dependency graph with progress counters"),
             ("config",                 "Display all runtime settings"),
             ("priority",               "Show the planner's priority queue (next to execute)"),
+            ("stalled",                "Show subtasks stuck longer than STALL_THRESHOLD"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),

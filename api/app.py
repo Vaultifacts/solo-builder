@@ -24,6 +24,7 @@ TOOLS_TRIGGER   = _PROJECT_ROOT / "state" / "tools_trigger.json"
 SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
 SETTINGS_PATH   = _PROJECT_ROOT / "config" / "settings.json"
 RENAME_TRIGGER  = _PROJECT_ROOT / "state" / "rename_trigger.json"
+STOP_TRIGGER    = _PROJECT_ROOT / "state" / "stop_trigger"
 HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
@@ -177,6 +178,14 @@ def run_step():
     TRIGGER_PATH.parent.mkdir(exist_ok=True)
     TRIGGER_PATH.write_text("1")
     return jsonify({"ok": True, "step": state.get("step", 0)}), 202
+
+
+@app.post("/stop")
+def stop_run():
+    """Signal the CLI to stop the auto-run (writes stop_trigger)."""
+    STOP_TRIGGER.parent.mkdir(exist_ok=True)
+    STOP_TRIGGER.write_text("1")
+    return jsonify({"ok": True}), 202
 
 
 @app.post("/verify")
@@ -539,6 +548,35 @@ def graph():
         for d in dependents:
             lines.append(f"     +-> {d}")
     return jsonify({"nodes": nodes, "text": "\n".join(lines)})
+
+
+@app.get("/priority")
+def priority():
+    """Return planner-style priority queue as JSON."""
+    state = _load_state()
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    candidates = []
+    for task_name, task in dag.items():
+        deps_met = all(dag.get(d, {}).get("status") == "Verified"
+                       for d in task.get("depends_on", []))
+        if not deps_met:
+            continue
+        for branch_name, branch in task.get("branches", {}).items():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                status = st_data.get("status", "Pending")
+                if status not in ("Pending", "Running"):
+                    continue
+                age = step - st_data.get("last_update", 0)
+                risk = 1000 + age * 10 if status == "Running" else age * 8
+                candidates.append({
+                    "subtask": st_name, "task": task_name,
+                    "branch": branch_name, "status": status,
+                    "risk": risk, "age": age,
+                })
+    candidates.sort(key=lambda x: x["risk"], reverse=True)
+    return jsonify({"step": step, "count": len(candidates),
+                    "queue": candidates[:30]})
 
 
 # ---------------------------------------------------------------------------

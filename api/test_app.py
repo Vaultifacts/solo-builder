@@ -634,6 +634,48 @@ class TestGraph(_Base):
         self.assertIn("depends_on", node)
 
 
+# Stop
+# ---------------------------------------------------------------------------
+
+class TestStop(_Base):
+
+    def test_stop_writes_trigger(self):
+        r = self.client.post("/stop")
+        self.assertEqual(r.status_code, 202)
+        d = r.get_json()
+        self.assertTrue(d.get("ok"))
+
+
+# Priority
+# ---------------------------------------------------------------------------
+
+class TestPriority(_Base):
+
+    def setUp(self):
+        super().setUp()
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending", "A3": "Verified"}))
+
+    def test_returns_queue(self):
+        r = self.client.get("/priority")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("queue", d)
+        self.assertIn("count", d)
+        self.assertGreater(d["count"], 0)
+
+    def test_queue_sorted_by_risk(self):
+        r = self.client.get("/priority")
+        d = r.get_json()
+        risks = [c["risk"] for c in d["queue"]]
+        self.assertEqual(risks, sorted(risks, reverse=True))
+
+    def test_verified_excluded(self):
+        r = self.client.get("/priority")
+        d = r.get_json()
+        names = [c["subtask"] for c in d["queue"]]
+        self.assertNotIn("A3", names)
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 
