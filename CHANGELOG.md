@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.46] — 2026-03-03
+
+### Added
+- **Dashboard priority panel** — 7th sidebar tab showing priority queue with
+  risk bars, candidate counts, and auto-refresh via `GET /priority`
+- **Bot `/stalled` command** — shows subtasks stuck longer than STALL_THRESHOLD
+  with age counters (slash + plain-text + help entries)
+- **CLI `heal <ST>` command** — manually reset a Running subtask to Pending
+  (SelfHealer action without waiting for auto-threshold)
+- **API `GET /stalled` endpoint** — returns stuck subtasks as JSON with age,
+  threshold, and count
+- **7 new tests** (3 API stalled + 2 bot stalled + 2 existing priority)
+  → 187 bot + 63 API = 250 total
+
+---
+
 ## [v2.1.45] — 2026-03-03
 
 ### Added

@@ -579,6 +579,34 @@ def priority():
                     "queue": candidates[:30]})
 
 
+@app.get("/stalled")
+def stalled():
+    """Return subtasks stuck in Running longer than STALL_THRESHOLD."""
+    state = _load_state()
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    threshold = 5
+    try:
+        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+    except Exception:
+        pass
+    stuck = []
+    for task_name, task in dag.items():
+        for branch_name, branch in task.get("branches", {}).items():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_data.get("status") == "Running":
+                    age = step - st_data.get("last_update", 0)
+                    if age >= threshold:
+                        stuck.append({
+                            "subtask": st_name, "task": task_name,
+                            "branch": branch_name, "age": age,
+                        })
+    stuck.sort(key=lambda x: x["age"], reverse=True)
+    return jsonify({"step": step, "threshold": threshold,
+                    "count": len(stuck), "stalled": stuck})
+
+
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------

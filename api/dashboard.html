@@ -609,6 +609,7 @@
       <button class="sidebar-tab" onclick="switchTab('history')">History</button>
       <button class="sidebar-tab" onclick="switchTab('branches')">Branches</button>
       <button class="sidebar-tab" onclick="switchTab('settings')">Settings</button>
+      <button class="sidebar-tab" onclick="switchTab('priority')">Priority</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -638,6 +639,11 @@
     <div class="sidebar-tab-content" id="tab-settings">
       <div id="settings-content">
         <div class="detail-placeholder">Loading settings…</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-priority">
+      <div id="priority-content">
+        <div class="detail-placeholder">Loading priority queue…</div>
       </div>
     </div>
   </div>
@@ -1124,9 +1130,45 @@
     } catch(e) { _flash("fb-settings", "Network error"); }
   };
 
+  async function pollPriority() {
+    try {
+      const d = await api("/priority");
+      renderPriority(d);
+    } catch (_) {}
+  }
+  function renderPriority(d) {
+    const el = document.getElementById("priority-content");
+    if (!d || !d.queue) {
+      el.innerHTML = `<div class="detail-placeholder">No priority data.</div>`;
+      return;
+    }
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} candidates · step ${d.step}</div>`;
+    if (d.queue.length === 0) {
+      html += `<div class="detail-placeholder">All subtasks Verified or blocked.</div>`;
+    } else {
+      d.queue.forEach((c, i) => {
+        const col = c.status === "Running" ? "var(--cyan)" : "var(--dim)";
+        const marker = i < 6 ? "▶ " : "  ";
+        const barW = 80;
+        const maxRisk = d.queue[0].risk || 1;
+        const fill = Math.round(barW * c.risk / maxRisk);
+        html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
+        html += `<span style="color:var(--yellow);min-width:14px">${marker}</span>`;
+        html += `<span style="color:var(--cyan);min-width:32px">${c.subtask}</span>`;
+        html += `<span style="color:${col};min-width:52px">${c.status}</span>`;
+        html += `<span style="min-width:40px;color:var(--yellow)">r=${c.risk}</span>`;
+        html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
+        html += `<span style="position:absolute;left:0;top:0;height:4px;width:${fill}%;border-radius:2px;background:${c.status==="Running"?"var(--cyan)":"var(--yellow)"}"></span></span>`;
+        html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${c.task}</span>`;
+        html += `</div>`;
+      });
+    }
+    el.innerHTML = html;
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {

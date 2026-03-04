@@ -2016,6 +2016,29 @@ class TestPriorityCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("empty", text)
 
 
+class TestStalledCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot stalled command."""
+
+    async def test_stalled_shows_stuck(self):
+        """'stalled' with a Running subtask past threshold shows it."""
+        state = _make_state({"A1": "Running", "A2": "Verified"}, step=10)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("stalled"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("A1", text)
+        self.assertIn("Stalled", text)
+
+    async def test_stalled_empty(self):
+        """'stalled' with all verified shows none."""
+        state = _make_state({"A1": "Verified"}, step=1)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("stalled"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("none", text)
+
+
 class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot history command."""
 

@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1923,6 +1923,9 @@ class SoloBuilderCLI:
 
         elif cmd == "stalled":
             self._cmd_stalled()
+
+        elif cmd.startswith("heal "):
+            self._cmd_heal(raw[5:])
 
         elif cmd == "help":
             self._cmd_help()
@@ -2885,6 +2888,30 @@ class SoloBuilderCLI:
         print(f"  {'─' * 55}")
         print(f"  {DIM}SelfHealer auto-resets after {STALL_THRESHOLD} steps{RESET}\n")
 
+    def _cmd_heal(self, args: str) -> None:
+        """heal <subtask> — manually reset a Running subtask to Pending (SelfHealer action)."""
+        st_target = args.strip().upper()
+        if not st_target:
+            print(f"  Usage: heal <subtask_name>")
+            return
+        found = self._find_subtask(st_target)
+        if not found:
+            print(f"  {YELLOW}Subtask '{st_target}' not found.{RESET}")
+            return
+        task_name, task_data, branch_name, branch_data, st = found
+        prev = st.get("status", "Pending")
+        if prev != "Running":
+            print(f"  {YELLOW}{st_target} is {prev}, not Running — nothing to heal.{RESET}")
+            return
+        st["status"]      = "Pending"
+        st["shadow"]      = "Pending"
+        st["last_update"] = self.step
+        add_memory_snapshot(self.memory_store, branch_name, f"{st_target}_manual_heal", self.step)
+        self.healer.healed_total += 1
+        print(f"  {GREEN}↻ {st_target} ({task_name}) reset to Pending (was Running).{RESET}")
+        self.display.render(self.dag, self.memory_store, self.step,
+                            self.alerts, self.meta.forecast(self.dag))
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -3034,6 +3061,7 @@ class SoloBuilderCLI:
             ("config",                 "Display all runtime settings"),
             ("priority",               "Show the planner's priority queue (next to execute)"),
             ("stalled",                "Show subtasks stuck longer than STALL_THRESHOLD"),
+            ("heal <ST>",              "Manually reset a Running subtask to Pending"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),

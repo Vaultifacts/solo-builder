@@ -676,6 +676,37 @@ class TestPriority(_Base):
         self.assertNotIn("A3", names)
 
 
+# Stalled
+# ---------------------------------------------------------------------------
+
+class TestStalled(_Base):
+
+    def setUp(self):
+        super().setUp()
+        self._write_state(self._make_state(
+            {"A1": "Running", "A2": "Running", "A3": "Verified"}
+        ))
+
+    def test_returns_stalled(self):
+        r = self.client.get("/stalled")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("stalled", d)
+        self.assertIn("threshold", d)
+
+    def test_stalled_sorted_by_age(self):
+        r = self.client.get("/stalled")
+        d = r.get_json()
+        ages = [s["age"] for s in d["stalled"]]
+        self.assertEqual(ages, sorted(ages, reverse=True))
+
+    def test_verified_not_stalled(self):
+        r = self.client.get("/stalled")
+        d = r.get_json()
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertNotIn("A3", names)
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 

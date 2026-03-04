@@ -287,6 +287,36 @@ def _format_priority(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_stalled(state: dict) -> str:
+    """Show subtasks stuck in Running longer than STALL_THRESHOLD."""
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    threshold = 5
+    try:
+        cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+    except Exception:
+        pass
+    stuck = []
+    for task_name, task in dag.items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_data.get("status") == "Running":
+                    age = step - st_data.get("last_update", 0)
+                    if age >= threshold:
+                        desc = (st_data.get("description") or "")[:40]
+                        stuck.append((st_name, task_name, age, desc))
+    stuck.sort(key=lambda x: x[2], reverse=True)
+    if not stuck:
+        return f"✅ **Stalled Subtasks** — none (threshold: {threshold} steps)"
+    lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps)", "```"]
+    for st_name, task_name, age, desc in stuck:
+        lines.append(f"  {st_name:<5} stalled {age} steps  {task_name} — {desc}")
+    lines.append("```")
+    lines.append("_SelfHealer auto-resets after threshold_")
+    return "\n".join(lines)
+
+
 def _format_filter(state: dict, status: str) -> str:
     """Return subtasks matching a given status."""
     target = status.strip().capitalize()
@@ -545,6 +575,7 @@ _HELP_TEXT = (
     "`search <keyword>`                 — find subtasks by keyword\n"
     "`filter <status>`                  — show subtasks matching a status\n"
     "`priority`                         — show what executes next (ranked by risk)\n"
+    "`stalled`                          — show subtasks stuck longer than threshold\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -890,6 +921,10 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_priority(state))
 
+    elif low == "stalled":
+        state = _load_state()
+        await _send(message, _format_stalled(state))
+
     elif low == "diff":
         await _send(message, _format_diff())
 
@@ -993,6 +1028,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/graph`                            — visual ASCII DAG dependency graph\n"
         "`/filter <status>`                  — show subtasks matching a status\n"
         "`/priority`                         — show what executes next (ranked by risk)\n"
+        "`/stalled`                          — show subtasks stuck longer than threshold\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -1116,6 +1152,14 @@ async def priority_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_priority(_load_state()))
+
+
+@bot.tree.command(name="stalled", description="Show subtasks stuck longer than STALL_THRESHOLD")
+async def stalled_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_stalled(_load_state()))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")
