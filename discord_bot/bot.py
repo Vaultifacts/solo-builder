@@ -368,6 +368,47 @@ def _format_agents(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_forecast(state: dict) -> str:
+    """Show detailed completion forecast."""
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    meta_history = state.get("meta_history", [])
+    total = verified = running = pending = review = 0
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_data in branch.get("subtasks", {}).values():
+                total += 1
+                s = st_data.get("status", "Pending")
+                if s == "Verified": verified += 1
+                elif s == "Running": running += 1
+                elif s == "Pending": pending += 1
+                elif s == "Review": review += 1
+    remaining = total - verified
+    pct = round(verified / total * 100, 1) if total else 0
+    verify_rate = heal_rate = 0.0
+    if meta_history:
+        window = min(10, len(meta_history))
+        recent = meta_history[-window:]
+        verify_rate = sum(r.get("verified", 0) for r in recent) / window
+        heal_rate = sum(r.get("healed", 0) for r in recent) / window
+    eta = f"~{remaining / verify_rate:.0f} steps" if verify_rate > 0 else "N/A"
+    bar_len = 20
+    filled = round(bar_len * pct / 100)
+    bar = "█" * filled + "░" * (bar_len - filled)
+    lines = [
+        f"**Completion Forecast** (step {step})",
+        "```",
+        f"Progress   {bar} {pct}%",
+        f"Breakdown  {verified}✓  {running}▶  {pending}⏳  {review}⏸",
+        f"Remaining  {remaining} subtasks",
+        f"Verify     {verify_rate:.2f}/step (last 10)",
+        f"Heal       {heal_rate:.2f}/step (last 10)",
+        f"ETA        {eta}",
+        "```",
+    ]
+    return "\n".join(lines)
+
+
 def _format_heal(state: dict, subtask: str) -> str:
     """Validate and write heal_trigger.json to reset a Running subtask."""
     st = subtask.strip().upper()
@@ -650,6 +691,7 @@ _HELP_TEXT = (
     "`stalled`                          — show subtasks stuck longer than threshold\n"
     "`heal <subtask>`                   — reset a Running subtask to Pending\n"
     "`agents`                           — show all agent statistics\n"
+    "`forecast`                         — detailed completion forecast with ETA\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -1008,6 +1050,10 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_agents(state))
 
+    elif low == "forecast":
+        state = _load_state()
+        await _send(message, _format_forecast(state))
+
     elif low == "diff":
         await _send(message, _format_diff())
 
@@ -1114,6 +1160,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/stalled`                          — show subtasks stuck longer than threshold\n"
         "`/heal <subtask>`                   — reset a Running subtask to Pending\n"
         "`/agents`                           — show all agent statistics\n"
+        "`/forecast`                         — detailed completion forecast with ETA\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -1262,6 +1309,14 @@ async def agents_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_agents(_load_state()))
+
+
+@bot.tree.command(name="forecast", description="Detailed completion forecast with ETA")
+async def forecast_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_forecast(_load_state()))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")

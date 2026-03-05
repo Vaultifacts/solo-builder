@@ -659,6 +659,41 @@ def agents():
     })
 
 
+@app.get("/forecast")
+def forecast():
+    """Return detailed completion forecast as JSON."""
+    state = _load_state()
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    meta_history = state.get("meta_history", [])
+    total = verified = running = pending = review = 0
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_data in branch.get("subtasks", {}).values():
+                total += 1
+                s = st_data.get("status", "Pending")
+                if s == "Verified": verified += 1
+                elif s == "Running": running += 1
+                elif s == "Pending": pending += 1
+                elif s == "Review": review += 1
+    remaining = total - verified
+    pct = round(verified / total * 100, 1) if total else 0
+    verify_rate = heal_rate = 0.0
+    if meta_history:
+        window = min(10, len(meta_history))
+        recent = meta_history[-window:]
+        verify_rate = round(sum(r.get("verified", 0) for r in recent) / window, 3)
+        heal_rate = round(sum(r.get("healed", 0) for r in recent) / window, 3)
+    eta = round(remaining / (verify_rate + 1e-6)) if verify_rate > 0 else None
+    return jsonify({
+        "step": step, "total": total, "verified": verified,
+        "running": running, "pending": pending, "review": review,
+        "remaining": remaining, "pct": pct,
+        "verify_rate": verify_rate, "heal_rate": heal_rate,
+        "eta_steps": eta,
+    })
+
+
 @app.post("/heal")
 def heal():
     """Write heal_trigger.json so the CLI resets a Running subtask to Pending."""

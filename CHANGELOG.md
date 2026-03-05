@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.49] — 2026-03-05
+
+### Added
+- **Dashboard agents panel** — 9th sidebar tab with forecast gauge SVG,
+  agent stat cards, and auto-refresh via `GET /agents`
+- **Bot `/forecast` command** — detailed completion forecast with progress bar,
+  rate trends, and ETA (slash + plain-text)
+- **CLI `tasks` command** — per-task summary table with status, branch count,
+  verified/total percentages, and dependency count
+- **API `GET /forecast` endpoint** — returns detailed forecast JSON with
+  breakdown, rates, and ETA
+- **5 new tests** (3 forecast API + 2 forecast bot)
+  → 194 bot + 71 API = 265 total
+
+---
+
 ## [v2.1.48] — 2026-03-05
 
 ### Added

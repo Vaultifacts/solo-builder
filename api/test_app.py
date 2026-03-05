@@ -763,6 +763,36 @@ class TestAgents(_Base):
         self.assertIn("currently_stalled", h)
 
 
+# Forecast
+# ---------------------------------------------------------------------------
+
+class TestForecast(_Base):
+
+    def setUp(self):
+        super().setUp()
+        self._write_state(self._make_state({"A1": "Running", "A2": "Verified", "A3": "Pending"}))
+
+    def test_returns_forecast(self):
+        r = self.client.get("/forecast")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("total", d)
+        self.assertIn("verified", d)
+        self.assertIn("pct", d)
+        self.assertIn("remaining", d)
+
+    def test_breakdown_counts(self):
+        r = self.client.get("/forecast")
+        d = r.get_json()
+        self.assertEqual(d["verified"] + d["running"] + d["pending"] + d["review"], d["total"])
+
+    def test_has_rates(self):
+        r = self.client.get("/forecast")
+        d = r.get_json()
+        self.assertIn("verify_rate", d)
+        self.assertIn("heal_rate", d)
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 

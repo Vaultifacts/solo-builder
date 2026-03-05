@@ -2096,6 +2096,29 @@ class TestAgentsCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Agent", text)
 
 
+class TestForecastCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot forecast command."""
+
+    async def test_forecast_shows_progress(self):
+        """'forecast' returns completion forecast."""
+        state = _make_state({"A1": "Running", "A2": "Verified"}, step=10)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("forecast"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Forecast", text)
+        self.assertIn("%", text)
+
+    async def test_forecast_empty_dag(self):
+        """'forecast' with empty DAG still works."""
+        state = {"dag": {}, "step": 0}
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("forecast"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Forecast", text)
+
+
 class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot history command."""
 

@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ agents │ forecast │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ agents │ forecast │ tasks │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1938,6 +1938,9 @@ class SoloBuilderCLI:
 
         elif cmd == "forecast":
             self._cmd_forecast()
+
+        elif cmd == "tasks":
+            self._cmd_tasks()
 
         elif cmd == "help":
             self._cmd_help()
@@ -2989,6 +2992,31 @@ class SoloBuilderCLI:
         print(f"  {CYAN}Progress{RESET}      {bar}")
         print(f"  {'─' * 55}\n")
 
+    def _cmd_tasks(self) -> None:
+        """tasks — per-task summary table (status, branches, verified/total, deps)."""
+        task_names = list(self.dag.keys())
+        print(f"\n  {BOLD}{CYAN}Task Summary{RESET}  ({len(task_names)} tasks, step {self.step})")
+        print(f"  {'─' * 65}")
+        print(f"  {'Task':<12} {'Status':<10} {'Branches':>8} {'Verified':>10} {'Total':>6} {'Deps':>5}")
+        print(f"  {'─' * 65}")
+        for t_name in task_names:
+            t = self.dag[t_name]
+            status = t.get("status", "Pending")
+            branches = t.get("branches", {})
+            n_branches = len(branches)
+            n_total = sum(len(b.get("subtasks", {})) for b in branches.values())
+            n_verified = sum(1 for b in branches.values()
+                            for s in b.get("subtasks", {}).values()
+                            if s.get("status") == "Verified")
+            deps = t.get("depends_on", [])
+            n_deps = len(deps)
+            color = STATUS_COLORS.get(status, WHITE)
+            pct = round(n_verified / n_total * 100) if n_total else 0
+            label = t_name[:11]
+            print(f"  {label:<12} {color}{status:<10}{RESET} {n_branches:>8} "
+                  f"{n_verified:>6}/{n_total:<4} {pct:>3}%{n_deps:>5}")
+        print(f"  {'─' * 65}\n")
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -3141,6 +3169,7 @@ class SoloBuilderCLI:
             ("heal <ST>",              "Manually reset a Running subtask to Pending"),
             ("agents",                 "Show agent stats (healer, planner, executor, meta)"),
             ("forecast",               "Detailed completion forecast with ETA and rate trends"),
+            ("tasks",                  "Per-task summary table (status, branches, verified)"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
