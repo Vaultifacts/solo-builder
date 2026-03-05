@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.47] — 2026-03-05
+
+### Added
+- **Dashboard stalled panel** — 8th sidebar tab showing stuck subtasks with
+  age bars, threshold display, and auto-refresh via `GET /stalled`
+- **Bot `/heal` command** — reset a Running subtask to Pending via Discord
+  (slash + plain-text, writes heal_trigger.json for CLI IPC)
+- **CLI `agents` command** — show all agent stats: planner weights/cache,
+  executor config, healer totals, shadow tracking, meta history/rates/forecast
+- **API `POST /heal` endpoint** — writes heal_trigger.json for CLI to consume
+- **Heal trigger IPC** — full pipeline: bot/dashboard → heal_trigger.json →
+  CLI auto loop consumption → _cmd_heal(); cleared at startup
+- **7 new tests** (2 heal API + 3 heal bot + 2 existing stalled)
+  → 190 bot + 65 API = 255 total
+
+---
+
 ## [v2.1.46] — 2026-03-03
 
 ### Added

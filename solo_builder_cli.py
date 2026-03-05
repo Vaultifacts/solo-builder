@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ agents │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1629,6 +1629,7 @@ class SoloBuilderCLI:
         _undeptrigger = os.path.join(_HERE, "state", "undepends_trigger.json")
         _undotrigger  = os.path.join(_HERE, "state", "undo_trigger")
         _pausetrigger = os.path.join(_HERE, "state", "pause_trigger")
+        _healtrigger  = os.path.join(_HERE, "state", "heal_trigger.json")
         try:
             while True:
                 self.run_step()
@@ -1714,6 +1715,11 @@ class SoloBuilderCLI:
                         s_val = sdata.get("value", "").strip()
                         if s_key and s_val:
                             self._cmd_set(f"{s_key}={s_val}")
+                    healdata = self._consume_json_trigger(_healtrigger)
+                    if healdata:
+                        h_st = healdata.get("subtask", "").strip().upper()
+                        if h_st:
+                            self._cmd_heal(h_st)
                     depdata = self._consume_json_trigger(_deptrigger)
                     if depdata:
                         dep_target = depdata.get("target", "").strip()
@@ -1926,6 +1932,9 @@ class SoloBuilderCLI:
 
         elif cmd.startswith("heal "):
             self._cmd_heal(raw[5:])
+
+        elif cmd == "agents":
+            self._cmd_agents()
 
         elif cmd == "help":
             self._cmd_help()
@@ -2912,6 +2921,28 @@ class SoloBuilderCLI:
         self.display.render(self.dag, self.memory_store, self.step,
                             self.alerts, self.meta.forecast(self.dag))
 
+    def _cmd_agents(self) -> None:
+        """agents — show agent stats (healer count, planner cache, executor, meta)."""
+        cache_len = len(self._priority_cache)
+        cache_age = self.step - self._last_priority_step
+        print(f"\n  {BOLD}{CYAN}Agent Statistics{RESET}  (step {self.step})")
+        print(f"  {'─' * 55}")
+        print(f"  {CYAN}Planner{RESET}       cache: {cache_len} candidates, age: {cache_age} steps")
+        print(f"                weights: stall={self.planner.w_stall:.2f}  "
+              f"staleness={self.planner.w_staleness:.2f}  shadow={self.planner.w_shadow:.2f}")
+        print(f"  {CYAN}Executor{RESET}      max_per_step: {self.executor.max_per_step}  "
+              f"verify_prob: {self.executor.verify_prob:.2f}")
+        print(f"  {CYAN}SelfHealer{RESET}    healed: {self.healer.healed_total}  "
+              f"threshold: {self.healer.stall_threshold}")
+        stalled_now = len(self.healer.find_stalled(self.dag, self.step))
+        if stalled_now:
+            print(f"                {YELLOW}currently stalled: {stalled_now}{RESET}")
+        print(f"  {CYAN}ShadowAgent{RESET}   tracking {len(self.shadow.expected)} subtasks")
+        print(f"  {CYAN}MetaOptimizer{RESET} history: {len(self.meta._history)} entries  "
+              f"heal_rate: {self.meta.heal_rate:.2f}  verify_rate: {self.meta.verify_rate:.2f}")
+        print(f"                forecast: {self.meta.forecast(self.dag)}")
+        print(f"  {'─' * 55}\n")
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -3062,6 +3093,7 @@ class SoloBuilderCLI:
             ("priority",               "Show the planner's priority queue (next to execute)"),
             ("stalled",                "Show subtasks stuck longer than STALL_THRESHOLD"),
             ("heal <ST>",              "Manually reset a Running subtask to Pending"),
+            ("agents",                 "Show agent stats (healer, planner, executor, meta)"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),
@@ -3377,11 +3409,12 @@ def main() -> None:
     _UDEP_PATH  = os.path.join(_HERE, "state", "undepends_trigger.json")
     _UNDO_PATH  = os.path.join(_HERE, "state", "undo_trigger")
     _PAUSE_PATH = os.path.join(_HERE, "state", "pause_trigger")
+    _HEAL_PATH  = os.path.join(_HERE, "state", "heal_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
     # Clear stale triggers from previous runs
     for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
                    _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH,
-                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH, _PAUSE_PATH):
+                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH, _PAUSE_PATH, _HEAL_PATH):
         try:
             os.remove(_stale)
         except FileNotFoundError:

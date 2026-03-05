@@ -610,6 +610,7 @@
       <button class="sidebar-tab" onclick="switchTab('branches')">Branches</button>
       <button class="sidebar-tab" onclick="switchTab('settings')">Settings</button>
       <button class="sidebar-tab" onclick="switchTab('priority')">Priority</button>
+      <button class="sidebar-tab" onclick="switchTab('stalled')">Stalled</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -644,6 +645,11 @@
     <div class="sidebar-tab-content" id="tab-priority">
       <div id="priority-content">
         <div class="detail-placeholder">Loading priority queue…</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-stalled">
+      <div id="stalled-content">
+        <div class="detail-placeholder">Loading stalled subtasks…</div>
       </div>
     </div>
   </div>
@@ -1166,9 +1172,36 @@
     el.innerHTML = html;
   }
 
+  async function pollStalled() {
+    try {
+      const d = await api("/stalled");
+      renderStalled(d);
+    } catch (_) {}
+  }
+  function renderStalled(d) {
+    const el = document.getElementById("stalled-content");
+    if (!d) { el.innerHTML = `<div class="detail-placeholder">No data.</div>`; return; }
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">threshold: ${d.threshold} steps · step ${d.step}</div>`;
+    if (!d.stalled || d.stalled.length === 0) {
+      html += `<div class="detail-placeholder" style="color:var(--green)">No stalled subtasks.</div>`;
+    } else {
+      d.stalled.forEach(s => {
+        const pct = Math.min(100, Math.round(s.age / (d.threshold * 3) * 100));
+        html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
+        html += `<span style="color:var(--yellow);min-width:32px">${s.subtask}</span>`;
+        html += `<span style="color:var(--red);min-width:50px">${s.age} steps</span>`;
+        html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
+        html += `<span style="position:absolute;left:0;top:0;height:4px;width:${pct}%;border-radius:2px;background:var(--red)"></span></span>`;
+        html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${s.task}</span>`;
+        html += `</div>`;
+      });
+    }
+    el.innerHTML = html;
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {

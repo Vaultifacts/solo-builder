@@ -64,6 +64,7 @@ UNDEPENDS_TRIGGER       = _ROOT / "state" / "undepends_trigger.json"
 UNDO_TRIGGER            = _ROOT / "state" / "undo_trigger"
 RENAME_TRIGGER          = _ROOT / "state" / "rename_trigger.json"
 PAUSE_TRIGGER           = _ROOT / "state" / "pause_trigger"
+HEAL_TRIGGER            = _ROOT / "state" / "heal_trigger.json"
 SNAPSHOTS_DIR           = _ROOT / "snapshots"
 SETTINGS_PATH  = _ROOT / "config" / "settings.json"
 JOURNAL_PATH   = _ROOT / "journal.md"
@@ -315,6 +316,27 @@ def _format_stalled(state: dict) -> str:
     lines.append("```")
     lines.append("_SelfHealer auto-resets after threshold_")
     return "\n".join(lines)
+
+
+def _format_heal(state: dict, subtask: str) -> str:
+    """Validate and write heal_trigger.json to reset a Running subtask."""
+    st = subtask.strip().upper()
+    if not st:
+        return "Usage: `heal <subtask>`"
+    dag = state.get("dag", {})
+    found = False
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_name == st:
+                    found = True
+                    if st_data.get("status") != "Running":
+                        return f"⚠️ **{st}** is {st_data.get('status', 'Pending')}, not Running — nothing to heal."
+    if not found:
+        return f"⚠️ Subtask **{st}** not found."
+    HEAL_TRIGGER.parent.mkdir(exist_ok=True)
+    HEAL_TRIGGER.write_text(json.dumps({"subtask": st}), encoding="utf-8")
+    return f"↻ **{st}** heal trigger written — CLI will reset to Pending next loop."
 
 
 def _format_filter(state: dict, status: str) -> str:
@@ -576,6 +598,7 @@ _HELP_TEXT = (
     "`filter <status>`                  — show subtasks matching a status\n"
     "`priority`                         — show what executes next (ranked by risk)\n"
     "`stalled`                          — show subtasks stuck longer than threshold\n"
+    "`heal <subtask>`                   — reset a Running subtask to Pending\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -925,6 +948,11 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_stalled(state))
 
+    elif low == "heal" or low.startswith("heal "):
+        st_arg = text[5:].strip() if " " in text else ""
+        state = _load_state()
+        await _send(message, _format_heal(state, st_arg))
+
     elif low == "diff":
         await _send(message, _format_diff())
 
@@ -1029,6 +1057,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/filter <status>`                  — show subtasks matching a status\n"
         "`/priority`                         — show what executes next (ranked by risk)\n"
         "`/stalled`                          — show subtasks stuck longer than threshold\n"
+        "`/heal <subtask>`                   — reset a Running subtask to Pending\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -1160,6 +1189,15 @@ async def stalled_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_stalled(_load_state()))
+
+
+@bot.tree.command(name="heal", description="Reset a Running subtask to Pending")
+@app_commands.describe(subtask="Subtask name (e.g. A1)")
+async def heal_cmd(interaction: discord.Interaction, subtask: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_heal(_load_state(), subtask))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")

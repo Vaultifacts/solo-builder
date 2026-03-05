@@ -707,6 +707,25 @@ class TestStalled(_Base):
         self.assertNotIn("A3", names)
 
 
+# Heal
+# ---------------------------------------------------------------------------
+
+class TestHeal(_Base):
+
+    def test_heal_writes_trigger(self):
+        r = self.client.post("/heal", json={"subtask": "A1"})
+        self.assertEqual(r.status_code, 202)
+        d = r.get_json()
+        self.assertTrue(d.get("ok"))
+        self.assertEqual(d["subtask"], "A1")
+
+    def test_heal_missing_subtask(self):
+        r = self.client.post("/heal", json={})
+        self.assertEqual(r.status_code, 400)
+        d = r.get_json()
+        self.assertFalse(d.get("ok"))
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 

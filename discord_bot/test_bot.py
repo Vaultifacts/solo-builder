@@ -2039,6 +2039,40 @@ class TestStalledCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("none", text)
 
 
+class TestHealCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot heal command."""
+
+    async def test_heal_running(self):
+        """'heal A1' on a Running subtask writes trigger."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text") as mock_write:
+            await bot_module._handle_text_command(_make_msg("heal A1"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("A1", text)
+        self.assertIn("heal", text.lower())
+        mock_write.assert_called_once()
+
+    async def test_heal_not_running(self):
+        """'heal A1' on a Verified subtask shows warning."""
+        state = _make_state({"A1": "Verified"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("heal A1"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("not Running", text)
+
+    async def test_heal_empty(self):
+        """'heal' with no arg shows usage."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("heal"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+
 class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot history command."""
 

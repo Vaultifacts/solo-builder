@@ -25,6 +25,7 @@ SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
 SETTINGS_PATH   = _PROJECT_ROOT / "config" / "settings.json"
 RENAME_TRIGGER  = _PROJECT_ROOT / "state" / "rename_trigger.json"
 STOP_TRIGGER    = _PROJECT_ROOT / "state" / "stop_trigger"
+HEAL_TRIGGER    = _PROJECT_ROOT / "state" / "heal_trigger.json"
 HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
@@ -605,6 +606,18 @@ def stalled():
     stuck.sort(key=lambda x: x["age"], reverse=True)
     return jsonify({"step": step, "threshold": threshold,
                     "count": len(stuck), "stalled": stuck})
+
+
+@app.post("/heal")
+def heal():
+    """Write heal_trigger.json so the CLI resets a Running subtask to Pending."""
+    data = request.get_json(force=True, silent=True) or {}
+    subtask = data.get("subtask", "").strip().upper()
+    if not subtask:
+        return jsonify({"ok": False, "reason": "Missing 'subtask' field."}), 400
+    HEAL_TRIGGER.parent.mkdir(exist_ok=True)
+    HEAL_TRIGGER.write_text(json.dumps({"subtask": subtask}), encoding="utf-8")
+    return jsonify({"ok": True, "subtask": subtask}), 202
 
 
 # ---------------------------------------------------------------------------
