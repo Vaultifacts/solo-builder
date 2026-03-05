@@ -2,3 +2,4 @@ solo_builder/*
 .gitignore
 .githooks/pre-commit
 claude/allowed_files.txt
+.github/workflows/ci.yml

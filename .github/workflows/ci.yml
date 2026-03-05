@@ -1,0 +1,78 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Setup Node 20 (if package.json exists)
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Bootstrap verify
+        shell: pwsh
+        run: pwsh tools/bootstrap_verify.ps1
+
+      - name: Audit check
+        shell: pwsh
+        run: pwsh tools/audit_check.ps1
+
+      - name: Build ci_bundle
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci_bundle
+          {
+            echo "os: $(uname -a)"
+            echo "git_head: $(git rev-parse HEAD 2>/dev/null || echo unavailable)"
+            echo "python: $(python --version 2>&1 || echo unavailable)"
+            if command -v node >/dev/null 2>&1; then
+              echo "node: $(node --version 2>&1 || echo unavailable)"
+            else
+              echo "node: unavailable"
+            fi
+            echo "pwsh: $(pwsh --version 2>&1 || echo unavailable)"
+          } > ci_bundle/ci_env.txt
+          cat > ci_bundle/repro.ps1 <<'EOF'
+          pwsh tools/bootstrap_verify.ps1
+          pwsh tools/audit_check.ps1
+          EOF
+          chmod +x ci_bundle/repro.ps1 || true
+
+          cp -f claude/VERIFY.json ci_bundle/VERIFY.json 2>/dev/null || true
+          cp -f claude/REPRO.md ci_bundle/REPRO.md 2>/dev/null || true
+          cp -f claude/verify_last.json ci_bundle/verify_last.json 2>/dev/null || true
+
+          for dir in playwright-report test-results coverage; do
+            if [ -d "$dir" ]; then
+              cp -R "$dir" "ci_bundle/$dir"
+            fi
+          done
+
+          find . -maxdepth 3 -type f \( -name "junit*.xml" -o -name "*.log" \) -print0 2>/dev/null | while IFS= read -r -d '' file; do
+            rel="${file#./}"
+            mkdir -p "ci_bundle/$(dirname "$rel")"
+            cp -f "$file" "ci_bundle/$rel" || true
+          done
+
+      - name: Upload ci_bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci_bundle
+          path: ci_bundle
+          if-no-files-found: warn
