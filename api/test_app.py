@@ -726,6 +726,43 @@ class TestHeal(_Base):
         self.assertFalse(d.get("ok"))
 
 
+# Agents
+# ---------------------------------------------------------------------------
+
+class TestAgents(_Base):
+
+    def setUp(self):
+        super().setUp()
+        self._write_state(self._make_state({"A1": "Running", "A2": "Verified"}))
+
+    def test_returns_agents(self):
+        r = self.client.get("/agents")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("planner", d)
+        self.assertIn("executor", d)
+        self.assertIn("healer", d)
+        self.assertIn("meta", d)
+        self.assertIn("forecast", d)
+
+    def test_forecast_fields(self):
+        r = self.client.get("/agents")
+        d = r.get_json()
+        f = d["forecast"]
+        self.assertIn("total", f)
+        self.assertIn("verified", f)
+        self.assertIn("pct", f)
+        self.assertGreater(f["total"], 0)
+
+    def test_healer_fields(self):
+        r = self.client.get("/agents")
+        d = r.get_json()
+        h = d["healer"]
+        self.assertIn("healed_total", h)
+        self.assertIn("threshold", h)
+        self.assertIn("currently_stalled", h)
+
+
 # Error handlers
 # ---------------------------------------------------------------------------
 

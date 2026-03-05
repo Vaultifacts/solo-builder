@@ -1278,7 +1278,7 @@ class TerminalDisplay:
             f"{YELLOW}{pending}●{RESET} "
             f"/ {total}  ({pct:.1f}%)"
         )
-        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ agents │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
+        print(f"\n  {DIM}Commands: run │ auto [N] │ pause │ resume │ add_task │ add_branch │ depends │ rename │ describe │ verify │ tools │ output │ export │ diff │ stats │ history │ branches │ filter │ graph │ config │ priority │ stalled │ heal │ agents │ forecast │ search │ log │ snapshot │ save │ load │ reset │ help │ exit{RESET}")
         print(f"  {CYAN}{'═' * self._WIDTH}{RESET}")
 
     # ── Bar helper ──────────────────────────────────────────────────────────
@@ -1935,6 +1935,9 @@ class SoloBuilderCLI:
 
         elif cmd == "agents":
             self._cmd_agents()
+
+        elif cmd == "forecast":
+            self._cmd_forecast()
 
         elif cmd == "help":
             self._cmd_help()
@@ -2943,6 +2946,49 @@ class SoloBuilderCLI:
         print(f"                forecast: {self.meta.forecast(self.dag)}")
         print(f"  {'─' * 55}\n")
 
+    def _cmd_forecast(self) -> None:
+        """forecast — detailed completion forecast with ETA, rate trends, projected finish."""
+        stats = dag_stats(self.dag)
+        total, verified = stats["total"], stats["verified"]
+        remaining = total - verified
+        pct = verified / total * 100 if total else 0
+        print(f"\n  {BOLD}{CYAN}Completion Forecast{RESET}  (step {self.step})")
+        print(f"  {'─' * 55}")
+        print(f"  {CYAN}Progress{RESET}      {verified}/{total} verified ({pct:.1f}%)")
+        print(f"  {CYAN}Remaining{RESET}     {remaining} subtasks")
+        # Per-status breakdown
+        running = sum(1 for t in self.dag.values()
+                      for b in t.get("branches", {}).values()
+                      for s in b.get("subtasks", {}).values()
+                      if s.get("status") == "Running")
+        pending = sum(1 for t in self.dag.values()
+                      for b in t.get("branches", {}).values()
+                      for s in b.get("subtasks", {}).values()
+                      if s.get("status") == "Pending")
+        review = sum(1 for t in self.dag.values()
+                     for b in t.get("branches", {}).values()
+                     for s in b.get("subtasks", {}).values()
+                     if s.get("status") == "Review")
+        print(f"  {CYAN}Breakdown{RESET}     {GREEN}{verified} ✓{RESET}  {CYAN}{running} ▶{RESET}  "
+              f"{YELLOW}{pending} ⏳{RESET}  {MAGENTA}{review} ⏸{RESET}")
+        # Rate trends from MetaOptimizer
+        vr = self.meta.verify_rate
+        hr = self.meta.heal_rate
+        print(f"  {CYAN}Verify rate{RESET}   {vr:.2f} /step (last 10 steps)")
+        print(f"  {CYAN}Heal rate{RESET}     {hr:.2f} /step (last 10 steps)")
+        if vr > 0:
+            eta_steps = remaining / vr
+            print(f"  {CYAN}ETA{RESET}           ~{eta_steps:.0f} steps remaining")
+            if self.executor.max_per_step > 0:
+                mins = eta_steps * AUTO_STEP_DELAY / 60
+                print(f"  {CYAN}Wall time{RESET}     ~{mins:.1f} min at current pace")
+        else:
+            print(f"  {CYAN}ETA{RESET}           {DIM}insufficient data{RESET}")
+        # Progress bar
+        bar = make_bar(pct / 100, 40) if total else "N/A"
+        print(f"  {CYAN}Progress{RESET}      {bar}")
+        print(f"  {'─' * 55}\n")
+
     def _cmd_history(self, args: str) -> None:
         """history [N] — show the last N status transitions across all subtasks (default 20)."""
         limit = 20
@@ -3094,6 +3140,7 @@ class SoloBuilderCLI:
             ("stalled",                "Show subtasks stuck longer than STALL_THRESHOLD"),
             ("heal <ST>",              "Manually reset a Running subtask to Pending"),
             ("agents",                 "Show agent stats (healer, planner, executor, meta)"),
+            ("forecast",               "Detailed completion forecast with ETA and rate trends"),
             ("log [ST]",               "Show journal entries (optionally for one subtask)"),
             ("add_task [spec]",        "Append a new Task; inline spec skips the prompt"),
             ("add_branch <Task N> [spec]", "Add a new branch; inline spec skips the prompt"),

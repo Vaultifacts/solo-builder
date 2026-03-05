@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v2.1.48] — 2026-03-05
+
+### Added
+- **Dashboard heal button** — ↻ button on each stalled subtask row posts to
+  `POST /heal` with toast feedback
+- **Bot `/agents` command** — shows all agent stats: healer, executor, meta
+  rates, forecast, stalled count (slash + plain-text)
+- **CLI `forecast` command** — detailed completion forecast with verify/heal
+  rates, ETA in steps and wall time, progress bar breakdown
+- **API `GET /agents` endpoint** — returns planner, executor, healer, meta,
+  and forecast statistics as JSON
+- **5 new tests** (3 agents API + 2 agents bot)
+  → 192 bot + 68 API = 260 total
+
+---
+
 ## [v2.1.47] — 2026-03-05
 
 ### Added

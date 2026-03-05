@@ -608,6 +608,57 @@ def stalled():
                     "count": len(stuck), "stalled": stuck})
 
 
+@app.get("/agents")
+def agents():
+    """Return agent statistics as JSON."""
+    state = _load_state()
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    healed = state.get("healed_total", 0)
+    meta_history = state.get("meta_history", [])
+    threshold = 5
+    max_per_step = 6
+    try:
+        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+        max_per_step = int(cfg.get("EXECUTOR_MAX_PER_STEP", 6))
+    except Exception:
+        pass
+    total = verified = running = stalled_count = 0
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_data in branch.get("subtasks", {}).values():
+                total += 1
+                s = st_data.get("status", "Pending")
+                if s == "Verified":
+                    verified += 1
+                elif s == "Running":
+                    running += 1
+                    age = step - st_data.get("last_update", 0)
+                    if age >= threshold:
+                        stalled_count += 1
+    heal_rate = verify_rate = 0.0
+    if meta_history:
+        window = min(10, len(meta_history))
+        recent = meta_history[-window:]
+        heal_rate = round(sum(r.get("healed", 0) for r in recent) / window, 3)
+        verify_rate = round(sum(r.get("verified", 0) for r in recent) / window, 3)
+    remaining = total - verified
+    eta = round(remaining / (verify_rate + 1e-6)) if verify_rate > 0 else None
+    return jsonify({
+        "step": step,
+        "planner": {"cache_interval": 5},
+        "executor": {"max_per_step": max_per_step},
+        "healer": {"healed_total": healed, "threshold": threshold,
+                   "currently_stalled": stalled_count},
+        "meta": {"history_len": len(meta_history),
+                 "heal_rate": heal_rate, "verify_rate": verify_rate},
+        "forecast": {"total": total, "verified": verified, "remaining": remaining,
+                     "pct": round(verified / total * 100) if total else 0,
+                     "eta_steps": eta},
+    })
+
+
 @app.post("/heal")
 def heal():
     """Write heal_trigger.json so the CLI resets a Running subtask to Pending."""

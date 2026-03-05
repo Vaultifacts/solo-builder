@@ -318,6 +318,56 @@ def _format_stalled(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_agents(state: dict) -> str:
+    """Show agent statistics from state file."""
+    step = state.get("step", 0)
+    dag = state.get("dag", {})
+    healed = state.get("healed_total", 0)
+    meta_history = state.get("meta_history", [])
+    # Compute live stats
+    total = verified = running = pending = stalled_count = 0
+    threshold = 5
+    try:
+        cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+    except Exception:
+        pass
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_data in branch.get("subtasks", {}).values():
+                total += 1
+                s = st_data.get("status", "Pending")
+                if s == "Verified":
+                    verified += 1
+                elif s == "Running":
+                    running += 1
+                    age = step - st_data.get("last_update", 0)
+                    if age >= threshold:
+                        stalled_count += 1
+                elif s == "Pending":
+                    pending += 1
+    heal_rate = verify_rate = 0.0
+    if meta_history:
+        window = min(10, len(meta_history))
+        recent = meta_history[-window:]
+        heal_rate = sum(r.get("healed", 0) for r in recent) / window
+        verify_rate = sum(r.get("verified", 0) for r in recent) / window
+    pct = round(verified / total * 100) if total else 0
+    eta = f"~{(total - verified) / (verify_rate + 1e-6):.0f} steps" if verify_rate > 0 else "N/A"
+    lines = [
+        f"**Agent Statistics** (step {step})",
+        "```",
+        f"Planner       cache refreshes every 5 steps",
+        f"Executor      max_per_step: {cfg.get('EXECUTOR_MAX_PER_STEP', 6) if 'cfg' in dir() else 6}",
+        f"SelfHealer    healed: {healed}  threshold: {threshold}  stalled now: {stalled_count}",
+        f"ShadowAgent   tracking subtask states",
+        f"MetaOptimizer {len(meta_history)} entries  heal_rate: {heal_rate:.2f}  verify_rate: {verify_rate:.2f}",
+        f"Forecast      {pct}% done ({verified}/{total})  ETA: {eta}",
+        "```",
+    ]
+    return "\n".join(lines)
+
+
 def _format_heal(state: dict, subtask: str) -> str:
     """Validate and write heal_trigger.json to reset a Running subtask."""
     st = subtask.strip().upper()
@@ -599,6 +649,7 @@ _HELP_TEXT = (
     "`priority`                         — show what executes next (ranked by risk)\n"
     "`stalled`                          — show subtasks stuck longer than threshold\n"
     "`heal <subtask>`                   — reset a Running subtask to Pending\n"
+    "`agents`                           — show all agent statistics\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
@@ -953,6 +1004,10 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_heal(state, st_arg))
 
+    elif low == "agents":
+        state = _load_state()
+        await _send(message, _format_agents(state))
+
     elif low == "diff":
         await _send(message, _format_diff())
 
@@ -1058,6 +1113,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/priority`                         — show what executes next (ranked by risk)\n"
         "`/stalled`                          — show subtasks stuck longer than threshold\n"
         "`/heal <subtask>`                   — reset a Running subtask to Pending\n"
+        "`/agents`                           — show all agent statistics\n"
         "`/heartbeat`                       — live counters from step.txt\n"
         "`/help`                             — this message"
     )
@@ -1198,6 +1254,14 @@ async def heal_cmd(interaction: discord.Interaction, subtask: str) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_heal(_load_state(), subtask))
+
+
+@bot.tree.command(name="agents", description="Show all agent statistics")
+async def agents_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_agents(_load_state()))
 
 
 @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")
