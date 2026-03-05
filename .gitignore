@@ -2,6 +2,11 @@
 claude/artifacts/
 claude/logs/
 claude/snapshots/
+claude/STATE.json
+claude/verify_last.json
+claude/ci_context.json
+claude/RESEARCH_DRAFT.md
+claude/ARTIFACTS_SUMMARY.md
 
 # Python
 __pycache__/

@@ -1,2 +1,6 @@
 #!/usr/bin/env bash
-pwsh tools/dev_gate.ps1 -Mode PreCommit
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh tools/dev_gate.ps1 -Mode PreCommit
+else
+  powershell -ExecutionPolicy Bypass -File tools/dev_gate.ps1 -Mode PreCommit
+fi

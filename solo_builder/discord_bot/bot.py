@@ -1,0 +1,2036 @@
+#!/usr/bin/env python3
+"""
+Solo Builder — Discord Bot
+
+Slash commands:
+  /status            — DAG progress summary
+  /run               — trigger one step
+  /auto [n]          — run N steps automatically (default: until complete)
+  /verify subtask [note] — approve a Review-gated subtask (REVIEW_MODE)
+  /export            — download all Claude outputs as a file
+  /help              — command list
+
+Also sends a completion notification to DISCORD_CHANNEL_ID when all
+subtasks reach Verified.
+
+Setup:
+  pip install "discord.py>=2.0"
+
+  1. Go to https://discord.com/developers/applications
+  2. New Application → Bot → Reset Token → copy token
+  3. Bot settings: disable "Public Bot", enable no privileged intents needed
+  4. OAuth2 → URL Generator → scopes: bot + applications.commands
+     permissions: Send Messages, Attach Files → copy URL → invite to server
+  5. Add to .env:
+       DISCORD_BOT_TOKEN=<token>
+       DISCORD_CHANNEL_ID=<channel ID>   # optional: restrict to one channel
+
+Run (Terminal 3):
+  cd solo_builder
+  python discord_bot/bot.py
+"""
+
+import asyncio
+import json
+import os
+from pathlib import Path
+from typing import Optional
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+import discord
+from discord import app_commands
+
+_ROOT          = Path(__file__).resolve().parent.parent   # solo_builder/
+STATE_PATH     = _ROOT / "state" / "solo_builder_state.json"
+STEP_PATH      = _ROOT / "state" / "step.txt"
+TRIGGER_PATH   = _ROOT / "state" / "run_trigger"
+VERIFY_TRIGGER   = _ROOT / "state" / "verify_trigger.json"
+STOP_TRIGGER     = _ROOT / "state" / "stop_trigger"
+ADD_TASK_TRIGGER        = _ROOT / "state" / "add_task_trigger.json"
+ADD_BRANCH_TRIGGER      = _ROOT / "state" / "add_branch_trigger.json"
+PRIORITY_BRANCH_TRIGGER = _ROOT / "state" / "prioritize_branch_trigger.json"
+DESCRIBE_TRIGGER        = _ROOT / "state" / "describe_trigger.json"
+TOOLS_TRIGGER           = _ROOT / "state" / "tools_trigger.json"
+RESET_TRIGGER           = _ROOT / "state" / "reset_trigger"
+SNAPSHOT_TRIGGER        = _ROOT / "state" / "snapshot_trigger"
+SET_TRIGGER             = _ROOT / "state" / "set_trigger.json"
+DEPENDS_TRIGGER         = _ROOT / "state" / "depends_trigger.json"
+UNDEPENDS_TRIGGER       = _ROOT / "state" / "undepends_trigger.json"
+UNDO_TRIGGER            = _ROOT / "state" / "undo_trigger"
+RENAME_TRIGGER          = _ROOT / "state" / "rename_trigger.json"
+PAUSE_TRIGGER           = _ROOT / "state" / "pause_trigger"
+HEAL_TRIGGER            = _ROOT / "state" / "heal_trigger.json"
+SNAPSHOTS_DIR           = _ROOT / "snapshots"
+SETTINGS_PATH  = _ROOT / "config" / "settings.json"
+JOURNAL_PATH   = _ROOT / "journal.md"
+OUTPUTS_PATH   = _ROOT / "solo_builder_outputs.md"
+
+TOKEN      = os.environ.get("DISCORD_BOT_TOKEN", "")
+CHANNEL_ID = int(os.environ.get("DISCORD_CHANNEL_ID", "0") or "0")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _load_state() -> dict:
+    try:
+        with open(STATE_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"dag": {}, "step": 0}
+
+
+def _has_work(dag: dict) -> bool:
+    return any(
+        s.get("status") in ("Pending", "Running")
+        for t in dag.values()
+        for b in t["branches"].values()
+        for s in b["subtasks"].values()
+    )
+
+
+def _find_subtask_output(state: dict, st_target: str) -> "tuple[str, str] | None":
+    """Return (task_name, output) for a subtask by name, or None if not found."""
+    for task_name, task in state.get("dag", {}).items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_name.upper() == st_target.upper():
+                    return task_name, st_data.get("output", "")
+    return None
+
+
+def _format_log(st_filter: str = "") -> str:
+    """Return formatted journal entries, optionally filtered by subtask name."""
+    import re as _re
+    st_filter = st_filter.strip().upper()
+    if not JOURNAL_PATH.exists():
+        return "⚠️ No journal file found."
+    try:
+        content = JOURNAL_PATH.read_text(encoding="utf-8")
+    except Exception:
+        return "❌ Could not read journal."
+    blocks = _re.split(r"(?=^## )", content, flags=_re.MULTILINE)
+    entries = []
+    for block in blocks:
+        if not block.strip().startswith("## "):
+            continue
+        m = _re.match(r"^## (\w+) · (Task \d+) / (Branch \w+) · Step (\d+)", block)
+        if not m:
+            continue
+        st_name = m.group(1)
+        if st_filter and st_name.upper() != st_filter:
+            continue
+        body = block[m.end():].strip()
+        body = _re.sub(r"^\*\*Prompt:\*\*.*\n\n?", "", body).strip().rstrip("-").strip()
+        entries.append(f"`{st_name}` · {m.group(2)} / {m.group(3)} · Step {m.group(4)}\n{body[:100]}")
+    label = f" for `{st_filter}`" if st_filter else ""
+    header = f"**Journal{label}** — {len(entries)} entr{'ies' if len(entries) != 1 else 'y'}"
+    if not entries:
+        return header + "\n_No entries found._"
+    return header + "\n" + "\n".join(entries[-10:])
+
+
+def _format_search(state: dict, query: str) -> str:
+    """Search subtasks by keyword in name, description, or output."""
+    query = query.strip().lower()
+    if not query:
+        return "Usage: `search <keyword>`"
+    dag = state.get("dag", {})
+    matches = []
+    for task_name, task_data in dag.items():
+        for b in task_data.get("branches", {}).values():
+            for st_name, st_data in b.get("subtasks", {}).items():
+                desc = (st_data.get("description") or "").lower()
+                out = (st_data.get("output") or "").lower()
+                if query in desc or query in out or query in st_name.lower():
+                    icon = {"Verified": "✅", "Running": "▶", "Review": "⏸"}.get(st_data.get("status", "Pending"), "⏳")
+                    preview = (st_data.get("description") or "")[:50]
+                    matches.append(f"{icon} `{st_name}` ({task_name}) — {preview}")
+    n = len(matches)
+    header = f"**Search: '{query}'** — {n} match{'es' if n != 1 else ''}"
+    if not matches:
+        return header + "\n_No matches found._"
+    return header + "\n" + "\n".join(matches[:20])
+
+
+def _format_branches(state: dict, task_filter: str = "") -> str:
+    """Return formatted branch listing, optionally filtered to one task."""
+    dag = state.get("dag", {})
+    task_filter = task_filter.strip()
+    if task_filter:
+        # Normalise "0" → "Task 0"
+        if task_filter.isdigit():
+            task_filter = f"Task {task_filter}"
+        task_data = dag.get(task_filter)
+        if not task_data:
+            return f"⚠️ Task `{task_filter}` not found."
+        branches = task_data.get("branches", {})
+        lines = [f"**{task_filter}** — {len(branches)} branch{'es' if len(branches) != 1 else ''}", "```"]
+        for br_name, br_data in branches.items():
+            subs = br_data.get("subtasks", {})
+            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r = sum(1 for s in subs.values() if s.get("status") == "Running")
+            p = len(subs) - v - r
+            lines.append(f"  {br_name:<14} {len(subs)} STs  {v}✓ {r}▶ {p}●")
+            for st_name, st_data in subs.items():
+                icon = {"Verified": "✅", "Running": "▶", "Review": "⏸"}.get(st_data.get("status", "Pending"), "⏳")
+                lines.append(f"    {icon} {st_name:<5} {st_data.get('status', 'Pending')}")
+        lines.append("```")
+        return "\n".join(lines)
+    # All tasks overview
+    lines = ["**Branches Overview**", "```"]
+    for task_name, task_data in dag.items():
+        branches = task_data.get("branches", {})
+        lines.append(f"{task_name}  ({len(branches)} branches)")
+        for br_name, br_data in branches.items():
+            subs = br_data.get("subtasks", {})
+            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r = sum(1 for s in subs.values() if s.get("status") == "Running")
+            p = len(subs) - v - r
+            lines.append(f"  {br_name:<14} {len(subs)} STs  {v}✓ {r}▶ {p}●")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def _format_history(state: dict, limit: int = 20) -> str:
+    """Return a formatted recent activity log across all subtasks."""
+    dag = state.get("dag", {})
+    events: list = []
+    for task_name, task_data in dag.items():
+        for b in task_data.get("branches", {}).values():
+            for st_name, st_data in b.get("subtasks", {}).items():
+                for h in st_data.get("history", []):
+                    icon = {"Running": "▶", "Verified": "✅", "Review": "⏸"}.get(h.get("status", "?"), "❓")
+                    events.append((h.get("step", 0), st_name, task_name, h.get("status", "?"), icon))
+    events.sort(key=lambda x: x[0], reverse=True)
+    events = events[:limit]
+    if not events:
+        return "**Recent Activity**\n_No history recorded yet._"
+    lines = [f"**Recent Activity** (last {limit})", "```"]
+    for step, st_name, task_name, status, icon in events:
+        lines.append(f"  Step {step:<4} {st_name:<5} {status:<10} ({task_name})")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def _format_stats(state: dict) -> str:
+    """Return a formatted per-task stats table."""
+    dag = state.get("dag", {})
+    lines = ["**Per-Task Statistics**", "```"]
+    lines.append(f"{'Task':<12} {'V':>4} {'Tot':>4} {'Pct':>5}  {'Avg':>5}")
+    lines.append("─" * 38)
+    grand_v = grand_t = 0
+    all_dur: list = []
+    for task_name, task_data in dag.items():
+        tv = tt = 0
+        durs: list = []
+        for b in task_data.get("branches", {}).values():
+            for st in b.get("subtasks", {}).values():
+                tt += 1
+                if st.get("status") == "Verified":
+                    tv += 1
+                    h = st.get("history", [])
+                    if len(h) >= 2:
+                        durs.append(h[-1].get("step", 0) - h[0].get("step", 0))
+        pct = round(tv / tt * 100, 1) if tt else 0
+        avg = f"{sum(durs)/len(durs):.1f}" if durs else "—"
+        mark = "✅" if tv == tt and tt > 0 else "▶" if tv > 0 else "⏳"
+        lines.append(f"{mark} {task_name:<10} {tv:>4} {tt:>4} {pct:>4}%  {avg:>5}")
+        grand_v += tv
+        grand_t += tt
+        all_dur.extend(durs)
+    lines.append("─" * 38)
+    gp = round(grand_v / grand_t * 100, 1) if grand_t else 0
+    ga = f"{sum(all_dur)/len(all_dur):.1f}" if all_dur else "—"
+    lines.append(f"  {'TOTAL':<10} {grand_v:>4} {grand_t:>4} {gp:>4}%  {ga:>5}")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def _format_tasks(state: dict) -> str:
+    """Return a per-task summary table (verified/total, %, status)."""
+    dag = state.get("dag", {})
+    if not dag:
+        return "No tasks."
+    lines = ["**Tasks**", "```"]
+    for t_name, t_data in dag.items():
+        branches = t_data.get("branches", {})
+        total = sum(len(b.get("subtasks", {})) for b in branches.values())
+        verified = sum(
+            1 for b in branches.values()
+            for st in b.get("subtasks", {}).values()
+            if st.get("status") == "Verified"
+        )
+        pct = int(verified / total * 100) if total else 0
+        status = t_data.get("status", "Pending")
+        mark = "✅" if status == "Verified" else "▶" if verified > 0 else "⏳"
+        lines.append(f"{mark} {t_name:<10} {verified:>2}/{total:<2} {pct:>3}%  [{status}]")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def _format_priority(state: dict) -> str:
+    """Show which subtasks would execute next, ranked by risk score."""
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    if not dag:
+        return "No tasks in DAG."
+    candidates = []
+    for task_name, task in dag.items():
+        deps_met = all(dag.get(d, {}).get("status") == "Verified"
+                       for d in task.get("depends_on", []))
+        if not deps_met:
+            continue
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                status = st_data.get("status", "Pending")
+                if status not in ("Pending", "Running"):
+                    continue
+                age = step - st_data.get("last_update", 0)
+                risk = 1000 + age * 10 if status == "Running" else age * 8
+                candidates.append((st_name, task_name, status, risk))
+    candidates.sort(key=lambda x: x[3], reverse=True)
+    if not candidates:
+        return "✅ **Priority Queue** — empty (all subtasks Verified or blocked)"
+    lines = [f"**Priority Queue** ({len(candidates)} candidates, step {step})", "```"]
+    for i, (st_name, task_name, status, risk) in enumerate(candidates[:15]):
+        marker = "▶ " if i < 6 else "  "
+        icon = "▶" if status == "Running" else "⏳"
+        lines.append(f"{marker}{icon} {st_name:<5} {status:<9} risk={risk:<5} {task_name}")
+    if len(candidates) > 15:
+        lines.append(f"… and {len(candidates) - 15} more")
+    lines.append("```")
+    lines.append("_Top 6 (▶) execute next step_")
+    return "\n".join(lines)
+
+
+def _format_stalled(state: dict) -> str:
+    """Show subtasks stuck in Running longer than STALL_THRESHOLD."""
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    threshold = 5
+    try:
+        cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+    except Exception:
+        pass
+    stuck = []
+    for task_name, task in dag.items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_data.get("status") == "Running":
+                    age = step - st_data.get("last_update", 0)
+                    if age >= threshold:
+                        desc = (st_data.get("description") or "")[:40]
+                        stuck.append((st_name, task_name, age, desc))
+    stuck.sort(key=lambda x: x[2], reverse=True)
+    if not stuck:
+        return f"✅ **Stalled Subtasks** — none (threshold: {threshold} steps)"
+    lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps)", "```"]
+    for st_name, task_name, age, desc in stuck:
+        lines.append(f"  {st_name:<5} stalled {age} steps  {task_name} — {desc}")
+    lines.append("```")
+    lines.append("_SelfHealer auto-resets after threshold_")
+    return "\n".join(lines)
+
+
+def _format_agents(state: dict) -> str:
+    """Show agent statistics from state file."""
+    step = state.get("step", 0)
+    dag = state.get("dag", {})
+    healed = state.get("healed_total", 0)
+    meta_history = state.get("meta_history", [])
+    # Compute live stats
+    total = verified = running = pending = stalled_count = 0
+    threshold = 5
+    try:
+        cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+    except Exception:
+        pass
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_data in branch.get("subtasks", {}).values():
+                total += 1
+                s = st_data.get("status", "Pending")
+                if s == "Verified":
+                    verified += 1
+                elif s == "Running":
+                    running += 1
+                    age = step - st_data.get("last_update", 0)
+                    if age >= threshold:
+                        stalled_count += 1
+                elif s == "Pending":
+                    pending += 1
+    heal_rate = verify_rate = 0.0
+    if meta_history:
+        window = min(10, len(meta_history))
+        recent = meta_history[-window:]
+        heal_rate = sum(r.get("healed", 0) for r in recent) / window
+        verify_rate = sum(r.get("verified", 0) for r in recent) / window
+    pct = round(verified / total * 100) if total else 0
+    eta = f"~{(total - verified) / (verify_rate + 1e-6):.0f} steps" if verify_rate > 0 else "N/A"
+    lines = [
+        f"**Agent Statistics** (step {step})",
+        "```",
+        f"Planner       cache refreshes every 5 steps",
+        f"Executor      max_per_step: {cfg.get('EXECUTOR_MAX_PER_STEP', 6) if 'cfg' in dir() else 6}",
+        f"SelfHealer    healed: {healed}  threshold: {threshold}  stalled now: {stalled_count}",
+        f"ShadowAgent   tracking subtask states",
+        f"MetaOptimizer {len(meta_history)} entries  heal_rate: {heal_rate:.2f}  verify_rate: {verify_rate:.2f}",
+        f"Forecast      {pct}% done ({verified}/{total})  ETA: {eta}",
+        "```",
+    ]
+    return "\n".join(lines)
+
+
+def _format_forecast(state: dict) -> str:
+    """Show detailed completion forecast."""
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    meta_history = state.get("meta_history", [])
+    total = verified = running = pending = review = 0
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_data in branch.get("subtasks", {}).values():
+                total += 1
+                s = st_data.get("status", "Pending")
+                if s == "Verified": verified += 1
+                elif s == "Running": running += 1
+                elif s == "Pending": pending += 1
+                elif s == "Review": review += 1
+    remaining = total - verified
+    pct = round(verified / total * 100, 1) if total else 0
+    verify_rate = heal_rate = 0.0
+    if meta_history:
+        window = min(10, len(meta_history))
+        recent = meta_history[-window:]
+        verify_rate = sum(r.get("verified", 0) for r in recent) / window
+        heal_rate = sum(r.get("healed", 0) for r in recent) / window
+    eta = f"~{remaining / verify_rate:.0f} steps" if verify_rate > 0 else "N/A"
+    bar_len = 20
+    filled = round(bar_len * pct / 100)
+    bar = "█" * filled + "░" * (bar_len - filled)
+    lines = [
+        f"**Completion Forecast** (step {step})",
+        "```",
+        f"Progress   {bar} {pct}%",
+        f"Breakdown  {verified}✓  {running}▶  {pending}⏳  {review}⏸",
+        f"Remaining  {remaining} subtasks",
+        f"Verify     {verify_rate:.2f}/step (last 10)",
+        f"Heal       {heal_rate:.2f}/step (last 10)",
+        f"ETA        {eta}",
+        "```",
+    ]
+    return "\n".join(lines)
+
+
+def _format_heal(state: dict, subtask: str) -> str:
+    """Validate and write heal_trigger.json to reset a Running subtask."""
+    st = subtask.strip().upper()
+    if not st:
+        return "Usage: `heal <subtask>`"
+    dag = state.get("dag", {})
+    found = False
+    for task in dag.values():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_name == st:
+                    found = True
+                    if st_data.get("status") != "Running":
+                        return f"⚠️ **{st}** is {st_data.get('status', 'Pending')}, not Running — nothing to heal."
+    if not found:
+        return f"⚠️ Subtask **{st}** not found."
+    HEAL_TRIGGER.parent.mkdir(exist_ok=True)
+    HEAL_TRIGGER.write_text(json.dumps({"subtask": st}), encoding="utf-8")
+    return f"↻ **{st}** heal trigger written — CLI will reset to Pending next loop."
+
+
+def _format_filter(state: dict, status: str) -> str:
+    """Return subtasks matching a given status."""
+    target = status.strip().capitalize()
+    valid = ("Verified", "Running", "Pending", "Review")
+    if target not in valid:
+        return f"Usage: `filter <{'|'.join(valid)}>`"
+    icon = {"Verified": "✅", "Running": "▶", "Pending": "⏳", "Review": "⏸"}.get(target, "❓")
+    matches = []
+    for task_name, task in state.get("dag", {}).items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_data.get("status", "Pending") == target:
+                    desc = (st_data.get("description") or "")[:50]
+                    matches.append(f"{st_name} ({task_name}) — {desc}")
+    header = f"{icon} **{target} Subtasks** ({len(matches)})"
+    if not matches:
+        return f"{header}\n_None._"
+    body = "\n".join(f"  {m}" for m in matches[:30])
+    return f"{header}\n```\n{body}\n```"
+
+
+def _format_timeline(state: dict, st_target: str) -> str:
+    """Return a formatted timeline string for a subtask's history array."""
+    st_target = st_target.strip().upper()
+    if not st_target:
+        return "Usage: `timeline <subtask>` (e.g. `timeline A1`)"
+    for task_name, task in state.get("dag", {}).items():
+        for branch in task.get("branches", {}).values():
+            for st_name, st_data in branch.get("subtasks", {}).items():
+                if st_name.upper() == st_target:
+                    history = st_data.get("history", [])
+                    status = st_data.get("status", "Pending")
+                    icon = {"Pending": "⏳", "Running": "▶", "Verified": "✅", "Review": "⏸"}.get(status, "❓")
+                    lines = [f"**Timeline: {st_name}** ({task_name})", f"Current: {icon} {status}"]
+                    if not history:
+                        lines.append("_No transitions recorded yet._")
+                    else:
+                        parts = ["⏳ Pending"]
+                        for h in history:
+                            s = h.get("status", "?")
+                            step = h.get("step", "?")
+                            hi = {"Running": "▶", "Verified": "✅", "Review": "⏸"}.get(s, "❓")
+                            parts.append(f"{hi} {s} (step {step})")
+                        lines.append(" → ".join(parts))
+                    return "\n".join(lines)
+    return f"⚠️ Subtask `{st_target}` not found."
+
+
+def _format_diff() -> str:
+    """Compare current state to .1 backup and return a formatted diff string."""
+    backup_path = Path(str(STATE_PATH) + ".1")
+    if not backup_path.exists():
+        return "⚠️ No backup to diff against (need at least 2 saves)."
+    try:
+        old = json.loads(backup_path.read_text(encoding="utf-8"))
+    except Exception:
+        return "❌ Could not read backup file."
+    current = _load_state()
+    old_dag = old.get("dag", {})
+    new_dag = current.get("dag", {})
+    old_step = old.get("step", 0)
+    new_step = current.get("step", 0)
+    changes = []
+    for task_name, task_data in new_dag.items():
+        old_task = old_dag.get(task_name, {})
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            old_branch = old_task.get("branches", {}).get(branch_name, {})
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                old_st = old_branch.get("subtasks", {}).get(st_name, {})
+                old_status = old_st.get("status", "?")
+                new_status = st_data.get("status", "?")
+                if old_status != new_status:
+                    out = st_data.get("output", "")
+                    preview = f" — {out[:50]}" if out and new_status in ("Verified", "Review") else ""
+                    changes.append(f"`{st_name}` {old_status} → {new_status}{preview}")
+    if not changes:
+        return f"**Diff** · Step {old_step} → {new_step}\nNo subtask status changes."
+    lines = [f"**Diff** · Step {old_step} → {new_step}"]
+    for c in changes:
+        lines.append(c)
+    return "\n".join(lines)
+
+
+def _format_status(state: dict) -> str:
+    dag   = state.get("dag", {})
+    step  = state.get("step", 0)
+    total = verified = running = review = 0
+    rows: list[str] = []
+
+    for task_name, task in dag.items():
+        tv = tr = trv = tt = 0
+        branch_rows: list[str] = []
+        for b_name, b in task.get("branches", {}).items():
+            bv = br = brv = bt = 0
+            for s in b.get("subtasks", {}).values():
+                st = s.get("status", "")
+                bt += 1
+                if st == "Verified": bv += 1
+                elif st == "Running": br += 1
+                elif st == "Review":  brv += 1
+            tv += bv; tr += br; trv += brv; tt += bt
+            b_done = int((bv / bt) * 6) if bt else 0
+            b_bar  = "█" * b_done + "░" * (6 - b_done)
+            if bv == bt:      b_sym = "✓"
+            elif brv:         b_sym = "⏸"
+            elif br:          b_sym = "▶"
+            else:             b_sym = "·"
+            branch_rows.append(f"  {b_name:<14}{b_bar} {bv}/{bt} {b_sym}")
+
+        total += tt; verified += tv; running += tr; review += trv
+        done = int((tv / tt) * 10) if tt else 0
+        bar  = "█" * done + "░" * (10 - done)
+        rows.append(f"{task_name:<8} {bar} {tv}/{tt}")
+        rows.extend(branch_rows)
+
+    pct = round(verified / total * 100, 1) if total else 0
+    header = (
+        f"**Solo Builder** · Step {step}\n"
+        f"✅ {verified}  ▶ {running}  ⏸ {review}  "
+        f"⏳ {total - verified - running - review} / {total}  ({pct}%)\n"
+    )
+    return header + "```\n" + "\n".join(rows) + "\n```"
+
+
+def _format_graph(state: dict) -> str:
+    """Build an ASCII dependency graph of the DAG."""
+    dag = state.get("dag", {})
+    if not dag:
+        return "No tasks in DAG."
+    sym = {"Verified": "✅", "Running": "▶️", "Review": "⏸", "Pending": "⏳", "Blocked": "🔒"}
+    lines = ["**DAG Graph**", "```"]
+    task_names = list(dag.keys())
+    for i, t_name in enumerate(task_names):
+        t = dag[t_name]
+        st = t.get("status", "Pending")
+        icon = sym.get(st, "⏳")
+        deps = t.get("depends_on", [])
+        branches = t.get("branches", {})
+        n_st = sum(len(b.get("subtasks", {})) for b in branches.values())
+        n_v = sum(1 for b in branches.values() for s in b.get("subtasks", {}).values()
+                  if s.get("status") == "Verified")
+        line = f"{icon} {t_name} [{n_v}/{n_st}]"
+        if deps:
+            line += f"  ← {', '.join(deps)}"
+        lines.append(line)
+        # Draw arrows to dependents
+        dependents = [tn for tn in task_names if t_name in dag[tn].get("depends_on", [])]
+        if dependents:
+            for d in dependents:
+                lines.append(f"   └──▶ {d}")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def _allowed(interaction: discord.Interaction) -> bool:
+    return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
+
+
+async def _get_channel(channel_id: int) -> discord.abc.Messageable | None:
+    ch = bot.get_channel(channel_id)
+    if ch is None:
+        try:
+            ch = await bot.fetch_channel(channel_id)
+        except Exception:
+            ch = None
+    return ch
+
+
+# ---------------------------------------------------------------------------
+# Bot setup
+# ---------------------------------------------------------------------------
+
+LOG_PATH = _ROOT / "discord_bot" / "chat.log"
+
+
+def _log(channel: str, author: str, text: str) -> None:
+    from datetime import datetime, timezone
+    line = (
+        f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC] "
+        f"#{channel} {author}: {text}\n"
+    )
+    LOG_PATH.parent.mkdir(exist_ok=True)
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(line)
+
+
+class SoloBuilderBot(discord.Client):
+    def __init__(self) -> None:
+        intents = discord.Intents.default()
+        intents.message_content = True
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self) -> None:
+        await self.tree.sync()
+        self.loop.create_task(_poll_completion(self))
+
+    async def on_ready(self) -> None:
+        print(f"Solo Builder Bot ready · logged in as {self.user}", flush=True)
+        print(f"Slash commands synced. Invite URL scope: bot+applications.commands", flush=True)
+
+    async def on_message(self, message: discord.Message) -> None:
+        if CHANNEL_ID and message.channel.id != CHANNEL_ID:
+            return
+        if message.author == self.user:
+            return
+
+        _log(str(message.channel), str(message.author), message.content)
+
+        # Natural language command parsing (no slash needed)
+        await _handle_text_command(message)
+
+    async def on_error(self, event: str, *args, **kwargs) -> None:
+        import traceback
+        _log("BOT", "ERROR", f"Event {event}: {traceback.format_exc()[:300]}")
+
+
+bot = SoloBuilderBot()
+
+
+@bot.tree.error
+async def on_app_command_error(
+    interaction: discord.Interaction,
+    error: app_commands.AppCommandError,
+) -> None:
+    """Global slash command error handler — catches rate limits and unknown errors."""
+    import traceback
+    if isinstance(error, app_commands.CommandInvokeError):
+        cause = error.original
+        if isinstance(cause, discord.errors.HTTPException) and cause.status == 429:
+            retry = getattr(cause, "retry_after", 5)
+            msg = f"⏱ Rate limited by Discord — retry in {retry:.1f}s."
+        else:
+            msg = f"⚠ Command error: {str(cause)[:200]}"
+        _log("BOT", "ERROR", msg)
+    else:
+        msg = f"⚠ {str(error)[:200]}"
+        _log("BOT", "ERROR", msg)
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
+    except Exception:
+        pass
+
+# Running auto-task reference — prevents duplicate concurrent runs
+_auto_task: Optional[asyncio.Task] = None
+
+
+def _auto_running() -> bool:
+    return _auto_task is not None and not _auto_task.done()
+
+
+# ---------------------------------------------------------------------------
+# Natural language command handler
+# ---------------------------------------------------------------------------
+
+_HELP_TEXT = (
+    "**Solo Builder — plain-text commands**\n"
+    "`status`                           — DAG progress summary\n"
+    "`run`                              — trigger one step\n"
+    "`auto [n]`                         — run N steps (default: until complete)\n"
+    "`stop`                             — cancel an in-progress auto run\n"
+    "`verify <subtask> [note]`          — approve a Review-gated subtask\n"
+    "`output <subtask>`                 — show Claude output for a subtask\n"
+    "`describe <subtask> <prompt>`      — set a custom Claude prompt for a subtask\n"
+    "`tools <subtask> <tool,list>`      — set allowed tools for a subtask\n"
+    "`add_task <spec>`                  — queue a new task (added at next step)\n"
+    "`add_branch <task> <spec>`         — queue a new branch on an existing task\n"
+    "`prioritize_branch <task> <branch>` — boost a branch to front of queue\n"
+    "`reset confirm`                    — reset DAG to initial state (destructive!)\n"
+    "`depends [<task> <dep>]`            — add a dependency or show dep graph\n"
+    "`undepends <task> <dep>`           — remove a dependency\n"
+    "`set KEY=VALUE`                    — change a runtime setting\n"
+    "`set KEY`                          — show current value of a setting\n"
+    "`snapshot`                         — trigger a PDF snapshot\n"
+    "`export`                           — download all Claude outputs\n"
+    "`undo`                             — undo last step (restore from backup)\n"
+    "`pause`                            — pause auto-run (resume continues)\n"
+    "`resume`                           — resume a paused auto-run\n"
+    "`config`                           — show all current runtime settings\n"
+    "`diff`                             — show what changed since last save\n"
+    "`timeline <subtask>`               — show status history timeline\n"
+    "`stats`                            — per-task breakdown (verified, avg steps)\n"
+    "`history [N]`                      — last N status transitions (default 20)\n"
+    "`search <keyword>`                 — find subtasks by keyword\n"
+    "`filter <status>`                  — show subtasks matching a status\n"
+    "`priority`                         — show what executes next (ranked by risk)\n"
+    "`stalled`                          — show subtasks stuck longer than threshold\n"
+    "`heal <subtask>`                   — reset a Running subtask to Pending\n"
+    "`agents`                           — show all agent statistics\n"
+    "`forecast`                         — detailed completion forecast with ETA\n"
+    "`tasks`                            — per-task summary table (verified/total/status)\n"
+    "`log [subtask]`                    — show journal entries\n"
+    "`graph`                            — visual ASCII DAG dependency graph\n"
+    "`heartbeat`                        — live counters from step.txt\n"
+    "`help`                             — this message\n\n"
+    "*Slash commands (`/status`, `/run`, `/stop`, …) work too.*"
+)
+
+
+async def _send(message: discord.Message, text: str, **kwargs) -> None:
+    """Send a reply, chunking at 1950 chars if needed to avoid Discord 2000-char limit.
+    Retries once on rate limit (HTTP 429)."""
+    _log(str(message.channel), "BOT", text[:200])
+    chunks = []
+    if len(text) <= 1950:
+        chunks = [text]
+    else:
+        # Split on newlines to preserve code block integrity
+        current: list = []
+        for line in text.splitlines(keepends=True):
+            if sum(len(l) for l in current) + len(line) > 1950:
+                if current:
+                    chunks.append("".join(current))
+                    current = []
+            current.append(line)
+        if current:
+            chunks.append("".join(current))
+    for i, chunk in enumerate(chunks):
+        kw = kwargs if i == len(chunks) - 1 else {}
+        for attempt in range(2):
+            try:
+                await message.channel.send(chunk, **kw)
+                break
+            except discord.errors.HTTPException as e:
+                if e.status == 429 and attempt == 0:
+                    await asyncio.sleep(getattr(e, "retry_after", 5))
+                else:
+                    raise
+
+
+async def _handle_text_command(message: discord.Message) -> None:
+    text = message.content.strip()
+    low  = text.lower()
+
+    if low == "status":
+        reply = _format_status(_load_state())
+        if _auto_running():
+            if PAUSE_TRIGGER.exists():
+                reply += "\n⏸ Auto-run **paused** — use `resume` to continue."
+            else:
+                reply += "\n▶ Auto-run in progress — use `stop` to cancel."
+        await _send(message, reply)
+
+    elif low == "run":
+        state = _load_state()
+        if not _has_work(state.get("dag", {})):
+            await _send(message, "✅ Pipeline already complete.")
+        else:
+            TRIGGER_PATH.parent.mkdir(exist_ok=True)
+            TRIGGER_PATH.write_text("1")
+            await _send(message, f"▶ Step triggered (step {state.get('step', 0)} → next)")
+
+    elif low.startswith("auto"):
+        if _auto_running():
+            await _send(message, "⚠️ Auto already running. Use `stop` to cancel or `status` to check progress.")
+            return
+        rest = text[4:].strip()
+        n: Optional[int] = None
+        if rest.isdigit():
+            n = int(rest)
+        label = f"{n} steps" if n is not None else "until complete"
+        global _auto_task
+        _auto_task = asyncio.create_task(_run_auto(message.channel.id, n))
+        await _send(message, f"▶ Auto-run started: {label}")
+
+    elif low == "stop":
+        if _auto_running():
+            _auto_task.cancel()
+        STOP_TRIGGER.parent.mkdir(exist_ok=True)
+        STOP_TRIGGER.write_text("1")
+        await _send(message, "⏹ Stop signal sent — CLI will halt after the current step.")
+
+    elif low.startswith("verify"):
+        rest = text[6:].strip()
+        if not rest:
+            await _send(message, "Usage: `verify <subtask> [note]`")
+            return
+        parts   = rest.split(" ", 1)
+        subtask = parts[0].upper()
+        note    = parts[1].strip() if len(parts) > 1 else "Discord verify"
+        VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
+        VERIFY_TRIGGER.write_text(
+            json.dumps({"subtask": subtask, "note": note}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"⏳ Verify queued: `{subtask}` — *{note}*\n"
+            f"CLI will process it at the next step boundary."
+        )
+
+    elif low == "export":
+        if not OUTPUTS_PATH.exists():
+            await _send(message, "No export file yet. Run `export` in the CLI first.")
+        else:
+            size_kb = OUTPUTS_PATH.stat().st_size // 1024
+            await _send(
+                message,
+                f"Solo Builder outputs · {size_kb} KB",
+                file=discord.File(str(OUTPUTS_PATH), filename="solo_builder_outputs.md"),
+            )
+
+    elif low.startswith("add_task"):
+        spec = text[8:].strip()
+        if not spec:
+            await _send(message, "Usage: `add_task <spec>` — e.g. `add_task Build the OAuth2 flow`")
+            return
+        ADD_TASK_TRIGGER.parent.mkdir(exist_ok=True)
+        ADD_TASK_TRIGGER.write_text(json.dumps({"spec": spec}), encoding="utf-8")
+        await _send(
+            message,
+            f"✅ Task queued: *{spec[:80]}*\nCLI will add it at the next step boundary."
+        )
+
+    elif low.startswith("add_branch"):
+        rest = text[10:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `add_branch <task> <spec>` — e.g. `add_branch 0 Add error handling`")
+            return
+        task_arg, spec = parts[0], parts[1].strip()
+        if not spec:
+            await _send(message, "Usage: `add_branch <task> <spec>` — e.g. `add_branch 0 Add error handling`")
+            return
+        ADD_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+        ADD_BRANCH_TRIGGER.write_text(json.dumps({"task": task_arg, "spec": spec}), encoding="utf-8")
+        await _send(
+            message,
+            f"✅ Branch queued on Task {task_arg}: *{spec[:80]}*\nCLI will add it at the next step boundary."
+        )
+
+    elif low.startswith("output"):
+        st_target = text[6:].strip().upper()
+        if not st_target:
+            await _send(message, "Usage: `output <subtask>` — e.g. `output A3`")
+            return
+        state = _load_state()
+        result = _find_subtask_output(state, st_target)
+        if result is None:
+            await _send(message, f"❌ Subtask `{st_target}` not found.")
+        else:
+            task_name, out = result
+            if out:
+                await _send(message, f"**{st_target}** ({task_name}):\n```\n{out[:1800]}\n```")
+            else:
+                await _send(message, f"**{st_target}** ({task_name}): no output recorded yet.")
+
+    elif low.startswith("describe"):
+        rest = text[8:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `describe <subtask> <prompt>` — e.g. `describe A3 Implement retry logic`")
+            return
+        st_target, desc = parts[0].upper(), parts[1].strip()
+        DESCRIBE_TRIGGER.parent.mkdir(exist_ok=True)
+        DESCRIBE_TRIGGER.write_text(
+            json.dumps({"subtask": st_target, "desc": desc}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Describe queued: `{st_target}` — *{desc[:80]}*\nCLI will apply it at the next step boundary."
+        )
+
+    elif low.startswith("tools"):
+        rest = text[5:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `tools <subtask> <tool,list | none>` — e.g. `tools H1 Read,Glob,Grep`")
+            return
+        st_target, tool_val = parts[0].upper(), parts[1].strip()
+        TOOLS_TRIGGER.parent.mkdir(exist_ok=True)
+        TOOLS_TRIGGER.write_text(
+            json.dumps({"subtask": st_target, "tools": tool_val}), encoding="utf-8"
+        )
+        label = tool_val if tool_val.lower() != "none" else "(none — headless)"
+        await _send(
+            message,
+            f"✅ Tools queued: `{st_target}` → {label}\nCLI will apply at the next step boundary."
+        )
+
+    elif low == "reset confirm":
+        RESET_TRIGGER.parent.mkdir(exist_ok=True)
+        RESET_TRIGGER.write_text("1")
+        await _send(message, "⚠️ Reset queued — CLI will clear DAG and state at the next step boundary.")
+
+    elif low == "reset":
+        await _send(message, "⚠️ This will **destroy all progress**. Type `reset confirm` to proceed.")
+
+    elif low == "snapshot":
+        SNAPSHOT_TRIGGER.parent.mkdir(exist_ok=True)
+        SNAPSHOT_TRIGGER.write_text("1")
+        # Also send the latest existing PDF if available
+        latest = None
+        if SNAPSHOTS_DIR.is_dir():
+            pdfs = sorted(SNAPSHOTS_DIR.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if pdfs:
+                latest = pdfs[0]
+        if latest:
+            await _send(
+                message,
+                f"📸 Snapshot triggered. Latest existing PDF attached:",
+                file=discord.File(str(latest), filename=latest.name),
+            )
+        else:
+            await _send(message, "📸 Snapshot triggered — CLI will generate a PDF at the next step boundary.")
+
+    elif low.startswith("prioritize_branch"):
+        rest = text[17:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `prioritize_branch <task> <branch>` — e.g. `prioritize_branch 0 A`")
+            return
+        pb_task, pb_branch = parts[0], parts[1].strip()
+        PRIORITY_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+        PRIORITY_BRANCH_TRIGGER.write_text(
+            json.dumps({"task": pb_task, "branch": pb_branch}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Priority boost queued: Task {pb_task} / {pb_branch}\nCLI will boost it at the next step boundary."
+        )
+
+    elif low.startswith("undepends"):
+        rest = text[9:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `undepends <task> <dep>` — e.g. `undepends 1 0`")
+            return
+        UNDEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+        UNDEPENDS_TRIGGER.write_text(
+            json.dumps({"target": parts[0], "dep": parts[1].strip()}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Undepends queued: Task {parts[0]} no longer depends on Task {parts[1].strip()}\n"
+            f"CLI will apply at the next step boundary."
+        )
+
+    elif low.startswith("depends"):
+        rest = text[7:].strip()
+        parts = rest.split(None, 1)
+        if len(parts) < 2:
+            # Show dependency graph from state
+            state = _load_state()
+            dag = state.get("dag", {})
+            if not dag:
+                await _send(message, "No DAG loaded.")
+                return
+            lines = ["**Dependency Graph**"]
+            for t_name, t_data in dag.items():
+                deps = t_data.get("depends_on", [])
+                st = t_data.get("status", "?")
+                sym = {"Verified": "✅", "Running": "▶"}.get(st, "⏳")
+                dep_str = f" ← {', '.join(deps)}" if deps else " (root)"
+                lines.append(f"{sym} {t_name}{dep_str}")
+            await _send(message, "\n".join(lines))
+            return
+        DEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+        DEPENDS_TRIGGER.write_text(
+            json.dumps({"target": parts[0], "dep": parts[1].strip()}), encoding="utf-8"
+        )
+        await _send(
+            message,
+            f"✅ Depends queued: Task {parts[0]} → Task {parts[1].strip()}\n"
+            f"CLI will apply at the next step boundary."
+        )
+
+    elif low.startswith("set "):
+        rest = text[4:].strip()
+        if "=" in rest:
+            # Setter: set KEY=VALUE → write trigger for CLI
+            k, v = rest.split("=", 1)
+            k, v = k.strip(), v.strip()
+            if not k:
+                await _send(message, "Usage: `set KEY=VALUE` or `set KEY`")
+                return
+            SET_TRIGGER.parent.mkdir(exist_ok=True)
+            SET_TRIGGER.write_text(json.dumps({"key": k, "value": v}), encoding="utf-8")
+            await _send(message, f"⚙️ `{k.upper()}={v}` queued — CLI will apply at the next step boundary.")
+        else:
+            # Getter: set KEY → read config/settings.json
+            bare = rest.upper()
+            _KEY_MAP = {
+                "STALL_THRESHOLD": "STALL_THRESHOLD",
+                "SNAPSHOT_INTERVAL": "SNAPSHOT_INTERVAL",
+                "VERBOSITY": "VERBOSITY",
+                "VERIFY_PROB": "EXECUTOR_VERIFY_PROBABILITY",
+                "AUTO_STEP_DELAY": "AUTO_STEP_DELAY",
+                "AUTO_SAVE_INTERVAL": "AUTO_SAVE_INTERVAL",
+                "CLAUDE_ALLOWED_TOOLS": "CLAUDE_ALLOWED_TOOLS",
+                "ANTHROPIC_MAX_TOKENS": "ANTHROPIC_MAX_TOKENS",
+                "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
+                "REVIEW_MODE": "REVIEW_MODE",
+                "WEBHOOK_URL": "WEBHOOK_URL",
+                "EXECUTOR_MAX_PER_STEP": "EXECUTOR_MAX_PER_STEP",
+                "DAG_UPDATE_INTERVAL": "DAG_UPDATE_INTERVAL",
+            }
+            cfg_key = _KEY_MAP.get(bare)
+            if not cfg_key:
+                await _send(message, f"❌ Unknown setting `{bare}`. Known: {', '.join(sorted(_KEY_MAP))}")
+                return
+            try:
+                cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+                val = cfg.get(cfg_key, "(not set)")
+                await _send(message, f"⚙️ `{bare}` = `{val}`")
+            except Exception:
+                await _send(message, "❌ Could not read `config/settings.json`.")
+
+    elif low == "undo":
+        UNDO_TRIGGER.parent.mkdir(exist_ok=True)
+        UNDO_TRIGGER.write_text("1")
+        await _send(message, "↩️ Undo queued — CLI will restore from last backup at next step boundary.")
+
+    elif low == "pause":
+        if not _auto_running():
+            await _send(message, "⚠️ No auto-run in progress to pause.")
+            return
+        PAUSE_TRIGGER.parent.mkdir(exist_ok=True)
+        PAUSE_TRIGGER.write_text("1")
+        hb = _read_heartbeat()
+        extra = ""
+        if hb:
+            step, v, t, p, r, w = hb
+            pct = round(v / t * 100, 1) if t else 0
+            extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+        await _send(message, f"⏸ Pause signal sent — auto-run will pause after the current step. Use `resume` to continue.{extra}")
+
+    elif low == "resume":
+        if PAUSE_TRIGGER.exists():
+            try:
+                PAUSE_TRIGGER.unlink()
+            except OSError:
+                pass
+            hb = _read_heartbeat()
+            extra = ""
+            if hb:
+                step, v, t, p, r, w = hb
+                pct = round(v / t * 100, 1) if t else 0
+                extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+            await _send(message, f"▶ Resumed — auto-run will continue.{extra}")
+        else:
+            await _send(message, "⚠️ Not paused.")
+
+    elif low == "config":
+        try:
+            cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            lines = ["**Current Settings** (`config/settings.json`)", "```"]
+            for k, v in cfg.items():
+                lines.append(f"  {k:<30} = {v}")
+            lines.append("```")
+            await _send(message, "\n".join(lines))
+        except Exception:
+            await _send(message, "❌ Could not read `config/settings.json`.")
+
+    elif low == "graph":
+        state = _load_state()
+        await _send(message, _format_graph(state))
+
+    elif low == "priority":
+        state = _load_state()
+        await _send(message, _format_priority(state))
+
+    elif low == "stalled":
+        state = _load_state()
+        await _send(message, _format_stalled(state))
+
+    elif low == "heal" or low.startswith("heal "):
+        st_arg = text[5:].strip() if " " in text else ""
+        state = _load_state()
+        await _send(message, _format_heal(state, st_arg))
+
+    elif low == "agents":
+        state = _load_state()
+        await _send(message, _format_agents(state))
+
+    elif low == "forecast":
+        state = _load_state()
+        await _send(message, _format_forecast(state))
+
+    elif low == "tasks":
+        state = _load_state()
+        await _send(message, _format_tasks(state))
+
+    elif low == "diff":
+        await _send(message, _format_diff())
+
+    elif low == "filter" or low.startswith("filter "):
+        status_arg = text[7:].strip() if " " in text else ""
+        state = _load_state()
+        await _send(message, _format_filter(state, status_arg))
+
+    elif low.startswith("timeline "):
+        st = text[9:].strip()
+        state = _load_state()
+        await _send(message, _format_timeline(state, st))
+
+    elif low == "stats":
+        state = _load_state()
+        await _send(message, _format_stats(state))
+
+    elif low == "history" or low.startswith("history "):
+        n = 20
+        rest = text[7:].strip() if low.startswith("history ") else ""
+        if rest.isdigit():
+            n = int(rest)
+        state = _load_state()
+        await _send(message, _format_history(state, n))
+
+    elif low.startswith("search "):
+        q = text[7:].strip()
+        state = _load_state()
+        await _send(message, _format_search(state, q))
+
+    elif low == "log" or low.startswith("log "):
+        st = text[3:].strip() if low.startswith("log ") else ""
+        await _send(message, _format_log(st))
+
+    elif low == "branches" or low.startswith("branches "):
+        task_arg = text[9:].strip() if low.startswith("branches ") else ""
+        state = _load_state()
+        await _send(message, _format_branches(state, task_arg))
+
+    elif low.startswith("rename "):
+        parts = text[7:].strip().split(None, 1)
+        if len(parts) < 2:
+            await _send(message, "Usage: `rename <subtask> <new description>`")
+        else:
+            st, desc = parts[0].strip().upper(), parts[1].strip()
+            RENAME_TRIGGER.parent.mkdir(exist_ok=True)
+            RENAME_TRIGGER.write_text(json.dumps({"subtask": st, "desc": desc}))
+            await _send(message, f"✎ Rename queued: `{st}` → {desc[:80]}")
+
+    elif low == "heartbeat":
+        hb = _read_heartbeat()
+        if hb:
+            step, v, tot, p, r, rv = hb
+            pct = round(v / tot * 100, 1) if tot else 0
+            lines = [
+                f"**Heartbeat** · Step {step}",
+                f"✅ {v}  ▶ {r}  ⏸ {rv}  ⏳ {p} / {tot}  ({pct}%)",
+            ]
+            if _auto_running():
+                lines.append("▶ Auto-run in progress")
+            await _send(message, "\n".join(lines))
+        else:
+            await _send(message, "⚠️ No heartbeat — is the CLI running?")
+
+    elif low in ("help", "?"):
+        await _send(message, _HELP_TEXT)
+
+
+# ---------------------------------------------------------------------------
+# Slash commands
+# ---------------------------------------------------------------------------
+
+@bot.tree.command(name="help", description="Show available commands")
+async def help_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(
+        "**Solo Builder Bot**\n\n"
+        "`/status`                           — DAG progress summary\n"
+        "`/run`                              — trigger one step\n"
+        "`/auto [n]`                         — run N steps (default: until complete)\n"
+        "`/stop`                             — cancel an in-progress auto run\n"
+        "`/verify subtask [note]`            — approve a subtask (REVIEW_MODE)\n"
+        "`/output subtask`                   — show Claude output for a subtask\n"
+        "`/rename subtask desc`              — update a subtask's description\n"
+        "`/describe subtask prompt`          — set a custom Claude prompt for a subtask\n"
+        "`/tools subtask tools`              — set allowed tools for a subtask\n"
+        "`/add_task spec`                    — queue a new task\n"
+        "`/add_branch task spec`             — queue a new branch on a task\n"
+        "`/prioritize_branch task branch`    — boost a branch to front of queue\n"
+        "`/set key [value]`                  — change or query a runtime setting\n"
+        "`/depends [target dep]`             — add dependency or show dep graph\n"
+        "`/undepends target dep`             — remove a dependency\n"
+        "`/reset confirm:yes`                — reset DAG (destructive!)\n"
+        "`/snapshot`                         — trigger a PDF snapshot\n"
+        "`/export`                           — download all Claude outputs\n"
+        "`/undo`                             — undo last step (restore from backup)\n"
+        "`/config`                           — show all current settings\n"
+        "`/branches [task]`                  — list branches for a task (or overview)\n"
+        "`/graph`                            — visual ASCII DAG dependency graph\n"
+        "`/filter <status>`                  — show subtasks matching a status\n"
+        "`/priority`                         — show what executes next (ranked by risk)\n"
+        "`/stalled`                          — show subtasks stuck longer than threshold\n"
+        "`/heal <subtask>`                   — reset a Running subtask to Pending\n"
+        "`/agents`                           — show all agent statistics\n"
+        "`/forecast`                         — detailed completion forecast with ETA\n"
+        "`/tasks`                            — per-task summary table (verified/total/status)\n"
+        "`/heartbeat`                        — live counters from step.txt\n"
+        "`/help`                             — this message"
+    )
+
+
+@bot.tree.command(name="status", description="DAG progress summary")
+async def status_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    msg = _format_status(_load_state())
+    if _auto_running():
+        msg += "\n▶ Auto-run in progress — use `/stop` to cancel."
+    await interaction.response.send_message(msg)
+
+
+@bot.tree.command(name="undo", description="Undo last step (restore from backup)")
+async def undo_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    UNDO_TRIGGER.parent.mkdir(exist_ok=True)
+    UNDO_TRIGGER.write_text("1")
+    await interaction.response.send_message("↩️ Undo queued — CLI will restore from last backup at next step boundary.")
+
+
+@bot.tree.command(name="pause", description="Pause auto-run (resume continues from same position)")
+async def pause_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if not _auto_running():
+        await interaction.response.send_message("⚠️ No auto-run in progress to pause.", ephemeral=True)
+        return
+    PAUSE_TRIGGER.parent.mkdir(exist_ok=True)
+    PAUSE_TRIGGER.write_text("1")
+    hb = _read_heartbeat()
+    extra = ""
+    if hb:
+        step, v, t, p, r, w = hb
+        pct = round(v / t * 100, 1) if t else 0
+        extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+    await interaction.response.send_message(f"⏸ Pause signal sent — auto-run will pause after the current step. Use `/resume` to continue.{extra}")
+
+
+@bot.tree.command(name="resume", description="Resume a paused auto-run")
+async def resume_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if PAUSE_TRIGGER.exists():
+        try:
+            PAUSE_TRIGGER.unlink()
+        except OSError:
+            pass
+        hb = _read_heartbeat()
+        extra = ""
+        if hb:
+            step, v, t, p, r, w = hb
+            pct = round(v / t * 100, 1) if t else 0
+            extra = f"\nStep {step} — {v}✅ {r}▶ {w}⏸ {p}⏳ / {t} ({pct}%)"
+        await interaction.response.send_message(f"▶ Resumed — auto-run will continue.{extra}")
+    else:
+        await interaction.response.send_message("⚠️ Not paused.", ephemeral=True)
+
+
+@bot.tree.command(name="config", description="Show all current runtime settings")
+async def config_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    try:
+        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        lines = ["**Current Settings** (`config/settings.json`)", "```"]
+        for k, v in cfg.items():
+            lines.append(f"  {k:<30} = {v}")
+        lines.append("```")
+        await interaction.response.send_message("\n".join(lines))
+    except Exception:
+        await interaction.response.send_message("❌ Could not read `config/settings.json`.")
+
+
+@bot.tree.command(name="stats", description="Per-task breakdown (verified, avg steps)")
+async def stats_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_stats(_load_state()))
+
+
+@bot.tree.command(name="tasks", description="Per-task summary table (verified/total/status)")
+async def tasks_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_tasks(_load_state()))
+
+
+@bot.tree.command(name="log", description="Show journal entries (optionally for one subtask)")
+@app_commands.describe(subtask="Optional subtask name to filter by (e.g. A1)")
+async def log_cmd(interaction: discord.Interaction, subtask: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_log(subtask))
+
+
+@bot.tree.command(name="search", description="Find subtasks by keyword in name/description/output")
+@app_commands.describe(query="Keyword to search for")
+async def search_cmd(interaction: discord.Interaction, query: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_search(_load_state(), query))
+
+
+@bot.tree.command(name="filter", description="Show subtasks matching a status (Verified/Running/Pending/Review)")
+@app_commands.describe(status="Status to filter by (Verified, Running, Pending, or Review)")
+async def filter_cmd(interaction: discord.Interaction, status: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_filter(_load_state(), status))
+
+
+@bot.tree.command(name="priority", description="Show which subtasks execute next (ranked by risk)")
+async def priority_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_priority(_load_state()))
+
+
+@bot.tree.command(name="stalled", description="Show subtasks stuck longer than STALL_THRESHOLD")
+async def stalled_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_stalled(_load_state()))
+
+
+@bot.tree.command(name="heal", description="Reset a Running subtask to Pending")
+@app_commands.describe(subtask="Subtask name (e.g. A1)")
+async def heal_cmd(interaction: discord.Interaction, subtask: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_heal(_load_state(), subtask))
+
+
+@bot.tree.command(name="agents", description="Show all agent statistics")
+async def agents_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_agents(_load_state()))
+
+
+@bot.tree.command(name="forecast", description="Detailed completion forecast with ETA")
+async def forecast_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_forecast(_load_state()))
+
+
+@bot.tree.command(name="history", description="Show recent status transitions across all subtasks")
+@app_commands.describe(limit="Number of entries to show (default 20)")
+async def history_cmd(interaction: discord.Interaction, limit: int = 20) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_history(_load_state(), limit))
+
+
+@bot.tree.command(name="branches", description="List branches for a task with subtask counts")
+@app_commands.describe(task="Task name or number (e.g. 0, Task 0). Omit for overview.")
+async def branches_cmd(interaction: discord.Interaction, task: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_branches(_load_state(), task))
+
+
+@bot.tree.command(name="rename", description="Update a subtask's description")
+@app_commands.describe(subtask="Subtask name (e.g. A1)", description="New description text")
+async def rename_cmd(interaction: discord.Interaction, subtask: str, description: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st = subtask.strip().upper()
+    RENAME_TRIGGER.parent.mkdir(exist_ok=True)
+    RENAME_TRIGGER.write_text(json.dumps({"subtask": st, "desc": description.strip()}))
+    await interaction.response.send_message(f"✎ Rename queued: `{st}` → {description.strip()[:80]}")
+
+
+@bot.tree.command(name="graph", description="Visual ASCII DAG dependency graph")
+async def graph_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_graph(_load_state()))
+
+
+@bot.tree.command(name="diff", description="Show what changed since last save")
+async def diff_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_diff())
+
+
+@bot.tree.command(name="timeline", description="Show status history timeline for a subtask")
+@app_commands.describe(subtask="Subtask name (e.g. A1)")
+async def timeline_cmd(interaction: discord.Interaction, subtask: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_timeline(_load_state(), subtask))
+
+
+@bot.tree.command(name="heartbeat", description="Show live heartbeat counters from step.txt")
+async def heartbeat_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    hb = _read_heartbeat()
+    if hb:
+        step, v, tot, p, r, rv = hb
+        pct = round(v / tot * 100, 1) if tot else 0
+        lines = [
+            f"**Heartbeat** · Step {step}",
+            f"✅ {v}  ▶ {r}  ⏸ {rv}  ⏳ {p} / {tot}  ({pct}%)",
+        ]
+        if _auto_running():
+            lines.append("▶ Auto-run in progress")
+        await interaction.response.send_message("\n".join(lines))
+    else:
+        await interaction.response.send_message("⚠️ No heartbeat — is the CLI running?")
+
+
+@bot.tree.command(name="run", description="Trigger one CLI step")
+async def run_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    state = _load_state()
+    if not _has_work(state.get("dag", {})):
+        await interaction.response.send_message("✅ Pipeline already complete.")
+        return
+    TRIGGER_PATH.parent.mkdir(exist_ok=True)
+    TRIGGER_PATH.write_text("1")
+    await interaction.response.send_message(
+        f"▶ Step triggered (step {state.get('step', 0)} → next)"
+    )
+
+
+@bot.tree.command(name="verify", description="Approve a Review-gated subtask")
+@app_commands.describe(
+    subtask="Subtask name (e.g. A3)",
+    note="Optional review note",
+)
+async def verify_cmd(
+    interaction: discord.Interaction,
+    subtask: str,
+    note: str = "Discord verify",
+) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    VERIFY_TRIGGER.parent.mkdir(exist_ok=True)
+    VERIFY_TRIGGER.write_text(
+        json.dumps({"subtask": subtask.upper(), "note": note}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"⏳ Verify queued: `{subtask.upper()}` — *{note}*\n"
+        f"CLI will process it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="auto", description="Run steps automatically")
+@app_commands.describe(n="Number of steps (omit for full run)")
+async def auto_cmd(interaction: discord.Interaction, n: Optional[int] = None) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if _auto_running():
+        await interaction.response.send_message(
+            "⚠️ Auto already running. Use `/stop` to cancel or `/status` to check progress.",
+            ephemeral=True,
+        )
+        return
+    global _auto_task
+    label = f"{n} steps" if n is not None else "until complete"
+    _auto_task = asyncio.create_task(_run_auto(interaction.channel_id, n))
+    await interaction.response.send_message(
+        f"▶ Auto-run started: {label}\nUse `/status` for progress."
+    )
+
+
+@bot.tree.command(name="stop", description="Cancel an in-progress auto run")
+async def stop_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if _auto_running():
+        _auto_task.cancel()
+    STOP_TRIGGER.parent.mkdir(exist_ok=True)
+    STOP_TRIGGER.write_text("1")
+    await interaction.response.send_message(
+        "⏹ Stop signal sent — CLI will halt after the current step."
+    )
+
+
+@bot.tree.command(name="export", description="Download all Claude outputs as Markdown")
+async def export_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if not OUTPUTS_PATH.exists():
+        await interaction.response.send_message(
+            "No export file yet. Run `export` in the CLI first."
+        )
+        return
+    size_kb = OUTPUTS_PATH.stat().st_size // 1024
+    await interaction.response.send_message(
+        f"Solo Builder outputs · {size_kb} KB",
+        file=discord.File(str(OUTPUTS_PATH), filename="solo_builder_outputs.md"),
+    )
+
+
+@bot.tree.command(name="add_task", description="Queue a new task to be added at the next step")
+@app_commands.describe(spec="What the task should accomplish")
+async def add_task_cmd(interaction: discord.Interaction, spec: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    spec = spec.strip()
+    if not spec:
+        await interaction.response.send_message("Usage: `/add_task <spec>`", ephemeral=True)
+        return
+    ADD_TASK_TRIGGER.parent.mkdir(exist_ok=True)
+    ADD_TASK_TRIGGER.write_text(json.dumps({"spec": spec}), encoding="utf-8")
+    await interaction.response.send_message(
+        f"✅ Task queued: *{spec[:80]}*\nCLI will add it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="add_branch", description="Queue a new branch on an existing task")
+@app_commands.describe(task="Task number or name (e.g. 0 or Task 0)", spec="What the branch should cover")
+async def add_branch_cmd(interaction: discord.Interaction, task: str, spec: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    task = task.strip()
+    spec = spec.strip()
+    if not task or not spec:
+        await interaction.response.send_message("Usage: `/add_branch <task> <spec>`", ephemeral=True)
+        return
+    ADD_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+    ADD_BRANCH_TRIGGER.write_text(json.dumps({"task": task, "spec": spec}), encoding="utf-8")
+    await interaction.response.send_message(
+        f"✅ Branch queued on Task {task}: *{spec[:80]}*\nCLI will add it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="output", description="Show Claude output for a specific subtask")
+@app_commands.describe(subtask="Subtask name (e.g. A3)")
+async def output_cmd(interaction: discord.Interaction, subtask: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st_target = subtask.strip().upper()
+    if not st_target:
+        await interaction.response.send_message("Usage: `/output <subtask>`", ephemeral=True)
+        return
+    state = _load_state()
+    result = _find_subtask_output(state, st_target)
+    if result is None:
+        await interaction.response.send_message(f"❌ Subtask `{st_target}` not found.")
+    else:
+        task_name, out = result
+        if out:
+            await interaction.response.send_message(
+                f"**{st_target}** ({task_name}):\n```\n{out[:1800]}\n```"
+            )
+        else:
+            await interaction.response.send_message(
+                f"**{st_target}** ({task_name}): no output recorded yet."
+            )
+
+
+@bot.tree.command(name="describe", description="Set a custom Claude prompt for a subtask")
+@app_commands.describe(subtask="Subtask name (e.g. A3)", prompt="The custom description/prompt to assign")
+async def describe_cmd(interaction: discord.Interaction, subtask: str, prompt: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st_target = subtask.strip().upper()
+    prompt    = prompt.strip()
+    if not st_target or not prompt:
+        await interaction.response.send_message("Usage: `/describe <subtask> <prompt>`", ephemeral=True)
+        return
+    DESCRIBE_TRIGGER.parent.mkdir(exist_ok=True)
+    DESCRIBE_TRIGGER.write_text(
+        json.dumps({"subtask": st_target, "desc": prompt}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Describe queued: `{st_target}` — *{prompt[:80]}*\nCLI will apply it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="tools", description="Set allowed tools for a subtask")
+@app_commands.describe(subtask="Subtask name (e.g. H1)", tools="Comma-separated tools (e.g. Read,Glob,Grep) or 'none'")
+async def tools_cmd(interaction: discord.Interaction, subtask: str, tools: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    st_target = subtask.strip().upper()
+    tool_val  = tools.strip()
+    if not st_target or not tool_val:
+        await interaction.response.send_message("Usage: `/tools <subtask> <tool,list>`", ephemeral=True)
+        return
+    TOOLS_TRIGGER.parent.mkdir(exist_ok=True)
+    TOOLS_TRIGGER.write_text(
+        json.dumps({"subtask": st_target, "tools": tool_val}), encoding="utf-8"
+    )
+    label = tool_val if tool_val.lower() != "none" else "(none — headless)"
+    await interaction.response.send_message(
+        f"✅ Tools queued: `{st_target}` → {label}\nCLI will apply at the next step boundary."
+    )
+
+
+@bot.tree.command(name="reset", description="Reset DAG to initial state (destructive!)")
+@app_commands.describe(confirm="Type 'yes' to confirm the reset")
+async def reset_cmd(interaction: discord.Interaction, confirm: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    if confirm.strip().lower() not in ("yes", "confirm"):
+        await interaction.response.send_message(
+            "⚠️ This will **destroy all progress**. Use `/reset confirm:yes` to proceed.",
+            ephemeral=True,
+        )
+        return
+    RESET_TRIGGER.parent.mkdir(exist_ok=True)
+    RESET_TRIGGER.write_text("1")
+    await interaction.response.send_message(
+        "⚠️ Reset queued — CLI will clear DAG and state at the next step boundary."
+    )
+
+
+@bot.tree.command(name="snapshot", description="Trigger a PDF timeline snapshot")
+async def snapshot_cmd(interaction: discord.Interaction) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    SNAPSHOT_TRIGGER.parent.mkdir(exist_ok=True)
+    SNAPSHOT_TRIGGER.write_text("1")
+    latest = None
+    if SNAPSHOTS_DIR.is_dir():
+        pdfs = sorted(SNAPSHOTS_DIR.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if pdfs:
+            latest = pdfs[0]
+    if latest:
+        await interaction.response.send_message(
+            "📸 Snapshot triggered. Latest existing PDF attached:",
+            file=discord.File(str(latest), filename=latest.name),
+        )
+    else:
+        await interaction.response.send_message(
+            "📸 Snapshot triggered — CLI will generate a PDF at the next step boundary."
+        )
+
+
+@bot.tree.command(name="prioritize_branch", description="Boost a branch to the front of the execution queue")
+@app_commands.describe(task="Task number or name (e.g. 0)", branch="Branch name (e.g. A)")
+async def prioritize_branch_cmd(interaction: discord.Interaction, task: str, branch: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    task   = task.strip()
+    branch = branch.strip()
+    if not task or not branch:
+        await interaction.response.send_message("Usage: `/prioritize_branch <task> <branch>`", ephemeral=True)
+        return
+    PRIORITY_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
+    PRIORITY_BRANCH_TRIGGER.write_text(
+        json.dumps({"task": task, "branch": branch}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Priority boost queued: Task {task} / {branch}\nCLI will boost it at the next step boundary."
+    )
+
+
+@bot.tree.command(name="set", description="Change or query a runtime setting")
+@app_commands.describe(
+    key="Setting name (e.g. REVIEW_MODE, ANTHROPIC_MAX_TOKENS)",
+    value="New value (omit to show current value)",
+)
+async def set_cmd(interaction: discord.Interaction, key: str, value: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    key = key.strip().upper()
+    if value:
+        SET_TRIGGER.parent.mkdir(exist_ok=True)
+        SET_TRIGGER.write_text(json.dumps({"key": key, "value": value.strip()}), encoding="utf-8")
+        await interaction.response.send_message(
+            f"⚙️ `{key}={value.strip()}` queued — CLI will apply at the next step boundary."
+        )
+    else:
+        _KEY_MAP = {
+            "STALL_THRESHOLD": "STALL_THRESHOLD",
+            "SNAPSHOT_INTERVAL": "SNAPSHOT_INTERVAL",
+            "VERBOSITY": "VERBOSITY",
+            "VERIFY_PROB": "EXECUTOR_VERIFY_PROBABILITY",
+            "AUTO_STEP_DELAY": "AUTO_STEP_DELAY",
+            "AUTO_SAVE_INTERVAL": "AUTO_SAVE_INTERVAL",
+            "CLAUDE_ALLOWED_TOOLS": "CLAUDE_ALLOWED_TOOLS",
+            "ANTHROPIC_MAX_TOKENS": "ANTHROPIC_MAX_TOKENS",
+            "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
+            "REVIEW_MODE": "REVIEW_MODE",
+            "WEBHOOK_URL": "WEBHOOK_URL",
+            "EXECUTOR_MAX_PER_STEP": "EXECUTOR_MAX_PER_STEP",
+            "DAG_UPDATE_INTERVAL": "DAG_UPDATE_INTERVAL",
+        }
+        cfg_key = _KEY_MAP.get(key)
+        if not cfg_key:
+            await interaction.response.send_message(
+                f"❌ Unknown setting `{key}`. Known: {', '.join(sorted(_KEY_MAP))}",
+                ephemeral=True,
+            )
+            return
+        try:
+            cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            val = cfg.get(cfg_key, "(not set)")
+            await interaction.response.send_message(f"⚙️ `{key}` = `{val}`")
+        except Exception:
+            await interaction.response.send_message("❌ Could not read `config/settings.json`.", ephemeral=True)
+
+
+@bot.tree.command(name="depends", description="Add a task dependency or show the dep graph")
+@app_commands.describe(
+    target="Task to add dependency to (e.g. 1). Omit both to show the graph.",
+    dep="Task it should depend on (e.g. 0). Omit both to show the graph.",
+)
+async def depends_cmd(interaction: discord.Interaction, target: str = "", dep: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    target, dep = target.strip(), dep.strip()
+    if not target or not dep:
+        state = _load_state()
+        dag = state.get("dag", {})
+        if not dag:
+            await interaction.response.send_message("No DAG loaded.")
+            return
+        lines = ["**Dependency Graph**"]
+        for t_name, t_data in dag.items():
+            deps = t_data.get("depends_on", [])
+            st = t_data.get("status", "?")
+            sym = {"Verified": "✅", "Running": "▶"}.get(st, "⏳")
+            dep_str = f" ← {', '.join(deps)}" if deps else " (root)"
+            lines.append(f"{sym} {t_name}{dep_str}")
+        await interaction.response.send_message("\n".join(lines))
+        return
+    DEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+    DEPENDS_TRIGGER.write_text(
+        json.dumps({"target": target, "dep": dep}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Depends queued: Task {target} → Task {dep}\nCLI will apply at the next step boundary."
+    )
+
+
+@bot.tree.command(name="undepends", description="Remove a task dependency")
+@app_commands.describe(
+    target="Task to remove dependency from (e.g. 1)",
+    dep="Dependency to remove (e.g. 0)",
+)
+async def undepends_cmd(interaction: discord.Interaction, target: str, dep: str) -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    target, dep = target.strip(), dep.strip()
+    if not target or not dep:
+        await interaction.response.send_message(
+            "Usage: `/undepends <task> <dep>`", ephemeral=True
+        )
+        return
+    UNDEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
+    UNDEPENDS_TRIGGER.write_text(
+        json.dumps({"target": target, "dep": dep}), encoding="utf-8"
+    )
+    await interaction.response.send_message(
+        f"✅ Undepends queued: Task {target} no longer depends on Task {dep}\n"
+        f"CLI will apply at the next step boundary."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Background tasks
+# ---------------------------------------------------------------------------
+
+def _read_heartbeat() -> tuple[int, int, int, int, int, int] | None:
+    """Returns (step, verified, total, pending, running, review) from step.txt, or None."""
+    try:
+        parts = STEP_PATH.read_text().strip().split(",")
+        if len(parts) == 6:
+            return tuple(int(x) for x in parts)  # type: ignore[return-value]
+        return int(parts[0]), 0, 0, 0, 0, 0
+    except Exception:
+        return None
+
+
+def _format_step_line(state: dict) -> str:
+    """One-line step ticker: Step 12 — 8✅ 3▶ 1⏸ 58⏳ / 70 (14.3%)"""
+    hb = _read_heartbeat()
+    if hb:
+        step, verified, total, pending, running, review = hb
+    else:
+        dag = state.get("dag", {})
+        step = state.get("step", 0)
+        total = verified = running = review = 0
+        for t in dag.values():
+            for b in t["branches"].values():
+                for s in b["subtasks"].values():
+                    st = s.get("status", "")
+                    total += 1
+                    if st == "Verified": verified += 1
+                    elif st == "Running": running += 1
+                    elif st == "Review":  review += 1
+        pending = total - verified - running - review
+    pct = round(verified / total * 100, 1) if total else 0
+    return (
+        f"Step {step} — "
+        f"{verified}✅ {running}▶ {review}⏸ {pending}⏳ / {total} ({pct}%)"
+    )
+
+
+async def _run_auto(channel_id: int, n: Optional[int]) -> None:
+    """Drive the CLI through n steps (or until complete) via trigger file."""
+    limit     = n if n is not None else 200   # safety cap
+    completed = 0
+    ch        = await _get_channel(channel_id)
+
+    def _hb_step() -> int:
+        hb = _read_heartbeat()
+        return hb[0] if hb else _load_state().get("step", 0)
+
+    def _hb_has_work() -> bool:
+        hb = _read_heartbeat()
+        if hb:
+            _, _, _, pending, running, _ = hb
+            return (pending + running) > 0
+        return _has_work(_load_state().get("dag", {}))
+
+    for _ in range(limit):
+        # Pause gate: wait while pause trigger exists
+        while PAUSE_TRIGGER.exists():
+            await asyncio.sleep(0.5)
+        if not _hb_has_work():
+            # Wait up to 30 s for the auto-save JSON to reflect all-Verified.
+            # The JSON saves every 5 steps so can lag well behind the heartbeat.
+            state = _load_state()
+            for _ in range(300):
+                await asyncio.sleep(0.1)
+                state = _load_state()
+                stats = state.get("dag", {})
+                if stats and all(
+                    s.get("status") == "Verified"
+                    for t in stats.values()
+                    for b in t["branches"].values()
+                    for s in b["subtasks"].values()
+                ):
+                    break
+            if ch:
+                # Use heartbeat for accurate counts if JSON is still stale
+                hb = _read_heartbeat()
+                if hb and hb[1] == hb[2] and hb[2] > 0:
+                    _, v, tot, _, _, _ = hb
+                    status_line = _format_status(state)
+                    # Patch header counts if JSON still shows wrong numbers
+                    dag_v = sum(
+                        1 for t in state.get("dag", {}).values()
+                        for b in t["branches"].values()
+                        for s in b["subtasks"].values()
+                        if s.get("status") == "Verified"
+                    )
+                    if dag_v < tot:
+                        status_line = (
+                            f"**Solo Builder** · Step {hb[0]}\n"
+                            f"✅ {v}  ▶ 0  ⏸ 0  ⏳ 0 / {tot}  (100.0%)\n"
+                            f"*(JSON still flushing — counts from heartbeat)*"
+                        )
+                    msg = f"✅ Pipeline complete after {completed} steps.\n{status_line}"
+                else:
+                    msg = f"✅ Pipeline complete after {completed} steps.\n{_format_status(state)}"
+                await ch.send(msg)
+                _log(str(ch), "BOT", msg[:200])
+            return
+
+        current_step = _hb_step()
+        TRIGGER_PATH.parent.mkdir(exist_ok=True)
+        TRIGGER_PATH.write_text("1")
+
+        # Wait up to 60 s for the CLI heartbeat (step.txt) to advance
+        for _ in range(600):
+            await asyncio.sleep(0.1)
+            if _hb_step() > current_step:
+                completed += 1
+                break
+        else:
+            if ch:
+                msg = f"⚠️ Step timeout after {completed} steps. Is the CLI running?"
+                await ch.send(msg)
+                _log(str(ch), "BOT", msg)
+            return
+
+        # Per-step ticker
+        if ch:
+            ticker = _format_step_line(_load_state())
+            await ch.send(ticker)
+            _log(str(ch), "BOT", ticker)
+
+    # n-step run finished
+    final = _load_state()
+    if ch:
+        msg = f"✅ {completed}/{limit} steps done.\n{_format_status(final)}"
+        await ch.send(msg)
+        _log(str(ch), "BOT", msg[:200])
+
+
+async def _poll_completion(client: discord.Client) -> None:
+    """Notify DISCORD_CHANNEL_ID once when all subtasks reach Verified."""
+    if not CHANNEL_ID:
+        return
+    notified = False
+    while True:
+        await asyncio.sleep(10)
+        state    = _load_state()
+        dag      = state.get("dag", {})
+        if not dag:
+            notified = False
+            continue
+        total    = sum(
+            1 for t in dag.values()
+            for b in t["branches"].values()
+            for s in b["subtasks"].values()
+        )
+        verified = sum(
+            1 for t in dag.values()
+            for b in t["branches"].values()
+            for s in b["subtasks"].values()
+            if s.get("status") == "Verified"
+        )
+        if total and verified == total:
+            if not notified:
+                notified = True
+                ch = await _get_channel(CHANNEL_ID)
+                if ch:
+                    await ch.send(
+                        f"🎉 **Solo Builder complete!**\n"
+                        f"{verified}/{total} subtasks verified · "
+                        f"{state.get('step', 0)} steps"
+                    )
+        else:
+            notified = False   # reset so we re-notify after a dag reset
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    if not TOKEN:
+        raise SystemExit(
+            "DISCORD_BOT_TOKEN not set.\n"
+            "1. Go to https://discord.com/developers/applications\n"
+            "2. New Application → Bot → Reset Token → copy it\n"
+            "3. Add DISCORD_BOT_TOKEN=<token> to your .env\n"
+            "4. Optionally add DISCORD_CHANNEL_ID=<channel ID> to restrict access"
+        )
+    bot.run(TOKEN)
+
+
+if __name__ == "__main__":
+    main()

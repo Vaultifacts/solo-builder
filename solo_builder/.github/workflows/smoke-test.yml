@@ -1,0 +1,324 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install anthropic flask python-dotenv
+
+      - name: Run CLI (headless 15 steps)
+        run: PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 15 --no-resume
+
+      - name: Assert 18+ subtasks verified
+        run: |
+          python - <<'EOF'
+          import json
+          with open("state/solo_builder_state.json") as f:
+              state = json.load(f)
+          verified = sum(
+              1 for t in state["dag"].values()
+              for b in t["branches"].values()
+              for s in b["subtasks"].values()
+              if s.get("status") == "Verified"
+          )
+          total = sum(
+              1 for t in state["dag"].values()
+              for b in t["branches"].values()
+              for s in b["subtasks"].values()
+          )
+          task0_v = sum(
+              1 for b in state["dag"].get("Task 0", {}).get("branches", {}).values()
+              for s in b["subtasks"].values()
+              if s.get("status") == "Verified"
+          )
+          print(f"Verified: {verified}/{total}  (Task 0: {task0_v}/8)")
+          assert verified >= 18, f"Expected >=18, got {verified}"
+          print("PASS")
+          EOF
+
+      - name: Test export command
+        run: |
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --export --no-resume --auto 2
+          python - <<'EOF'
+          import os
+          path = "solo_builder_outputs.md"
+          assert os.path.exists(path), f"{path} not created by --export flag"
+          size = os.path.getsize(path)
+          print(f"{path}: {size} bytes")
+          assert size > 30, f"Export file too small: {size} bytes"
+          print("PASS")
+          EOF
+
+      - name: Test stop_trigger cleared on startup
+        run: |
+          mkdir -p state
+          echo 1 > state/stop_trigger
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 1 --no-resume
+          python - <<'EOF'
+          import os, json
+          assert not os.path.exists("state/stop_trigger"), \
+              "stop_trigger was not consumed on startup"
+          with open("state/solo_builder_state.json") as f:
+              state = json.load(f)
+          # After 1 step: Pending subtasks move to Running (dice-roll requires 2 steps).
+          # Check that at least one subtask is Running or Verified (pipeline advanced).
+          active = sum(
+              1 for t in state["dag"].values()
+              for b in t["branches"].values()
+              for s in b["subtasks"].values()
+              if s.get("status") in ("Running", "Verified")
+          )
+          assert active >= 1, "Expected subtasks to advance despite stale stop_trigger"
+          print(f"PASS: stop_trigger cleared; {active} subtasks Running/Verified")
+          EOF
+
+      - name: Run bot unit tests (194 tests)  # includes filter, timeline, priority, stalled, heal, agents, forecast
+        run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
+
+      - name: Run API unit tests (95 tests)
+        run: PYTHONIOENCODING=utf-8 python api/test_app.py
+
+      - name: Profiler dry-run (patch smoke test)
+        run: PYTHONIOENCODING=utf-8 python profiler_harness.py --dry-run
+
+      - name: Test REVIEW_MODE produces Review-gated subtasks
+        run: |
+          python -c "
+          import json
+          cfg = json.load(open('config/settings.json'))
+          cfg['REVIEW_MODE'] = True
+          json.dump(cfg, open('config/settings.json', 'w'), indent=4)
+          "
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 2 --no-resume
+          python - <<'EOF'
+          import json
+          with open("state/solo_builder_state.json") as f:
+              state = json.load(f)
+          review = sum(
+              1 for t in state["dag"].values()
+              for b in t["branches"].values()
+              for s in b["subtasks"].values()
+              if s.get("status") == "Review"
+          )
+          print(f"Review-gated subtasks: {review}")
+          assert review >= 1, f"Expected >=1 Review subtask with REVIEW_MODE=True, got {review}"
+          print("PASS")
+          EOF
+          python -c "
+          import json
+          cfg = json.load(open('config/settings.json'))
+          cfg['REVIEW_MODE'] = False
+          json.dump(cfg, open('config/settings.json', 'w'), indent=4)
+          "
+
+      - name: Test add_task inline spec (headless)
+        run: |
+          python - <<'EOF'
+          import sys, builtins
+          sys.path.insert(0, ".")
+          import solo_builder_cli as m
+
+          cli = m.SoloBuilderCLI()
+          n_before = len(cli.dag)
+
+          # Inline spec must NOT call input() — patch it to error if called
+          _real_input = builtins.input
+          def _no_input(prompt=""):
+              raise AssertionError(f"input() was called: {prompt!r}")
+          builtins.input = _no_input
+          try:
+              cli._cmd_add_task("Build the CI integration layer")
+          finally:
+              builtins.input = _real_input
+
+          n_after = len(cli.dag)
+          assert n_after == n_before + 1, f"Expected DAG to grow by 1, got {n_before} -> {n_after}"
+
+          # handle_command dispatch variant also skips input()
+          n2 = len(cli.dag)
+          builtins.input = _no_input
+          try:
+              cli.handle_command("add_task Deploy the staging environment")
+          finally:
+              builtins.input = _real_input
+          assert len(cli.dag) == n2 + 1, "handle_command add_task did not grow DAG"
+
+          print(f"PASS: DAG grew {n_before} -> {n_before + 2} via inline add_task")
+          EOF
+
+      - name: Test add_task dep wiring (headless)
+        run: |
+          python - <<'EOF'
+          import sys
+          sys.path.insert(0, ".")
+          import solo_builder_cli as m
+
+          cli = m.SoloBuilderCLI()
+
+          # Explicit dep: new task should depend on Task 0, not last task (Task 6)
+          cli._cmd_add_task("Build auth | depends: 0")
+          new_task = list(cli.dag.values())[-1]
+          assert new_task["depends_on"] == ["Task 0"], \
+              f"Expected depends_on=['Task 0'], got {new_task['depends_on']}"
+
+          # Digit normalisation: '| depends: 6' → Task 6
+          cli._cmd_add_task("Deploy infra | depends: 6")
+          new_task2 = list(cli.dag.values())[-1]
+          assert new_task2["depends_on"] == ["Task 6"], \
+              f"Expected depends_on=['Task 6'], got {new_task2['depends_on']}"
+
+          # Spec stripped: description must not contain '| depends:'
+          branch = list(new_task["branches"].values())[0]
+          st = list(branch["subtasks"].values())[0]
+          assert "| depends:" not in st["description"], \
+              f"Pipe syntax leaked into description: {st['description']}"
+
+          print("PASS: add_task dep wiring — explicit dep, digit normalise, spec stripped")
+          EOF
+
+      - name: Test add_branch inline spec (headless)
+        run: |
+          python - <<'EOF'
+          import sys, builtins
+          sys.path.insert(0, ".")
+          import solo_builder_cli as m
+
+          cli = m.SoloBuilderCLI()
+          n_branches_before = len(cli.dag["Task 0"]["branches"])
+
+          _real_input = builtins.input
+          def _no_input(prompt=""):
+              raise AssertionError(f"input() was called: {prompt!r}")
+          builtins.input = _no_input
+          try:
+              cli._cmd_add_branch("0", spec_override="Add error handling and retry logic")
+          finally:
+              builtins.input = _real_input
+
+          n_branches_after = len(cli.dag["Task 0"]["branches"])
+          assert n_branches_after == n_branches_before + 1, \
+              f"Expected Task 0 branches to grow by 1, got {n_branches_before} -> {n_branches_after}"
+
+          # handle_command dispatch variant
+          n2 = len(cli.dag["Task 0"]["branches"])
+          builtins.input = _no_input
+          try:
+              cli.handle_command("add_branch 0 Write integration tests for the API")
+          finally:
+              builtins.input = _real_input
+          assert len(cli.dag["Task 0"]["branches"]) == n2 + 1, \
+              "handle_command add_branch did not grow Task 0 branches"
+
+          print(f"PASS: Task 0 branches grew {n_branches_before} -> {n_branches_before + 2} via inline add_branch")
+          EOF
+
+      - name: Test webhook POST via _fire_completion
+        run: |
+          python - <<'EOF'
+          import threading, http.server, json, time, sys, os
+          sys.path.insert(0, ".")
+
+          received = []
+
+          class Handler(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  length = int(self.headers.get("Content-Length", 0))
+                  body = self.rfile.read(length)
+                  received.append(json.loads(body))
+                  self.send_response(200)
+                  self.end_headers()
+              def log_message(self, fmt, *args):
+                  pass
+
+          server = http.server.HTTPServer(("localhost", 19877), Handler)
+          t = threading.Thread(target=server.serve_forever, daemon=True)
+          t.start()
+          time.sleep(0.2)
+
+          # Import the module and call _fire_completion directly —
+          # avoids running a full 99-step pipeline just to test the POST path.
+          import solo_builder_cli as m
+          m.WEBHOOK_URL = "http://localhost:19877"
+          m._fire_completion(steps=42, verified=70, total=70)
+          time.sleep(2.0)   # give daemon thread time to complete the POST
+
+          server.shutdown()
+
+          assert received, "Webhook POST was never received by the test server"
+          payload = received[0]
+          expected = {"event": "complete", "steps": 42, "verified": 70, "total": 70}
+          assert payload == expected, f"Wrong payload: {payload}"
+          log = "state/webhook_errors.log"
+          assert not os.path.exists(log), f"Webhook errors logged: {open(log).read()}"
+          print(f"PASS: webhook received {payload}")
+          EOF
+
+      - name: Integration test - API writes verify_trigger (API → CLI round-trip, part 1)
+        run: |
+          python - <<'EOF'
+          import sys, os, json
+          sys.path.insert(0, ".")
+          os.makedirs("state", exist_ok=True)
+          # Remove leftover trigger from prior steps
+          try: os.remove("state/verify_trigger.json")
+          except FileNotFoundError: pass
+
+          from api.app import app
+          client = app.test_client()
+          rv = client.post("/verify", json={"subtask": "A1"})
+          assert rv.status_code == 200, f"POST /verify returned {rv.status_code}: {rv.data}"
+          assert os.path.exists("state/verify_trigger.json"), \
+              "API did not write verify_trigger.json"
+          data = json.load(open("state/verify_trigger.json"))
+          assert data.get("subtask") == "A1", f"Wrong subtask in trigger: {data}"
+          print(f"PASS (API side): POST /verify wrote verify_trigger.json → {data}")
+          EOF
+
+      - name: Integration test - CLI consumes API trigger (API → CLI round-trip, part 2)
+        run: |
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 2 --no-resume
+          python - <<'EOF'
+          import json, os
+          assert not os.path.exists("state/verify_trigger.json"), \
+              "verify_trigger.json was not consumed by CLI auto-loop"
+          with open("state/solo_builder_state.json") as f:
+              state = json.load(f)
+          a1 = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+          assert a1["status"] == "Verified", \
+              f"Expected A1=Verified after API trigger, got {a1['status']}"
+          print(f"PASS: API→trigger→CLI round-trip complete; A1={a1['status']}")
+          EOF
+
+      - name: Integration test - bot writes verify_trigger, CLI consumes it (bot → CLI round-trip)
+        run: |
+          mkdir -p state
+          python -c "
+          import json
+          json.dump({'subtask': 'A2', 'note': 'bot-integration-test'}, open('state/verify_trigger.json', 'w'))
+          "
+          PYTHONIOENCODING=utf-8 python solo_builder_cli.py --headless --auto 2 --no-resume
+          python - <<'EOF'
+          import json, os
+          assert not os.path.exists("state/verify_trigger.json"), \
+              "verify_trigger.json was not consumed by CLI"
+          with open("state/solo_builder_state.json") as f:
+              state = json.load(f)
+          a2 = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A2"]
+          assert a2["status"] == "Verified", \
+              f"Expected A2=Verified after bot trigger, got {a2['status']}"
+          print(f"PASS: bot→trigger→CLI round-trip complete; A2={a2['status']}")
+          EOF

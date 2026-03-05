@@ -1,0 +1,1080 @@
+# Changelog
+
+All notable changes to Solo Builder are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [v2.1.52] — 2026-03-05
+
+### Added
+- **Dashboard subtask output viewer** — each subtask row with Claude output now shows a `▶`/`▼` toggle button; clicking it expands an inline scrollable panel (max 200px) with the full output, without opening the modal. Event propagation stopped so the modal is not triggered.
+- **DAG import/export** — `export_dag [file]` writes current DAG to JSON; `import_dag <file>` replaces the live DAG (with validation + auto-backup). `GET /dag/export` and `POST /dag/import` API endpoints. `dag_import_trigger.json` IPC for live CLI auto-loop consumption.
+- **Metrics/analytics** — `GET /metrics` returns full `meta_history` time-series (verified/healed per step, cumulative) plus summary stats (avg rate, peak rate, total heals, steps with heals). Dashboard **Metrics** tab (11th sidebar tab) shows an SVG sparkline chart of verified-per-step over time.
+
+### Changed
+- Integration tests added to `smoke-test.yml`: API→trigger→CLI and bot→trigger→CLI round-trips.
+- `docs/DASHBOARD.md` created: full dashboard user guide.
+
+---
+
+## [v2.1.51] — 2026-03-05
+
+### Added
+- **Structured logging to file** — `RotatingFileHandler` writing to `state/solo_builder.log` (2MB, 3 backups); logs startup, state save/load, subtask lifecycle events (started/verified/healed), SDK/subprocess failures, unhandled exceptions, and clean shutdown. Logger initialized in `main()` via `_setup_logging()`.
+
+### Fixed
+- **Checklist corrections** — marked Dashboard responsive design, completion sound, CLI input validation, and concurrent state protection as complete (were implemented but not checked off).
+
+---
+
+## [v2.1.50] — 2026-03-05
+
+### Added
+- **Checklist system** — `CHECKLIST.md` with 14 categories tracking all completed
+  and remaining items; auto-updated during development sessions
+- **Bot `tasks` command** — per-task summary table (verified/total/%, status)
+  as both plain-text and `/tasks` slash command
+- **Dashboard Forecast tab** — 10th sidebar tab with progress bar, rate, ETA,
+  verified/total, stalled count pulling from existing `GET /forecast`
+- **10 new API POST endpoints**: `/add_task`, `/add_branch`, `/prioritize_branch`,
+  `/undo`, `/depends`, `/undepends`, `/reset` (confirm-gated), `/snapshot`,
+  `/pause`, `/resume` — full feature parity with bot trigger IPC
+- **Bot pagination** — `_send()` chunks messages at 1950 chars to stay under
+  Discord's 2000-char limit; splits on newlines to preserve code blocks
+- **Dashboard keyboard shortcuts** — added `r` (run step) and `g` (toggle graph view)
+  alongside pre-existing Esc, j/k, v, Enter
+- **docs/API.md** — complete REST API reference for all 40 endpoints with
+  request/response examples
+- **docs/BOT_COMMANDS.md** — complete Discord bot command reference (37 slash + 31 plain-text)
+- **19 new API tests** (TestAddTask, TestAddBranch, TestPrioritizeBranch, TestUndo,
+  TestDepends, TestUndepends, TestReset, TestSnapshot, TestPauseResume, TestGetRoot,
+  TestPostTaskTrigger)
+  → 194 bot + 95 API = 289 total
+
+### Fixed
+- **Checklist corrections**: `/pause`, `/resume` slash commands were already implemented
+  (not missing); dashboard task search/filter, export button, and dark/light theme
+  toggle were all pre-existing features incorrectly marked incomplete
+
+---
+
+## [v2.1.49] — 2026-03-05
+
+### Added
+- **Dashboard agents panel** — 9th sidebar tab with forecast gauge SVG,
+  agent stat cards, and auto-refresh via `GET /agents`
+- **Bot `/forecast` command** — detailed completion forecast with progress bar,
+  rate trends, and ETA (slash + plain-text)
+- **CLI `tasks` command** — per-task summary table with status, branch count,
+  verified/total percentages, and dependency count
+- **API `GET /forecast` endpoint** — returns detailed forecast JSON with
+  breakdown, rates, and ETA
+- **5 new tests** (3 forecast API + 2 forecast bot)
+  → 194 bot + 71 API = 265 total
+
+---
+
+## [v2.1.48] — 2026-03-05
+
+### Added
+- **Dashboard heal button** — ↻ button on each stalled subtask row posts to
+  `POST /heal` with toast feedback
+- **Bot `/agents` command** — shows all agent stats: healer, executor, meta
+  rates, forecast, stalled count (slash + plain-text)
+- **CLI `forecast` command** — detailed completion forecast with verify/heal
+  rates, ETA in steps and wall time, progress bar breakdown
+- **API `GET /agents` endpoint** — returns planner, executor, healer, meta,
+  and forecast statistics as JSON
+- **5 new tests** (3 agents API + 2 agents bot)
+  → 192 bot + 68 API = 260 total
+
+---
+
+## [v2.1.47] — 2026-03-05
+
+### Added
+- **Dashboard stalled panel** — 8th sidebar tab showing stuck subtasks with
+  age bars, threshold display, and auto-refresh via `GET /stalled`
+- **Bot `/heal` command** — reset a Running subtask to Pending via Discord
+  (slash + plain-text, writes heal_trigger.json for CLI IPC)
+- **CLI `agents` command** — show all agent stats: planner weights/cache,
+  executor config, healer totals, shadow tracking, meta history/rates/forecast
+- **API `POST /heal` endpoint** — writes heal_trigger.json for CLI to consume
+- **Heal trigger IPC** — full pipeline: bot/dashboard → heal_trigger.json →
+  CLI auto loop consumption → _cmd_heal(); cleared at startup
+- **7 new tests** (2 heal API + 3 heal bot + 2 existing stalled)
+  → 190 bot + 65 API = 255 total
+
+---
+
+## [v2.1.46] — 2026-03-03
+
+### Added
+- **Dashboard priority panel** — 7th sidebar tab showing priority queue with
+  risk bars, candidate counts, and auto-refresh via `GET /priority`
+- **Bot `/stalled` command** — shows subtasks stuck longer than STALL_THRESHOLD
+  with age counters (slash + plain-text + help entries)
+- **CLI `heal <ST>` command** — manually reset a Running subtask to Pending
+  (SelfHealer action without waiting for auto-threshold)
+- **API `GET /stalled` endpoint** — returns stuck subtasks as JSON with age,
+  threshold, and count
+- **7 new tests** (3 API stalled + 2 bot stalled + 2 existing priority)
+  → 187 bot + 63 API = 250 total
+
+---
+
+## [v2.1.45] — 2026-03-03
+
+### Added
+- **Dashboard stop button** — `⏹ Stop` button in header bar posts to `POST /stop`
+  endpoint, writes `state/stop_trigger` for CLI auto-run cancellation
+- **Bot `/priority` command** — shows planner's priority queue with risk scores,
+  top 6 marked with ▶ indicator (slash + plain-text)
+- **CLI `stalled` command** — shows subtasks stuck longer than STALL_THRESHOLD
+  using SelfHealer's perspective with age counters
+- **API `GET /priority` endpoint** — returns sorted priority queue as JSON with
+  per-subtask risk scores, age, and status
+- **API `POST /stop` endpoint** — writes stop_trigger for IPC with CLI auto-run
+- **6 new tests** (1 stop + 3 priority API + 2 priority bot)
+  → 185 bot + 60 API = 245 total
+
+---
+
+## [v2.1.44] — 2026-03-03
+
+### Added
+- **Dashboard graph progress bars** — SVG graph nodes now show per-task
+  progress bars with percentage alongside verified/total counters
+- **Bot pause/resume heartbeat feedback** — `/pause` and `/resume` (slash +
+  plain-text) now include step.txt counters in response
+- **CLI `priority` command** — shows planner's cached priority queue with
+  risk scores, top N marked with ▶ indicator for next execution
+- **CLI `config` command** — formatted table of all 12 runtime settings
+
+---
+
+## [v2.1.43] — 2026-03-03
+
+### Added
+- **Dashboard settings editor** — Settings tab now shows editable inputs for
+  each config key; changes POST to `/config` and save inline with feedback
+- **CLI `config` command** — formatted table of all 12 runtime settings with
+  current values; hints `set KEY=VALUE` for changes
+- **CLI `graph` command** — ASCII dependency graph with emoji status icons,
+  progress counters `[V/T]`, and dependent arrows
+- **API `GET /graph` endpoint** — returns structured JSON `{nodes, text}` with
+  per-task status, progress, and dependency data
+- **6 new tests** (3 API graph + 3 API config POST)
+  → 183 bot + 56 API = 239 total
+
+---
+
+## [v2.1.42] — 2026-03-03
+
+### Added
+- **Dashboard settings panel** — sixth sidebar tab showing all runtime settings
+  from `GET /config`, auto-refreshed every poll cycle
+- **Bot `/filter` command** — plain-text and `/filter status` slash command;
+  shows subtasks matching Verified/Running/Pending/Review. 45 Discord commands total.
+- **CLI `graph` command** — ASCII dependency graph with progress counters,
+  dependent arrows, and emoji status icons
+- **API `POST /config` endpoint** — merge posted keys into settings.json;
+  validates keys exist, returns updated config
+- **9 new tests** (3 bot filter + 3 API config POST + 3 existing)
+  → 183 bot + 53 API = 236 total
+
+---
+
+## [v2.1.41] — 2026-03-03
+
+### Added
+- **Dashboard rename action** — "Rename" button in subtask modal with inline text
+  input; POSTs to `/rename` and refreshes timeline on save
+- **Bot `/timeline` command** — plain-text and `/timeline subtask` slash command;
+  shows status history with icons and step numbers. 44 Discord commands total.
+- **CLI `filter <status>` command** — show only subtasks matching a status
+  (Verified/Running/Pending/Review) with color-coded output
+- **API `GET /config` endpoint** — expose runtime settings.json as JSON for
+  dashboard settings panel
+- **4 new tests** (2 bot timeline + 2 API config)
+  → 180 bot + 50 API = 230 total
+
+---
+
+## [v2.1.40] — 2026-03-03
+
+### Added
+- **Bot `/rename` command** — plain-text and `/rename subtask desc` slash command;
+  writes rename_trigger.json consumed by CLI auto loop. 43 Discord commands total.
+- **Dashboard branches panel** — fifth sidebar tab showing per-task branch tree with
+  subtask detail, polls `GET /branches/<task>` for selected task
+- **CLI `pause`/`resume` commands** — write/remove `state/pause_trigger` from the
+  interactive prompt (previously only available via Discord bot)
+- **API `POST /rename` endpoint** — trigger-file IPC for remote subtask description
+  updates from dashboard or bot
+- **10 new tests** (2 bot rename + 3 API rename + 3 bot branches + 2 bot log)
+  → 180 bot + 48 API = 228 total
+
+---
+
+## [v2.1.39] — 2026-03-03
+
+### Added
+- **Dashboard timeline panel** — clicking a subtask now fetches fresh data from
+  `GET /timeline/<subtask>` for live-updated modal (description, output, history, tools)
+- **Bot `/branches` command** — plain-text and `/branches [task]` slash command;
+  shows branch overview or per-task detail with subtask statuses. 42 Discord commands total.
+- **CLI `rename <ST> <text>` command** — update a subtask's description inline without
+  re-queuing (lighter than `describe` which resets status)
+- **API `GET /branches/<task>` endpoint** — per-task branch listing as JSON with
+  subtask counts, status breakdown (verified/running/review/pending), and subtask list
+- **11 new tests** (3 bot branches + 3 API branches + 3 API timeline + 2 bot log)
+  → 178 bot + 45 API = 223 total
+
+---
+
+## [v2.1.38] — 2026-03-03
+
+### Added
+- **Bot `/log` command** — plain-text and `/log [subtask]` slash command; shows journal
+  entries from `journal.md`, optionally filtered by subtask name. 41 Discord commands total.
+- **Dashboard history tab** — fourth sidebar tab (Journal / Diff / Stats / History);
+  polls `GET /history?limit=30` and renders color-coded status transitions
+- **CLI `branches [Task N]` command** — list all branches with subtask counts and status
+  breakdown; shows per-branch detail when a task is specified
+- **API `GET /timeline/<subtask>` endpoint** — individual subtask timeline as JSON:
+  status, description, output, history array, and tools
+- **7 new tests** (3 API timeline + 2 bot log + 2 existing) → 175 bot + 42 API = 217 total
+
+---
+
+## [v2.1.37] — 2026-03-03
+
+### Added
+- **Bot `/search` command** — plain-text and `/search <keyword>` slash command; finds
+  subtasks by keyword in name, description, or output. 40 Discord commands total.
+- **Dashboard subtask search** — search box in detail panel header filters subtask rows
+  by name or output preview in real-time
+- **CLI `log [ST]` command** — show journal entries from `journal.md`, optionally filtered
+  by subtask name; displays last 15 entries with step/task/branch context
+- **API `GET /search` endpoint** — keyword search across subtask names/descriptions/outputs
+  as JSON with `?q=keyword` parameter
+- **5 new tests** (2 bot search + 3 API search) → 173 bot + 39 API = 212 total
+
+---
+
+## [v2.1.36] — 2026-03-03
+
+### Added
+- **Dashboard stats tab** — sidebar bottom now uses tabbed layout (Journal / Diff / Stats);
+  Stats tab shows per-task progress bars, verified counts, and avg steps from `GET /stats`
+- **Bot `/history` command** — plain-text and `/history [N]` slash command; shows last N
+  status transitions across all subtasks in chronological order. 39 Discord commands total.
+- **CLI `search <text>` command** — find subtasks by keyword match in name, description,
+  or output; case-insensitive
+- **API `GET /history` endpoint** — aggregated step-by-step activity log as JSON with
+  `?limit=N` parameter (default 30)
+- **5 new tests** (2 bot history + 3 API history) → 171 bot + 36 API = 207 total
+
+---
+
+## [v2.1.35] — 2026-03-03
+
+### Added
+- **Dashboard diff panel** — live diff panel in sidebar shows subtask status transitions
+  from `GET /diff` endpoint; updates on every 2s poll cycle with color-coded statuses
+- **Bot `/stats` command** — plain-text and `/stats` slash command; per-task breakdown
+  table showing verified/total, completion %, and avg steps. 37 Discord commands total.
+- **CLI `history [N]` command** — shows last N status transitions across all subtasks
+  (default 20), sorted by step number descending
+- **API `GET /stats` endpoint** — per-task stats as JSON (verified, total, pct, avg_steps)
+  with grand totals for dashboard integration
+- **4 new tests** (1 bot stats + 2 API stats + 1 existing timeline) → 169 bot + 33 API = 202 total
+
+---
+
+## [v2.1.34] — 2026-03-03
+
+### Added
+- **Bot `/timeline` command** — plain-text and `/timeline` slash command; shows subtask
+  status history timeline (Pending → Running → Verified with step numbers). 35 Discord commands.
+- **Dashboard auto-scroll** — detail panel auto-scrolls to the most recently changed
+  subtask on each poll refresh
+- **CLI `stats` command** — per-task breakdown table showing verified/total counts,
+  completion percentage, and average steps to complete (from history data)
+- **API `GET /diff` endpoint** — returns JSON diff of current state vs `.1` backup;
+  includes subtask status transitions with task/branch context and output preview
+- **5 new tests** (2 bot timeline + 3 API diff) → 168 bot + 31 API = 199 total
+
+---
+
+## [v2.1.33] — 2026-03-03
+
+### Added
+- **Dashboard notification badge** — red badge next to step counter shows unread step
+  count when the tab is not focused; clears on focus or button click. Uses localStorage
+  for persistence.
+- **Bot `/diff` command** — plain-text and `/diff` slash command; compares current state
+  to `.1` backup and shows subtask status transitions. 32 Discord commands total.
+- **CLI `timeline <ST>` command** — prints the full status history of a specific subtask
+  (Pending → Running → Verified with step numbers)
+- **6 new tests** (diff, pause/resume) → 166 bot + 28 API = 194 total
+
+---
+
+## [v2.1.32] — 2026-03-03
+
+### Added
+- **Dashboard subtask status timeline** — modal shows a visual timeline of status
+  transitions (Pending → Running → Verified) with step numbers; recorded via `history`
+  array on each subtask in the state JSON
+- **Bot `/pause` and `/resume` commands** — pause auto-run without full stop; resume
+  continues from the same position. CLI auto loop respects `state/pause_trigger` file.
+  Both plain-text and slash command variants. 30 Discord commands total.
+- **CLI `diff` command** — compares current state to `.1` backup and shows which
+  subtasks changed status (e.g. Pending → Running, Running → Verified) with output preview
+- **4 new bot tests** (pause/resume) → 164 bot + 28 API = 192 total
+
+---
+
+## [v2.1.31] — 2026-03-03
+
+### Added
+- **Dashboard search/filter** — input in tasks panel header filters task cards by
+  name or status; also filters subtask rows in the detail panel by name or output
+- **Bot `/undo` command** — plain-text and `/undo` slash command; writes undo trigger
+  file consumed by CLI at next step boundary. 26 Discord commands total.
+- **CLI undo trigger IPC** — auto loop consumes `state/undo_trigger`, calls `_cmd_undo()`;
+  cleared at startup with other stale triggers
+- **1 new test** (undo writes trigger) → 160 bot + 28 API = 188 total
+
+---
+
+## [v2.1.30] — 2026-03-03
+
+### Added
+- **Dashboard SVG DAG graph view** — toggle Grid/Graph button in tasks panel; renders
+  interactive SVG with task nodes, dependency arrows, status colors, and verified counts.
+  Clicking a node selects the task in the detail panel. Auto-refreshes every poll.
+- **Bot `/config` command** — plain-text and `/config` slash command; displays all
+  `config/settings.json` keys in a formatted code block. 24 Discord commands total.
+- **CLI `undo` command** — restores state from the most recent `.1` backup, effectively
+  undoing the last step. Shows step transition and verified count.
+- **3 new tests** (config shows settings, undo restores step, undo no backup) → 159 bot + 28 API = 187 total
+
+---
+
+## [v2.1.29] — 2026-03-03
+
+### Added
+- **Dashboard dark/light theme toggle** — toggle button in header; persists to
+  localStorage; light theme overrides CSS vars with appropriate backgrounds
+- **Bot `/graph` command** — plain-text and `/graph` slash command; renders ASCII
+  DAG dependency graph with status icons and dependency arrows; 22 Discord commands total
+- **CLI `load_backup [1|2|3]` command** — restore state from backup files created by
+  save_state rotation (.1=newest, .2, .3=oldest); shows available backups if target missing
+- **4 new tests** (graph with data, graph empty DAG, load_backup restore, load_backup missing) → 156 bot + 28 API = 184 total
+
+---
+
+## [v2.1.28] — 2026-03-03
+
+### Added
+- **Dashboard keyboard shortcuts** — `j`/`k` navigate tasks, `v` verifies first
+  non-verified subtask, `Enter` opens subtask modal, `Escape` closes it. Ignores
+  keypresses when typing in input fields.
+- **`heartbeat` bot command** — plain-text and `/heartbeat` slash command; shows
+  live step.txt counters (step, verified, running, review, pending) from Discord.
+  20 Discord commands total.
+- **State file backup rotation** — `save_state()` rotates `.1` → `.2` → `.3`
+  before each write, keeping the last 3 state snapshots to prevent corruption.
+- **3 new bot tests** (heartbeat with data, heartbeat no data, backup rotation) → 152 bot + 28 API = 180 total
+
+---
+
+## [v2.1.27] — 2026-03-03
+
+### Added
+- **Subtask output modal** — clicking any subtask row in the detail panel opens a
+  full-width modal showing description, Claude output, tools, and status. Action
+  buttons (Verify, Describe, Tools) work inline. Escape key or overlay click closes.
+- **Heartbeat-aware dashboard auto** — `GET /heartbeat` endpoint reads lightweight
+  `state/step.txt` (no JSON parse). Dashboard `runAuto()` polls heartbeat at 700ms
+  intervals for live counter updates during auto runs; shows verified count in button.
+- **3 new API tests** — `TestHeartbeat` class (missing file, parse, malformed) → 28 total
+
+---
+
+## [v2.1.26] — 2026-03-03
+
+### Added
+- **`depends`/`undepends` bot commands** — `depends [<task> <dep>]` shows dep graph
+  or adds a dependency; `undepends <task> <dep>` removes one. Both plain-text and
+  `/depends`, `/undepends` slash commands. Trigger-file IPC for mutations, direct
+  state read for the graph display. 18 Discord commands total — every CLI command
+  now has a Discord equivalent.
+- **Dashboard auto-refresh** — after Verify/Describe/Tools toolbar actions, the
+  detail panel auto-selects the task containing the affected subtask
+- **Flask API test suite** (`api/test_app.py`) — 25 tests covering all 12 routes:
+  GET /status, /tasks, /tasks/<id>, /journal, /export; POST /run, /verify,
+  /describe, /tools, /set, /export; error handlers and CORS
+
+### Changed
+- 149 bot tests (+4) + 25 API tests = **174 total tests**
+- CI: added "Run API unit tests (25 tests)" step
+- README: 18 commands, depends/undepends in bot table, version badge v2.1.26
+
+---
+
+## [v2.1.25] — 2026-03-03
+
+### Added
+- **`set` bot command** — `set KEY=VALUE` (setter via trigger file) and `set KEY`
+  (getter, reads `config/settings.json` directly) exposed via both plain-text and
+  `/set` slash command; 13 known keys with descriptive error for unknowns
+- **Dashboard command toolbar** — inline forms for Verify, Describe, Tools, and Set
+  added below the header; each POSTs to a new Flask endpoint that writes the
+  corresponding trigger file for CLI consumption
+- **Flask API endpoints** — `POST /verify`, `POST /describe`, `POST /tools`,
+  `POST /set` for dashboard→CLI trigger-file IPC
+- **`set_trigger.json` IPC** — CLI auto loop consumes `state/set_trigger.json`
+  and calls `_cmd_set(KEY=VALUE)`; cleared at startup
+
+### Changed
+- **CHANGELOG.md** — extended from v2.1.18 to v2.1.25; covers full v2.1.19–v2.1.25 history
+- **Dashboard layout** — `calc(100vh - 60px)` → `calc(100vh - 100px)` to accommodate toolbar
+- **CORS** — `Access-Control-Allow-Headers: Content-Type` added for POST JSON bodies
+- **Discord bot** — 16 commands total (15 slash + plain-text, including `/set`)
+- **README** — version badge v2.1.25; bot commands table adds `set`; dashboard
+  features row updated; CI test count updated
+
+---
+
+## [v2.1.24] — 2026-03-03
+
+### Added
+- **`tools` bot command** — `tools <ST> <list>` + `/tools` slash; writes
+  `tools_trigger.json` for CLI consumption
+- **`reset` bot command** — safety-gated: bare `reset` warns, `reset confirm`
+  writes `reset_trigger`; `/reset` requires `confirm:yes` parameter
+- **`snapshot` bot command** — writes `snapshot_trigger`; attaches latest PDF
+  from `snapshots/` if available
+- **14 Discord commands** — full CLI parity achieved (status, run, auto, stop,
+  verify, output, describe, tools, add_task, add_branch, prioritize_branch,
+  reset, snapshot, export + help)
+
+### Changed
+- **CI smoke test** — bot test count label 136 → 141
+- **README** — version badge v2.1.24; features row "14 commands"; CI table updated
+- 141 tests total (+5)
+
+---
+
+## [v2.1.23] — 2026-03-03
+
+### Added
+- **`_persist_setting(cfg_key, value)`** — silently writes config changes back to
+  `config/settings.json`; called after every successful `set` command
+- **Per-branch status bars** in `_format_status` — bot status output includes
+  6-char branch bars with status symbols (✓/▶/⏸/·) below each task row
+- **`describe` bot command** — `describe <ST> <prompt>` + `/describe` slash;
+  writes `describe_trigger.json` for CLI consumption
+
+### Changed
+- **CI smoke test** — bot test count label 131 → 136
+- 136 tests total (+5)
+
+---
+
+## [v2.1.22] — 2026-03-03
+
+### Added
+- **`set KEY` getter** — bare `set KEY` (no `=`) prints the current value from
+  an inline `_current` dict mapping all 12 settable keys; unknown keys print usage
+- **`output` bot command** — `output <ST>` + `/output` slash; reads state JSON
+  directly via `_find_subtask_output()` helper (no trigger needed)
+- **`prioritize_branch` bot command** — `prioritize_branch <task> <branch>` +
+  `/prioritize_branch` slash; writes `prioritize_branch_trigger.json`
+- **Actual branch boosting** — `_cmd_prioritize_branch` sets
+  `last_update = step - 500` on Pending subtasks (high staleness → high Planner
+  risk score); forces priority cache refresh
+
+### Fixed
+- **SyntaxError in `_cmd_set`** — `name 'AUTO_STEP_DELAY' is used prior to
+  global declaration`; hoisted all `global` declarations to function top
+
+### Changed
+- **CI smoke test** — bot test count label 121 → 131
+- 131 tests total (+10)
+
+---
+
+## [v2.1.21] — 2026-03-03
+
+### Added
+- **`WEBHOOK_URL` validation** — `set WEBHOOK_URL=...` warns (yellow) if the
+  URL doesn't start with `http://` or `https://`; empty string clears silently
+- **CI `add_task` dep wiring test** — verifies `| depends: N` syntax, digit
+  normalisation, and spec stripping
+
+### Changed
+- **README** — synced with v2.1.21: bot commands table, features, CI table
+- 121 tests total
+
+---
+
+## [v2.1.20] — 2026-03-03
+
+### Added
+- **`add_branch` bot command** — `add_branch <task> <spec>` + `/add_branch` slash;
+  writes `add_branch_trigger.json`
+- **`add_task` dep wiring** — `add_task Foo | depends: N` syntax for explicit
+  dependency override; digit normalisation (`| depends: 0` → `Task 0`)
+- **CI `add_branch` inline spec test** — verifies `add_branch 0 <spec>` skips
+  `input()` and grows Task 0's branches
+
+### Changed
+- **CI smoke test** — 3 new test steps (add_task inline, add_task dep, add_branch inline)
+- 121 tests total
+
+---
+
+## [v2.1.19] — 2026-03-03
+
+### Added
+- **`add_branch` inline spec** — `add_branch 0 Write integration tests` skips the
+  interactive prompt; backward-compatible (bare `add_branch 0` still calls `input()`)
+- **`add_task` bot command** — `add_task <spec>` + `/add_task` slash; writes
+  `add_task_trigger.json` for CLI consumption
+- **CI `add_task` inline spec test** — verifies inline spec skips `input()` and
+  grows the DAG
+
+### Changed
+- 112 tests total
+
+---
+
+## [v2.1.18] — 2026-03-03
+
+### Added
+- **`TestPrioritizeBranch`** — 2 tests: lists all branches from initial DAG;
+  `display.render` called once after listing
+- **`TestAddTaskInlineSpec`** — 4 tests: inline spec skips `input()`; spec used as
+  subtask description; `add_task <spec>` dispatches correctly; bare `add_task` still
+  prompts. Total: **112 tests**, ~9 s
+- **`add_task [spec]` inline form** — `add_task Build OAuth2 flow` skips the interactive
+  prompt; backward-compatible (bare `add_task` still calls `input()` as before)
+
+### Changed
+- **README** — version badge `2.1.17` → `2.1.18`; CI table 106 → 112 tests; `add_task`
+  command row updated to show `[spec]`; headless CI step label `10` → `15`
+- **`smoke-test.yml`** — `--auto 10` → `--auto 15`; assert `>= 15` → `>= 18`;
+  step label → "(112 tests)"
+
+---
+
+## [v2.1.17] — 2026-03-03
+
+### Added
+- **`TestSaveLoadState`** — 5 tests: save creates file; JSON contains step number;
+  load returns False with no file; load restores step; load returns True on success
+- **`TestSnapshotCommand`** — 3 tests: PDF unavailable message when `_PDF_OK=False`;
+  `generate_live_multi_pdf` called once when `_PDF_OK=True`; counter increments.
+  Total: **106 tests**, ~8.5 s
+
+### Changed
+- **README version badge** — `2.1.16` → `2.1.17`
+- **README CI table** — test count 98 → 106; added `save_state`, `load_state`, `_take_snapshot`
+- **README CI table** — headless assertion `≥ 15` → `≥ 20`
+- **`smoke-test.yml`** — step label → "(106 tests)"; headless assert `>= 20`
+- **`review_mode_demo.gif`** — refreshed from `gen_review_cast.py` (378 KB, 80×26, 126 frames)
+
+---
+
+## [v2.1.16] — 2026-03-03
+
+### Added
+- **`TestDependsUndepends`** — 10 tests: no-args graph print; digit normalisation (`"0 6"` →
+  `"Task 0"/"Task 6"`); success message; self-dep rejected; unknown task rejected; duplicate
+  is no-op; `_cmd_undepends` removes dep; missing args prints usage; unknown target error;
+  dep not present error
+- **`TestOutputCommand`** — 4 tests: subtask with output prints content; no output → placeholder;
+  unknown subtask → "not found"; empty arg → usage. Total: **98 tests**, ~7.5 s
+
+### Changed
+- **README version badge** — `2.1.14` → `2.1.16`
+- **README CI table** — test count 84 → 98; added `_cmd_depends`, `_cmd_undepends`, `_cmd_output`
+- **`smoke-test.yml`** — step label → "(98 tests)"
+
+---
+
+## [v2.1.15] — 2026-03-02
+
+### Added
+- **`TestExportCommand`** — 5 tests: no outputs → placeholder text; subtasks with
+  outputs → `## ST — Task / Branch` headings; correct (path, count) return; count
+  matches subtasks with output; header includes step and verified/total
+- **`TestStatusCommand`** — 3 tests: "Total subtasks" + 70; Verified line reflects
+  post-verify count; Forecast string present. Total: **84 tests**, 6.0 s
+
+### Changed
+- **README version badge** — `2.1.6` → `2.1.14`
+- **README CI table** — test count 76 → 84; added `_cmd_export`, `_cmd_status`
+- **`smoke-test.yml`** — step label → "(84 tests)"
+
+---
+
+## [v2.1.14] — 2026-03-02
+
+### Added
+- **`TestSetCommand`** — 12 tests for `_cmd_set`: STALL_THRESHOLD propagates to
+  healer/planner/display, VERIFY_PROB, AUTO_STEP_DELAY, AUTO_SAVE_INTERVAL,
+  REVIEW_MODE on/off, CLAUDE_SUBPROCESS off, ANTHROPIC_MAX_TOKENS, WEBHOOK_URL,
+  invalid value (no raise), missing `=` (no raise), unknown key (no raise)
+- **`TestResetCommand`** — 3 tests: DAG restored + step zeroed, alerts + healer
+  total cleared, state file deleted. Total: **76 tests**, 5.2 s
+
+### Changed
+- **smoke-test.yml** bot step label → "(76 tests)"
+- **README CI table** — test count 61 → 76; added `_cmd_set`, `_cmd_reset`
+
+---
+
+## [v2.1.13] — 2026-03-02
+
+### Added
+- **`TestVerifyDescribeTools`** — 13 unit tests covering `_cmd_verify` (flip status,
+  default note, unknown subtask, empty arg), `_cmd_describe` (sets description +
+  Running, propagates to branch/task, missing text, unknown subtask), `_cmd_tools`
+  (set list, clear to empty, requeue Verified, missing arg, unknown subtask)
+- **`profiler_harness.py --dry-run`** — runs 3 steps then exits with PASS; asserts
+  executor and planner patches fire; wired as CI step "Profiler dry-run"
+- **CI step** — "Profiler dry-run (patch smoke test)" added to `smoke-test.yml`
+
+### Fixed
+- **`datetime.utcnow()` deprecation** — replaced with
+  `datetime.now(datetime.timezone.utc)` in `_fire_completion` webhook error log
+- **`TestFireCompletion` ResourceWarning** — class-level `subprocess.Popen` mock
+  added to `setUp` prevents real `powershell.exe` spawns in non-notify tests;
+  unclosed file handle in failure test closed with `with` block
+
+### Changed
+- **Test count** — 48 → 61; all clean (no warnings)
+- **`smoke-test.yml` bot step label** — "(48 tests)" → "(61 tests)"
+- **README CI table** — updated test count, functions list, added Profiler row
+
+---
+
+## [v2.1.12] — 2026-03-02
+
+### Added
+- **`test_notify_calls_popen_with_message`** — asserts `_fire_completion` launches
+  `powershell.exe` with the correct `verified/total` and `steps` message via
+  `subprocess.Popen` (mocked; no PowerShell required)
+- **`TestCLICommands`** — 9 unit tests for `_cmd_add_task` and `_cmd_add_branch`:
+  fallback subtask creation, Claude JSON decomposition, empty spec cancel,
+  dependency wiring, unknown task usage, digit-arg resolution, max-branch limit,
+  branch fallback, re-open Verified task. Total: **48 tests**, 2.4 s
+
+### Changed
+- **README CI table** — test count updated 38 → 48
+- **`smoke-test.yml`** step label updated to "(48 tests)"
+
+---
+
+## [v2.1.11] — 2026-03-02
+
+### Added
+- **`TestFireCompletion`** — 3 unit tests for `_fire_completion` webhook logic:
+  empty URL → no POST, correct payload/headers, failure → `webhook_errors.log`
+  written. Total: **38 tests**, 1.1 s
+
+### Changed
+- **README CI table** — added Export and Webhook POST rows; updated bot test
+  count from 21 → 35 → 38; added `_fire_completion` to covered functions list
+- **`smoke-test.yml` step name** — "Run bot unit tests" annotated with "(38 tests)"
+
+---
+
+## [v2.1.10] — 2026-03-02
+
+### Fixed
+- **CI webhook test** — replaced full `--auto 99` subprocess (which never
+  completed in time) with a direct `import solo_builder_cli; m._fire_completion()`
+  call; test is now instant and deterministic
+
+### Added
+- **`--output-format json` `--export` integration** — JSON output now includes
+  `"export": {"path": ..., "count": ...}` when `--export` is passed
+- **`TestHandleTextCommand`** — 10 async unit tests covering every bot command
+  (`status`, `run`, `auto N`, `stop`, `verify`, `help`); total **35 tests**, 0.07 s
+
+### Changed
+- **`_cmd_export` prints to `sys.stderr`** — all export progress/warnings now
+  go to stderr so `--quiet` suppresses them and stdout stays clean for JSON
+- **`_cmd_export` returns `(path, count)` tuple** — enables JSON mode to report
+  export metadata
+- **CONTRIBUTING.md** — added headless/scripted flags table; updated test count to 35
+- **README** — updated CLI usage with `--export`, `--quiet`, `--output-format json`
+  and `--webhook` examples
+
+---
+
+## [v2.1.9] — 2026-03-02
+
+### Fixed
+- **`_cmd_export` always writes the file** — previously returned early when
+  no Claude outputs existed (`count == 0`), causing the CI export step to fail
+  with "file not created". Now writes a header-only file with a placeholder note.
+
+### Added
+- **`--export` flag** — `python solo_builder_cli.py --headless --auto N --export`
+  calls `_cmd_export()` after the run and exits; no stdin piping required
+- **CI webhook smoke test** — `smoke-test.yml` starts a Python `http.server`
+  in a background thread, runs `--auto 99 --no-resume --webhook <url>`,
+  asserts the completion payload (`event=complete`) was received and
+  `state/webhook_errors.log` was not created
+- **`TestRunAuto` async test class** — 4 tests via `IsolatedAsyncioTestCase`
+  covering: no-work → completion message; step advances → ticker + n-step
+  summary; step timeout → warning; pipeline completes mid-run → completion
+  message. Total: **25 tests**, 0.07 s
+
+### Changed
+- **CI export test** — now uses `--headless --export --no-resume --auto 2`
+  instead of piping `y\nexport\nexit` to interactive mode; assertion
+  lowered to `size > 30` (header-only export is ~150 bytes)
+
+---
+
+## [v2.1.8] — 2026-03-03
+
+### Added
+- **`review_mode_demo.gif`** — 126-frame animated GIF (monokai theme) showing
+  the full REVIEW_MODE workflow: `set REVIEW_MODE=true` → `run` → Review subtasks
+  appear → `verify` advances them → Verified; embedded in README Development section
+- **CI export test** — `smoke-test.yml` step pipes `export\nexit` to CLI after
+  the 10-step run; asserts `solo_builder_outputs.md` exists and is > 100 bytes
+
+### Fixed
+- **Webhook failures now logged** — `_fire_completion` `except Exception: pass`
+  was silently swallowing all POST errors; failures are now appended to
+  `state/webhook_errors.log` with UTC timestamp (stays auditable, never interrupts
+  the user, gitignored via `state/`)
+
+---
+
+## [v2.1.7] — 2026-03-03
+
+### Added
+- **`CONTRIBUTING.md`** — four-tier executor routing table, DAG structure,
+  how to add CLI commands, commit style guide
+- **README Development section** — CI test table, profiler usage, priority cache
+  architecture note, REVIEW_MODE usage example; version badge bumped to 2.1.6
+
+### Changed
+- **CI smoke test** — `Run bot unit tests` step added
+  (`PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py`)
+
+---
+
+## [v2.1.6] — 2026-03-03
+
+### Fixed
+- **Priority cache stale after task unlock** — when Task 0 completes
+  mid-interval, Tasks 1–5 were invisible to the executor until the next
+  5-step cache refresh, causing wasted steps. The Planner cache now also
+  refreshes immediately whenever the count of fully-Verified tasks increases
+  (task-level, not subtask-level — negligible overhead)
+- **Dice-roll fallback ignores REVIEW_MODE** — both dice-roll paths in
+  `execute_step` hardcoded `"Verified"` regardless of `self.review_mode`.
+  Now consistent with the SDK/Claude paths: uses `"Review"` when
+  `REVIEW_MODE=True` and skips `_roll_up` so the gate is actually enforced
+
+### Changed
+- **CI smoke test** — all three new test steps now pass (green ✅):
+  - 10-step headless run asserts `>= 15` verified; prints per-task breakdown
+  - stop_trigger startup-cleanup: asserts trigger consumed + any subtask
+    Running/Verified (corrected from `>= 1 Verified`, which wasn't reachable
+    in 1 step)
+  - REVIEW_MODE step: works end-to-end with the dice-roll fix
+- **Bot unit tests** (`discord_bot/test_bot.py`) — 21 tests, 0.03 s,
+  no Discord connection; covers `_has_work`, `_format_status`,
+  `_auto_running`, `_read_heartbeat`, `_format_step_line`, `_load_state`
+
+---
+
+## [v2.1.5] — 2026-03-03
+
+### Fixed
+- **Priority cache stale after task unlock** (initial fix — superseded by v2.1.6)
+- **Force-save on pipeline completion** — `save_state(silent=True)` called
+  before `_fire_completion()` so JSON is always current when bot reads it
+
+### Added
+- `discord_bot/test_bot.py` — 21 unit tests (see v2.1.6 above)
+
+---
+
+## [v2.1.4] — 2026-03-03
+
+### Fixed
+- **Force-save on pipeline completion** — `save_state(silent=True)` called
+  immediately before `_fire_completion()` in `_cmd_auto` so the JSON is
+  always up-to-date by the time the Discord bot reads it — eliminates the
+  stale-count root cause
+
+### Added
+- `discord_bot/test_bot.py` — 21 unit tests covering bot helper functions,
+  no Discord connection required; run with `python discord_bot/test_bot.py`
+
+### Changed
+- **CI smoke test** — `python-dotenv` added to pip install; headless run
+  bumped to `--auto 10`, assertion `>= 15`; REVIEW_MODE and stop_trigger
+  steps added (full green reached in v2.1.6)
+
+---
+
+## [v2.1.3] — 2026-03-03
+
+### Fixed
+- **Stale completion summary (100%)** — `_run_auto` now waits up to **30 s** (was 6 s)
+  for the auto-save JSON to reflect all-Verified; if JSON still lags, falls back to
+  `step.txt` heartbeat data for the final counts so the completion message always
+  shows the correct 70/70 instead of 69/70
+
+### Changed
+- **CI smoke test** (`smoke-test.yml`) — three improvements:
+  - `python-dotenv` added to `pip install` (it is now a declared dependency)
+  - Headless run bumped from `--auto 3` → `--auto 5`; assertion raised from
+    `>= 6` → `>= 12` verified subtasks
+  - New **stop_trigger startup-cleanup** step: plants a stale `state/stop_trigger`
+    before the CLI starts, then asserts the trigger was silently consumed and the
+    pipeline still advanced at least one step
+
+---
+
+## [v2.1.2] — 2026-03-03
+
+### Fixed
+- **`on_ready` log buffering** — added `flush=True` to both `print()` calls in
+  `SoloBuilderBot.on_ready`; the ready message now appears immediately when the
+  bot runs redirected to a file instead of sitting in the stdout buffer
+- **Stale `run_trigger` cleared on startup** — symmetrical with the
+  `stop_trigger` cleanup added in v2.1.1; both stale triggers are now removed
+  together in a single loop at `main()` startup
+
+### Changed
+- `python-dotenv>=1.0` added to `requirements.txt` and `pyproject.toml`
+  `[project.dependencies]` — it was already a de-facto dependency for `.env`
+  loading in both the CLI and the Discord bot but was not declared
+
+---
+
+## [v2.1.1] — 2026-03-03
+
+### Added
+- **Auto-run indicator in `/status`** — when a bot auto-run is in progress,
+  status replies append `▶ Auto-run in progress — use stop to cancel`
+  (both plain-text and `/status` slash command)
+
+### Fixed
+- **Stale `stop_trigger` cleared on startup** — a leftover `state/stop_trigger`
+  from a crashed or interrupted run would silently halt the very first `auto`
+  command. CLI now removes it during `main()` startup before acquiring the
+  lockfile.
+
+### Changed
+- Version bumped to **2.1** in `pyproject.toml` and CLI splash banner
+
+---
+
+## [v2.1] — 2026-03-03
+
+### Added
+- **Discord bot** (`discord_bot/bot.py`) — replaces Telegram integration;
+  supports both slash commands and plain-text (no `/` prefix required)
+- **Natural language commands** — `status`, `run`, `auto [n]`, `stop`,
+  `verify <ST> [note]`, `export`, `help` all work without a `/` prefix
+- **Two-way chat logging** — every user message and every bot reply is
+  appended to `discord_bot/chat.log` with UTC timestamp, channel, and author
+- **Per-step progress tickers** — during `auto` runs the bot posts a one-line
+  ticker after each step: `Step N — X✅ Y▶ Z⏸ W⏳ / 70 (pct%)`
+- **Heartbeat file** (`state/step.txt`) — CLI writes
+  `step,verified,total,pending,running,review` after every step so the bot
+  always reads live counters instead of the 5-step-stale JSON
+- **`stop` / `/stop` command** — two-layer stop: cancels the bot's `_run_auto`
+  asyncio task AND writes `state/stop_trigger`; CLI checks the trigger in the
+  inter-step delay window and halts after the current step completes
+- **Duplicate auto guard** — `_auto_task` module variable tracks the running
+  coroutine; a second `auto`/`/auto` while one is active replies with a
+  warning instead of spawning a second concurrent run
+
+### Fixed
+- **`verify_trigger` blocked by `run_trigger`** — CLI auto loop previously
+  checked `run_trigger` first and broke immediately, skipping any pending
+  `verify_trigger.json`. Now `verify_trigger` is processed before the
+  `run_trigger` break, so Discord verify commands work during active auto runs.
+- **Stale completion summary** — `_run_auto` now waits up to 6 s for the
+  auto-save JSON flush before posting the final `✅ Pipeline complete` message,
+  eliminating the "69/70" count that appeared when the JSON hadn't caught up.
+- **`SdkToolRunner` rate limit retry** — `arun` retries up to 3× on
+  `anthropic.RateLimitError` with exponential backoff (5 s → 10 s → 20 s,
+  capped at 60 s). Root cause: O1's large state-file read hit rate limits
+  during high-concurrency runs and previously silently left the subtask stuck.
+- **Dice-roll escape for failed tool subtasks** — when `SdkToolRunner` fails
+  and `ClaudeRunner` subprocess is unavailable, a `verify_prob` dice roll is
+  applied so tools-bearing subtasks don't stay blocked in `Running` indefinitely.
+
+---
+
+## [v2.0.1] — 2026-03-02
+
+### Fixed
+- **CI `NameError` on import** — `PdfPages` was used as a type annotation in
+  `solo_builder_live_multi_snapshot.py` but is only imported under a
+  `try/except ImportError` block for matplotlib. Without matplotlib installed
+  (CI only installs `anthropic flask`), Python evaluated the annotation at
+  import time and raised `NameError`. Added `from __future__ import annotations`
+  to make all annotations lazy — resolves all 13 CI smoke-test failures.
+
+### Changed
+- `_PROJECT_CONTEXT` constant prepended to every Claude prompt so responses
+  always know they are working within Solo Builder — eliminates "I don't know
+  what Solo Builder is" replies when subtask descriptions lack project context.
+  Applied to both the `AnthropicRunner` (no-tools) path and the
+  `SdkToolRunner` (tool-use) path via `_gather_sdktool`.
+- Splash banner and `pyproject.toml` version bumped to **2.0.1**.
+
+---
+
+## [v2.0] — 2026-03-01
+
+### Milestone — production-ready async SDK pipeline
+
+**Summary:** Full async Anthropic SDK integration, live web dashboard with
+export/auto-run, profiler harness, human-gate `verify` command, and
+`--headless` flag for scripted use.
+
+### Added
+- `--headless`, `--auto N`, `--no-resume` CLI flags for non-interactive /
+  CI use (`python solo_builder_cli.py --headless --auto 50 --no-resume`)
+- `POST /export` Flask endpoint — regenerates `solo_builder_outputs.md` from
+  live DAG state without needing the CLI
+- `GET /export` Flask endpoint — download previously generated export file
+- Dashboard "⬇ Export" button (uses `POST /export`)
+- Dashboard "⏩ Auto N" button with step-count input
+- Dynamic `<title>` — updates to `Solo Builder — Step N (pct%)` on each poll
+- `profiler_harness.py` — standalone async performance benchmark; patches both
+  `arun` (async) and `run` (sync) paths; full concurrency/timing report
+- Smoke Test CI badge in `README.md`
+- `CHANGELOG.md` (this file)
+
+### Changed
+- Async gather helpers promoted from per-call closures to
+  `Executor._gather_sdk` / `Executor._gather_sdktool` class-level
+  `@staticmethod` — eliminates function allocation per step
+- Smoke Test assertion raised from `>= 3` to `>= 6` verified subtasks
+- Splash banner updated to v2.0
+
+---
+
+## [v1.7] — 2026-02-28
+
+### Added
+- `POST /export` endpoint (regenerate export from state on demand)
+- Dynamic dashboard `<title>` reflecting current step and completion %
+- `Executor._gather_sdk` and `_gather_sdktool` as `@staticmethod` methods
+
+### Changed
+- Export button switched from `GET` to `POST /export`
+- Smoke Test threshold raised to `>= 6`
+
+---
+
+## [v1.6] — 2026-02-28
+
+### Fixed
+- **Python 3.13 asyncio compat** — `asyncio.run(asyncio.gather(...))` raises
+  `ValueError` because `gather()` returns `_GatheringFuture`, not a coroutine.
+  Wrapped both SDK gather calls in `async def` helpers.
+
+### Added
+- `profiler_harness.py` updated to patch async `arun` paths (before/after
+  count approach, module-level monkey-patching)
+
+---
+
+## [v1.5] — 2026-02-27
+
+### Added
+- **Async SDK calls** — `AnthropicRunner` and `SdkToolRunner` each gain an
+  `arun()` async method; `Executor.execute_step` uses `asyncio.gather` for
+  parallel subtask execution instead of `ThreadPoolExecutor`
+- `anthropic.AsyncAnthropic` client stored alongside sync client
+- `GET /export` Flask endpoint — serve `solo_builder_outputs.md` as download
+- Dashboard "⬇ Export" button
+
+---
+
+## [v1.4] — 2026-02-27
+
+### Changed
+- `EXECUTOR_MAX_PER_STEP` tuned to **6** (optimal sweet spot, −41% wall time
+  vs baseline; 8 was slower due to subprocess cost at fan-out boundary)
+
+---
+
+## [v1.3] — 2026-02-27
+
+### Added
+- **AnthropicRunner** — direct Anthropic SDK runner for subtasks without tools
+  (activated when `ANTHROPIC_API_KEY` is set, no subprocess required)
+- **SdkToolRunner** — SDK-based tool-use runner (Read, Glob, Grep) for
+  subtasks that previously required the `claude` CLI subprocess
+- `verify <ST> [note]` command — human gate to hard-set any subtask Verified
+- `journal.md` added to `.gitignore` (generated output, grows every run)
+- `ANTHROPIC_MODEL` and `ANTHROPIC_MAX_TOKENS` config keys
+- `BLUE` ANSI colour for SDK execution lines
+
+### Changed
+- Three-tier execution routing: ClaudeRunner → AnthropicRunner → dice roll
+
+---
+
+## [v1.2] — 2026-02-26
+
+### Added
+- `profiler_harness.py` (initial version) — baseline timing at MAX_PER_STEP=2
+
+### Changed
+- `EXECUTOR_MAX_PER_STEP` default raised from 2 → 4 (−34% wall time)
+- Planner: Running subtasks get base risk 1000+ to always beat Pending
+  (fixes priority inversion that could stall in-flight subtasks)
+
+---
+
+## [v1.1] — 2026-02-25
+
+### Added
+- **Process lockfile** (`state/solo_builder.lock`) — prevents two CLI
+  instances from corrupting the shared state file
+- `auto-save` every `AUTO_SAVE_INTERVAL` steps (default 5)
+- `journal.md` auto-created under configured `JOURNAL_PATH`
+
+---
+
+## [v1.0] — 2026-02-24
+
+### Initial release
+
+- Seven-task diamond DAG (Task 0 → Tasks 1–5 → Task 6), 70 subtasks total
+- Six AI agents: Planner, ShadowAgent, SelfHealer, Executor, Verifier,
+  MetaOptimizer
+- Interactive CLI with `run`, `auto`, `reset`, `save`, `load`, `describe`,
+  `tools`, `output`, `export`, `snapshot`, `set`, `help`, `exit`
+- Flask REST API (`/status`, `/tasks`, `/journal`, `/run`)
+- Dark-theme live dashboard polling every 2 s
+- PDF 4-page snapshots via matplotlib
+- State persistence (`state/solo_builder_state.json`)
+- GitHub Actions Smoke Test CI

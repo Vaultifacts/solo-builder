@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+state/
+snapshots/
+cmds.txt
+journal.md
+dist/
+build/
+*.egg-info/
+agg.exe
+gen_review_cast.py
+review_mode_demo.cast
+.env
+discord_bot/chat.log
+solo_builder_outputs.md
