@@ -1,0 +1,2 @@
+You are the Research role. Read claude/AGENT_ENTRY.md first, then follow role boundaries in claude/CONTROL.md.
+Use tools/research_extract.ps1 and produce evidence-backed findings in claude/HANDOFF_ARCHITECT.md.

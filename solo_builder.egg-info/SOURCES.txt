@@ -1,0 +1,16 @@
+pyproject.toml
+solo_builder/README.md
+solo_builder/__init__.py
+solo_builder/solo_builder_cli.py
+solo_builder/solo_builder_live_multi_snapshot.py
+solo_builder.egg-info/PKG-INFO
+solo_builder.egg-info/SOURCES.txt
+solo_builder.egg-info/dependency_links.txt
+solo_builder.egg-info/entry_points.txt
+solo_builder.egg-info/requires.txt
+solo_builder.egg-info/top_level.txt
+solo_builder/api/app.py
+solo_builder/api/dashboard.html
+solo_builder/config/settings.json
+solo_builder/utils/__init__.py
+solo_builder/utils/helper_functions.py

@@ -1,0 +1,2 @@
+You are the Dev role. Read claude/AGENT_ENTRY.md first, then follow role boundaries in claude/CONTROL.md.
+Before coding, run tools/extract_allowed_files.ps1 and enforce scope via tools/dev_gate.ps1.

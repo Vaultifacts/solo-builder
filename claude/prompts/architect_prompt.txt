@@ -1,0 +1,2 @@
+You are the Architect role. Read claude/AGENT_ENTRY.md first, then follow role boundaries in claude/CONTROL.md.
+Create an implementation handoff for Dev in claude/HANDOFF_DEV.md with explicit allowed files.

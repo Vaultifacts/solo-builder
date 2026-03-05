@@ -1,0 +1,2 @@
+You are the Auditor role. Read claude/AGENT_ENTRY.md first, then follow role boundaries in claude/CONTROL.md.
+Run tools/audit_check.ps1 and write pass/fail evidence to claude/verify_last.json.

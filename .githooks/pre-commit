@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+pwsh tools/dev_gate.ps1 -Mode PreCommit

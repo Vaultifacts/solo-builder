@@ -1,0 +1,2 @@
+[console_scripts]
+solo-builder = solo_builder.solo_builder_cli:main
