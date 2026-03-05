@@ -1,11 +1,11 @@
 {
-  "task_id": "bootstrap",
-  "phase": "done",
-  "next_role": "ARCHITECT",
-  "attempt": 1,
+  "task_id": "TASK-001",
+  "phase": "triage",
+  "next_role": "RESEARCH",
+  "attempt": 0,
   "max_attempts": 5,
   "last_verify_pass": true,
   "run_id": "",
   "last_snapshot_path": "C:\\Users\\Matt1\\OneDrive\\Desktop\\Solo Builder\\claude\\snapshots\\20260305-224004-verify-fail",
-  "updated_at": "2026-03-05T22:45:12.8213812Z"
+  "updated_at": "2026-03-05T23:12:57.1692910Z"
 }

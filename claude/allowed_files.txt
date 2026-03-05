@@ -3,3 +3,6 @@ solo_builder/*
 .githooks/pre-commit
 claude/allowed_files.txt
 .github/workflows/ci.yml
+claude/TASK_QUEUE.md
+claude/TASK_ACTIVE.md
+claude/STATE.json
