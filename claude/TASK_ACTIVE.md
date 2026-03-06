@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-013
+TASK-014
 
-Add orchestrator-rendered NEXT_ACTION control contract for deterministic agent execution.
+Add STATE/NEXT_ACTION consistency verification to fail fast on workflow drift.

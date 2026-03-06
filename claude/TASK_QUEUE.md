@@ -155,3 +155,22 @@ Constraints:
 - Do not modify product code under `solo_builder/*`.
 - Do not change task lifecycle semantics.
 - Preserve deterministic workflow conventions.
+
+## TASK-014
+Goal: Add consistency verification between claude/STATE.json and claude/NEXT_ACTION.md so the workflow fails fast if rendered agent-facing state drifts from machine state.
+
+Acceptance criteria:
+- A workflow verification step checks consistency between claude/STATE.json and claude/NEXT_ACTION.md for:
+  - task_id / Task
+  - phase / Phase
+  - next_role / Role
+- The check exits nonzero on mismatch.
+- audit_check.ps1 runs this check directly or via a dedicated helper script.
+- Existing workflow semantics remain unchanged.
+- No product-code changes are introduced.
+
+Constraints:
+- Modify only workflow scripts/docs needed for consistency verification.
+- Do not modify product code under solo_builder/*.
+- Do not change task lifecycle semantics.
+- Preserve deterministic workflow conventions.
