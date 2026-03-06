@@ -73,3 +73,12 @@ Acceptance criteria:
 - minimal reproduction sequence documented
 - before/after evidence captured
 - recommendation for the next minimal fix path
+
+## TASK-007
+Goal: Isolate and eliminate the remaining config writer path in `solo_builder.discord_bot.test_bot`, with primary focus on `TestHandleTextCommandExtra.test_set_trigger_consumed_by_cli` and directly related fixture/setup code.
+
+Acceptance criteria:
+- exact remaining mutating test method/class confirmed
+- minimal reproduction sequence documented
+- recommendation for the smallest fix path
+- no change to production code yet unless absolutely required

@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-006
+TASK-007
 
-Identify the next remaining unittest writer path mutating solo_builder/config/settings.json outside API tests.
+Isolate and eliminate the remaining config writer path in discord bot unittest method-level flow.
 
