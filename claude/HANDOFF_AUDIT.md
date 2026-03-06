@@ -29,3 +29,11 @@ TASK-008
 
 ## settings.json cleanliness
 - `solo_builder/config/settings.json` remained clean after verification (`git diff -- solo_builder/config/settings.json` produced no diff).
+
+## AUDITOR results (TASK-008)
+- pass/fail result: pass (`claude/verify_last.json` has `passed: true`)
+- working_tree_dirty: false
+- dirty_files: []
+- UnicodeEncodeError resolved: resolved for the targeted TASK-008 add-task/add-branch inline-spec flows; an additional UnicodeEncodeError remains in optional unittest-discover path (`solo_builder_cli.py:_cmd_undo`)
+- settings.json remained clean: yes (no dirty file reported)
+- final verdict: TASK-008 resolved
