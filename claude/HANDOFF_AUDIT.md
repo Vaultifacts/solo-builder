@@ -30,3 +30,11 @@
 ## Risks / notes
 - Scope constraint (`solo_builder/api/test_app.py` only) prevented patching other likely writers in `discord_bot/test_bot.py` / CLI config persistence paths.
 - TASK-005 is partially improved (API tests isolated) but acceptance criteria are not yet fully met.
+
+## AUDITOR (TASK-005)
+- pass/fail result: **FAIL**
+- `working_tree_dirty`: **true**
+- `dirty_files`: `["solo_builder/config/settings.json"]`
+- `solo_builder/config/settings.json` remained clean after run: **yes** (restored; not present in post-run `git status`)
+- verdict: **TASK-005 partially resolved; additional writer remains**
+- recommendation: Continue isolating other unittest writer paths outside `solo_builder/api/test_app.py`, with next focus on unittest suites touching CLI `_cmd_set` / settings persistence behavior.
