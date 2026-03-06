@@ -26,3 +26,11 @@ TASK-009
 
 ## settings.json cleanliness
 - `solo_builder/config/settings.json` remained clean after validation (`git diff` shows no changes).
+
+## AUDITOR results (TASK-009)
+- pass/fail result: pass (`claude/verify_last.json` has `passed: true`)
+- working_tree_dirty: false
+- dirty_files: []
+- `_cmd_undo` UnicodeEncodeError resolved: yes (targeted `_cmd_undo` path now emits `->` and no longer raises UnicodeEncodeError)
+- `solo_builder/config/settings.json` remained clean: yes (no dirty file reported)
+- final verdict: TASK-009 resolved
