@@ -1,40 +1,43 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
+## Objective
+Stop `python -m unittest discover` from mutating tracked `solo_builder/config/settings.json` by isolating config writes to test-only files.
+
+## In-scope area
+`solo_builder/api/` unittest suite and its test fixture setup for config endpoints.
+
 ## Allowed changes
-- tools/audit_check.ps1
+- solo_builder/api/test_app.py
+
+## Disallowed changes
+- No unrelated refactors
+- No dependency/version bumps
+- No edits outside Allowed changes
 
 ## Implementation plan
-1. Add a working-tree cleanliness guard to `tools/audit_check.ps1`:
-   - capture `git status --porcelain` before running verification commands
-   - capture `git status --porcelain` after running verification commands
-2. Detect tracked-file mutations by parsing status lines that are not untracked (`??`).
-3. When tracked mutations are detected:
-   - set `working_tree_dirty=true` and include `dirty_files` in `claude/verify_last.json`
-   - best-effort restore those files with `git restore --source=HEAD --worktree --staged <files>`
-   - re-check status after restore and persist post-restore dirty files if any
-   - force overall verification failure with clear message: `Working tree mutated during verification`
-4. Keep existing command execution and timeout behavior unchanged otherwise.
-5. Ensure this logic works on PowerShell 5.1.
+1. In `_Base.setUp` inside `solo_builder/api/test_app.py`, create a temp `settings.json` under `self._tmp` seeded from current app settings (or minimal required keys).
+2. Patch `app_module.SETTINGS_PATH` in the existing `_patches` list so `/config` GET/POST in tests reads/writes the temp settings file, not repository `solo_builder/config/settings.json`.
+3. Keep existing config endpoint tests (`TestConfig`) unchanged in intent; they should validate API behavior against isolated temp settings.
 
 ## Acceptance criteria
-- On a clean tree, running `pwsh tools/audit_check.ps1` leaves no modified tracked files.
-- If any verification command mutates tracked files, `audit_check` fails and reports mutated files in `claude/verify_last.json`.
-- `claude/verify_last.json` contains:
-  - `working_tree_dirty` (boolean)
-  - `dirty_files` (array of tracked file paths)
-- Best-effort restore attempt is executed and reflected in output metadata.
+- Running `python -m unittest discover` does not modify `solo_builder/config/settings.json`.
+- `TestConfig.test_post_updates_setting` still passes by updating only the temp test settings file.
+- `pwsh tools/audit_check.ps1` no longer fails due to `solo_builder/config/settings.json` mutation.
 
 ## Verification steps
-1. Start from clean baseline for target file:
+1. Reset and baseline:
    - `git restore --source=HEAD --worktree --staged solo_builder/config/settings.json`
-2. Run:
+   - `git status --short --branch`
+2. Run unittest command directly:
+   - `python -m unittest discover`
+3. Confirm no config mutation:
+   - `git diff -- solo_builder/config/settings.json`
+   - `git status --short --branch`
+4. Run full verifier:
    - `pwsh tools/audit_check.ps1`
-3. Validate:
-   - If mutation occurs, command exits non-zero with message containing `Working tree mutated during verification`.
-   - `claude/verify_last.json` includes `working_tree_dirty=true` and `dirty_files` contains `solo_builder/config/settings.json`.
-   - `git status --short --branch` is clean or shows only non-tracked runtime files after restore attempt.
+5. Confirm verifier result is not failing for settings mutation:
+   - `Get-Content -Raw claude/verify_last.json`
 
 ## Risks / notes
-- Keep scope strictly in `tools/audit_check.ps1`; avoid changes to VERIFY contract generation or task flow.
-- `git restore` is best-effort; if restore fails due external locks/permissions, verify metadata must still clearly report remaining dirty files.
-- Do not include unrelated cleanup/refactors in this task.
+- If any non-API tests also write settings, this change may reduce but not eliminate all mutations; isolate additional writers only in follow-up tasks.
+- Keep test fixture deterministic; avoid reading user-local files outside repo paths.
