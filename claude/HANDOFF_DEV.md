@@ -1,12 +1,10 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Objective
-Fix Windows `UnicodeEncodeError` in CLI add-task/add-branch success output by making those output strings encoding-safe without changing command behavior.
+Fix the remaining Windows console `UnicodeEncodeError` in the `_cmd_undo` output path by making that output encoding-safe without changing undo behavior.
 
 ## In-scope area
-`solo_builder/solo_builder_cli.py` output formatting in:
-- `_cmd_add_task`
-- `_cmd_add_branch`
+`solo_builder/solo_builder_cli.py` `_cmd_undo` print output line.
 
 ## Allowed changes
 - solo_builder/solo_builder_cli.py
@@ -17,26 +15,20 @@ Fix Windows `UnicodeEncodeError` in CLI add-task/add-branch success output by ma
 - No edits outside Allowed changes
 
 ## Implementation plan
-1. In `solo_builder/solo_builder_cli.py`, update the two success print paths in `_cmd_add_task` and `_cmd_add_branch` that currently emit `\u2192`.
-2. Replace the unsafe glyph usage with an encoding-safe equivalent (`->`) in those two output lines only, preserving message structure, colors, and content ordering.
-3. Keep all command logic and test intent unchanged; adjust only output text to prevent cp1252/charmap print failures.
+1. Locate the `_cmd_undo` status print that includes the Unicode arrow (`\u2192`).
+2. Replace only the problematic glyph in that output path with an encoding-safe ASCII equivalent (`->`) while preserving message content.
+3. Keep undo logic and state behavior unchanged.
 
 ## Acceptance criteria
-- `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec` passes without `UnicodeEncodeError`.
-- `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec` passes without `UnicodeEncodeError`.
+- `python -m unittest solo_builder.discord_bot.test_bot.TestUndoCommand` no longer fails with `UnicodeEncodeError`.
 - `pwsh tools/audit_check.ps1` passes.
-- `solo_builder/config/settings.json` is not modified after verification.
+- `solo_builder/config/settings.json` remains unchanged after verification.
 
 ## Verification steps
-1. Run targeted failing suites:
-   - `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec`
-   - `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec`
-2. Run full verifier:
-   - `pwsh tools/audit_check.ps1`
-3. Confirm working tree cleanliness for config file:
-   - `git diff -- solo_builder/config/settings.json`
-   - `git status --short --branch`
+1. `python -m unittest solo_builder.discord_bot.test_bot.TestUndoCommand`
+2. `pwsh tools/audit_check.ps1`
+3. `git diff -- solo_builder/config/settings.json` and `git status --short --branch`
 
 ## Risks / notes
-- This is a display-only compatibility fix for Windows cp1252 terminals; it should not alter task/branch creation behavior.
-- Other Unicode output paths may still exist elsewhere; this task intentionally limits scope to the two proven failure sites.
+- This is a narrow output-compatibility fix only for `_cmd_undo`.
+- Other pre-existing non-Unicode test failures (e.g., stalled threshold assertions) are out of scope for TASK-009.
