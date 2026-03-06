@@ -1,8 +1,9 @@
-solo_builder/*
-.gitignore
-.githooks/pre-commit
-claude/allowed_files.txt
-.github/workflows/ci.yml
-claude/TASK_QUEUE.md
-claude/TASK_ACTIVE.md
+claude/templates/NEXT_ACTION_TEMPLATE.md
+claude/HANDOFF_ARCHITECT.md
+claude/HANDOFF_DEV.md
+claude/HANDOFF_AUDIT.md
+claude/JOURNAL.md
 claude/STATE.json
+claude/allowed_files.txt
+claude/NEXT_ACTION.md
+claude/verify_last.json

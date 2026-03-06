@@ -50,3 +50,22 @@ TASK-009
 - verify_last.json: passed=true, working_tree_dirty=false
 - Acceptance criteria: satisfied
 - Scope check: limited to claude/templates/HANDOFF_DEV_TEMPLATE.md and claude/prompts/architect_prompt.txt
+
+## DEV summary (TASK-013)
+
+### Summary of changes
+- Created `claude/templates/` directory.
+- Created `claude/templates/NEXT_ACTION_TEMPLATE.md` with all nine `{{PLACEHOLDER}}` sections matching the inline fallback in `tools/claude_orchestrate.ps1`.
+
+### Files changed
+- claude/templates/NEXT_ACTION_TEMPLATE.md (created)
+
+### Commands run
+1. `pwsh tools/extract_allowed_files.ps1`
+2. `pwsh tools/claude_orchestrate.ps1` (confirms external template is read)
+
+### Results
+- `extract_allowed_files.ps1`: extracted `claude/templates/NEXT_ACTION_TEMPLATE.md` from HANDOFF_DEV.md
+- `claude_orchestrate.ps1`: reads external template, NEXT_ACTION.md output unchanged
+- No files under `solo_builder/*` modified.
+- `STATE.json` remains machine-readable source of state.
