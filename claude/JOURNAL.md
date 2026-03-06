@@ -41,3 +41,4 @@
 - [2026-03-06T08:39:10.4437618Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-012
 - [2026-03-06T20:16:55.4821100Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-012
 - [2026-03-06T20:25:11.8263346Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-012 verified and closed
+- [2026-03-06T20:53:02.5064982Z] Starting TASK-013 to add orchestrator-rendered NEXT_ACTION deterministic control contract.

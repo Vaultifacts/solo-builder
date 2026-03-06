@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-012
+TASK-013
 
-Normalize workflow handoff heading schema for deterministic tooling.
+Add orchestrator-rendered NEXT_ACTION control contract for deterministic agent execution.
