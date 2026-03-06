@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-003
+TASK-004
 
-Make tools/precommit_gate.ps1 non-blocking by default and robust on Windows.
+Investigate unintended mutation of solo_builder/config/settings.json.
 

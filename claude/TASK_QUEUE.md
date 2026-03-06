@@ -45,3 +45,11 @@ Acceptance Criteria:
 - `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail` no longer fails in `precommit_gate` due optional unittest execution.
 
 Priority: Urgent
+
+## TASK-004
+Goal: Identify exactly which command mutates `solo_builder/config/settings.json` and why.
+
+Acceptance criteria:
+- A minimal reproduction sequence (exact commands, in order)
+- Evidence: before/after diff summary
+- Recommendation: one of (ignore file, stop tool from writing, redirect writes elsewhere)
