@@ -7,6 +7,7 @@ $claudeDir = Join-Path $repoRoot 'claude'
 $verifyPath = Join-Path $claudeDir 'VERIFY.json'
 $resultPath = Join-Path $claudeDir 'verify_last.json'
 $statePath = Join-Path $claudeDir 'STATE.json'
+$nextActionCheckPath = Join-Path $PSScriptRoot 'check_next_action_consistency.ps1'
 
 function Get-TrackedChangedPaths {
   $lines = @(git status --porcelain 2>$null)
@@ -51,6 +52,11 @@ function Invoke-CommandWithTimeout {
 
 if (!(Test-Path $verifyPath)) { throw "Missing $verifyPath" }
 if (!(Test-Path $statePath)) { throw "Missing $statePath" }
+if (!(Test-Path $nextActionCheckPath)) { throw "Missing $nextActionCheckPath" }
+
+# Fail fast if rendered agent-facing state diverges from machine state.
+& $nextActionCheckPath
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $beforeTracked = Get-TrackedChangedPaths
 $verify = Get-Content -Raw -Path $verifyPath | ConvertFrom-Json
