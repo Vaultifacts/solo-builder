@@ -174,3 +174,18 @@ Constraints:
 - Do not modify product code under solo_builder/*.
 - Do not change task lifecycle semantics.
 - Preserve deterministic workflow conventions.
+
+## TASK-015
+Goal: Fix post-close role rendering mismatch in tools/claude_orchestrate.ps1 so phase=done renders the correct terminal next role.
+
+Acceptance criteria:
+- When workflow state is done, claude_orchestrate.ps1 renders the correct terminal next role consistently.
+- Orchestrator output matches the intended post-close state after advance_state.ps1 sets done/ARCHITECT.
+- Existing workflow semantics remain unchanged outside this role-rendering fix.
+- No product-code changes are introduced.
+
+Constraints:
+- Modify only tools/claude_orchestrate.ps1 and any minimal workflow files needed for verification.
+- Do not modify product code under solo_builder/*.
+- Do not change task lifecycle semantics.
+- Preserve deterministic workflow conventions.
