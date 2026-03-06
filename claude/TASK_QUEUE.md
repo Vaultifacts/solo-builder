@@ -120,3 +120,22 @@ Acceptance criteria:
 Constraints:
 - Modify only `tools/extract_allowed_files.ps1`.
 - No product-code changes.
+
+## TASK-012
+Goal: Normalize workflow handoff heading schema so tooling can rely on a consistent section format.
+
+Acceptance criteria:
+- Handoff files use a canonical heading schema:
+  - ## Allowed changes
+  - ## Files that must not be modified
+  - ## Acceptance criteria
+  - ## Verification commands
+- Existing workflow behavior remains unchanged.
+- tools/extract_allowed_files.ps1 continues to work with the canonical schema.
+- No product-code changes are introduced.
+
+Constraints:
+- Modify only workflow documentation and prompt templates if needed.
+- Do not modify product code under solo_builder/*.
+- Do not change orchestrator or workflow state semantics.
+- Preserve deterministic task workflow conventions.

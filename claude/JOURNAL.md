@@ -36,3 +36,4 @@
 - [2026-03-06T07:22:53.7494092Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-011
 - [2026-03-06T07:29:05.5776942Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-011
 - [2026-03-06T07:41:03.4198925Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-011 verified and closed
+- [2026-03-06T08:00:00.0000000Z] Starting TASK-012 to normalize workflow handoff heading schema.
