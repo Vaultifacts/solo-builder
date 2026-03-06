@@ -34,3 +34,11 @@ TASK-009
 - `_cmd_undo` UnicodeEncodeError resolved: yes (targeted `_cmd_undo` path now emits `->` and no longer raises UnicodeEncodeError)
 - `solo_builder/config/settings.json` remained clean: yes (no dirty file reported)
 - final verdict: TASK-009 resolved
+
+## AUDITOR results (TASK-011)
+- pass/fail result: PASS
+- workflow verifier: `pwsh tools/audit_check.ps1` passed
+- extraction check: `pwsh tools/extract_allowed_files.ps1` produced `claude/allowed_files.txt`
+- output correctness: extracted path `tools/extract_allowed_files.ps1`
+- scope check: implementation commit touched only `tools/extract_allowed_files.ps1`
+- final verdict: TASK-011 resolved
