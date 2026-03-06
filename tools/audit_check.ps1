@@ -8,6 +8,25 @@ $verifyPath = Join-Path $claudeDir 'VERIFY.json'
 $resultPath = Join-Path $claudeDir 'verify_last.json'
 $statePath = Join-Path $claudeDir 'STATE.json'
 
+function Get-TrackedChangedPaths {
+  $lines = @(git status --porcelain 2>$null)
+  if ($LASTEXITCODE -ne 0) { throw 'git status --porcelain failed.' }
+  $paths = New-Object System.Collections.Generic.List[string]
+  foreach ($line in $lines) {
+    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+    if ($line.StartsWith('?? ')) { continue }
+    if ($line.Length -lt 4) { continue }
+    $path = $line.Substring(3).Trim()
+    if ($path -match ' -> ') {
+      $path = ($path -split ' -> ')[1].Trim()
+    }
+    if ($path -and ($paths -notcontains $path)) {
+      $paths.Add($path) | Out-Null
+    }
+  }
+  return @($paths)
+}
+
 function Invoke-CommandWithTimeout {
   param(
     [Parameter(Mandatory = $true)][string]$Command,
@@ -33,6 +52,7 @@ function Invoke-CommandWithTimeout {
 if (!(Test-Path $verifyPath)) { throw "Missing $verifyPath" }
 if (!(Test-Path $statePath)) { throw "Missing $statePath" }
 
+$beforeTracked = Get-TrackedChangedPaths
 $verify = Get-Content -Raw -Path $verifyPath | ConvertFrom-Json
 $results = New-Object System.Collections.Generic.List[object]
 $requiredFailures = 0
@@ -56,13 +76,33 @@ foreach ($cmd in $verify.commands) {
   }) | Out-Null
 }
 
-$passedAll = ($requiredFailures -eq 0)
-$message = if ($passedAll) { 'All required verification commands passed.' } else { "$requiredFailures required command(s) failed." }
+$afterTracked = Get-TrackedChangedPaths
+$dirtyFiles = @($afterTracked | Where-Object { $beforeTracked -notcontains $_ })
+$workingTreeDirty = ($dirtyFiles.Count -gt 0)
+$dirtyFilesRemaining = @()
+
+if ($workingTreeDirty) {
+  try {
+    git restore --source=HEAD --worktree --staged -- $dirtyFiles | Out-Null
+  } catch {}
+  $afterRestoreTracked = Get-TrackedChangedPaths
+  $dirtyFilesRemaining = @($afterRestoreTracked | Where-Object { $beforeTracked -notcontains $_ })
+}
+
+$passedAll = ($requiredFailures -eq 0) -and (-not $workingTreeDirty)
+if ($workingTreeDirty) {
+  $message = "Working tree mutated during verification: $($dirtyFiles -join ', ')"
+} else {
+  $message = if ($passedAll) { 'All required verification commands passed.' } else { "$requiredFailures required command(s) failed." }
+}
 
 [pscustomobject]@{
   generated_at = [DateTime]::UtcNow.ToString('o')
   passed = $passedAll
   message = $message
+  working_tree_dirty = $workingTreeDirty
+  dirty_files = $dirtyFiles
+  dirty_files_remaining = $dirtyFilesRemaining
   results = $results
 } | ConvertTo-Json -Depth 12 | Set-Content -Path $resultPath -Encoding UTF8
 
@@ -87,4 +127,3 @@ if (-not $passedAll) {
 
 Write-Host $message
 exit 0
-
