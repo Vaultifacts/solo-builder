@@ -368,6 +368,13 @@ python api/test_app.py
 python -m pytest discord_bot/test_bot.py api/test_app.py -v
 ```
 
+### TASK-001 smoke test
+
+```bash
+# Minimal repository-readiness smoke test used by TASK-001
+python -m unittest solo_builder.tests.test_task001_smoke -v
+```
+
 ### CI smoke test (GitHub Actions)
 
 The workflow at `.github/workflows/smoke-test.yml` runs on every push/PR to `master`:
