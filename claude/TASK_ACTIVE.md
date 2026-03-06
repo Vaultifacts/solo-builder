@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-008
+TASK-009
 
-Fix one existing failing unittest as the first real solo_builder feature task.
+Fix the remaining optional unittest UnicodeEncodeError in the _cmd_undo output path.
 

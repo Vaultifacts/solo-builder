@@ -95,3 +95,16 @@ Constraints:
 - Keep scope narrow
 - Prefer touching as few files as possible
 - No unrelated refactors
+
+## TASK-009
+Goal: Fix the remaining optional unittest UnicodeEncodeError in the `_cmd_undo` output path.
+
+Acceptance criteria:
+- The affected unittest no longer fails with UnicodeEncodeError.
+- `pwsh tools/audit_check.ps1` passes.
+- No mutation of `solo_builder/config/settings.json`.
+
+Constraints:
+- Keep scope narrow
+- Prefer touching as few files as possible
+- No unrelated refactors
