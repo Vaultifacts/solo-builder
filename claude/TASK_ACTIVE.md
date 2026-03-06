@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-011
+TASK-012
 
-Fix extract_allowed_files heading parsing reliability.
+Normalize workflow handoff heading schema for deterministic tooling.

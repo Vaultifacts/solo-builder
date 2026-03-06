@@ -42,3 +42,11 @@ TASK-009
 - output correctness: extracted path `tools/extract_allowed_files.ps1`
 - scope check: implementation commit touched only `tools/extract_allowed_files.ps1`
 - final verdict: TASK-011 resolved
+
+## AUDITOR results (TASK-012)
+- Timestamp (UTC): 2026-03-06T20:25:04.1870519Z
+- Verdict: PASS
+- Audit command: pwsh tools/audit_check.ps1
+- verify_last.json: passed=true, working_tree_dirty=false
+- Acceptance criteria: satisfied
+- Scope check: limited to claude/templates/HANDOFF_DEV_TEMPLATE.md and claude/prompts/architect_prompt.txt
