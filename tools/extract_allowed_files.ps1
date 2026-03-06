@@ -15,9 +15,14 @@ $lines = Get-Content -Path $handoff
 $inAllowed = $false
 $paths = New-Object System.Collections.Generic.List[string]
 
+# Supported section-start aliases (intentionally bounded; no free-form matching)
+$startPattern = '^\s*(?:##\s*)?(?:Allowed\s+changes|Allowed\s+files(?:\s+to\s+modify)?)\s*:?\s*$'
+# Section-end markers to avoid over-capturing bullets from unrelated sections
+$endPattern = '^\s*(?:##\s+|Disallowed\s+changes|Implementation\s+plan|Acceptance\s+criteria|Verification\s+steps|Risks|Files\s+that\s+must\s+not\s+be\s+modified)\b'
+
 foreach ($line in $lines) {
-  if ($line -match '^\s*##\s+Allowed changes') { $inAllowed = $true; continue }
-  if ($inAllowed -and $line -match '^\s*##\s+') { break }
+  if ($line -imatch $startPattern) { $inAllowed = $true; continue }
+  if ($inAllowed -and $line -imatch $endPattern) { break }
   if ($inAllowed -and $line -match '^\s*-\s+(.+)$') {
     $candidate = $Matches[1].Trim()
     if ($candidate) { $paths.Add($candidate) | Out-Null }
@@ -32,4 +37,3 @@ if ($paths.Count -eq 0) {
 
 $paths | Set-Content -Path $allowedPath -Encoding UTF8
 Write-Host "Wrote $allowedPath"
-
