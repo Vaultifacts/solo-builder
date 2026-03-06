@@ -36,6 +36,34 @@ function Get-RoleContract {
   )
 
   if ($Phase -eq 'done') {
+    $donePrompt = switch ($Role) {
+      'ARCHITECT' {
+@'
+COPY/PASTE PROMPT
+You are ARCHITECT.
+1) Read claude/AGENT_ENTRY.md, claude/CONTROL.md, and claude/NEXT_ACTION.md.
+2) Initialize the next task only (no implementation on closed task).
+'@
+      }
+      'AUDITOR' {
+@'
+COPY/PASTE PROMPT
+You are AUDITOR.
+1) Read claude/AGENT_ENTRY.md and claude/VERIFY.json.
+2) Run: pwsh tools/audit_check.ps1
+3) Report pass/fail from claude/verify_last.json.
+'@
+      }
+      default {
+@"
+COPY/PASTE PROMPT
+You are $Role.
+1) Read claude/AGENT_ENTRY.md, claude/CONTROL.md, and claude/NEXT_ACTION.md.
+2) Task is closed. Initialize the next task only.
+"@
+      }
+    }
+
     return @{
       Status = 'closed'
       AllowedOperation = "Task $TaskId is closed. Initialize the next task only."
@@ -51,13 +79,7 @@ function Get-RoleContract {
         'Merge closed task branch to master before creating the next task branch.',
         'Preserve deterministic workflow conventions.'
       )
-      Prompt = @'
-COPY/PASTE PROMPT
-You are AUDITOR.
-1) Read claude/AGENT_ENTRY.md and claude/VERIFY.json.
-2) Run: pwsh tools/audit_check.ps1
-3) Report pass/fail from claude/verify_last.json.
-'@
+      Prompt = $donePrompt
     }
   }
 
