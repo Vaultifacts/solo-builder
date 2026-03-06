@@ -27,6 +27,19 @@ class _Base(unittest.TestCase):
         self._tmp = tempfile.mkdtemp()
         self._state_path = Path(self._tmp) / "state" / "solo_builder_state.json"
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
+        self._settings_path = Path(self._tmp) / "config" / "settings.json"
+        self._settings_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            source_settings = json.loads(app_module.SETTINGS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            source_settings = {
+                "STALL_THRESHOLD": 5,
+                "EXECUTOR_VERIFY_PROBABILITY": 0.8,
+            }
+        self._settings_path.write_text(
+            json.dumps(source_settings, indent=4),
+            encoding="utf-8",
+        )
         self._trigger_path  = Path(self._tmp) / "state" / "run_trigger"
         self._verify_path   = Path(self._tmp) / "state" / "verify_trigger.json"
         self._describe_path = Path(self._tmp) / "state" / "describe_trigger.json"
@@ -58,6 +71,7 @@ class _Base(unittest.TestCase):
             patch.object(app_module, "HEARTBEAT_PATH", new=self._heartbeat_path),
             patch.object(app_module, "OUTPUTS_PATH", new=self._outputs_path),
             patch.object(app_module, "JOURNAL_PATH", new=self._journal_path),
+            patch.object(app_module, "SETTINGS_PATH", new=self._settings_path),
             patch.object(app_module, "ADD_TASK_TRIGGER", new=self._add_task_path),
             patch.object(app_module, "ADD_BRANCH_TRIGGER", new=self._add_branch_path),
             patch.object(app_module, "PRIORITY_BRANCH_TRIGGER", new=self._priority_branch_path),
