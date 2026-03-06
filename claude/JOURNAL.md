@@ -10,3 +10,7 @@
 - [2026-03-06T01:49:45.8801076Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-004
 - [2026-03-06T01:57:41.2371643Z] state transition: verify/ARCHITECT -> verify/AUDITOR | note: TASK-004 dev complete
 - [2026-03-06T02:03:25.5539377Z] TASK-004 closed as containment success; opening TASK-005 for root-cause fix.
+- [2026-03-06T02:09:43.4739536Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: Research complete for TASK-005
+- [2026-03-06T02:14:34.7153409Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-005
+- [2026-03-06T02:19:26.7631399Z] state transition: verify/ARCHITECT -> verify/AUDITOR | note: TASK-005 dev complete
+- [2026-03-06T02:30:00.0000000Z] TASK-005 partially resolved; opening TASK-006 to isolate remaining unittest writer path.

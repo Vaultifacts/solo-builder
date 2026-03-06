@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-005
+TASK-006
 
-Identify and eliminate the root-cause writer mutating solo_builder/config/settings.json during verification.
+Identify the next remaining unittest writer path mutating solo_builder/config/settings.json outside API tests.
 

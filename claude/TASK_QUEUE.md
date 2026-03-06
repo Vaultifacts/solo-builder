@@ -64,3 +64,12 @@ Acceptance criteria:
   - stop command from writing config, or
   - redirect writes to temp/state file, or
   - mock/isolate config in tests
+
+## TASK-006
+Goal: Identify the next remaining unittest path outside `solo_builder/api/test_app.py` that mutates `solo_builder/config/settings.json` during `python -m unittest discover`.
+
+Acceptance criteria:
+- exact mutating test module/class/function identified (not just unittest-discover generically)
+- minimal reproduction sequence documented
+- before/after evidence captured
+- recommendation for the next minimal fix path
