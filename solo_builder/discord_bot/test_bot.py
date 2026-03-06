@@ -779,6 +779,17 @@ class TestSetCommand(unittest.TestCase):
     """Tests for SoloBuilderCLI._cmd_set (runtime config changes)."""
 
     def setUp(self):
+        # Route config persistence to a temp file so _cmd_set tests do not
+        # mutate tracked repo config/settings.json.
+        self._tmp_cfg = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        )
+        self._tmp_cfg_path = self._tmp_cfg.name
+        json.dump({"STALL_THRESHOLD": _cli_module.STALL_THRESHOLD}, self._tmp_cfg)
+        self._tmp_cfg.close()
+        self._orig_cfg_path = _cli_module._CFG_PATH
+        _cli_module._CFG_PATH = self._tmp_cfg_path
+
         self.cli = _cli_module.SoloBuilderCLI()
         self.cli.display = MagicMock()
         # Suppress sleep calls in every _cmd_set invocation
@@ -797,6 +808,11 @@ class TestSetCommand(unittest.TestCase):
 
     def tearDown(self):
         self._sleep_patcher.stop()
+        _cli_module._CFG_PATH = self._orig_cfg_path
+        try:
+            os.unlink(self._tmp_cfg_path)
+        except FileNotFoundError:
+            pass
         for k, v in self._orig.items():
             setattr(_cli_module, k, v)
 
