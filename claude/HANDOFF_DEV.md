@@ -1,13 +1,15 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Objective
-Eliminate the remaining unittest writer path in `solo_builder.discord_bot.test_bot` that mutates `solo_builder/config/settings.json` (`STALL_THRESHOLD: 99 -> 10`) by isolating settings writes to test-local temp files.
+Fix Windows `UnicodeEncodeError` in CLI add-task/add-branch success output by making those output strings encoding-safe without changing command behavior.
 
 ## In-scope area
-`solo_builder/discord_bot/test_bot.py`, focused on tests that call `SoloBuilderCLI._cmd_set(...)` and may persist settings through `_CFG_PATH`.
+`solo_builder/solo_builder_cli.py` output formatting in:
+- `_cmd_add_task`
+- `_cmd_add_branch`
 
 ## Allowed changes
-- solo_builder/discord_bot/test_bot.py
+- solo_builder/solo_builder_cli.py
 
 ## Disallowed changes
 - No unrelated refactors
@@ -15,28 +17,26 @@ Eliminate the remaining unittest writer path in `solo_builder.discord_bot.test_b
 - No edits outside Allowed changes
 
 ## Implementation plan
-1. In `TestSetCommand` fixture setup, create a temp JSON settings file and patch `_cli_module._CFG_PATH` for the full fixture lifecycle (`setUp`/`tearDown`) so `_cmd_set` writes never touch repository config.
-2. Keep existing persistence-specific tests valid by writing/reading through fixture temp settings path (or retaining method-local overrides where already present), while preserving original assertions and test intent.
-3. Ensure no other affected tests in `solo_builder.discord_bot.test_bot` invoke `_cmd_set` against real `_CFG_PATH`; isolate only the minimal fixture/tests required by evidence.
+1. In `solo_builder/solo_builder_cli.py`, update the two success print paths in `_cmd_add_task` and `_cmd_add_branch` that currently emit `\u2192`.
+2. Replace the unsafe glyph usage with an encoding-safe equivalent (`->`) in those two output lines only, preserving message structure, colors, and content ordering.
+3. Keep all command logic and test intent unchanged; adjust only output text to prevent cp1252/charmap print failures.
 
 ## Acceptance criteria
-- Running `python -m unittest solo_builder.discord_bot.test_bot` does not modify `solo_builder/config/settings.json`.
-- Tests around `_cmd_set` in `TestSetCommand` continue to pass intent checks while using isolated temp settings storage.
-- `pwsh tools/audit_check.ps1` no longer reports `solo_builder/config/settings.json` as a dirty file mutation source from `unittest-discover`.
+- `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec` passes without `UnicodeEncodeError`.
+- `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec` passes without `UnicodeEncodeError`.
+- `pwsh tools/audit_check.ps1` passes.
+- `solo_builder/config/settings.json` is not modified after verification.
 
 ## Verification steps
-1. Reset and baseline:
-   - `git restore --source=HEAD --worktree --staged solo_builder/config/settings.json`
-2. Run targeted mutating module:
-   - `python -m unittest solo_builder.discord_bot.test_bot`
-3. Confirm no config mutation after targeted run:
+1. Run targeted failing suites:
+   - `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec`
+   - `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec`
+2. Run full verifier:
+   - `pwsh tools/audit_check.ps1`
+3. Confirm working tree cleanliness for config file:
    - `git diff -- solo_builder/config/settings.json`
    - `git status --short --branch`
-4. Run full verifier:
-   - `pwsh tools/audit_check.ps1`
-5. Confirm verifier no longer attributes mutation to settings file:
-   - `Get-Content -Raw claude/verify_last.json`
 
 ## Risks / notes
-- There may be additional writer paths in `solo_builder.discord_bot.test_bot` outside `TestSetCommand`; if mutation persists, isolate by class/method in a follow-up task.
-- Keep scope strictly test-only; do not modify production modules for this task.
+- This is a display-only compatibility fix for Windows cp1252 terminals; it should not alter task/branch creation behavior.
+- Other Unicode output paths may still exist elsewhere; this task intentionally limits scope to the two proven failure sites.
