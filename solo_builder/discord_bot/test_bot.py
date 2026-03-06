@@ -1751,17 +1751,30 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         """CLI auto loop consumes set_trigger.json and calls _cmd_set."""
         import tempfile
         cli = _cli_module.SoloBuilderCLI()
+        # Prevent terminal rendering side-effects during direct _cmd_set calls.
+        cli.display = MagicMock()
         tmp = tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", delete=False, encoding="utf-8"
         )
         json.dump({"key": "REVIEW_MODE", "value": "on"}, tmp)
         tmp.close()
+        cfg_tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        )
+        json.dump({"REVIEW_MODE": False}, cfg_tmp)
+        cfg_tmp.close()
+        orig_cfg = _cli_module._CFG_PATH
         # Simulate trigger consumption by testing _cmd_set directly
-        cli._cmd_set("REVIEW_MODE=on")
-        self.assertTrue(cli.executor.review_mode)
-        cli._cmd_set("REVIEW_MODE=off")
-        self.assertFalse(cli.executor.review_mode)
-        os.unlink(tmp.name)
+        _cli_module._CFG_PATH = cfg_tmp.name
+        try:
+            cli._cmd_set("REVIEW_MODE=on")
+            self.assertTrue(cli.executor.review_mode)
+            cli._cmd_set("REVIEW_MODE=off")
+            self.assertFalse(cli.executor.review_mode)
+        finally:
+            _cli_module._CFG_PATH = orig_cfg
+            os.unlink(tmp.name)
+            os.unlink(cfg_tmp.name)
 
     async def test_depends_no_args_shows_graph(self):
         """'depends' with no args shows the dependency graph from state."""
