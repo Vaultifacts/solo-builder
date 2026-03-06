@@ -1612,7 +1612,7 @@ class SoloBuilderCLI:
             return
         ok = self.load_state()
         if ok:
-            print(f"  {GREEN}Undo: step {prev_step} → {self.step} "
+            print(f"  {GREEN}Undo: step {prev_step} -> {self.step} "
                   f"({dag_stats(self.dag)['verified']} verified){RESET}")
             self.display.render(
                 self.dag, self.memory_store, self.step,
