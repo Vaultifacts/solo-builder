@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-001
+TASK-003
 
-Create the first real end-to-end workflow task for this repo that is small but meaningful.
+Make tools/precommit_gate.ps1 non-blocking by default and robust on Windows.
 

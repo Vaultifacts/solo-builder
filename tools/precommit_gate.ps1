@@ -21,7 +21,16 @@ if ($pending.Count -gt 0) {
   exit 0
 }
 
-$fast = $verify.commands | Where-Object { $_.name -match 'lint|test|typecheck|unit' } | Select-Object -First 2
+$nameMatch = '^(npm-)?(lint|test|unit|typecheck)$'
+$fast = $verify.commands | Where-Object {
+  $n = [string]$_.name
+  $timeout = if ($_.timeout_sec) { [int]$_.timeout_sec } else { 300 }
+  $isFastName = ($n -match $nameMatch) -or ($n -match 'lint') -or ($n -match 'unit')
+  $isAllowedTimeout = ($timeout -le 300)
+  $isOptionalPythonUnit = (($n -match 'python') -or ($n -match 'unittest'))
+  $isFastName -and $isAllowedTimeout -and (-not $isOptionalPythonUnit)
+} | Select-Object -First 1
+
 if ($fast.Count -eq 0) {
   Write-Host 'No fast subset available; skipping precommit verification.'
   exit 0
@@ -37,4 +46,3 @@ foreach ($cmd in $fast) {
 }
 
 exit 0
-

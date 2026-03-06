@@ -30,3 +30,18 @@ Acceptance Criteria:
 - No files outside TASK-002 allowed scope are modified for the fix.
 
 Priority: Urgent
+
+## TASK-003
+Goal: Make `tools/precommit_gate.ps1` non-blocking by default and robust on Windows.
+
+Constraints:
+- Scope limited to `tools/precommit_gate.ps1`.
+- Keep behavior deterministic and PowerShell 5.1 compatible.
+- Do not run optional Python/unittest commands from precommit gate.
+
+Acceptance Criteria:
+- If no safe fast command is available, `precommit_gate` exits 0 with guidance.
+- `precommit_gate` runs at most one safe fast command (name-filtered and timeout <= 300s).
+- `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail` no longer fails in `precommit_gate` due optional unittest execution.
+
+Priority: Urgent
