@@ -52,3 +52,17 @@
 - [2026-03-06T21:31:14.9689276Z] state transition: done/DEV -> verify/AUDITOR | note: DEV complete for TASK-014
 - [2026-03-06T21:34:10.6506571Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-014 verified and closed
 - [2026-03-06T21:50:44.5427933Z] Starting TASK-015 to fix post-close orchestrator role rendering mismatch.
+- [2026-03-06T22:00:10.0017821Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: Research complete for TASK-015
+- [2026-03-06T22:04:51.8576018Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-015
+- [2026-03-06T22:07:06.6701629Z] state transition: plan/DEV -> done/ARCHITECT | note: terminal render test
+- [2026-03-06T22:07:10.6279300Z] state transition: done/ARCHITECT -> done/AUDITOR | note: terminal render test
+- [2026-03-06T22:07:14.6142600Z] state transition: done/AUDITOR -> plan/DEV | note: restore dev phase after terminal render test
+- [2026-03-06T22:09:39.9800528Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-015
+- [2026-03-06T22:10:49.7441333Z] state transition: verify/AUDITOR -> verify/AUDITOR | note: restore verify phase after audit render checks
+- [2026-03-06T22:10:49.7851457Z] state transition: verify/AUDITOR -> done/ARCHITECT | note: audit render check
+- [2026-03-06T22:10:49.7945042Z] state transition: verify/AUDITOR -> done/AUDITOR | note: audit render check
+- [2026-03-06T22:11:29.2097870Z] state transition: done/AUDITOR -> verify/AUDITOR | note: Restore verify state after audit role-render checks
+- [2026-03-06T22:13:39.4279182Z] state transition: verify/AUDITOR -> done/ARCHITECT | note: serial audit render check
+- [2026-03-06T22:13:43.2995326Z] state transition: done/ARCHITECT -> done/AUDITOR | note: serial audit render check
+- [2026-03-06T22:13:47.2598274Z] state transition: done/AUDITOR -> verify/AUDITOR | note: restore verify state after serial audit render checks
+- [2026-03-06T22:14:56.9380230Z] state transition: verify/AUDITOR -> done/ARCHITECT | note: TASK-015 verified and closed
