@@ -6,3 +6,7 @@
 - [2026-03-06T00:36:25.2668936Z] task switch: TASK-001 plan/DEV -> TASK-003 plan/DEV | note: harden precommit_gate to avoid optional unittest blocking
 - [2026-03-06T00:38:06.7079095Z] state transition: done/DEV -> verify/AUDITOR | note: TASK-001 dev complete
 - [2026-03-06T00:57:10.1268410Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-001 verified (audit_check passed)
+- [2026-03-06T01:05:43.1273543Z] state transition: done/RESEARCH -> research/ARCHITECT | note: Research complete for TASK-004
+- [2026-03-06T01:49:45.8801076Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-004
+- [2026-03-06T01:57:41.2371643Z] state transition: verify/ARCHITECT -> verify/AUDITOR | note: TASK-004 dev complete
+- [2026-03-06T02:03:25.5539377Z] TASK-004 closed as containment success; opening TASK-005 for root-cause fix.

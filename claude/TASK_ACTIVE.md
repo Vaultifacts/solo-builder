@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-004
+TASK-005
 
-Investigate unintended mutation of solo_builder/config/settings.json.
+Identify and eliminate the root-cause writer mutating solo_builder/config/settings.json during verification.
 

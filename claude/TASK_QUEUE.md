@@ -53,3 +53,14 @@ Acceptance criteria:
 - A minimal reproduction sequence (exact commands, in order)
 - Evidence: before/after diff summary
 - Recommendation: one of (ignore file, stop tool from writing, redirect writes elsewhere)
+
+## TASK-005
+Goal: Identify which verification sub-command executed by `tools/audit_check.ps1` writes `solo_builder/config/settings.json`, and eliminate or isolate that write.
+
+Acceptance criteria:
+- Exact mutating sub-command identified
+- Minimal reproduction sequence documented
+- Recommendation for fix path:
+  - stop command from writing config, or
+  - redirect writes to temp/state file, or
+  - mock/isolate config in tests
