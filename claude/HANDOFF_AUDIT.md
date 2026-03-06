@@ -50,3 +50,37 @@ TASK-009
 - verify_last.json: passed=true, working_tree_dirty=false
 - Acceptance criteria: satisfied
 - Scope check: limited to claude/templates/HANDOFF_DEV_TEMPLATE.md and claude/prompts/architect_prompt.txt
+
+## DEV summary (TASK-013)
+
+### Summary of changes
+- Created `claude/templates/` directory.
+- Created `claude/templates/NEXT_ACTION_TEMPLATE.md` with all nine `{{PLACEHOLDER}}` sections matching the inline fallback in `tools/claude_orchestrate.ps1`.
+
+### Files changed
+- claude/templates/NEXT_ACTION_TEMPLATE.md (created)
+
+### Commands run
+1. `pwsh tools/extract_allowed_files.ps1`
+2. `pwsh tools/claude_orchestrate.ps1` (confirms external template is read)
+
+### Results
+- `extract_allowed_files.ps1`: extracted `claude/templates/NEXT_ACTION_TEMPLATE.md` from HANDOFF_DEV.md
+- `claude_orchestrate.ps1`: reads external template, NEXT_ACTION.md output unchanged
+- No files under `solo_builder/*` modified.
+- `STATE.json` remains machine-readable source of state.
+
+## AUDITOR results (TASK-013)
+- Timestamp (UTC): 2026-03-06T21:08:13.8776556Z
+- Verdict: PASS
+- Audit command: pwsh tools/audit_check.ps1
+- verify_last.json: passed=true, working_tree_dirty=false
+- Required commands: git-status PASS, git-diff-stat PASS
+- Optional commands: unittest-discover FAIL (1 pre-existing failure in test_stalled_shows_stuck — non-required, does not affect verdict)
+- Acceptance criteria: all satisfied
+  - claude/templates/NEXT_ACTION_TEMPLATE.md exists with all nine {{PLACEHOLDER}} sections
+  - pwsh tools/claude_orchestrate.ps1 reads external template without error
+  - STATE.json remains machine-readable source of workflow state
+  - No product-code changes under solo_builder/*
+- Scope check: implementation limited to claude/templates/NEXT_ACTION_TEMPLATE.md and workflow handoff artifacts
+- final verdict: TASK-013 resolved

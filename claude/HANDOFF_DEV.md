@@ -1,53 +1,46 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Problem summary
-Workflow handoff headings are not consistently generated in canonical form. `TASK-012` requires canonical schema so tools and prompts converge on one format:
-- `## Allowed changes`
-- `## Files that must not be modified`
-- `## Acceptance criteria`
-- `## Verification commands`
+`tools/claude_orchestrate.ps1` already writes `claude/NEXT_ACTION.md` on every run using an inline here-string template. The orchestrator references `claude/templates/NEXT_ACTION_TEMPLATE.md` (line 8) and prefers it when present (line 212), but the file and its parent directory have never been created. The only concrete deliverable needed to satisfy TASK-013 is creating that external template file so the template is externalizable and inspectable without reading the script.
 
 ## Root cause
-Schema drift comes from generation sources:
-- `claude/templates/HANDOFF_DEV_TEMPLATE.md` does not include all canonical headings.
-- `claude/prompts/architect_prompt.txt` does not enforce canonical section names.
-This allows handoffs like `## Allowed files to modify` and other variants to persist.
+`claude/templates/` directory was never created. The orchestrator's `Test-Path $nextActionTemplatePath` check at line 212 always falls through to the inline fallback.
 
 ## Minimal fix strategy
-1. Update the DEV handoff template to canonical section headings required by `TASK-012`.
-2. Update the architect role prompt so generated `claude/HANDOFF_DEV.md` explicitly uses the canonical heading names.
-3. Keep `tools/extract_allowed_files.ps1` unchanged; parser aliases from TASK-011 remain as backward-compatible support.
-4. Do not rewrite historical handoff artifacts; normalize generation points only.
+1. Create directory `claude/templates/`.
+2. Create `claude/templates/NEXT_ACTION_TEMPLATE.md` with the same `{{PLACEHOLDER}}` content as the inline fallback in `claude_orchestrate.ps1` (lines 181–210).
+3. No other files need changes.
 
-## Allowed files to modify
-- claude/templates/HANDOFF_DEV_TEMPLATE.md
-- claude/prompts/architect_prompt.txt
+## Allowed changes
+- claude/templates/NEXT_ACTION_TEMPLATE.md
+- claude/HANDOFF_ARCHITECT.md
+- claude/HANDOFF_DEV.md
+- claude/HANDOFF_AUDIT.md
+- claude/JOURNAL.md
+- claude/STATE.json
+- claude/allowed_files.txt
+- claude/NEXT_ACTION.md
+- claude/verify_last.json
 
 ## Files that must not be modified
-- Any files under `solo_builder/`
-- `tools/extract_allowed_files.ps1` and other `tools/*` scripts
-- `claude/VERIFY.json`, orchestrator/state semantics files, and unrelated task artifacts
-- Historical handoff files not needed for current template/prompt normalization
-
-## Risks
-- If canonical headings are updated in only one generation source, drift can continue.
-- Over-editing prompt text may unintentionally change role behavior beyond heading schema.
-- Removing parser aliases would break backward compatibility (must not be done in this task).
+- tools/claude_orchestrate.ps1
+- claude/AGENT_ENTRY.md
+- claude/CONTROL.md
+- claude/RULES.md
+- Any files under solo_builder/
+- claude/VERIFY.json
+- claude/STATE_SCHEMA.md
 
 ## Acceptance criteria
-- `claude/templates/HANDOFF_DEV_TEMPLATE.md` contains canonical headings:
-  - `## Allowed changes`
-  - `## Files that must not be modified`
-  - `## Acceptance criteria`
-  - `## Verification commands`
-- `claude/prompts/architect_prompt.txt` explicitly instructs canonical handoff headings for `claude/HANDOFF_DEV.md`.
-- `tools/extract_allowed_files.ps1` remains unchanged and continues to parse canonical headings.
-- No product-code changes under `solo_builder/*`.
-- No orchestrator/state semantic changes.
+- `claude/templates/NEXT_ACTION_TEMPLATE.md` exists and contains all nine `{{PLACEHOLDER}}` sections matching the inline template in `claude_orchestrate.ps1`.
+- `pwsh tools/claude_orchestrate.ps1` reads the external template without error and produces identical `claude/NEXT_ACTION.md` output.
+- `pwsh tools/audit_check.ps1` exits 0.
+- No files under `solo_builder/*` are modified.
+- `STATE.json` remains the machine-readable source of workflow state.
 
 ## Verification commands
-1. `git diff -- claude/templates/HANDOFF_DEV_TEMPLATE.md claude/prompts/architect_prompt.txt`
-2. `Get-Content -Raw claude/templates/HANDOFF_DEV_TEMPLATE.md`
-3. `Get-Content -Raw claude/prompts/architect_prompt.txt`
-4. `pwsh tools/extract_allowed_files.ps1`
-5. `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`
+1. `Test-Path claude/templates/NEXT_ACTION_TEMPLATE.md`
+2. `pwsh tools/claude_orchestrate.ps1`
+3. `Get-Content claude/NEXT_ACTION.md`
+4. `pwsh tools/audit_check.ps1`
+5. `git diff --stat`

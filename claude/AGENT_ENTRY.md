@@ -4,9 +4,10 @@ Read these files in order:
 1. `claude/WHO_HAS_CONTROL.md`
 2. `claude/CONTROL.md`
 3. `claude/RULES.md`
-4. `claude/STATE.json`
-5. `claude/VERIFY.json`
-6. Role handoff file for your role.
+4. `claude/NEXT_ACTION.md`
+5. `claude/STATE.json`
+6. `claude/VERIFY.json`
+7. Role handoff file for your role.
 
 Execution model:
 - Roles: `RESEARCH`, `ARCHITECT`, `DEV`, `AUDITOR`.

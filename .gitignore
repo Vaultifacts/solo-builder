@@ -3,6 +3,7 @@ claude/artifacts/
 claude/logs/
 claude/snapshots/
 claude/STATE.json
+claude/NEXT_ACTION.md
 claude/verify_last.json
 claude/ci_context.json
 claude/RESEARCH_DRAFT.md
