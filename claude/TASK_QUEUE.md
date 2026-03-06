@@ -82,3 +82,16 @@ Acceptance criteria:
 - minimal reproduction sequence documented
 - recommendation for the smallest fix path
 - no change to production code yet unless absolutely required
+
+## TASK-008
+Goal: Fix one existing failing unittest by making CLI status output robust on Windows console encoding paths.
+
+Acceptance criteria:
+- Running `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec` no longer fails due to UnicodeEncodeError from CLI output formatting.
+- Running `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec` no longer fails due to UnicodeEncodeError from CLI output formatting.
+- Verification includes `pwsh tools/audit_check.ps1` and no mutation of `solo_builder/config/settings.json`.
+
+Constraints:
+- Keep scope narrow
+- Prefer touching as few files as possible
+- No unrelated refactors

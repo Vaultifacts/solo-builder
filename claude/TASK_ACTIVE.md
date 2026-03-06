@@ -1,6 +1,6 @@
 # Active Task
 
-TASK-007
+TASK-008
 
-Isolate and eliminate the remaining config writer path in discord bot unittest method-level flow.
+Fix one existing failing unittest as the first real solo_builder feature task.
 
