@@ -108,3 +108,15 @@ Constraints:
 - Keep scope narrow
 - Prefer touching as few files as possible
 - No unrelated refactors
+
+## TASK-011
+Goal: Fix `tools/extract_allowed_files.ps1` heading parsing so allowed file lists are extracted reliably from `HANDOFF_DEV.md`.
+
+Acceptance criteria:
+- `pwsh tools/extract_allowed_files.ps1` produces `claude/allowed_files.txt` when `HANDOFF_DEV.md` uses common heading styles.
+- Heading variants including `## Allowed changes` and `Allowed files` are parsed correctly.
+- Existing workflow behavior remains unchanged outside extraction robustness.
+
+Constraints:
+- Modify only `tools/extract_allowed_files.ps1`.
+- No product-code changes.

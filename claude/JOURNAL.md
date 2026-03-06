@@ -31,3 +31,8 @@
 - [2026-03-06T06:04:18.1848476Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-009
 - [2026-03-06T06:12:07.3588785Z] state transition: done/DEV -> verify/AUDITOR | note: TASK-009 dev complete
 - [2026-03-06T06:17:58.9619068Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-009 verified and closed
+- [2026-03-06T07:20:00.0000000Z] Starting TASK-011 to fix extract_allowed_files heading parsing reliability.
+- [2026-03-06T07:15:50.4247449Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: Research complete for TASK-011
+- [2026-03-06T07:22:53.7494092Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-011
+- [2026-03-06T07:29:05.5776942Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-011
+- [2026-03-06T07:41:03.4198925Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-011 verified and closed

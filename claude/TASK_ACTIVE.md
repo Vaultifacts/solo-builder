@@ -1,6 +1,5 @@
 # Active Task
 
-TASK-009
+TASK-011
 
-Fix the remaining optional unittest UnicodeEncodeError in the _cmd_undo output path.
-
+Fix extract_allowed_files heading parsing reliability.
