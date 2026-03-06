@@ -1,50 +1,45 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Context
-- Active task: TASK-008
-- Scope area: `solo_builder/discord_bot` tests and the related CLI output path in `solo_builder/solo_builder_cli.py`
+- Active task: TASK-009
+- Scope area: `_cmd_undo` output path in `solo_builder/solo_builder_cli.py`
 
 ## Evidence collected
-- Probe log: `claude/logs/task008_unicode_probe.txt`
+- Probe log: `claude/logs/task009_undo_unicode_probe.txt`
 - Reproduction commands:
-  - `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec`
-  - `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec`
-- Failing tests (7 total):
-  - `TestAddTaskInlineSpec.test_handle_command_add_task_bare_still_prompts`
-  - `TestAddTaskInlineSpec.test_handle_command_add_task_with_inline_spec`
-  - `TestAddTaskInlineSpec.test_inline_spec_skips_input_prompt`
-  - `TestAddTaskInlineSpec.test_inline_spec_used_as_subtask_description`
-  - `TestAddBranchInlineSpec.test_handle_command_add_branch_bare_still_prompts`
-  - `TestAddBranchInlineSpec.test_handle_command_add_branch_with_inline_spec`
-  - `TestAddBranchInlineSpec.test_inline_spec_skips_input_prompt`
+  - `python -m unittest solo_builder.discord_bot.test_bot | findstr /i undo`
+  - `python -m unittest solo_builder.discord_bot.test_bot.TestUndoCommand`
+  - `python -m unittest solo_builder.discord_bot.test_bot.TestHandleTextCommandExtra`
+- Exact failing unittest:
+  - `solo_builder.discord_bot.test_bot.TestUndoCommand.test_undo_restores_previous_step`
+- Non-failing control check:
+  - `solo_builder.discord_bot.test_bot.TestHandleTextCommandExtra` passes
 - Error signature:
-  - `UnicodeEncodeError: 'charmap' codec can't encode character '\u2192'`
-- Stack locations:
-  - `solo_builder/solo_builder_cli.py:2183` in `_cmd_add_task`
-  - `solo_builder/solo_builder_cli.py:2291` in `_cmd_add_branch`
-  - Python encoder path: `encodings/cp1252.py`
+  - `UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 20: character maps to <undefined>`
+- Production source location:
+  - `solo_builder/solo_builder_cli.py:1615` in `_cmd_undo`
+  - failing line prints `Undo: step {prev_step} → {self.step}`
 
 ## Observations
 - Stable:
-  - Failures are deterministic under current local environment.
-  - Both failing groups share the same Unicode arrow character (`\u2192`) in console output.
-  - Failures occur while printing success/status lines, not in core task/branch data mutation assertions.
+  - The failure is deterministic in the class-targeted run.
+  - The immediate trigger is console print of Unicode arrow (`\u2192`) under cp1252.
+  - The failure is isolated to `_cmd_undo` output path, not the undo logic assertions themselves.
 - Uncertain:
-  - Whether all terminals/environments in CI reproduce cp1252 behavior the same way.
-  - Whether additional tests hit similar output paths beyond these two classes.
+  - Whether additional non-targeted CLI print paths still contain cp1252-unsafe glyphs.
+  - Whether environment-default encoding differs across shells/CI.
 
 ## Hypotheses (ranked)
-- H1: The direct `print(...)` lines in `_cmd_add_task` and `_cmd_add_branch` emit non-cp1252 characters (`→`) and crash in Windows cp1252 console contexts.
-- H2: A shared output formatting path is missing an encoding-safe fallback/sanitization for non-UTF-8 consoles.
-- H3: Test harness output capture is not forcing UTF-8 and exposes latent console-encoding assumptions in CLI output formatting.
+- H1: `_cmd_undo` uses direct Unicode arrow in a `print(...)` string, which fails in cp1252 terminals.
+- H2: Additional status/help output strings may still contain similar glyphs and could fail in other tests.
+- H3: No centralized output sanitization is applied before console writes, so each string path is independently vulnerable.
 
 ## Constraints / Non-negotiables
-- Keep task scope narrow.
+- Keep scope minimal and task-focused.
+- Prefer smallest production output-path fix in `solo_builder/solo_builder_cli.py`.
+- No behavior changes beyond encoding-safe output.
 - Avoid broad refactors.
-- Preserve existing command behavior and assertions.
-- Verification remains through `pwsh tools/audit_check.ps1` and task-scoped test reproduction.
 
 ## Unknowns / Missing evidence
-- Whether additional CLI commands also print `\u2192` and would fail under cp1252.
-- Whether a single output helper exists that can resolve all affected print paths with minimal surface change.
-- Whether CI/default shells enforce UTF-8 (which may hide this locally reproducible issue).
+- Whether replacing only `_cmd_undo` arrow fully addresses TASK-009 acceptance criteria in all required runs.
+- Whether other failures in full unittest-discover are unrelated and should remain out-of-scope.
