@@ -22,3 +22,10 @@
 ## Known risks
 - `audit_check` mutates `claude/verify_last.json` and appends `claude/JOURNAL.md` by design, so those runtime/workflow-local changes remain expected after runs.
 - `solo_builder/config/settings.json` did not remain dirty after the run (best-effort restore succeeded), but mutation source in test/runtime path still exists and is now surfaced as an audit failure condition.
+
+## AUDITOR Result (TASK-004)
+- pass/fail result: **FAIL**
+- `working_tree_dirty`: **true**
+- `dirty_files`: `solo_builder/config/settings.json`
+- settings.json stayed clean after run: **yes** (restored; not present in post-run `git status --short --branch`)
+- final recommendation: **Reopen with follow-up task**. The mitigation correctly detects and repairs mutation side effects, but TASK-004 acceptance target requires a clean pass path for `audit_check`; current behavior still fails by design when mutation occurs.
