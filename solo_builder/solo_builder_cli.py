@@ -2180,7 +2180,7 @@ class SoloBuilderCLI:
             self.memory_store[branch_name] = []
 
         st_list = list(subtasks.keys())
-        print(f"  {GREEN}Added {task_name} → {branch_name} → {', '.join(st_list)}{RESET}")
+        print(f"  {GREEN}Added {task_name} -> {branch_name} -> {', '.join(st_list)}{RESET}")
         time.sleep(0.6)
         self.display.render(
             self.dag, self.memory_store, self.step,
@@ -2288,7 +2288,7 @@ class SoloBuilderCLI:
             self.dag[task_name]["status"] = "Running"
 
         st_list = list(subtasks.keys())
-        print(f"  {GREEN}Added {branch_name} → {', '.join(st_list)} to {task_name}{RESET}")
+        print(f"  {GREEN}Added {branch_name} -> {', '.join(st_list)} to {task_name}{RESET}")
         time.sleep(0.6)
         self.display.render(
             self.dag, self.memory_store, self.step,

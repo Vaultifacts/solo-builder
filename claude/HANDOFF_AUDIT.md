@@ -1,44 +1,31 @@
 # HANDOFF TO AUDITOR (from DEV)
 
+## Task
+TASK-008
+
 ## Summary of changes
-- Updated `solo_builder/discord_bot/test_bot.py` in `TestHandleTextCommandExtra.test_set_trigger_consumed_by_cli`:
-  - patched method to use a temp settings file
-  - patched `_cli_module._CFG_PATH` around the two `_cmd_set` calls
-  - restored `_CFG_PATH` and cleaned temp files in `finally`
-  - preserved assertions and method intent (`review_mode` on/off checks)
+- Updated encoding-unsafe console output in `solo_builder/solo_builder_cli.py`:
+  - `_cmd_add_task`: replaced Unicode arrow `→` with ASCII `->`
+  - `_cmd_add_branch`: replaced Unicode arrow `→` with ASCII `->`
+- No logic/path changes beyond output glyph substitution.
+
+## Files changed
+- solo_builder/solo_builder_cli.py
 
 ## Commands run
-1. `pwsh tools/extract_allowed_files.ps1`
-2. `git restore --source=HEAD --worktree --staged solo_builder/config/settings.json`
-3. `python -m unittest solo_builder.discord_bot.test_bot.TestHandleTextCommandExtra.test_set_trigger_consumed_by_cli`
-4. `git status --short --branch`
-5. `git diff -- solo_builder/config/settings.json`
-6. `git restore --source=HEAD --worktree --staged solo_builder/config/settings.json`
-7. `python -m unittest solo_builder.discord_bot.test_bot`
-8. `git status --short --branch`
-9. `git diff -- solo_builder/config/settings.json`
-10. `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`
-11. `pwsh tools/audit_check.ps1`
+1. `python -m unittest solo_builder.discord_bot.test_bot.TestAddTaskInlineSpec`
+2. `python -m unittest solo_builder.discord_bot.test_bot.TestAddBranchInlineSpec`
+3. `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`
+4. `pwsh tools/audit_check.ps1`
 
 ## Results
-- `dev_gate` passed.
-- Method-level run (`test_set_trigger_consumed_by_cli`) passed and did not dirty `solo_builder/config/settings.json`.
-- Module-level run (`solo_builder.discord_bot.test_bot`) still has existing test failures, but `solo_builder/config/settings.json` remained clean.
-- `audit_check` passed: `All required verification commands passed.`
+- `TestAddTaskInlineSpec`: PASS (4 tests)
+- `TestAddBranchInlineSpec`: PASS (3 tests)
+- `dev_gate` manual run: PASS
+- `audit_check`: PASS (`unittest-discover`, `git-status`, `git-diff-stat`)
+
+## UnicodeEncodeError status
+- The prior `UnicodeEncodeError: 'charmap' codec can't encode character '\u2192'` is no longer present in the targeted suites.
 
 ## settings.json cleanliness
-- After method-level run: clean (no diff, not listed in `git status`).
-- After module-level run: clean (no diff, not listed in `git status`).
-- After full `audit_check`: clean (verification passed without mutation error).
-
-## Risks / notes
-- Scope restriction was followed (`solo_builder/discord_bot/test_bot.py` + this handoff only).
-- Existing unrelated unittest failures remain (encoding/assertion issues), but they no longer mutate tracked config.
-
-## AUDITOR (TASK-007)
-- pass/fail result: **PASS**
-- `working_tree_dirty`: **false**
-- `dirty_files`: `[]`
-- `solo_builder/config/settings.json` remained clean: **yes**
-- `git status --short --branch` after audit: non-clean due workflow/runtime-local and prior handoff/state files, not due settings mutation
-- final verdict: **TASK-007 resolved**
+- `solo_builder/config/settings.json` remained clean after verification (`git diff -- solo_builder/config/settings.json` produced no diff).
