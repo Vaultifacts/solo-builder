@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-001
+TASK-002
 
-Create the first real end-to-end workflow task for this repo that is small but meaningful.
+Repair dev_gate blocker in tools/secret_scan.ps1 so safety checks execute reliably.

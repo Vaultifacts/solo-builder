@@ -31,9 +31,9 @@ foreach ($file in $stagedFiles) {
 }
 
 if ($hits.Count -gt 0) {
-  Write-Error "Secret scan failed. Review potential secrets:`n$($hits -join \"`n\")"
+  $joinedHits = ($hits | ForEach-Object { $_ }) -join "`n"
+  Write-Error "Secret scan failed. Review potential secrets:`n$joinedHits"
   exit 1
 }
 
 exit 0
-

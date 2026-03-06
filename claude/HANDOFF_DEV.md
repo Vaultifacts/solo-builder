@@ -1,15 +1,13 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Objective
-Create a small, meaningful `solo_builder`-scoped improvement for TASK-001 by adding a deterministic local smoke test for repository readiness and documenting how to run it, without changing product behavior.
+Fix the `dev_gate` blocker by repairing the parsing/runtime error in `tools/secret_scan.ps1` while preserving existing secret-scan behavior.
 
 ## In-scope area
-`solo_builder/`
+`tools/`
 
 ## Allowed changes
-- solo_builder/tests/test_task001_smoke.py
-- solo_builder/tests/__init__.py
-- solo_builder/README.md
+- tools/secret_scan.ps1
 
 ## Disallowed changes
 - No unrelated refactors
@@ -17,22 +15,20 @@ Create a small, meaningful `solo_builder`-scoped improvement for TASK-001 by add
 - No edits outside Allowed changes
 
 ## Implementation plan
-1. Add `solo_builder/tests/test_task001_smoke.py` with minimal `unittest` coverage that validates repository-readiness invariants only (for example: required workflow/project files exist and are readable).
-2. Add `solo_builder/tests/__init__.py` (if needed) so test discovery is stable in local and CI environments.
-3. Update `solo_builder/README.md` with a short “TASK-001 smoke test” section showing exact command(s) to run this test, keeping documentation concise and scoped to the new test only.
+1. Inspect `tools/secret_scan.ps1` and identify the exact malformed expression causing the `-join` syntax/runtime failure.
+2. Replace the failing expression with a PowerShell 5.1-safe string-join approach that preserves current scan output semantics.
+3. Keep all pattern checks and exit-code behavior unchanged except for eliminating the parser/runtime failure.
 
 ## Acceptance criteria
-- `solo_builder/tests/test_task001_smoke.py` exists and is runnable with `python -m unittest`.
-- `solo_builder/README.md` includes the exact command for running the new smoke test.
-- `pwsh tools/audit_check.ps1` exits with code `0` after the change set is complete.
-- Latest `claude/verify_last.json` shows `"passed": true` for required verification commands after DEV verification.
+- `pwsh tools/secret_scan.ps1` runs without syntax/parsing error.
+- `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail` proceeds past `secret_scan.ps1` on a clean staging set.
+- The script still fails with clear messaging when potential secrets are detected.
 
 ## Verification steps
-1. Run targeted test: `python -m unittest solo_builder.tests.test_task001_smoke -v`.
-2. Run full contract verification: `pwsh tools/audit_check.ps1`.
-3. Confirm verification artifact indicates success: inspect `claude/verify_last.json` for `"passed": true` and no required command failures.
+1. Run: `pwsh tools/secret_scan.ps1`.
+2. Run: `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`.
+3. Capture command output in `claude/HANDOFF_AUDIT.md` for auditor traceability.
 
 ## Risks / notes
-- Keep test assertions lightweight and deterministic; avoid network, time-dependent, or environment-specific checks.
-- Do not touch existing bot/API suites in this task; this handoff is intentionally minimal to exercise the full role loop safely.
-- Before committing, ensure `claude/allowed_files.txt` is derived from this handoff so dev-gate scope enforcement remains strict.
+- Keep the fix minimal to avoid changing policy behavior.
+- This task is a guardrail reliability fix and should complete before resuming TASK-001 implementation flow.
