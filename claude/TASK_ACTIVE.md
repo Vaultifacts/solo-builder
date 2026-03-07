@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-021
+TASK-022
 
-Fix pre-existing test_stalled_shows_stuck failure so optional unittest verification is clean.
+Integrate workflow_contract_check.ps1 into workflow_preflight.ps1 so workflow contract drift is caught before task initialization.
