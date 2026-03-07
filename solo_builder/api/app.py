@@ -954,21 +954,28 @@ def metrics():
 
 @app.get("/metrics/export")
 def metrics_export():
-    """Return per-step metrics history as a downloadable CSV file."""
+    """Return per-step metrics history as CSV (default) or JSON (?format=json)."""
     state = _load_state()
     meta_history = state.get("meta_history", [])
     cumulative = 0
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["step_index", "verified", "healed", "cumulative"])
+    rows = []
     for i, entry in enumerate(meta_history):
         v = entry.get("verified", 0)
         h = entry.get("healed", 0)
         cumulative += v
-        writer.writerow([i + 1, v, h, cumulative])
-    csv_bytes = buf.getvalue().encode("utf-8")
+        rows.append({"step_index": i + 1, "verified": v, "healed": h, "cumulative": cumulative})
+
+    fmt = request.args.get("format", "csv").strip().lower()
+    if fmt == "json":
+        return jsonify(rows)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["step_index", "verified", "healed", "cumulative"])
+    for row in rows:
+        writer.writerow([row["step_index"], row["verified"], row["healed"], row["cumulative"]])
     return Response(
-        csv_bytes,
+        buf.getvalue().encode("utf-8"),
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=metrics.csv"},
     )

@@ -1433,7 +1433,7 @@
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Peak rate</span> ${s.peak_verified_per_step ?? "—"} v/step</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Steps w/ heals</span> ${s.steps_with_heals ?? 0}</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total healed</span> ${d.total_healed ?? 0}</div>` +
-        `<div style="margin-top:8px"><a class="toolbar-btn" href="/metrics/export" download="metrics.csv">Download CSV</a></div>`;
+        `<div style="margin-top:8px;display:flex;gap:6px"><a class="toolbar-btn" href="/metrics/export" download="metrics.csv">Download CSV</a><a class="toolbar-btn" href="/metrics/export?format=json" download="metrics.json">Download JSON</a></div>`;
     } catch (_) {}
   }
 

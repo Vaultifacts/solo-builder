@@ -1354,6 +1354,52 @@ class TestMetricsExport(_Base):
         cumulatives = [line.split(",")[3] for line in lines[1:]]
         self.assertEqual(cumulatives, ["1", "5", "7"])
 
+    # ?format=json
+
+    def test_export_json_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export?format=json")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_json_content_type(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export?format=json")
+        self.assertIn("application/json", r.content_type)
+
+    def test_export_json_returns_list(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export?format=json")
+        self.assertIsInstance(r.get_json(), list)
+
+    def test_export_json_empty_history_is_empty_list(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export?format=json")
+        self.assertEqual(r.get_json(), [])
+
+    def test_export_json_row_keys(self):
+        state = self._make_state()
+        state["meta_history"] = [{"verified": 2, "healed": 1}]
+        self._write_state(state)
+        rows = self.client.get("/metrics/export?format=json").get_json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0], {"step_index": 1, "verified": 2, "healed": 1, "cumulative": 2})
+
+    def test_export_json_cumulative_matches_csv(self):
+        state = self._make_state()
+        state["meta_history"] = [
+            {"verified": 3, "healed": 0},
+            {"verified": 2, "healed": 1},
+        ]
+        self._write_state(state)
+        rows = self.client.get("/metrics/export?format=json").get_json()
+        self.assertEqual(rows[0]["cumulative"], 3)
+        self.assertEqual(rows[1]["cumulative"], 5)
+
+    def test_export_csv_still_works_with_format_csv(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export?format=csv")
+        self.assertIn("text/csv", r.content_type)
+
 
 # ---------------------------------------------------------------------------
 # Entry point
