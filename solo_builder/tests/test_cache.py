@@ -496,6 +496,19 @@ class TestAppendCacheSessionStats(unittest.TestCase):
         content = self._read_journal()
         self.assertIn("550", content)
 
+    def test_journal_includes_cumulative_rows(self):
+        import json as _json
+        prior = {"cumulative_hits": 5, "cumulative_misses": 1}
+        Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
+        (Path(self._cache_dir) / ResponseCache._STATS_FILE).write_text(_json.dumps(prior))
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        cache.get("miss")  # 1 miss so total > 0
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=3)
+        content = self._read_journal()
+        self.assertIn("all-time", content)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SoloBuilderCLI._cmd_cache
@@ -591,6 +604,35 @@ class TestCmdCache(unittest.TestCase):
 
         output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
         self.assertIn("n/a", output)
+
+    def test_cumulative_hits_shown(self):
+        import json as _json
+        # Seed a prior session with 10 hits
+        prior = {"cumulative_hits": 10, "cumulative_misses": 2}
+        stats_path = Path(self._tmp) / ResponseCache._STATS_FILE
+        stats_path.write_text(_json.dumps(prior))
+        cli, cache = self._make_cli_with_cache(self._tmp)
+
+        with patch("builtins.print") as mock_print:
+            cli._cmd_cache()
+
+        output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
+        self.assertIn("all sessions", output.lower())
+        self.assertIn("10", output)
+
+    def test_cumulative_hit_rate_shown(self):
+        import json as _json
+        # 8 hits / 2 misses → 80%
+        prior = {"cumulative_hits": 8, "cumulative_misses": 2}
+        stats_path = Path(self._tmp) / ResponseCache._STATS_FILE
+        stats_path.write_text(_json.dumps(prior))
+        cli, cache = self._make_cli_with_cache(self._tmp)
+
+        with patch("builtins.print") as mock_print:
+            cli._cmd_cache()
+
+        output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
+        self.assertIn("80.0%", output)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
