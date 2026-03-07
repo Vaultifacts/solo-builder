@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-052
+TASK-055
 
-Batch: wire ?since to cache history polling (052), add /history/export endpoint (053), history tab client-side filter (054)
+Batch: history/export filter param (055), Export sidebar tab (056), GET /cache/export endpoint (057)
