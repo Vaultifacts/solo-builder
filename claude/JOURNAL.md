@@ -144,3 +144,6 @@
 - [2026-03-07T08:49:31.9802468Z] state transition: triage/RESEARCH -> build/DEV | note: cache hit/miss counters + stats() + cache_stats.py
 - [2026-03-07T08:53:01.9833537Z] state transition: build/DEV -> verify/AUDITOR
 - [2026-03-07T08:53:35.2728727Z] state transition: done/AUDITOR -> done/AUDITOR
+- [2026-03-07T08:55:17.1545853Z] Starting TASK-031 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-07T08:57:33.2662165Z] state transition: triage/RESEARCH -> verify/AUDITOR
+- [2026-03-07T08:57:56.8160360Z] state transition: done/AUDITOR -> done/AUDITOR
