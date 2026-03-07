@@ -1,107 +1,120 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Context
-- Active task: `TASK-016`
-- Scope: documentation-only task to add canonical workflow specification.
-- Objective: document the deterministic workflow as currently enforced/practiced, without changing behavior.
+- Active task: `TASK-017`
+- Objective: define the smallest safe way to add `tools/workflow_preflight.ps1` as a baseline-safety gate before next-task initialization.
+- Scope: workflow-only (no product code).
 
 ## Files consulted
 - `claude/AGENT_ENTRY.md`
 - `claude/CONTROL.md`
 - `claude/NEXT_ACTION.md`
-- `claude/TASK_QUEUE.md`
+- `claude/WORKFLOW_SPEC.md`
 - `claude/TASK_ACTIVE.md`
-- `claude/JOURNAL.md`
 - `claude/STATE.json`
-- `claude/STATE_SCHEMA.md`
-- `claude/VERIFY.json`
+- `tools/research_extract.ps1`
+- `tools/check_next_action_consistency.ps1`
+- `tools/audit_check.ps1`
 - `tools/claude_orchestrate.ps1`
 - `tools/advance_state.ps1`
-- `tools/audit_check.ps1`
-- `tools/dev_gate.ps1`
-- `tools/extract_allowed_files.ps1`
-- `tools/precommit_gate.ps1`
-- `tools/bootstrap_verify.ps1`
-- `tools/install_git_hooks.ps1`
-- `.githooks/pre-commit`
+- tool inventory via `Get-ChildItem tools -File`
 
-## Confirmed workflow rules (script-enforced)
+## Existing reusable checks (already available)
+1. STATE/NEXT_ACTION consistency check
+- Existing script: `tools/check_next_action_consistency.ps1`
+- Current behavior:
+  - Parses stable sections from `claude/NEXT_ACTION.md`: `## Task`, `## Phase`, `## Role`
+  - Compares to `claude/STATE.json` fields: `task_id`, `phase`, `next_role`
+  - Exits nonzero on mismatch with explicit mismatch lines
+- Reuse value: avoids duplicating parsing/consistency logic in preflight.
 
-### 1) Role/phase control surface
-- `tools/claude_orchestrate.ps1` reads `claude/STATE.json`, validates phase/role enums, validates non-done phase-role mapping, and renders role prompt output.
-- `tools/claude_orchestrate.ps1` writes `claude/NEXT_ACTION.md` from state + role contract on each run.
-- `tools/advance_state.ps1` mutates `STATE.json` and appends transition entries to `JOURNAL.md`; it enforces phase-role mapping for non-done phases.
+2. Working-tree tracked-change detection logic
+- Existing implementation pattern appears in `tools/audit_check.ps1` (`Get-TrackedChangedPaths` via `git status --porcelain`).
+- Reuse value: deterministic detection of modified tracked files.
 
-### 2) Phase and role model in practice
-- Enforced phases: `triage`, `research`, `plan`, `build`, `verify`, `done` (`STATE_SCHEMA.md`, `advance_state.ps1`, `claude_orchestrate.ps1`).
-- Enforced roles: `RESEARCH`, `ARCHITECT`, `DEV`, `AUDITOR`.
-- Non-done phase mapping enforced by orchestration scripts:
-  - `triage -> RESEARCH`
-  - `research -> ARCHITECT`
-  - `plan/build -> DEV`
-  - `verify -> AUDITOR`
+3. Orchestrator/state invariants
+- `tools/claude_orchestrate.ps1` enforces valid phase/role enums and non-done mapping.
+- `tools/advance_state.ps1` mutates state and journal using same model.
+- Reuse value: preflight should validate baseline safety only, not redefine lifecycle semantics.
 
-### 3) Verification and closeout behavior
-- `tools/audit_check.ps1` is the verification runner and writes `claude/verify_last.json`.
-- `audit_check.ps1` now includes fail-fast `STATE` vs `NEXT_ACTION` consistency check via `tools/check_next_action_consistency.ps1`.
-- `audit_check.ps1` updates `STATE.json`:
-  - pass -> `phase=done`
-  - fail -> `phase=verify`, increment attempt, `next_role=ARCHITECT`
-- Working-tree mutation detection/restoration is enforced in `audit_check.ps1`.
+## Missing checks (gap TASK-017 must cover)
+No current dedicated pre-task-init guard exists that simultaneously verifies:
+- clean working tree baseline,
+- runtime-artifact cleanliness for `claude/allowed_files.txt` and `claude/verify_last.json`,
+- STATE/NEXT_ACTION consistency,
+- branch baseline safety against `master`.
 
-### 4) Dev safety and scope enforcement
-- `.githooks/pre-commit` runs `pwsh tools/dev_gate.ps1 -Mode PreCommit` (with powershell fallback).
-- `tools/dev_gate.ps1` requires non-empty `claude/allowed_files.txt` and runs guard scripts.
-- `tools/extract_allowed_files.ps1` derives allowed files from `claude/HANDOFF_DEV.md`.
+## Deterministic detection requirements
 
-### 5) Runtime artifact handling (partially enforced)
-- `.gitignore` marks runtime/local artifacts (including `claude/STATE.json`, `claude/NEXT_ACTION.md`, `claude/verify_last.json`, logs/snapshots) as local-only.
-- Runtime artifacts are still mutable during normal operation and must be manually restored/ignored in cleanup.
+### A) Dirty working tree
+Deterministic source:
+- `git status --porcelain`
+- fail if any tracked or untracked entries exist (for strict pre-init safety), or fail at minimum for tracked changes.
 
-## Confirmed workflow rules (convention-practice from repo history)
+Risk note:
+- If untracked files are ignored, init can still proceed with hidden clutter; strict fail is safer for deterministic workflow.
 
-### 1) Branch lifecycle
-- Merge-first baseline (`task/TASK-XXX` branch merged into `master` before creating next task branch) is not script-enforced; observed as operator convention in recent history and task guidance.
+### B) Runtime artifact dirtiness
+Required artifacts (explicit in task acceptance):
+- `claude/allowed_files.txt`
+- `claude/verify_last.json`
 
-### 2) Closeout cleanup lifecycle
-- Standard cleanup pattern appears repeatedly in practice:
-  - restore runtime artifacts (`allowed_files.txt`, `verify_last.json`)
-  - inspect/commit `JOURNAL.md` if durable history
-- This is convention-driven and not fully automated by scripts.
+Deterministic checks:
+- if artifact exists and appears in `git status --porcelain` as modified/staged/deleted, fail.
+- if artifact is absent and untracked (common when gitignored), do not fail by absence alone.
 
-### 3) Commit sequencing discipline
-- Fine-grained sequence (init -> research -> architect -> dev -> audit -> journal closeout) is conventionally followed; not hard-enforced by a single script.
+### C) STATE/NEXT_ACTION mismatch
+Deterministic method:
+- invoke `tools/check_next_action_consistency.ps1`
+- fail preflight if helper exits nonzero.
 
-## Conventions vs enforcement summary
-- Enforced by scripts:
-  - phase/role validation and rendering
-  - state mutation/update behavior
-  - verify runner and verify output
-  - dev-gate checks and hook invocation
-  - allowed-files extraction gate
-- Convention-only:
-  - merge-first branch baseline
-  - cleanup cadence for runtime artifacts
-  - commit granularity and message discipline
+### D) Safe baseline (master contains previous task branch)
+Observed convention from workflow history/spec:
+- new task branches must start from updated `master` that already includes previous task branch.
 
-## Ambiguities the specification must clarify (without changing behavior)
-- Difference between machine source of truth (`STATE.json`) and rendered control artifact (`NEXT_ACTION.md`).
-- Which procedures are mandatory script behavior vs operator policy.
-- Explicit statement that runtime artifacts are local-only and typically excluded from commits.
-- Explicit merge-first baseline rule as required operator discipline (currently not script-enforced).
-- Clarify that `JOURNAL.md` can contain both durable transitions and transient test transitions; closeout guidance should state when to commit.
+Deterministic evaluation shape (minimal and practical):
+- Resolve current branch via `git branch --show-current`.
+- If on `master` for pre-init: pass merge check branch-specific condition (baseline branch itself).
+- If on `task/TASK-NNN`:
+  - derive previous branch by decrementing numeric suffix to `task/TASK-(NNN-1)` when it exists.
+  - verify previous branch is contained in `master` using `git branch --contains <prev-branch-tip> master` or merge-base ancestry check.
+  - fail if previous branch exists but is not merged into master.
 
-## Risks if spec is vague
-- Agents may treat conventions as optional and reintroduce baseline drift.
-- Agents may incorrectly commit local runtime artifacts.
-- Future chats may infer incorrect lifecycle if mandatory vs advisory rules are not separated.
+Research caveat:
+- branch numbers are not fully contiguous historically (`TASK-010` exists but older low numbers were not all branch-created), so the check should be conservative:
+  - only enforce when derived previous branch exists locally.
+  - if it does not exist, emit informative warning/pass behavior per architect decision.
+
+## Suggested minimal integration surface
+- New script: `tools/workflow_preflight.ps1` (single entry point).
+- Reuse helper: `tools/check_next_action_consistency.ps1` (invoke directly).
+- No mandatory changes required to `tools/audit_check.ps1` or `tools/claude_orchestrate.ps1` for this task’s core objective.
+
+## Edge cases to handle explicitly in spec/plan
+1. Running preflight from `master` vs from a task branch.
+2. Missing runtime artifact files (gitignored not yet generated).
+3. Non-contiguous task numbers and missing local `task/TASK-(N-1)` branches.
+4. Detached HEAD or non-task branch names.
+5. Repositories without upstream configured for `master` (preflight should not require network).
+
+## Failure messaging requirements (actionable)
+Messages should clearly identify:
+- exact failing check,
+- exact file/branch mismatch,
+- one-line remediation (e.g., restore runtime artifacts, merge previous task branch into master, regenerate NEXT_ACTION via orchestrator).
+
+## Risks
+- Overly strict branch inference can block valid flows in non-contiguous branch histories.
+- Coupling to branch naming assumptions must remain bounded to `task/TASK-<number>` pattern.
+- Duplicating existing helper logic would increase drift risk; delegation is safer.
 
 ## Hypotheses (ranked)
-- H1: A single canonical `claude/WORKFLOW_SPEC.md` that explicitly separates enforced rules from conventions will reduce workflow drift across chats/agents.
-- H2: Most future failures will come from branch baseline and closeout cleanup steps unless these convention rules are explicitly codified.
-- H3: No script changes are required for TASK-016; documentation-only implementation can satisfy acceptance criteria.
+- H1: A single preflight script that delegates STATE/NEXT_ACTION consistency to existing helper and performs explicit baseline checks will satisfy TASK-017 with minimal blast radius.
+- H2: The highest regression risk is branch-baseline inference, not working-tree or runtime-artifact checks.
+- H3: No product or lifecycle semantic changes are needed; this is a guardrail addition only.
 
 ## Constraints / non-negotiables
-- No changes to workflow semantics.
-- No changes to orchestrator/state-machine behavior in this task.
-- No product-code changes under `solo_builder/*`.
+- No changes under `solo_builder/*`.
+- No task lifecycle semantic changes.
+- Preserve deterministic workflow conventions.
+- Keep implementation scope to workflow scripts/docs only.
