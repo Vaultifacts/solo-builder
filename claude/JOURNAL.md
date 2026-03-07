@@ -130,3 +130,9 @@
 - [2026-03-07T08:01:34.0897188Z] state transition: plan/DEV -> build/DEV | note: starting build
 - [2026-03-07T08:04:39.0416205Z] state transition: build/DEV -> verify/AUDITOR | note: build complete 195/0
 - [2026-03-07T08:05:01.6187615Z] state transition: done/AUDITOR -> done/AUDITOR | note: all checks pass
+- [2026-03-07T08:15:30.3187933Z] Starting TASK-028 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-07T08:15:37.6378076Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: plan: unit tests for all agents + runners public APIs
+- [2026-03-07T08:15:38.3364062Z] state transition: research/ARCHITECT -> plan/DEV | note: plan complete
+- [2026-03-07T08:15:39.0832536Z] state transition: plan/DEV -> build/DEV | note: starting build
+- [2026-03-07T08:18:44.6931995Z] state transition: build/DEV -> verify/AUDITOR | note: build complete 255/0
+- [2026-03-07T08:19:10.2984618Z] state transition: done/AUDITOR -> done/AUDITOR
