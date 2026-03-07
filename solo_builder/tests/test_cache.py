@@ -497,5 +497,101 @@ class TestAppendCacheSessionStats(unittest.TestCase):
         self.assertIn("550", content)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SoloBuilderCLI._cmd_cache
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCmdCache(unittest.TestCase):
+    """Tests for SoloBuilderCLI._cmd_cache()."""
+
+    def _make_cli_with_cache(self, tmp_dir):
+        """Return a minimal CLI-like object with a wired cache."""
+        cache = ResponseCache(cache_dir=tmp_dir)
+        # Minimal stand-in — we only need executor.anthropic.cache
+        executor_stub = MagicMock()
+        executor_stub.anthropic.cache = cache
+        import solo_builder_cli as _m
+        cli = MagicMock(spec=_m.SoloBuilderCLI)
+        cli.executor = executor_stub
+        # Bind the real method to our stub
+        cli._cmd_cache = _m.SoloBuilderCLI._cmd_cache.__get__(cli)
+        return cli, cache
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        ResponseCache(cache_dir=self._tmp).clear()
+
+    def test_prints_stats_table(self):
+        cli, cache = self._make_cli_with_cache(self._tmp)
+        key = ResponseCache.make_key("p")
+        cache.set(key, "v")
+        cache.get(key)   # 1 hit
+
+        import io
+        with patch("builtins.print") as mock_print:
+            cli._cmd_cache()
+
+        output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
+        self.assertIn("Hits this session", output)
+        self.assertIn("1", output)
+
+    def test_no_cache_prints_disabled_message(self):
+        import solo_builder_cli as _m
+        cli = MagicMock()
+        cli.executor.anthropic.cache = None
+        cli._cmd_cache = _m.SoloBuilderCLI._cmd_cache.__get__(cli)
+
+        with patch("builtins.print") as mock_print:
+            cli._cmd_cache()
+
+        output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
+        self.assertIn("disabled", output.lower())
+
+    def test_clear_flag_deletes_entries(self):
+        cli, cache = self._make_cli_with_cache(self._tmp)
+        cache.set(ResponseCache.make_key("a"), "x")
+        cache.set(ResponseCache.make_key("b"), "y")
+        self.assertEqual(cache.size(), 2)
+
+        with patch("builtins.print"):
+            cli._cmd_cache(clear=True)
+
+        self.assertEqual(cache.size(), 0)
+
+    def test_clear_false_preserves_entries(self):
+        cli, cache = self._make_cli_with_cache(self._tmp)
+        cache.set(ResponseCache.make_key("a"), "x")
+
+        with patch("builtins.print"):
+            cli._cmd_cache(clear=False)
+
+        self.assertEqual(cache.size(), 1)
+
+    def test_hit_rate_shown_as_percentage(self):
+        cli, cache = self._make_cli_with_cache(self._tmp)
+        key = ResponseCache.make_key("p")
+        cache.set(key, "v")
+        cache.get(key)     # hit
+        cache.get("miss")  # miss  → 50%
+
+        with patch("builtins.print") as mock_print:
+            cli._cmd_cache()
+
+        output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
+        self.assertIn("50.0%", output)
+
+    def test_no_activity_shows_na_hit_rate(self):
+        cli, cache = self._make_cli_with_cache(self._tmp)
+        # No gets at all
+
+        with patch("builtins.print") as mock_print:
+            cli._cmd_cache()
+
+        output = " ".join(str(a) for call in mock_print.call_args_list for a in call.args)
+        self.assertIn("n/a", output)
+
+
 if __name__ == "__main__":
     unittest.main()

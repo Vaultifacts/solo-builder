@@ -1119,6 +1119,12 @@ class SoloBuilderCLI:
         elif cmd == "stats":
             self._cmd_stats()
 
+        elif cmd == "cache":
+            self._cmd_cache()
+
+        elif cmd == "cache clear":
+            self._cmd_cache(clear=True)
+
         elif cmd == "history":
             self._cmd_history("")
 
@@ -2458,6 +2464,28 @@ class SoloBuilderCLI:
         print(f"  {BOLD}{'TOTAL':<12}{RESET} {grand_v:>8} {grand_t:>6} {g_pct:>5}% {g_avg:>10}")
         print()
 
+    def _cmd_cache(self, clear: bool = False) -> None:
+        """cache [clear] — show response cache stats; optionally wipe all entries."""
+        cache = getattr(self.executor.anthropic, "cache", None)
+        if cache is None:
+            print(f"  {YELLOW}Cache is disabled (NOCACHE=1 or no cache configured).{RESET}")
+            return
+        s = cache.stats()
+        total = s["hits"] + s["misses"]
+        hit_rate = f"{s['hits'] / total * 100:.1f}%" if total else "n/a"
+        print(f"\n  {BOLD}{CYAN}Response Cache{RESET}")
+        print(f"  {'─' * 44}")
+        print(f"  {'Hits this session':<24} {s['hits']}")
+        print(f"  {'Misses this session':<24} {s['misses']}")
+        print(f"  {'Hit rate':<24} {hit_rate}")
+        print(f"  {'Entries on disk':<24} {s['size']}")
+        print(f"  {'Est. tokens saved':<24} {s['estimated_tokens_saved']:,}")
+        print(f"  {'─' * 44}")
+        if clear:
+            deleted = cache.clear()
+            print(f"  {YELLOW}Cleared {deleted} cache entries.{RESET}")
+        print()
+
     def _cmd_diff(self) -> None:
         """diff — show what changed in the last step vs the .1 backup."""
         backup_path = f"{STATE_PATH}.1"
@@ -2520,6 +2548,8 @@ class SoloBuilderCLI:
             ("reset",                  "Reset DAG to initial state, clear save"),
             ("status",                 "Show detailed DAG statistics"),
             ("stats",                  "Per-task breakdown (verified, avg steps)"),
+            ("cache",                  "Show response cache hit/miss stats"),
+            ("cache clear",            "Show cache stats then wipe all entries"),
             ("history [N]",            "Show last N status transitions (default 20)"),
             ("branches [Task N]",      "List all branches for a task with subtask detail"),
             ("search <text>",          "Find subtasks by keyword (description/output)"),
