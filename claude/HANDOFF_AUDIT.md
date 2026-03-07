@@ -42,3 +42,22 @@ patch("pathlib.Path.read_text", return_value=mock_cfg)
   `with` block; other tests in the class are not affected.
 - `claude/allowed_files.txt` is a runtime artifact and must not be committed. Restore with:
   `git restore --source=HEAD --worktree --staged claude/allowed_files.txt`
+
+## TASK-021 — AUDITOR
+
+Verdict: PASS
+
+Verification result:
+- `pwsh tools/audit_check.ps1` passed all required verification commands.
+- `claude/verify_last.json` reports `"passed": true`.
+
+Required command results:
+- `git-status` (required): PASS — only `claude/JOURNAL.md` modified.
+- `git-diff-stat` (required): PASS — JOURNAL.md only.
+- `unittest-discover` (optional): **PASS** — 195 tests, 0 failures.
+  This is the first audit run in the TASK-019/020/021 series where `unittest-discover`
+  passes cleanly. `test_stalled_shows_stuck` is resolved.
+
+Scope check:
+- Implementation confined to `solo_builder/discord_bot/test_bot.py` (+3 lines).
+  No production code modified. No files outside declared scope touched.
