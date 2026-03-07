@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-046
+TASK-047
 
-Add cache history tab to dashboard: poll GET /cache/history every tick and display a sessions table with per-session hits, misses, hit rate, and ended_at
+Add ?since=step_index query param to GET /metrics/export: return only rows with step_index > since (both CSV and JSON)
