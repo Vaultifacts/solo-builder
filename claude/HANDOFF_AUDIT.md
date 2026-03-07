@@ -133,3 +133,27 @@ TASK-009
 - Scope check: implementation limited to tools/workflow_preflight.ps1
 - No product-code changes under solo_builder/*
 - final verdict: TASK-017 resolved
+
+## TASK-018 — AUDITOR
+
+Verdict: PASS
+
+Required verification passed via `pwsh tools/audit_check.ps1`.
+
+Evidence:
+- `claude/verify_last.json` recorded `"passed": true`
+- `tools/start_task.ps1` dry-run proved preflight occurs before branch creation
+- dirty-tree dry-run failed nonzero before branch creation
+- clean-tree dry-run passed with expected ordered flow
+- scope remained limited to:
+  - `tools/start_task.ps1`
+  - `tools/workflow_preflight.ps1`
+  - `claude/WORKFLOW_SPEC.md`
+
+Acceptance criteria status:
+- Automatic preflight gating integrated into task initialization: satisfied
+- Nonzero preflight abort before branch creation: satisfied
+- Canonical scripted path documented: satisfied
+
+Blocking issues:
+- None

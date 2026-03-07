@@ -53,6 +53,15 @@ Done-phase behavior:
 ### Convention-driven branch rule (merge-first baseline)
 - New task branches must be created from updated `master` (or agreed integration branch), never from a prior task branch.
 
+### Canonical scripted initialization path
+- Use `pwsh tools/start_task.ps1 -TaskId TASK-XXX -Goal "<goal>"` as the standard initializer.
+- The script enforces preflight gating automatically:
+  - switch to `master` (and optional pull when upstream exists)
+  - merge prior task branch when applicable
+  - run `pwsh tools/workflow_preflight.ps1`
+  - abort on nonzero preflight
+  - create `task/TASK-XXX` only after preflight passes
+
 Recommended sequence:
 1. `git checkout master`
 2. `git pull` (if upstream is configured)

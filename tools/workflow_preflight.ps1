@@ -27,7 +27,7 @@ function Get-ChangedPaths {
       $paths.Add($path) | Out-Null
     }
   }
-  return @($paths)
+  return @($paths.ToArray())
 }
 
 function Fail([string]$Message) {
@@ -44,7 +44,7 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
   Fail 'Unable to determine current branch (detached HEAD is not allowed for preflight).'
 }
 
-$changedPaths = Get-ChangedPaths
+$changedPaths = @(Get-ChangedPaths)
 $dirtyRuntime = @($changedPaths | Where-Object { $runtimeArtifacts -contains $_ })
 if ($dirtyRuntime.Count -gt 0) {
   $list = $dirtyRuntime -join ', '
