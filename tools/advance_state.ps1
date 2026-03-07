@@ -48,7 +48,9 @@ if ($ToPhase -eq 'triage' -and $ToRole -eq 'RESEARCH' -and $null -eq $state.atte
   $state | Add-Member -NotePropertyName attempt -NotePropertyValue 0 -Force
 }
 $state.updated_at = [DateTime]::UtcNow.ToString('o')
-$state | ConvertTo-Json -Depth 8 | Set-Content -Path $statePath -Encoding UTF8
+$tmpPath = [System.IO.Path]::ChangeExtension($statePath, '.tmp')
+$state | ConvertTo-Json -Depth 8 | Set-Content -Path $tmpPath -Encoding UTF8
+Move-Item -Force -Path $tmpPath -Destination $statePath
 
 if (!(Test-Path $journalPath)) {
   "# Journal`r`n" | Set-Content -Path $journalPath -Encoding UTF8

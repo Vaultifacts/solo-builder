@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-023
+TASK-024
 
-Isolate test_stalled_empty from live config
+Atomic STATE.json write in advance_state.ps1
