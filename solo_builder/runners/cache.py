@@ -24,7 +24,15 @@ _DEFAULT_CACHE_DIR = os.path.join(_REPO_ROOT, "claude", "cache")
 
 
 class ResponseCache:
-    """SHA-256-keyed, disk-backed cache for LLM API responses."""
+    """SHA-256-keyed, disk-backed cache for LLM API responses.
+
+    Per-session hit/miss counters are held in memory; call stats() to read them.
+    Disk state (size, clear) reflects the persistent on-disk cache directory.
+    """
+
+    # Approximate tokens per cached entry (prompt + response).
+    # Used only for the estimated_tokens_saved figure in stats().
+    _AVG_TOKENS_PER_ENTRY = 550
 
     def __init__(self, cache_dir: str = "") -> None:
         self._dir = Path(cache_dir or os.environ.get("CACHE_DIR", _DEFAULT_CACHE_DIR))
@@ -32,6 +40,8 @@ class ResponseCache:
             self._dir.mkdir(parents=True, exist_ok=True)
         except OSError:
             pass  # cache dir creation failure is non-fatal; get/set will no-op
+        self._hits   = 0
+        self._misses = 0
 
     # ── Key construction ──────────────────────────────────────────────────────
 
@@ -53,9 +63,14 @@ class ResponseCache:
         path = self._dir / f"{key}.json"
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            return data.get("response")
+            value = data.get("response")
+            if value is not None:
+                self._hits += 1
+                return value
         except Exception:
-            return None
+            pass
+        self._misses += 1
+        return None
 
     def set(self, key: str, response: str) -> None:
         """Store *response* under *key*. Silently ignores write errors."""
@@ -95,6 +110,23 @@ class ResponseCache:
             return sum(1 for _ in self._dir.glob("*.json"))
         except Exception:
             return 0
+
+    def stats(self) -> dict:
+        """Return per-session hit/miss counters and disk-state summary.
+
+        Keys
+        ----
+        hits                  : int   — cache hits this session
+        misses                : int   — cache misses this session
+        size                  : int   — entries currently on disk
+        estimated_tokens_saved: int   — hits × _AVG_TOKENS_PER_ENTRY
+        """
+        return {
+            "hits":                   self._hits,
+            "misses":                 self._misses,
+            "size":                   self.size(),
+            "estimated_tokens_saved": self._hits * self._AVG_TOKENS_PER_ENTRY,
+        }
 
 
 def make_cache(cache_dir: str = "") -> Optional[ResponseCache]:
