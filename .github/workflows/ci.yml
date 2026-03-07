@@ -26,6 +26,10 @@ jobs:
         shell: pwsh
         run: pwsh tools/bootstrap_verify.ps1
 
+      - name: Workflow contract check
+        shell: pwsh
+        run: pwsh tools/workflow_contract_check.ps1
+
       - name: CI invariant check
         shell: pwsh
         run: pwsh tools/ci_invariant_check.ps1
@@ -49,6 +53,7 @@ jobs:
           } > ci_bundle/ci_env.txt
           cat > ci_bundle/repro.ps1 <<'EOF'
           pwsh tools/bootstrap_verify.ps1
+          pwsh tools/workflow_contract_check.ps1
           pwsh tools/ci_invariant_check.ps1
           EOF
           chmod +x ci_bundle/repro.ps1 || true

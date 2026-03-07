@@ -123,6 +123,20 @@ Convention-driven:
 - closeout cleanup cadence for runtime artifacts
 - commit granularity/message discipline across role stages
 
+## Workflow contract integrity
+Two classes of drift are validated by `pwsh tools/workflow_contract_check.ps1`:
+
+Direction A — script-reference integrity:
+- Workflow contract files must not reference `tools/*.ps1` scripts that do not exist on disk.
+- Checked sources: `claude/AGENT_ENTRY.md`, `claude/WORKFLOW_SPEC.md`, `claude/NEXT_ACTION.md`,
+  `claude/RULES.md`, `.github/workflows/ci.yml`, `claude/checklists/*.md`.
+
+Direction B — lifecycle file declaration integrity:
+- Files written by lifecycle scripts must be declared in `claude/allowed_files.txt`.
+- The canonical lifecycle script output declarations are maintained in `tools/workflow_contract_check.ps1`.
+
+CI runs this check via: `pwsh tools/workflow_contract_check.ps1`
+
 ## Non-goals of this specification
 - No changes to workflow semantics.
 - No changes to orchestrator/state-machine logic.
