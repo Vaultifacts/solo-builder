@@ -986,7 +986,13 @@ def metrics():
 
 @app.get("/metrics/export")
 def metrics_export():
-    """Return per-step metrics history as CSV (default) or JSON (?format=json)."""
+    """Return per-step metrics history as CSV (default) or JSON (?format=json).
+
+    Query params
+    ------------
+    format  csv (default) | json
+    limit   N — return the most recent N rows only (all rows if omitted or <= 0)
+    """
     state = _load_state()
     meta_history = state.get("meta_history", [])
     cumulative = 0
@@ -996,6 +1002,10 @@ def metrics_export():
         h = entry.get("healed", 0)
         cumulative += v
         rows.append({"step_index": i + 1, "verified": v, "healed": h, "cumulative": cumulative})
+
+    limit = request.args.get("limit", type=int)
+    if limit is not None and limit > 0:
+        rows = rows[-limit:]
 
     fmt = request.args.get("format", "csv").strip().lower()
     if fmt == "json":

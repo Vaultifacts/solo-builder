@@ -1400,6 +1400,42 @@ class TestMetricsExport(_Base):
         r = self.client.get("/metrics/export?format=csv")
         self.assertIn("text/csv", r.content_type)
 
+    # ?limit=N
+
+    def _state_with_history(self, n: int):
+        state = self._make_state()
+        state["meta_history"] = [{"verified": i + 1, "healed": 0} for i in range(n)]
+        return state
+
+    def test_limit_caps_csv_rows(self):
+        self._write_state(self._state_with_history(5))
+        r = self.client.get("/metrics/export?limit=2")
+        lines = r.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 3)  # header + 2 data rows
+
+    def test_limit_returns_most_recent_rows(self):
+        self._write_state(self._state_with_history(5))
+        rows = self.client.get("/metrics/export?format=json&limit=2").get_json()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["step_index"], 4)
+        self.assertEqual(rows[1]["step_index"], 5)
+
+    def test_limit_zero_returns_all_rows(self):
+        self._write_state(self._state_with_history(4))
+        rows = self.client.get("/metrics/export?format=json&limit=0").get_json()
+        self.assertEqual(len(rows), 4)
+
+    def test_limit_larger_than_history_returns_all(self):
+        self._write_state(self._state_with_history(3))
+        rows = self.client.get("/metrics/export?format=json&limit=100").get_json()
+        self.assertEqual(len(rows), 3)
+
+    def test_limit_cumulative_preserved_correctly(self):
+        # cumulative is computed over all rows before slicing
+        self._write_state(self._state_with_history(3))  # verified: 1, 2, 3 → cum: 1, 3, 6
+        rows = self.client.get("/metrics/export?format=json&limit=1").get_json()
+        self.assertEqual(rows[0]["cumulative"], 6)  # last row's cumulative = 1+2+3
+
 
 # ---------------------------------------------------------------------------
 # /cache/history
