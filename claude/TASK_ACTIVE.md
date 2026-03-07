@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-028
+TASK-029
 
-Add targeted unit tests for solo_builder/agents/ and solo_builder/runners/ packages
+Add disk-backed response cache to AnthropicRunner; add CLAUDE_LOCAL=1 routing to Executor

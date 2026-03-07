@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from utils.helper_functions import add_memory_snapshot, BLUE, CYAN, RESET
 
+from .cache import make_cache
 from .claude_runner import ClaudeRunner
 from .anthropic_runner import AnthropicRunner
 from .sdk_tool_runner import SdkToolRunner
@@ -46,8 +47,11 @@ class Executor:
         self.review_mode      = REVIEW_MODE
         self._project_context = project_context
         self._append_journal  = append_journal or (lambda *a, **kw: None)
+        # Response cache: keyed by SHA-256(prompt); persists across sessions.
+        # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
+        _cache = make_cache()
         self.claude    = ClaudeRunner(timeout=CLAUDE_TIMEOUT, allowed_tools=CLAUDE_ALLOWED_TOOLS)
-        self.anthropic = AnthropicRunner(model=ANTHROPIC_MODEL, max_tokens=ANTHROPIC_MAX_TOKENS)
+        self.anthropic = AnthropicRunner(model=ANTHROPIC_MODEL, max_tokens=ANTHROPIC_MAX_TOKENS, cache=_cache)
         # SDK tool-use runner — replaces subprocess for tool-bearing subtasks
         self.sdk_tool = SdkToolRunner(
             client=self.anthropic.client,
@@ -89,6 +93,10 @@ class Executor:
         claude_jobs:   list = []   # subprocess fallback when SDK unavailable
         sdk_jobs:      list = []   # SDK direct (no tools)
 
+        # CLAUDE_LOCAL=1: route all Running subtasks through the local claude CLI
+        # instead of the Anthropic API, reducing cloud token consumption.
+        _use_local = os.environ.get("CLAUDE_LOCAL", "0") == "1"
+
         for task_name, branch_name, st_name, _ in priority_list:
             if advanced >= self.max_per_step:
                 break
@@ -110,7 +118,12 @@ class Executor:
             elif status == "Running":
                 st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
-                if st_tools:
+                if _use_local and self.claude.available:
+                    # Local CLI mode: bypass API runners entirely.
+                    # tools string is passed through so ClaudeRunner can forward it.
+                    claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
+                    advanced += 1
+                elif st_tools:
                     if self.sdk_tool.available:
                         # SDK tool-use (preferred — no subprocess overhead)
                         sdk_tool_jobs.append((task_name, branch_name, st_name, st_data, st_tools, self._project_context))

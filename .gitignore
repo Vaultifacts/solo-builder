@@ -1,5 +1,6 @@
 # Claude workflow runtime outputs
 claude/artifacts/
+claude/cache/
 claude/logs/
 claude/snapshots/
 claude/STATE.json

@@ -136,3 +136,7 @@
 - [2026-03-07T08:15:39.0832536Z] state transition: plan/DEV -> build/DEV | note: starting build
 - [2026-03-07T08:18:44.6931995Z] state transition: build/DEV -> verify/AUDITOR | note: build complete 255/0
 - [2026-03-07T08:19:10.2984618Z] state transition: done/AUDITOR -> done/AUDITOR
+- [2026-03-07T08:42:34.9123896Z] Starting TASK-029 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-07T08:42:44.8532579Z] state transition: triage/RESEARCH -> build/DEV | note: plan: cache.py in runners/, AnthropicRunner cache param, Executor CLAUDE_LOCAL routing
+- [2026-03-07T08:45:55.6646879Z] state transition: build/DEV -> verify/AUDITOR | note: 283/0
+- [2026-03-07T08:46:20.4833655Z] state transition: done/AUDITOR -> done/AUDITOR
