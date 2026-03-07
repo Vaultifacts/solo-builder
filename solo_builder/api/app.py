@@ -894,6 +894,38 @@ def cache_clear():
     return jsonify({"ok": True, "deleted": deleted, "errors": errors})
 
 
+@app.get("/cache/history")
+def cache_history():
+    """Return per-session cache hit/miss history from session_stats.json."""
+    try:
+        path = CACHE_DIR / _STATS_FILE
+        if not path.exists():
+            return jsonify({"sessions": [], "cumulative_hits": 0, "cumulative_misses": 0})
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return jsonify({"error": f"Could not read cache history: {exc}"}), 500
+    raw_sessions = data.get("sessions", [])
+    sessions = []
+    for i, s in enumerate(raw_sessions):
+        h = s.get("hits", 0)
+        m = s.get("misses", 0)
+        total = h + m
+        sessions.append({
+            "session":           i + 1,
+            "hits":              h,
+            "misses":            m,
+            "hit_rate":          round(h / total * 100, 1) if total else None,
+            "cumulative_hits":   s.get("cumulative_hits", 0),
+            "cumulative_misses": s.get("cumulative_misses", 0),
+            "ended_at":          s.get("ended_at", ""),
+        })
+    return jsonify({
+        "sessions":          sessions,
+        "cumulative_hits":   data.get("cumulative_hits", 0),
+        "cumulative_misses": data.get("cumulative_misses", 0),
+    })
+
+
 # ---------------------------------------------------------------------------
 # Metrics / analytics
 # ---------------------------------------------------------------------------

@@ -1402,6 +1402,74 @@ class TestMetricsExport(_Base):
 
 
 # ---------------------------------------------------------------------------
+# /cache/history
+# ---------------------------------------------------------------------------
+
+class TestCacheHistory(_Base):
+
+    def _write_stats(self, data: dict) -> None:
+        import json as _json
+        (self._cache_dir / "session_stats.json").write_text(
+            _json.dumps(data), encoding="utf-8"
+        )
+
+    def test_history_missing_file_returns_empty(self):
+        r = self.client.get("/cache/history")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["sessions"], [])
+        self.assertEqual(d["cumulative_hits"], 0)
+        self.assertEqual(d["cumulative_misses"], 0)
+
+    def test_history_no_sessions_key_returns_empty_list(self):
+        self._write_stats({"cumulative_hits": 5, "cumulative_misses": 1})
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(d["sessions"], [])
+
+    def test_history_returns_cumulative_totals(self):
+        self._write_stats({"cumulative_hits": 7, "cumulative_misses": 3, "sessions": []})
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(d["cumulative_hits"], 7)
+        self.assertEqual(d["cumulative_misses"], 3)
+
+    def test_history_session_count(self):
+        self._write_stats({"cumulative_hits": 2, "cumulative_misses": 1, "sessions": [
+            {"hits": 1, "misses": 0, "cumulative_hits": 1, "cumulative_misses": 0, "ended_at": "t1"},
+            {"hits": 1, "misses": 1, "cumulative_hits": 2, "cumulative_misses": 1, "ended_at": "t2"},
+        ]})
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(len(d["sessions"]), 2)
+
+    def test_history_session_index_is_1_based(self):
+        self._write_stats({"cumulative_hits": 1, "cumulative_misses": 0, "sessions": [
+            {"hits": 1, "misses": 0, "cumulative_hits": 1, "cumulative_misses": 0, "ended_at": "t"}
+        ]})
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(d["sessions"][0]["session"], 1)
+
+    def test_history_hit_rate_computed(self):
+        self._write_stats({"cumulative_hits": 3, "cumulative_misses": 1, "sessions": [
+            {"hits": 3, "misses": 1, "cumulative_hits": 3, "cumulative_misses": 1, "ended_at": "t"}
+        ]})
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(d["sessions"][0]["hit_rate"], 75.0)
+
+    def test_history_hit_rate_none_when_no_activity(self):
+        self._write_stats({"cumulative_hits": 0, "cumulative_misses": 0, "sessions": [
+            {"hits": 0, "misses": 0, "cumulative_hits": 0, "cumulative_misses": 0, "ended_at": "t"}
+        ]})
+        d = self.client.get("/cache/history").get_json()
+        self.assertIsNone(d["sessions"][0]["hit_rate"])
+
+    def test_history_session_has_ended_at(self):
+        self._write_stats({"cumulative_hits": 1, "cumulative_misses": 0, "sessions": [
+            {"hits": 1, "misses": 0, "cumulative_hits": 1, "cumulative_misses": 0, "ended_at": "2026-01-01T00:00:00Z"}
+        ]})
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(d["sessions"][0]["ended_at"], "2026-01-01T00:00:00Z")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

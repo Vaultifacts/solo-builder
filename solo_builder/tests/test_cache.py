@@ -722,6 +722,43 @@ class TestPersistStats(unittest.TestCase):
         # No file exists yet — should be empty dict
         self.assertEqual(result, {})
 
+    def test_persist_stats_writes_sessions_list(self):
+        self.cache.get("miss")  # 1 miss
+        self.cache.persist_stats()
+        import json
+        data = json.loads(self._stats_path().read_text())
+        self.assertIn("sessions", data)
+        self.assertEqual(len(data["sessions"]), 1)
+
+    def test_persist_stats_session_record_keys(self):
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)   # 1 hit
+        self.cache.persist_stats()
+        import json
+        session = json.loads(self._stats_path().read_text())["sessions"][0]
+        self.assertIn("hits", session)
+        self.assertIn("misses", session)
+        self.assertIn("cumulative_hits", session)
+        self.assertIn("cumulative_misses", session)
+        self.assertIn("ended_at", session)
+
+    def test_persist_stats_sessions_grow_across_instances(self):
+        import json
+        # Session 1
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)   # 1 hit
+        self.cache.persist_stats()
+        # Session 2
+        cache2 = ResponseCache(cache_dir=self._tmp)
+        cache2.get("miss")    # 1 miss
+        cache2.persist_stats()
+        data = json.loads(self._stats_path().read_text())
+        self.assertEqual(len(data["sessions"]), 2)
+        self.assertEqual(data["sessions"][0]["hits"], 1)
+        self.assertEqual(data["sessions"][1]["misses"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
