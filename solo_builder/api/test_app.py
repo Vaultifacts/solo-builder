@@ -1580,6 +1580,40 @@ class TestCacheHistory(_Base):
         d = self.client.get("/cache/history").get_json()
         self.assertEqual(d["sessions"][0]["ended_at"], "2026-01-01T00:00:00Z")
 
+    # ?since=S
+
+    def _write_stats_n(self, n):
+        sessions = [{"hits": i, "misses": 0, "cumulative_hits": i, "cumulative_misses": 0, "ended_at": f"t{i}"}
+                    for i in range(1, n + 1)]
+        self._write_stats({"cumulative_hits": n, "cumulative_misses": 0, "sessions": sessions})
+
+    def test_since_filters_sessions_after_index(self):
+        self._write_stats_n(5)
+        d = self.client.get("/cache/history?since=3").get_json()
+        nums = [s["session"] for s in d["sessions"]]
+        self.assertEqual(nums, [4, 5])
+
+    def test_since_zero_returns_all_sessions(self):
+        self._write_stats_n(4)
+        d = self.client.get("/cache/history?since=0").get_json()
+        self.assertEqual(len(d["sessions"]), 4)
+
+    def test_since_beyond_count_returns_empty(self):
+        self._write_stats_n(3)
+        d = self.client.get("/cache/history?since=99").get_json()
+        self.assertEqual(d["sessions"], [])
+
+    def test_since_cumulative_totals_unaffected(self):
+        self._write_stats_n(4)
+        d = self.client.get("/cache/history?since=2").get_json()
+        self.assertEqual(d["cumulative_hits"], 4)
+        self.assertEqual(d["sessions"][0]["session"], 3)
+
+    def test_since_no_param_returns_all(self):
+        self._write_stats_n(3)
+        d = self.client.get("/cache/history").get_json()
+        self.assertEqual(len(d["sessions"]), 3)
+
 
 # ---------------------------------------------------------------------------
 # Entry point
