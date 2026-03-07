@@ -1,91 +1,73 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Context
-- Active task: `TASK-021`
-- Goal: Fix `test_stalled_shows_stuck` so optional unittest verification is clean.
-- Scope: test file only unless implementation change is required.
+- Active task: `TASK-022`
+- Goal: Integrate `workflow_contract_check.ps1` into `workflow_preflight.ps1` so workflow
+  contract drift is caught before task initialization, not just in CI.
+- Scope: `tools/workflow_preflight.ps1` only. `workflow_contract_check.ps1` is unchanged.
 
-## 1) Failing assertion
+## 1) Current preflight check sequence
 
+`tools/workflow_preflight.ps1` runs five checks in order:
+1. Assert `check_next_action_consistency.ps1` exists.
+2. Resolve current branch (fail on detached HEAD).
+3. Assert runtime artifacts clean (`allowed_files.txt`, `verify_last.json`).
+4. Assert working tree clean.
+5. Run `check_next_action_consistency.ps1`.
+6. Run baseline ancestry check (master contains prior task branch).
+7. Print `workflow_preflight: PASS` and exit 0.
+
+## 2) workflow_contract_check.ps1 behavior relevant to placement
+
+Phase B of `workflow_contract_check.ps1` reads `allowed_files.txt` via
+`git show HEAD:claude/allowed_files.txt` — it reads from committed HEAD, not working tree.
+
+This has one important implication:
+- The contract check is only meaningful after the working tree is clean (i.e., after step 4
+  above). If the tree were dirty, HEAD might not reflect current `allowed_files.txt` state.
+- But by step 4, the clean-tree assertion has already passed — HEAD IS authoritative.
+
+Therefore the correct insertion point is **after the clean-tree check (step 4), before
+`check_next_action_consistency.ps1` (step 5)**.
+
+Rationale: structural integrity failures (missing scripts, undeclared outputs) should be caught
+before semantic consistency failures. The contract check is a static integrity check; the
+consistency check is a semantic state check.
+
+## 3) Integration points
+
+Two additions to `workflow_preflight.ps1`:
+
+**Addition 1** — declare `$contractCheck` path alongside `$consistencyCheck` at top of script:
+```powershell
+$contractCheck = Join-Path $PSScriptRoot 'workflow_contract_check.ps1'
 ```
-FAIL: test_stalled_shows_stuck (solo_builder.discord_bot.test_bot.TestStalledCommand)
-AssertionError: 'A1' not found in '✅ **Stalled Subtasks** — none (threshold: 99 steps)'
+
+**Addition 2** — call it after the clean-tree check, before the consistency check:
+```powershell
+if (!(Test-Path $contractCheck)) {
+  Fail "Missing required helper: $contractCheck"
+}
+& $contractCheck
+if ($LASTEXITCODE -ne 0) {
+  Fail 'Workflow contract integrity check failed. Run pwsh tools/workflow_contract_check.ps1 for details.'
+}
 ```
 
-Test (`test_bot.py:2051–2058`):
-```python
-state = _make_state({"A1": "Running", "A2": "Verified"}, step=10)
-# patches: _send, _load_state
-await bot_module._handle_text_command(_make_msg("stalled"))
-text = mock_send.call_args[0][1]
-self.assertIn("A1", text)      # fails
-self.assertIn("Stalled", text) # would also fail
-```
+## 4) Scope
+- Modify only `tools/workflow_preflight.ps1`.
+- Do not modify `tools/workflow_contract_check.ps1`.
+- No other files in scope.
+- `claude/WORKFLOW_SPEC.md` does not need updating (the spec already documents
+  `workflow_contract_check.ps1` as the canonical check command; preflight integration
+  is an execution detail, not a new contract).
 
-`_make_dag` sets `last_update=0` on all subtasks (`test_bot.py:60`).
-So age = step(10) - last_update(0) = 10.
-
-For A1 to appear stalled: `age >= threshold` → `10 >= threshold` → threshold must be ≤ 10.
-
-## 2) Root cause
-
-`_format_stalled` in `bot.py:313–340` reads threshold from the real `config/settings.json`:
-
-```python
-cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
-threshold = int(cfg.get("STALL_THRESHOLD", 5))
-```
-
-Live `solo_builder/config/settings.json` has `STALL_THRESHOLD: 99` — persisted from a
-previous interactive session (`set STALL_THRESHOLD=99`). The test does NOT mock this read.
-
-Result: threshold=99, age=10, `10 < 99` → not stalled → "none".
-
-The production behavior (reading threshold from config) is correct. The test is missing
-isolation for the config read.
-
-## 3) Why this is a test isolation failure, not an implementation bug
-
-- `_format_stalled` correctly reads live config so the Discord bot reflects real thresholds.
-- The test was written assuming threshold=5 (the code-default fallback) would apply.
-- A live `set STALL_THRESHOLD=99` command broke the assumption silently.
-- The test already mocks `_load_state` and `_send` — the config read is the missing mock.
-
-## 4) Fix candidates
-
-**Candidate A — Mock the config read in the test (preferred):**
-Add a `pathlib.Path.read_text` patch returning a controlled settings JSON within the test
-context. `threshold=5` (or any value ≤ 10) applied → age=10 ≥ 5 → A1 stalled → PASS.
-- Follows the test's existing mock pattern.
-- Fully isolates from live config state.
-- Zero production code change.
-- Narrow scope: only `test_stalled_shows_stuck` needs the new patch.
-  (`test_stalled_empty` uses step=1, age=1, and asserts "none" — it would PASS even with
-  threshold=5 since 1 < 5, so it doesn't need the same mock.)
-
-**Candidate B — Increase step to exceed any plausible threshold:**
-Change `_make_state({"A1": "Running", "A2": "Verified"}, step=10)` to `step=200`.
-age=200 ≥ 99 → PASS.
-- Fragile: another `set STALL_THRESHOLD=300` session would break it again.
-- Does not fix the underlying isolation problem.
-- Not recommended.
-
-**Candidate C — Parameterize threshold in `_format_stalled`:**
-Add an optional `threshold` parameter to `_format_stalled` for testability. Pass a
-controlled value from tests.
-- Changes production function signature.
-- Broader scope than needed.
-- Not necessary given Candidate A is sufficient.
-
-## 5) Scope
-
-Fix belongs entirely in the TEST (`discord_bot/test_bot.py`).
-No production code change is required or recommended.
-
-The second stalled test (`test_stalled_empty`, step=1) passes today and will continue to
-pass with any of the candidates above — no change needed there.
-
-## 6) Verification
-After fix: `python -m unittest solo_builder.discord_bot.test_bot.TestStalledCommand`
-should show `2 tests, 0 failures`.
-Full suite: `python -m unittest discover` with 0 failures.
+## 5) Verification
+- `pwsh tools/workflow_preflight.ps1` on clean repo → PASS (contract check passes,
+  all subsequent checks pass).
+- Failure-path proof: temporarily reference a missing script in a contract source file,
+  run `pwsh tools/workflow_preflight.ps1`, confirm it fails before the consistency check
+  with a contract-integrity error; revert.
+- `pwsh tools/start_task.ps1 -DryRun -TaskId TASK-999 -Goal test` → succeeds through
+  preflight (dry-run mode exercises the preflight call).
+- Full test suite: `python -m unittest discover` → 195 tests, 0 failures.
