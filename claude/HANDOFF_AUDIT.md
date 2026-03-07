@@ -46,3 +46,24 @@ Implemented CI verification-only invariant enforcement by introducing a CI-speci
 ## Risks / notes
 - `tools/plan_extract.ps1` is referenced in prompting but does not exist in repo (pre-existing workflow mismatch, out of TASK-019 scope).
 - `claude/allowed_files.txt` remains a runtime artifact and should not be committed.
+
+## TASK-019 — AUDITOR
+
+Verdict: PASS
+
+Verification result:
+- `pwsh tools/audit_check.ps1` passed required verification commands.
+- `claude/verify_last.json` reports `"passed": true`.
+
+Note on transient drift:
+- After initial audit, a transient drift was detected: `claude/STATE.json` showed `done` while
+  `claude/NEXT_ACTION.md` still showed `verify/AUDITOR`.
+- This was a rendering/state-sync issue, not an implementation defect.
+- Resolved by rerunning `pwsh tools/claude_orchestrate.ps1`, which reconciled the two files.
+- No implementation change was required; CI invariant check (`tools/ci_invariant_check.ps1`) passed
+  throughout.
+
+Scope check:
+- Implementation scope remained within intended workflow files.
+- No defect found in the CI invariant implementation itself.
+- Drift was operational/workflow-state only; resolved without code changes.
