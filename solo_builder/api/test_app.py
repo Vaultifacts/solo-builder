@@ -152,6 +152,66 @@ class TestGetStatus(_Base):
         d = self.client.get("/status").get_json()
         self.assertTrue(d["complete"])
 
+    def test_status_has_stalled_key(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/status").get_json()
+        self.assertIn("stalled", d)
+
+    def test_stalled_zero_when_no_running(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/status").get_json()
+        self.assertEqual(d["stalled"], 0)
+
+
+# ---------------------------------------------------------------------------
+# GET /history/count
+# ---------------------------------------------------------------------------
+
+class TestHistoryCount(_Base):
+
+    def _state_with_mixed(self):
+        state = self._make_state({"A1": "Verified", "A2": "Pending"})
+        br = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        br["A1"]["history"] = [{"status": "Verified", "step": 1}, {"status": "Verified", "step": 3}]
+        br["A2"]["history"] = [{"status": "Running",  "step": 2}]
+        return state
+
+    def test_count_status(self):
+        r = self.client.get("/history/count")
+        self.assertEqual(r.status_code, 200)
+
+    def test_count_has_keys(self):
+        d = self.client.get("/history/count").get_json()
+        self.assertIn("total", d)
+        self.assertIn("filtered", d)
+
+    def test_count_empty(self):
+        d = self.client.get("/history/count").get_json()
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["filtered"], 0)
+
+    def test_count_total(self):
+        self._write_state(self._state_with_mixed())
+        d = self.client.get("/history/count").get_json()
+        self.assertEqual(d["total"], 3)
+
+    def test_count_filtered_by_status(self):
+        self._write_state(self._state_with_mixed())
+        d = self.client.get("/history/count?status=Verified").get_json()
+        self.assertEqual(d["total"], 3)
+        self.assertEqual(d["filtered"], 2)
+
+    def test_count_filtered_by_subtask(self):
+        self._write_state(self._state_with_mixed())
+        d = self.client.get("/history/count?subtask=A2").get_json()
+        self.assertEqual(d["filtered"], 1)
+
+    def test_count_since_applies(self):
+        self._write_state(self._state_with_mixed())
+        d = self.client.get("/history/count?since=2").get_json()
+        # step>2 = only step 3 (A1 Verified)
+        self.assertEqual(d["filtered"], 1)
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks
