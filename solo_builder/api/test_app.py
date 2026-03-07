@@ -656,6 +656,27 @@ class TestHistory(_Base):
         d = self.client.get("/history?limit=2").get_json()
         self.assertEqual(d["page"], 1)
 
+    # output field (TASK-074)
+
+    def test_history_event_has_output_field(self):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [{"status": "Verified", "step": 1}]
+        st["output"] = "hello world"
+        self._write_state(state)
+        d = self.client.get("/history").get_json()
+        self.assertIn("output", d["events"][0])
+        self.assertEqual(d["events"][0]["output"], "hello world")
+
+    def test_history_event_output_defaults_to_empty_string(self):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [{"status": "Verified", "step": 1}]
+        st.pop("output", None)  # remove default so st_data.get("output","") returns ""
+        self._write_state(state)
+        d = self.client.get("/history").get_json()
+        self.assertEqual(d["events"][0]["output"], "")
+
 
 # ---------------------------------------------------------------------------
 # GET /history/export

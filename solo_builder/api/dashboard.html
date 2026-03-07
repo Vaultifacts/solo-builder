@@ -602,6 +602,7 @@
     <button id="btn-auto" onclick="runAuto()" title="Run N steps automatically">⏩ Auto</button>
     <button id="btn-stop" onclick="stopRun()" title="Stop auto-run after current step" style="background:#3a1a1a;color:#f77;border:1px solid #733;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏹ Stop</button>
   </div>
+  <button id="btn-poll-pause" onclick="togglePollPause()" title="Pause/resume live polling" style="background:#1a2a1a;color:#6f6;border:1px solid #373;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏸ Pause</button>
   <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
 </header>
 <div id="stale-banner" style="display:none;background:#78350f;color:#fef3c7;font-size:11px;text-align:center;padding:4px 8px">
@@ -810,9 +811,29 @@
         <tr><td style="color:var(--cyan)"><kbd>g</kbd></td><td style="color:var(--dim)">Toggle graph / list view</td></tr>
         <tr><td style="color:var(--cyan)"><kbd>v</kbd></td><td style="color:var(--dim)">Verify first pending subtask of selected task</td></tr>
         <tr><td style="color:var(--cyan)"><kbd>Enter</kbd></td><td style="color:var(--dim)">Open detail modal for selected task</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>p</kbd></td><td style="color:var(--dim)">Pause / resume live polling</td></tr>
         <tr><td style="color:var(--cyan)"><kbd>Esc</kbd></td><td style="color:var(--dim)">Close modal</td></tr>
         <tr><td style="color:var(--cyan)"><kbd>?</kbd></td><td style="color:var(--dim)">Show this help</td></tr>
       </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="st-modal-overlay" onclick="if(event.target===this)closeSubtaskModal()" style="display:none">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title" id="sd-title">Subtask</span>
+      <button class="modal-close" onclick="closeSubtaskModal()">✕</button>
+    </div>
+    <div style="font-size:11px;line-height:1.7;padding:4px 0">
+      <div style="display:flex;gap:16px;margin-bottom:8px">
+        <span><span style="color:var(--dim)">Task </span><span id="sd-task" style="color:var(--cyan)"></span></span>
+        <span><span style="color:var(--dim)">Branch </span><span id="sd-branch" style="color:var(--cyan)"></span></span>
+        <span><span style="color:var(--dim)">Step </span><span id="sd-step" style="color:var(--text)"></span></span>
+        <span><span style="color:var(--dim)">Status </span><span id="sd-status"></span></span>
+      </div>
+      <div style="color:var(--dim);font-size:10px;margin-bottom:4px">Output</div>
+      <pre id="sd-output" style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:8px;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow-y:auto;font-size:10px;color:var(--text);margin:0"></pre>
     </div>
   </div>
 </div>
@@ -1310,6 +1331,7 @@
   let _historyPage = 1;
   const _PAGE_SIZE = 20;
   const _historyRows = [];  // accumulated events, newest-first
+  let _historyRowsFiltered = [];  // filtered+sorted snapshot for modal index lookup
 
   let _historyServerTotal = null;  // server-side total from /history/count
   let _historyUnread = 0;          // new events since user last visited the History tab
@@ -1398,6 +1420,7 @@
     const filtered = q
       ? events.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
       : events;
+    _historyRowsFiltered = filtered;
     const total = filtered.length;
     const pages = Math.max(1, Math.ceil(total / _PAGE_SIZE));
     if (_historyPage > pages) _historyPage = pages;
@@ -1411,8 +1434,9 @@
     }
     const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
     let html = "";
-    page.forEach(e => {
-      html += `<div class="diff-entry"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
+    page.forEach((e, i) => {
+      const idx = start + i;
+      html += `<div class="diff-entry" style="cursor:pointer" onclick="openSubtaskModal(_historyRowsFiltered[${idx}])" title="Click to view subtask detail"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
     });
     el.innerHTML = html;
     // Update pager
@@ -1755,6 +1779,7 @@
 
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
+    if (_pollPaused) return;
     await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
@@ -2002,14 +2027,51 @@
     document.getElementById("keys-overlay").style.display = "none";
   };
 
+  /* ── Poll pause/resume ─────────────────────────────────────── */
+  let _pollPaused = false;
+  window.togglePollPause = function () {
+    _pollPaused = !_pollPaused;
+    const btn = document.getElementById("btn-poll-pause");
+    if (_pollPaused) {
+      btn.textContent = "▶ Resume";
+      btn.style.background = "#2a1a1a";
+      btn.style.color = "#f77";
+      btn.style.borderColor = "#733";
+    } else {
+      btn.textContent = "⏸ Pause";
+      btn.style.background = "#1a2a1a";
+      btn.style.color = "#6f6";
+      btn.style.borderColor = "#373";
+      tick();
+    }
+  };
+
+  /* ── Subtask detail modal ─────────────────────────────────── */
+  window.openSubtaskModal = function (ev) {
+    const statusColor = s => ({Verified:"var(--green)",Running:"var(--cyan)",Review:"var(--yellow)",Pending:"var(--dim)"})[s] || "var(--text)";
+    document.getElementById("sd-title").textContent  = ev.subtask;
+    document.getElementById("sd-task").textContent   = ev.task;
+    document.getElementById("sd-branch").textContent = ev.branch;
+    document.getElementById("sd-step").textContent   = ev.step;
+    const sdStatus = document.getElementById("sd-status");
+    sdStatus.textContent = ev.status;
+    sdStatus.style.color = statusColor(ev.status);
+    document.getElementById("sd-output").textContent = ev.output || "(no output)";
+    document.getElementById("st-modal-overlay").style.display = "flex";
+  };
+  window.closeSubtaskModal = function () {
+    document.getElementById("st-modal-overlay").style.display = "none";
+  };
+
   /* ── Keyboard shortcuts ───────────────────────────────────── */
   document.addEventListener("keydown", function (e) {
     // Ignore when typing in inputs
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "select") return;
 
-    if (e.key === "Escape") { closeModal(); closeKeysModal(); return; }
+    if (e.key === "Escape") { closeModal(); closeKeysModal(); closeSubtaskModal(); return; }
     if (e.key === "?") { openKeysModal(); return; }
+    if (e.key === "p") { togglePollPause(); return; }
 
     // j/k — navigate tasks
     if (e.key === "j" || e.key === "k") {
