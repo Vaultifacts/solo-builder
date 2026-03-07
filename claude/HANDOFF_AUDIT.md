@@ -118,3 +118,18 @@ TASK-009
 - Semantics check: documents current behavior; no workflow semantics changes introduced
 - Product-code check: no changes under solo_builder/*
 - final verdict: TASK-016 resolved
+
+## AUDITOR results (TASK-017)
+- Timestamp (UTC): 2026-03-07T01:34:30.8172671Z
+- Verdict: PASS
+- Audit command: pwsh tools/audit_check.ps1
+- verify_last.json: passed=true, working_tree_dirty=false
+- Acceptance criteria: satisfied
+- Behavior checks:
+  - failing case returned nonzero (dirty runtime artifact)
+  - passing case returned zero on a clean tree
+  - preflight reuses tools/check_next_action_consistency.ps1
+  - baseline check is conservative (master contains previous task branch when applicable)
+- Scope check: implementation limited to tools/workflow_preflight.ps1
+- No product-code changes under solo_builder/*
+- final verdict: TASK-017 resolved
