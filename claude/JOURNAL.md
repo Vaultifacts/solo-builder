@@ -122,3 +122,5 @@
 - [2026-03-07T07:38:45.6730213Z] state transition: triage/RESEARCH -> research/ARCHITECT
 - [2026-03-07T07:39:31.1167639Z] state transition: research/ARCHITECT -> plan/DEV
 - [2026-03-07T07:49:31.9088655Z] state transition: plan/DEV -> build/DEV | note: agents package extracted, CLI updated
+- [2026-03-07T07:49:50.6224900Z] state transition: build/DEV -> verify/AUDITOR | note: build complete, 195/0
+- [2026-03-07T07:50:18.7614917Z] state transition: done/AUDITOR -> done/AUDITOR | note: all checks pass, 195/0
