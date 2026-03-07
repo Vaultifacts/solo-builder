@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-037
+TASK-038
 
-Persist ResponseCache hit/miss stats to claude/cache/session_stats.json across CLI sessions; expose cumulative totals via GET /cache and dashboard Cache tab
+Auto-scroll the dashboard journal tab to the bottom after each pollJournal() tick when the journal tab is active
