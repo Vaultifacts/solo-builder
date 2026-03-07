@@ -253,6 +253,38 @@ def _format_stats(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_cache(clear: bool = False) -> str:
+    """Return a cache stats summary by reading the cache directory directly."""
+    cache_dir = Path(os.environ.get("CACHE_DIR", str(_ROOT.parent / "claude" / "cache")))
+    try:
+        entries = list(cache_dir.glob("*.json"))
+        size = len(entries)
+    except Exception:
+        return "❌ Could not read cache directory."
+    avg_tokens = 550
+    est_tokens = size * avg_tokens
+    lines = [
+        "**Response Cache (disk)**",
+        "```",
+        f"{'Entries on disk':<22} {size}",
+        f"{'Est. tokens held':<22} {est_tokens:,}",
+        f"{'Cache directory':<22} {cache_dir}",
+        "```",
+    ]
+    if clear:
+        deleted = 0
+        for f in entries:
+            try:
+                f.unlink()
+                deleted += 1
+            except OSError:
+                pass
+        lines.append(f"🗑️ Cleared **{deleted}** cache entries.")
+    else:
+        lines.append("_Use `cache clear` to wipe all entries._")
+    return "\n".join(lines)
+
+
 def _format_tasks(state: dict) -> str:
     """Return a per-task summary table (verified/total, %, status)."""
     dag = state.get("dag", {})
@@ -737,6 +769,8 @@ _HELP_TEXT = (
     "`diff`                             — show what changed since last save\n"
     "`timeline <subtask>`               — show status history timeline\n"
     "`stats`                            — per-task breakdown (verified, avg steps)\n"
+    "`cache`                            — show response cache disk stats\n"
+    "`cache clear`                      — show cache stats and wipe all entries\n"
     "`history [N]`                      — last N status transitions (default 20)\n"
     "`search <keyword>`                 — find subtasks by keyword\n"
     "`filter <status>`                  — show subtasks matching a status\n"
@@ -1154,6 +1188,12 @@ async def _handle_text_command(message: discord.Message) -> None:
         state = _load_state()
         await _send(message, _format_stats(state))
 
+    elif low == "cache":
+        await _send(message, _format_cache(clear=False))
+
+    elif low == "cache clear":
+        await _send(message, _format_cache(clear=True))
+
     elif low == "history" or low.startswith("history "):
         n = 20
         rest = text[7:].strip() if low.startswith("history ") else ""
@@ -1246,6 +1286,7 @@ async def help_cmd(interaction: discord.Interaction) -> None:
         "`/forecast`                         — detailed completion forecast with ETA\n"
         "`/tasks`                            — per-task summary table (verified/total/status)\n"
         "`/heartbeat`                        — live counters from step.txt\n"
+        "`/cache [clear:yes]`                — response cache disk stats (optional wipe)\n"
         "`/help`                             — this message"
     )
 
@@ -1333,6 +1374,15 @@ async def stats_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
         return
     await interaction.response.send_message(_format_stats(_load_state()))
+
+
+@bot.tree.command(name="cache", description="Show response cache disk stats (optional clear)")
+@app_commands.describe(clear="Pass 'yes' to wipe all cached entries after printing stats")
+async def cache_cmd(interaction: discord.Interaction, clear: str = "") -> None:
+    if not _allowed(interaction):
+        await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+        return
+    await interaction.response.send_message(_format_cache(clear=clear.strip().lower() == "yes"))
 
 
 @bot.tree.command(name="tasks", description="Per-task summary table (verified/total/status)")
