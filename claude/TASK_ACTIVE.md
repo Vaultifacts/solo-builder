@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-049
+TASK-052
 
-Batch: add ?since to /cache/history (049), incremental history polling in dashboard (050), cache history N-session dropdown (051)
+Batch: wire ?since to cache history polling (052), add /history/export endpoint (053), history tab client-side filter (054)
