@@ -228,3 +228,21 @@ Constraints:
 - Do not modify product code under solo_builder/*.
 - Do not change task lifecycle semantics.
 - Preserve deterministic workflow conventions.
+
+## TASK-018
+Goal: Integrate `workflow_preflight.ps1` into the deterministic task initialization workflow so that preflight checks automatically run before any new task branch is created.
+
+Acceptance criteria:
+- `tools/workflow_preflight.ps1` runs automatically before new task initialization.
+- Task initialization fails if preflight returns a non-zero exit code.
+- Preflight execution occurs after switching to `master` but before creating `task/TASK-<N>`.
+- Existing workflow semantics remain unchanged.
+- No product code under `solo_builder/*` is modified.
+- The deterministic workflow lifecycle remains:
+  - task branch -> work -> verify -> close -> merge to master -> preflight -> new task branch
+
+Constraints:
+- Modify only workflow scripts or documentation required to integrate the preflight check.
+- Do not change the task lifecycle or role transitions.
+- Do not modify product code.
+- Preserve deterministic workflow conventions.

@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-017
+TASK-018
 
-Add tools/workflow_preflight.ps1 to enforce baseline workflow safety checks before task initialization.
+Integrate workflow_preflight into deterministic task initialization flow.
