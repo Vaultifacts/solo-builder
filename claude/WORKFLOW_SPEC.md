@@ -96,6 +96,17 @@ Common local runtime artifacts:
 - `claude/logs/*`
 - `claude/snapshots/*`
 
+## CI verification-only contract
+- CI must run verification-only workflow checks and must not advance lifecycle state.
+- Canonical CI invariant command path: `pwsh tools/ci_invariant_check.ps1`.
+- CI must not run:
+  - `tools/advance_state.ps1`
+  - `tools/start_task.ps1`
+  - branch creation/switch/merge operations
+- CI checks are expected to validate:
+  - `STATE.json` <-> `NEXT_ACTION.md` consistency
+  - required verification commands from `claude/VERIFY.json`
+
 Typical cleanup:
 - `git restore --source=HEAD --worktree --staged claude/allowed_files.txt claude/verify_last.json`
 - Inspect `claude/JOURNAL.md` before deciding restore vs commit.

@@ -26,9 +26,9 @@ jobs:
         shell: pwsh
         run: pwsh tools/bootstrap_verify.ps1
 
-      - name: Audit check
+      - name: CI invariant check
         shell: pwsh
-        run: pwsh tools/audit_check.ps1
+        run: pwsh tools/ci_invariant_check.ps1
 
       - name: Build ci_bundle
         if: always()
@@ -49,7 +49,7 @@ jobs:
           } > ci_bundle/ci_env.txt
           cat > ci_bundle/repro.ps1 <<'EOF'
           pwsh tools/bootstrap_verify.ps1
-          pwsh tools/audit_check.ps1
+          pwsh tools/ci_invariant_check.ps1
           EOF
           chmod +x ci_bundle/repro.ps1 || true
 
