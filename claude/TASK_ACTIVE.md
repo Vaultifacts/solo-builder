@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-041
+TASK-042
 
-Add show-more/collapse toggle to dashboard journal entries truncated beyond 300 chars
+Extend GET /metrics/export to support ?format=json returning a JSON array; default remains CSV
