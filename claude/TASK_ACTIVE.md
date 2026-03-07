@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-032
+TASK-033
 
-Add interactive cache stats CLI command so users can query hit/miss/size without exiting
+Add 'cache' and 'cache clear' commands to Discord bot for remote cache stats visibility

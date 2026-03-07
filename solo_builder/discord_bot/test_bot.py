@@ -2408,6 +2408,79 @@ class TestUndoCommand(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# _format_cache
+# ---------------------------------------------------------------------------
+
+class TestFormatCache(unittest.TestCase):
+    """Tests for _format_cache() helper."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _write_entries(self, n: int):
+        for i in range(n):
+            name = f"entry_{i:04d}" + "a" * 56 + ".json"
+            (Path(self._tmp) / name).write_text('{"response": "x"}', encoding="utf-8")
+
+    def test_shows_entry_count(self):
+        self._write_entries(3)
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}):
+            result = bot_module._format_cache()
+        self.assertIn("3", result)
+
+    def test_shows_zero_when_empty(self):
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}):
+            result = bot_module._format_cache()
+        self.assertIn("0", result)
+
+    def test_shows_estimated_tokens(self):
+        self._write_entries(2)  # 2 × 550 = 1100
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}):
+            result = bot_module._format_cache()
+        self.assertIn("1,100", result)
+
+    def test_clear_false_does_not_delete(self):
+        self._write_entries(2)
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}):
+            bot_module._format_cache(clear=False)
+        self.assertEqual(len(list(Path(self._tmp).glob("*.json"))), 2)
+
+    def test_clear_true_deletes_entries(self):
+        self._write_entries(3)
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}):
+            result = bot_module._format_cache(clear=True)
+        self.assertEqual(len(list(Path(self._tmp).glob("*.json"))), 0)
+        self.assertIn("Cleared", result)
+
+    def test_clear_mentions_count_deleted(self):
+        self._write_entries(4)
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}):
+            result = bot_module._format_cache(clear=True)
+        self.assertIn("4", result)
+
+    def test_text_command_cache_dispatches(self):
+        """Plain-text 'cache' command reaches _format_cache."""
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            asyncio.run(bot_module._handle_text_command(_make_msg("cache")))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Cache", text)
+
+    def test_text_command_cache_clear_dispatches(self):
+        """Plain-text 'cache clear' command clears entries."""
+        self._write_entries(2)
+        with patch.dict(os.environ, {"CACHE_DIR": self._tmp}), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            asyncio.run(bot_module._handle_text_command(_make_msg("cache clear")))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Cleared", text)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
