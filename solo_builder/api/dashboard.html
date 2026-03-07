@@ -604,6 +604,9 @@
   </div>
   <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
 </header>
+<div id="stale-banner" style="display:none;background:#78350f;color:#fef3c7;font-size:11px;text-align:center;padding:4px 8px">
+  ⚠ Data may be stale — is the Flask server running?
+</div>
 
 <div class="cmd-toolbar">
   <div class="cmd-group">
@@ -923,9 +926,20 @@
   }
 
   /* ── Header / status ─────────────────────────────────────── */
+  let _lastStatusOk = Date.now();
+  const _STALE_MS = 10_000;
+
+  function _checkStaleBanner() {
+    const stale = Date.now() - _lastStatusOk > _STALE_MS;
+    const el = document.getElementById("stale-banner");
+    if (el) el.style.display = stale ? "block" : "none";
+  }
+
   async function pollStatus() {
     try {
       const d = await api("/status");
+      _lastStatusOk = Date.now();
+      _checkStaleBanner();
       document.getElementById("hdr-verified").textContent = d.verified;
       document.getElementById("hdr-running").textContent  = d.running;
       document.getElementById("hdr-pending").textContent  = d.pending;
@@ -962,7 +976,7 @@
       }
       _updateFavicon(d);
     } catch (e) {
-      toast("⚠ /status unreachable — is the Flask server running?");
+      _checkStaleBanner();
     }
   }
 
@@ -1268,12 +1282,18 @@
   const _PAGE_SIZE = 20;
   const _historyRows = [];  // accumulated events, newest-first
 
+  let _historyServerTotal = null;  // server-side total from /history/count
+
   async function pollHistory() {
     try {
       const url = _historyLastStep > 0
         ? `/history?since=${_historyLastStep}&limit=0`
         : `/history?limit=100`;
-      const d = await api(url);
+      const [d, countD] = await Promise.all([
+        api(url),
+        api("/history/count").catch(() => null),
+      ]);
+      if (countD) _historyServerTotal = countD.total;
       if (!d.events || d.events.length === 0) {
         if (_historyRows.length === 0) renderHistory([]);
         return;
@@ -1355,7 +1375,12 @@
     const count = document.getElementById("history-count-label");
     if (pager) pager.style.display = pages > 1 ? "flex" : "none";
     if (label) label.textContent = `${_historyPage}/${pages}`;
-    if (count) count.textContent = `${total} event${total !== 1 ? "s" : ""}`;
+    const serverTotal = _historyServerTotal;
+    if (count) {
+      count.textContent = serverTotal != null && serverTotal > total
+        ? `${total} shown / ${serverTotal} total`
+        : `${total} event${total !== 1 ? "s" : ""}`;
+    }
   }
 
   /* ── Branches panel ─────────────────────────────────────── */
@@ -1955,6 +1980,16 @@
         }
       }
       return;
+    }
+
+    // ArrowLeft/ArrowRight — page through History tab when active
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      const historyPane = document.getElementById("tab-history");
+      if (historyPane && historyPane.classList.contains("active")) {
+        _historyPageStep(e.key === "ArrowRight" ? 1 : -1);
+        e.preventDefault();
+        return;
+      }
     }
 
     // r — trigger run step
