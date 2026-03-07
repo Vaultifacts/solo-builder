@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-018
+TASK-019
 
-Integrate workflow_preflight into deterministic task initialization flow.
+<next goal here>
