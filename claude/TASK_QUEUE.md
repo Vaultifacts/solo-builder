@@ -570,3 +570,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-046
+Goal: Add cache history tab to dashboard: poll GET /cache/history every tick and display a sessions table with per-session hits, misses, hit rate, and ended_at
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

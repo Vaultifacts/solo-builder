@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-045
+TASK-046
 
-Add ?limit=N query param to GET /metrics/export to cap returned rows (CSV and JSON both respect it)
+Add cache history tab to dashboard: poll GET /cache/history every tick and display a sessions table with per-session hits, misses, hit rate, and ended_at
