@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-027
+TASK-028
 
-Extract ClaudeRunner, AnthropicRunner, SdkToolRunner, and Executor from solo_builder_cli.py into solo_builder/runners/ package
+Add targeted unit tests for solo_builder/agents/ and solo_builder/runners/ packages
