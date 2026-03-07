@@ -49,7 +49,7 @@ function Get-DirtyPaths {
     if ($path -match ' -> ') { $path = ($path -split ' -> ')[1].Trim() }
     if ($path -and ($paths -notcontains $path)) { $paths.Add($path) | Out-Null }
   }
-  return @($paths)
+  return @($paths.ToArray())
 }
 
 function Test-BranchExists {
@@ -66,7 +66,7 @@ if (!(Test-Path $journalPath)) { throw "Missing $journalPath" }
 if (!(Test-Path $statePath)) { throw "Missing $statePath" }
 
 $startBranch = Get-CurrentBranch
-$dirty = Get-DirtyPaths
+$dirty = @(Get-DirtyPaths)
 if ($dirty.Count -gt 0) {
   throw "Working tree is not clean: $($dirty -join ', ')"
 }
