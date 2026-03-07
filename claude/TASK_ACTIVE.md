@@ -2,4 +2,4 @@
 
 TASK-019
 
-<next goal here>
+Design CI integration for Solo Builder workflow invariants (state consistency, preflight checks, and verification contract enforcement).

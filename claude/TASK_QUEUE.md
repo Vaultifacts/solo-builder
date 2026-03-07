@@ -248,7 +248,7 @@ Constraints:
 - Preserve deterministic workflow conventions.
 
 ## TASK-019
-Goal: <next goal here>
+Goal: Design CI integration for Solo Builder workflow invariants (state consistency, preflight checks, and verification contract enforcement).
 
 Acceptance criteria:
 - <define criterion 1>
