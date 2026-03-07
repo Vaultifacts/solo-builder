@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $consistencyCheck = Join-Path $PSScriptRoot 'check_next_action_consistency.ps1'
+$contractCheck    = Join-Path $PSScriptRoot 'workflow_contract_check.ps1'
 $runtimeArtifacts = @(
   'claude/allowed_files.txt',
   'claude/verify_last.json'
@@ -54,6 +55,14 @@ if ($dirtyRuntime.Count -gt 0) {
 if ($changedPaths.Count -gt 0) {
   $list = $changedPaths -join ', '
   Fail "Working tree is not clean on branch '$branch': $list`nRemediation: commit/stash/restore changes before initializing a new task."
+}
+
+if (!(Test-Path $contractCheck)) {
+  Fail "Missing required helper: $contractCheck"
+}
+& $contractCheck
+if ($LASTEXITCODE -ne 0) {
+  Fail 'Workflow contract integrity check failed. Run pwsh tools/workflow_contract_check.ps1 for details.'
 }
 
 & $consistencyCheck
