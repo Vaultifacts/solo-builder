@@ -1,20 +1,15 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Task
-TASK-024
+TASK-025
 
 ## Finding
-advance_state.ps1 line 51 writes STATE.json directly via Set-Content.
-If the process is interrupted mid-write (power loss, Ctrl-C, crash),
-the file is left partially written, causing a corrupt JSON parse on
-next run.
-
-## Fix
-Write to a temp file (STATE.json.tmp) then rename atomically. On
-Windows/NTFS, Move-Item -Force is effectively atomic for same-volume
-moves. The temp file is adjacent to STATE.json so it's always on the
-same volume.
+claude_heal.ps1 mutates STATE.json and downloads CI artifacts on every
+run. There is no way to preview what it would do without side effects.
+Adding a -DryRun switch allows safe diagnostic use: the operator sees
+what would be triaged (run ID, workflow name, branch) without STATE.json
+being changed or any gh download/log calls being made.
 
 ## Scope
-- tools/advance_state.ps1 only
+- tools/claude_heal.ps1 only
 - No other files modified

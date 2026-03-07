@@ -1,35 +1,28 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-024
+TASK-025
 
 ## Summary of implementation
-Replaced the direct Set-Content write of STATE.json in advance_state.ps1
-with a write-then-rename pattern. The file is written to STATE.json.tmp
-first, then moved atomically to STATE.json via Move-Item -Force.
+Added `-DryRun` switch parameter to `tools/claude_heal.ps1`. When set,
+the script prints what it would triage (run ID, workflow, branch, title)
+and exits 0 without downloading artifacts, fetching logs, or mutating
+STATE.json.
 
 ## Files modified
-- tools/advance_state.ps1 (+2 lines, -1 line)
+- tools/claude_heal.ps1 (+12 lines, -1 line net)
 
-## What changed
-Line 51 (before): $state | ConvertTo-Json -Depth 8 | Set-Content -Path $statePath -Encoding UTF8
-Lines 51-53 (after):
-  $tmpPath = [System.IO.Path]::ChangeExtension($statePath, '.tmp')
-  $state | ConvertTo-Json -Depth 8 | Set-Content -Path $tmpPath -Encoding UTF8
-  Move-Item -Force -Path $tmpPath -Destination $statePath
-
-Verified: state transitions correctly, JSON parses clean, no .tmp left behind.
-
-## TASK-024 — AUDITOR
+## TASK-025 — AUDITOR
 
 Verdict: PASS
 
 Required command results:
 - `unittest-discover` (required): PASS — 195 tests, 0 failures.
-- `git-status` (required): PASS — only tools/advance_state.ps1 modified.
+- `git-status` (required): PASS — only tools/claude_heal.ps1 modified.
 - `git-diff-stat` (required): PASS.
 
 Scope check:
-- Change confined to advance_state.ps1 (+2 lines, net). No other files touched.
-- Atomic write verified: tmp file absent after transition, STATE.json parses correctly.
+- Change confined to claude_heal.ps1. No other files touched.
+- DryRun block exits before any download, log fetch, or STATE.json write.
+- Normal (non-DryRun) execution path unchanged.
 - All 195 tests pass.
