@@ -702,3 +702,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-073
+Goal: Batch: dashboard polling pause/resume button (073), subtask detail modal on history row click (074), GET /settings endpoint + dashboard settings panel (075)
+
+Acceptance criteria:
+- TASK-073: A Pause/Resume button in the dashboard header freezes all tick() polling when paused; tick() restarts on resume; button label toggles between Pause and Resume.
+- TASK-074: Clicking a row in the History tab opens a modal showing subtask name, task, branch, status, step, and full output text; modal closes on Esc or a close button.
+- TASK-075: GET /settings returns current config/settings.json as JSON; a new Settings tab in the dashboard polls it and displays all keys as a read-only table.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
