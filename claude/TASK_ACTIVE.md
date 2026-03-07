@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-064
+TASK-067
 
-Batch: history pager UI (064), /history/count endpoint (065), stalled favicon yellow (066)
+Batch: wire /history/count to dashboard (067), j/k history pager shortcuts (068), stale-data banner (069)
