@@ -375,11 +375,15 @@ def search():
 def history():
     """Aggregated step-by-step activity log across all subtasks.
 
-    Query params: since, limit
+    Query params: since, limit, task, branch, subtask, status
     """
     dag = _load_dag()
     since = request.args.get("since", type=int)
     limit = request.args.get("limit", 30, type=int)
+    task_q    = (request.args.get("task")    or "").strip().lower()
+    branch_q  = (request.args.get("branch")  or "").strip().lower()
+    subtask_q = (request.args.get("subtask") or "").strip().lower()
+    status_q  = (request.args.get("status")  or "").strip().lower()
     events = []
     for task_id, task_data in dag.items():
         for branch_name, branch_data in task_data.get("branches", {}).items():
@@ -394,6 +398,14 @@ def history():
                     })
     if since is not None:
         events = [e for e in events if e["step"] > since]
+    if task_q:
+        events = [e for e in events if task_q in e["task"].lower()]
+    if branch_q:
+        events = [e for e in events if branch_q in e["branch"].lower()]
+    if subtask_q:
+        events = [e for e in events if subtask_q in e["subtask"].lower()]
+    if status_q:
+        events = [e for e in events if status_q in e["status"].lower()]
     events.sort(key=lambda e: e["step"], reverse=True)
     if limit:
         events = events[:limit]

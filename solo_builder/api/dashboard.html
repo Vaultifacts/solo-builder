@@ -692,10 +692,10 @@
     <div class="sidebar-tab-content" id="tab-history">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
         <input id="history-filter" type="text" placeholder="Filter subtask/status…"
-               oninput="renderHistory(_historyRows)"
+               oninput="renderHistory(_historyRows); _updateHistoryExportLinks()"
                style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
-        <a class="toolbar-btn" href="/history/export" download="history.csv" style="font-size:9px;padding:2px 5px">CSV</a>
-        <a class="toolbar-btn" href="/history/export?format=json" download="history.json" style="font-size:9px;padding:2px 5px">JSON</a>
+        <a id="history-export-csv"  class="toolbar-btn" href="/history/export" download="history.csv" style="font-size:9px;padding:2px 5px">CSV</a>
+        <a id="history-export-json" class="toolbar-btn" href="/history/export?format=json" download="history.json" style="font-size:9px;padding:2px 5px">JSON</a>
       </div>
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
@@ -1266,6 +1266,15 @@
       if (_historyRows.length > 100) _historyRows.splice(100);
       renderHistory(_historyRows);
     } catch (_) {}
+  }
+
+  function _updateHistoryExportLinks() {
+    const q = (document.getElementById("history-filter")?.value || "").trim();
+    const qs = q ? `&subtask=${encodeURIComponent(q)}` : "";
+    const csv  = document.getElementById("history-export-csv");
+    const json = document.getElementById("history-export-json");
+    if (csv)  csv.href  = `/history/export${qs ? "?" + qs.slice(1) : ""}`;
+    if (json) json.href = `/history/export?format=json${qs}`;
   }
 
   function renderHistory(events) {
