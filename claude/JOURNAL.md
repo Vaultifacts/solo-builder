@@ -96,3 +96,5 @@
 - [2026-03-07T04:54:37.2064789Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-021
 - [2026-03-07T05:02:22.1631646Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-021 verified and closed
 - [2026-03-07T05:02:33.9987259Z] Starting TASK-022 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-07T05:15:05.3254087Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: Research complete for TASK-022
+- [2026-03-07T05:15:33.7810615Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-022
