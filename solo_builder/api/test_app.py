@@ -1192,6 +1192,15 @@ class TestCache(_Base):
 
     # GET /cache
 
+    def _write_stats(self, hits: int, misses: int) -> None:
+        import json as _json
+        data = {"cumulative_hits": hits, "cumulative_misses": misses}
+        (self._cache_dir / "session_stats.json").write_text(
+            _json.dumps(data), encoding="utf-8"
+        )
+
+    # GET /cache
+
     def test_get_cache_empty(self):
         r = self.client.get("/cache")
         self.assertEqual(r.status_code, 200)
@@ -1219,6 +1228,34 @@ class TestCache(_Base):
         self.assertIn("cache_dir", d)
         self.assertIsInstance(d["cache_dir"], str)
 
+    def test_get_cache_cumulative_fields_present(self):
+        r = self.client.get("/cache")
+        d = r.get_json()
+        self.assertIn("cumulative_hits", d)
+        self.assertIn("cumulative_misses", d)
+        self.assertIn("cumulative_total", d)
+
+    def test_get_cache_cumulative_values_from_stats_file(self):
+        self._write_stats(hits=7, misses=3)
+        r = self.client.get("/cache")
+        d = r.get_json()
+        self.assertEqual(d["cumulative_hits"], 7)
+        self.assertEqual(d["cumulative_misses"], 3)
+        self.assertEqual(d["cumulative_total"], 10)
+        self.assertEqual(d["cumulative_hit_rate"], 70.0)
+
+    def test_get_cache_hit_rate_none_when_no_stats(self):
+        r = self.client.get("/cache")
+        d = r.get_json()
+        self.assertIsNone(d["cumulative_hit_rate"])
+
+    def test_get_cache_excludes_stats_file_from_entry_count(self):
+        self._write_entries(2)
+        self._write_stats(hits=1, misses=0)
+        r = self.client.get("/cache")
+        d = r.get_json()
+        self.assertEqual(d["entries"], 2)  # session_stats.json not counted
+
     # DELETE /cache
 
     def test_delete_cache_empty_returns_zero(self):
@@ -1235,7 +1272,14 @@ class TestCache(_Base):
         d = r.get_json()
         self.assertTrue(d["ok"])
         self.assertEqual(d["deleted"], 4)
-        self.assertEqual(len(list(self._cache_dir.glob("*.json"))), 0)
+        remaining = [f for f in self._cache_dir.glob("*.json") if f.name != "session_stats.json"]
+        self.assertEqual(len(remaining), 0)
+
+    def test_delete_cache_preserves_session_stats(self):
+        self._write_entries(3)
+        self._write_stats(hits=5, misses=2)
+        self.client.delete("/cache")
+        self.assertTrue((self._cache_dir / "session_stats.json").exists())
 
     def test_delete_cache_subsequent_get_shows_zero(self):
         self._write_entries(2)

@@ -1412,9 +1412,17 @@
       const entries = d.entries ?? 0;
       const tokens = d.estimated_tokens_held ?? 0;
       const dir = d.cache_dir ?? "—";
+      const cumHits   = d.cumulative_hits ?? 0;
+      const cumMisses = d.cumulative_misses ?? 0;
+      const hitRate   = d.cumulative_hit_rate != null ? d.cumulative_hit_rate.toFixed(1) + "%" : "—";
       el.innerHTML =
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">This session:</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Entries on disk</span> ${entries}</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Est. tokens held</span> ${tokens.toLocaleString()}</div>` +
+        `<div style="font-size:10px;color:var(--dim);margin:6px 0 4px">All sessions:</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cumulative hits</span> ${cumHits.toLocaleString()}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cumulative misses</span> ${cumMisses.toLocaleString()}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Hit rate</span> ${hitRate}</div>` +
         `<div class="diff-entry" style="font-size:10px;word-break:break-all"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cache dir</span> <span style="color:var(--dim)">${dir}</span></div>` +
         `<div style="margin-top:8px"><button class="toolbar-btn" onclick="clearCache()">Clear Cache</button></div>`;
     } catch (_) {}

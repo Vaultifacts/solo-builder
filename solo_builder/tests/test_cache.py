@@ -593,5 +593,93 @@ class TestCmdCache(unittest.TestCase):
         self.assertIn("n/a", output)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ResponseCache.persist_stats / cumulative tracking
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestPersistStats(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self.cache = ResponseCache(cache_dir=self._tmp)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _stats_path(self):
+        return Path(self._tmp) / ResponseCache._STATS_FILE
+
+    def test_persist_stats_writes_file(self):
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)      # 1 hit
+        self.cache.get("miss")   # 1 miss
+        self.cache.persist_stats()
+        self.assertTrue(self._stats_path().exists())
+
+    def test_persist_stats_values(self):
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)      # 1 hit
+        self.cache.get("miss")   # 1 miss
+        self.cache.persist_stats()
+        import json
+        data = json.loads(self._stats_path().read_text())
+        self.assertEqual(data["cumulative_hits"], 1)
+        self.assertEqual(data["cumulative_misses"], 1)
+
+    def test_cumulative_loads_from_prior_session(self):
+        import json
+        # Simulate a prior session with 5 hits, 2 misses
+        prior = {"cumulative_hits": 5, "cumulative_misses": 2}
+        self._stats_path().write_text(json.dumps(prior))
+        cache2 = ResponseCache(cache_dir=self._tmp)
+        key = ResponseCache.make_key("p")
+        cache2.set(key, "v")
+        cache2.get(key)   # 1 more hit
+        s = cache2.stats()
+        self.assertEqual(s["cumulative_hits"], 6)
+        self.assertEqual(s["cumulative_misses"], 2)
+
+    def test_persist_accumulates_across_instances(self):
+        import json
+        # Session 1
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)   # 1 hit
+        self.cache.persist_stats()
+        # Session 2
+        cache2 = ResponseCache(cache_dir=self._tmp)
+        cache2.get(key)       # 1 more hit
+        cache2.persist_stats()
+        data = json.loads(self._stats_path().read_text())
+        self.assertEqual(data["cumulative_hits"], 2)
+        self.assertEqual(data["cumulative_misses"], 0)
+
+    def test_stats_includes_cumulative_keys(self):
+        s = self.cache.stats()
+        self.assertIn("cumulative_hits", s)
+        self.assertIn("cumulative_misses", s)
+
+    def test_stats_estimated_tokens_uses_cumulative(self):
+        import json
+        prior = {"cumulative_hits": 10, "cumulative_misses": 0}
+        self._stats_path().write_text(json.dumps(prior))
+        cache2 = ResponseCache(cache_dir=self._tmp)
+        s = cache2.stats()
+        self.assertEqual(s["estimated_tokens_saved"], 10 * ResponseCache._AVG_TOKENS_PER_ENTRY)
+
+    def test_persist_stats_no_error_on_unwritable_dir(self):
+        cache = ResponseCache(cache_dir="/nonexistent/path/that/cannot/be/created")
+        # Should not raise
+        cache.persist_stats()
+
+    def test_load_cumulative_returns_empty_dict_on_missing_file(self):
+        result = self.cache._load_cumulative()
+        # No file exists yet — should be empty dict
+        self.assertEqual(result, {})
+
+
 if __name__ == "__main__":
     unittest.main()

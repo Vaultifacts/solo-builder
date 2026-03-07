@@ -835,30 +835,53 @@ def resume_auto():
 _AVG_TOKENS_PER_ENTRY = 550  # matches ResponseCache._AVG_TOKENS_PER_ENTRY
 
 
+_STATS_FILE = "session_stats.json"
+
+
+def _load_cumulative_stats() -> dict:
+    """Read cumulative hit/miss totals from session_stats.json; returns zeros on error."""
+    try:
+        path = CACHE_DIR / _STATS_FILE
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 @app.get("/cache")
 def cache_stats():
-    """Return response cache disk stats."""
+    """Return response cache disk stats including cumulative hit/miss totals."""
     try:
-        entries = list(CACHE_DIR.glob("*.json")) if CACHE_DIR.exists() else []
+        all_files = list(CACHE_DIR.glob("*.json")) if CACHE_DIR.exists() else []
+        entries = [f for f in all_files if f.name != _STATS_FILE]
         size = len(entries)
     except Exception as exc:
         return jsonify({"error": f"Could not read cache directory: {exc}"}), 500
+    cum = _load_cumulative_stats()
+    cum_hits   = cum.get("cumulative_hits", 0)
+    cum_misses = cum.get("cumulative_misses", 0)
     return jsonify({
         "entries":               size,
         "estimated_tokens_held": size * _AVG_TOKENS_PER_ENTRY,
         "cache_dir":             str(CACHE_DIR),
+        "cumulative_hits":       cum_hits,
+        "cumulative_misses":     cum_misses,
+        "cumulative_total":      cum_hits + cum_misses,
+        "cumulative_hit_rate":   round(cum_hits / (cum_hits + cum_misses) * 100, 1)
+                                 if (cum_hits + cum_misses) > 0 else None,
     })
 
 
 @app.delete("/cache")
 def cache_clear():
-    """Delete all cached response entries. Returns count of files deleted."""
+    """Delete all cached response entries (preserves session_stats.json). Returns count deleted."""
     if not CACHE_DIR.exists():
         return jsonify({"ok": True, "deleted": 0})
     deleted = 0
     errors = 0
     try:
         for f in CACHE_DIR.glob("*.json"):
+            if f.name == _STATS_FILE:
+                continue  # preserve cumulative stats across manual clears
             try:
                 f.unlink()
                 deleted += 1
