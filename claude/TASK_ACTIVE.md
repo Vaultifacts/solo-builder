@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-031
+TASK-032
 
-Log ResponseCache hit/miss stats to JOURNAL.md at CLI exit for observability
+Add interactive cache stats CLI command so users can query hit/miss/size without exiting
