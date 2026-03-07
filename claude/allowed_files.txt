@@ -23,3 +23,8 @@ solo_builder/runners/sdk_tool_runner.py
 solo_builder/runners/executor.py
 solo_builder/agents/test_agents.py
 solo_builder/runners/test_runners.py
+solo_builder/runners/cache.py
+solo_builder/runners/anthropic_runner.py
+solo_builder/runners/executor.py
+solo_builder/tests/test_cache.py
+.gitignore
