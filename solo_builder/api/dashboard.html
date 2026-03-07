@@ -671,6 +671,7 @@
       <button class="sidebar-tab" onclick="switchTab('forecast')">Forecast</button>
       <button class="sidebar-tab" onclick="switchTab('metrics')">Metrics</button>
       <button class="sidebar-tab" onclick="switchTab('cache')">Cache</button>
+      <button class="sidebar-tab" data-tab="cache-history" onclick="switchTab('cache-history')">Cache History</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -730,6 +731,11 @@
     <div class="sidebar-tab-content" id="tab-cache">
       <div id="cache-content">
         <div class="detail-placeholder">Loading cache stats…</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-cache-history">
+      <div id="cache-history-content">
+        <div class="detail-placeholder">Loading cache history…</div>
       </div>
     </div>
   </div>
@@ -1120,7 +1126,10 @@
 
   /* ── Sidebar tabs ────────────────────────────────────────── */
   function switchTab(name) {
-    document.querySelectorAll(".sidebar-tab").forEach(t => t.classList.toggle("active", t.textContent.toLowerCase() === name));
+    document.querySelectorAll(".sidebar-tab").forEach(t => {
+      const tabName = t.dataset.tab || t.textContent.toLowerCase();
+      t.classList.toggle("active", tabName === name);
+    });
     document.querySelectorAll(".sidebar-tab-content").forEach(c => c.classList.toggle("active", c.id === "tab-" + name));
     if (name === "journal") {
       const pane = document.getElementById("tab-journal");
@@ -1477,9 +1486,41 @@
     } catch (_) {}
   }
 
+  /* ── Cache history panel ─────────────────────────────────── */
+  async function pollCacheHistory() {
+    try {
+      const d = await api("/cache/history");
+      const el = document.getElementById("cache-history-content");
+      if (!el) return;
+      const sessions = d.sessions || [];
+      const cumHits   = d.cumulative_hits ?? 0;
+      const cumMisses = d.cumulative_misses ?? 0;
+      const cumTotal  = cumHits + cumMisses;
+      const cumRate   = cumTotal > 0 ? (cumHits / cumTotal * 100).toFixed(1) + "%" : "—";
+      if (sessions.length === 0) {
+        el.innerHTML = `<div class="detail-placeholder">No session history yet.<br>Stats accumulate after each CLI run.</div>`;
+        return;
+      }
+      const rows = sessions.slice().reverse().map(s => {
+        const rate = s.hit_rate != null ? s.hit_rate.toFixed(1) + "%" : "—";
+        const ended = s.ended_at ? s.ended_at.replace("T", " ").substring(0, 19) + "Z" : "—";
+        return `<div class="diff-entry" style="font-size:10px">` +
+          `<span style="color:var(--cyan);min-width:24px;display:inline-block">#${s.session}</span>` +
+          `<span style="min-width:48px;display:inline-block">${s.hits}H ${s.misses}M</span>` +
+          `<span style="min-width:48px;display:inline-block">${rate}</span>` +
+          `<span style="color:var(--dim);font-size:9px">${ended}</span>` +
+          `</div>`;
+      }).join("");
+      el.innerHTML =
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">Sessions (newest first):</div>` +
+        rows +
+        `<div style="font-size:10px;color:var(--dim);margin-top:6px">All-time: ${cumHits.toLocaleString()}H ${cumMisses.toLocaleString()}M ${cumRate}</div>`;
+    } catch (_) {}
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollAgents(), pollForecast(), pollMetrics(), pollCache()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {
