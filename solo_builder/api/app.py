@@ -406,9 +406,12 @@ def history_export():
 
     Query params
     ------------
-    format  csv (default) | json
-    since   S — return only events with step > S
-    limit   N — return the most recent N events (all if omitted or <= 0)
+    format   csv (default) | json
+    since    S — return only events with step > S
+    limit    N — return the most recent N events (all if omitted or <= 0)
+    subtask  substring filter applied to subtask name (case-insensitive)
+    status   substring filter applied to status field (case-insensitive)
+    task     substring filter applied to task name (case-insensitive)
     """
     dag = _load_dag()
     events = []
@@ -427,6 +430,16 @@ def history_export():
     since = request.args.get("since", type=int)
     if since is not None:
         events = [e for e in events if e["step"] > since]
+
+    subtask_q = (request.args.get("subtask") or "").strip().lower()
+    status_q  = (request.args.get("status")  or "").strip().lower()
+    task_q    = (request.args.get("task")    or "").strip().lower()
+    if subtask_q:
+        events = [e for e in events if subtask_q in e["subtask"].lower()]
+    if status_q:
+        events = [e for e in events if status_q in e["status"].lower()]
+    if task_q:
+        events = [e for e in events if task_q in e["task"].lower()]
 
     events.sort(key=lambda e: e["step"])
 
@@ -988,6 +1001,66 @@ def cache_history():
         "cumulative_hits":   data.get("cumulative_hits", 0),
         "cumulative_misses": data.get("cumulative_misses", 0),
     })
+
+
+@app.get("/cache/export")
+def cache_export():
+    """Return cache session history as CSV (default) or JSON (?format=json).
+
+    Query params
+    ------------
+    format  csv (default) | json
+    since   S — return only sessions with session_index > S
+    limit   N — return the most recent N sessions (all if omitted or <= 0)
+    """
+    try:
+        path = CACHE_DIR / _STATS_FILE
+        if not path.exists():
+            data = {}
+        else:
+            data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return jsonify({"error": f"Could not read cache history: {exc}"}), 500
+
+    raw_sessions = data.get("sessions", [])
+    rows = []
+    for i, s in enumerate(raw_sessions):
+        h = s.get("hits", 0)
+        m = s.get("misses", 0)
+        total = h + m
+        rows.append({
+            "session":           i + 1,
+            "hits":              h,
+            "misses":            m,
+            "hit_rate":          round(h / total * 100, 1) if total else None,
+            "cumulative_hits":   s.get("cumulative_hits", 0),
+            "cumulative_misses": s.get("cumulative_misses", 0),
+            "ended_at":          s.get("ended_at", ""),
+        })
+
+    since = request.args.get("since", type=int)
+    if since is not None:
+        rows = [r for r in rows if r["session"] > since]
+
+    limit = request.args.get("limit", type=int)
+    if limit is not None and limit > 0:
+        rows = rows[-limit:]
+
+    fmt = request.args.get("format", "csv").strip().lower()
+    if fmt == "json":
+        return jsonify(rows)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["session", "hits", "misses", "hit_rate", "cumulative_hits", "cumulative_misses", "ended_at"])
+    for r in rows:
+        writer.writerow([r["session"], r["hits"], r["misses"], r["hit_rate"],
+                         r["cumulative_hits"], r["cumulative_misses"], r["ended_at"]])
+    return Response(
+        buf.getvalue().encode("utf-8"),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=cache.csv"},
+    )
 
 
 # ---------------------------------------------------------------------------

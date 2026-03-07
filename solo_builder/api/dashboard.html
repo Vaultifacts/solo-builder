@@ -672,6 +672,7 @@
       <button class="sidebar-tab" onclick="switchTab('metrics')">Metrics</button>
       <button class="sidebar-tab" onclick="switchTab('cache')">Cache</button>
       <button class="sidebar-tab" data-tab="cache-history" onclick="switchTab('cache-history')">Cache History</button>
+      <button class="sidebar-tab" data-tab="export" onclick="switchTab('export')">Export</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -754,6 +755,32 @@
       </div>
       <div id="cache-history-content">
         <div class="detail-placeholder">Loading cache history…</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-export">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:8px">Download data exports</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Metrics</div>
+          <div style="display:flex;gap:6px">
+            <a class="toolbar-btn" href="/metrics/export" download="metrics.csv">CSV</a>
+            <a class="toolbar-btn" href="/metrics/export?format=json" download="metrics.json">JSON</a>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Activity History</div>
+          <div style="display:flex;gap:6px">
+            <a class="toolbar-btn" href="/history/export" download="history.csv">CSV</a>
+            <a class="toolbar-btn" href="/history/export?format=json" download="history.json">JSON</a>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Cache Stats</div>
+          <div style="display:flex;gap:6px">
+            <a class="toolbar-btn" href="/cache/export" download="cache.csv">CSV</a>
+            <a class="toolbar-btn" href="/cache/export?format=json" download="cache.json">JSON</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>

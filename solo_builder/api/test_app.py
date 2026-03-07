@@ -591,6 +591,121 @@ class TestHistoryExport(_Base):
         r = self.client.get("/history/export")
         self.assertIn("history.csv", r.headers.get("Content-Disposition", ""))
 
+    # ?subtask / ?status / ?task filter params (TASK-055)
+
+    def _state_with_mixed_history(self):
+        state = self._make_state({"A1": "Verified", "A2": "Pending"})
+        br = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        br["A1"]["history"] = [{"status": "Running", "step": 1}, {"status": "Verified", "step": 3}]
+        br["A2"]["history"] = [{"status": "Pending", "step": 2}]
+        return state
+
+    def test_export_filter_subtask(self):
+        self._write_state(self._state_with_mixed_history())
+        rows = self.client.get("/history/export?format=json&subtask=A1").get_json()
+        self.assertTrue(all(r["subtask"] == "A1" for r in rows))
+        self.assertEqual(len(rows), 2)
+
+    def test_export_filter_status(self):
+        self._write_state(self._state_with_mixed_history())
+        rows = self.client.get("/history/export?format=json&status=Running").get_json()
+        self.assertTrue(all(r["status"] == "Running" for r in rows))
+        self.assertEqual(len(rows), 1)
+
+    def test_export_filter_case_insensitive(self):
+        self._write_state(self._state_with_mixed_history())
+        rows = self.client.get("/history/export?format=json&status=running").get_json()
+        self.assertEqual(len(rows), 1)
+
+    def test_export_filter_no_match_returns_empty(self):
+        self._write_state(self._state_with_mixed_history())
+        rows = self.client.get("/history/export?format=json&subtask=ZZZ").get_json()
+        self.assertEqual(rows, [])
+
+    def test_export_filter_and_since_compose(self):
+        self._write_state(self._state_with_mixed_history())
+        rows = self.client.get("/history/export?format=json&subtask=A1&since=1").get_json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["step"], 3)
+
+    def test_export_csv_with_filter(self):
+        self._write_state(self._state_with_mixed_history())
+        r = self.client.get("/history/export?subtask=A2")
+        lines = r.data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 2)  # header + 1 row
+
+
+# ---------------------------------------------------------------------------
+# GET /cache/export
+# ---------------------------------------------------------------------------
+
+class TestCacheExport(_Base):
+
+    def _write_stats_n(self, n):
+        import json as _json
+        sessions = [{"hits": i, "misses": 1, "cumulative_hits": i, "cumulative_misses": 1, "ended_at": f"t{i}"}
+                    for i in range(1, n + 1)]
+        (self._cache_dir / "session_stats.json").write_text(
+            _json.dumps({"cumulative_hits": n, "cumulative_misses": n, "sessions": sessions}),
+            encoding="utf-8"
+        )
+
+    def test_export_csv_status(self):
+        r = self.client.get("/cache/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_csv_content_type(self):
+        r = self.client.get("/cache/export")
+        self.assertIn("text/csv", r.content_type)
+
+    def test_export_csv_disposition(self):
+        r = self.client.get("/cache/export")
+        self.assertIn("cache.csv", r.headers.get("Content-Disposition", ""))
+
+    def test_export_csv_header(self):
+        lines = self.client.get("/cache/export").data.decode().strip().splitlines()
+        self.assertEqual(lines[0], "session,hits,misses,hit_rate,cumulative_hits,cumulative_misses,ended_at")
+
+    def test_export_csv_empty_has_only_header(self):
+        lines = self.client.get("/cache/export").data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 1)
+
+    def test_export_csv_rows(self):
+        self._write_stats_n(3)
+        lines = self.client.get("/cache/export").data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 4)  # header + 3 rows
+
+    def test_export_json_status(self):
+        r = self.client.get("/cache/export?format=json")
+        self.assertEqual(r.status_code, 200)
+        self.assertIsInstance(r.get_json(), list)
+
+    def test_export_json_empty_is_list(self):
+        self.assertEqual(self.client.get("/cache/export?format=json").get_json(), [])
+
+    def test_export_json_row_keys(self):
+        self._write_stats_n(1)
+        rows = self.client.get("/cache/export?format=json").get_json()
+        for key in ("session", "hits", "misses", "hit_rate", "cumulative_hits", "cumulative_misses", "ended_at"):
+            self.assertIn(key, rows[0])
+
+    def test_export_since_filters(self):
+        self._write_stats_n(5)
+        rows = self.client.get("/cache/export?format=json&since=3").get_json()
+        nums = [r["session"] for r in rows]
+        self.assertEqual(nums, [4, 5])
+
+    def test_export_limit_caps_rows(self):
+        self._write_stats_n(5)
+        rows = self.client.get("/cache/export?format=json&limit=2").get_json()
+        self.assertEqual(len(rows), 2)
+
+    def test_export_since_and_limit_compose(self):
+        self._write_stats_n(5)
+        rows = self.client.get("/cache/export?format=json&since=1&limit=2").get_json()
+        nums = [r["session"] for r in rows]
+        self.assertEqual(nums, [4, 5])
+
 
 # ---------------------------------------------------------------------------
 # GET /diff
