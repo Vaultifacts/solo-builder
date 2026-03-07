@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-044
+TASK-045
 
-Persist expanded journal entry state across ticks using a Set keyed by step-subtask so show-more stays open during live polling
+Add ?limit=N query param to GET /metrics/export to cap returned rows (CSV and JSON both respect it)
