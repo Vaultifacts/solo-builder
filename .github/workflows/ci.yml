@@ -26,6 +26,10 @@ jobs:
         shell: pwsh
         run: pwsh tools/bootstrap_verify.ps1
 
+      - name: Secret scan
+        shell: pwsh
+        run: pwsh tools/secret_scan.ps1
+
       - name: Workflow contract check
         shell: pwsh
         run: pwsh tools/workflow_contract_check.ps1

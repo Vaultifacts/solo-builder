@@ -38,6 +38,8 @@ tools/                      — workflow enforcement scripts (PowerShell)
   audit_check.ps1           — executes VERIFY.json commands, writes verify_last.json
   dev_gate.ps1              — pre-commit guard runner
   enforce_allowed_files.ps1 — blocks commits outside task scope
+  claude_heal.ps1           — manual CI triage trigger: downloads failed run artifacts, resets STATE to triage/RESEARCH
+  claude_status.ps1         — diagnostic: pretty-prints STATE.json and ci_context.json
 
 claude/                     — workflow state and agent handoff artifacts
   STATE.json                — machine-readable workflow state (task, phase, role, attempt)
