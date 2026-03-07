@@ -5,7 +5,7 @@
     {
       "name": "unittest-discover",
       "command": "python -m unittest discover",
-      "required": false,
+      "required": true,
       "timeout_sec": 900
     },
     {
