@@ -336,6 +336,42 @@ def _append_journal(
         f.write(f"{output}\n\n---\n\n")
 
 
+def _append_cache_session_stats(cache, steps: int) -> None:
+    """Append per-session ResponseCache hit/miss summary to the journal.
+
+    Only writes if the cache was consulted at least once this session.
+    Silently skips if cache is None or the journal cannot be written.
+    """
+    if cache is None:
+        return
+    try:
+        s = cache.stats()
+        total = s["hits"] + s["misses"]
+        if total == 0:
+            return  # cache unused this session — nothing worth logging
+        hit_rate = s["hits"] / total * 100
+        parent = os.path.dirname(JOURNAL_PATH)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        exists = os.path.exists(JOURNAL_PATH)
+        with open(JOURNAL_PATH, "a", encoding="utf-8") as f:
+            if not exists:
+                f.write("# Solo Builder — Live Journal\n\n")
+            f.write(
+                f"## Cache session summary · Step {steps}\n\n"
+                f"| Metric | Value |\n"
+                f"|--------|-------|\n"
+                f"| Hits | {s['hits']} |\n"
+                f"| Misses | {s['misses']} |\n"
+                f"| Hit rate | {hit_rate:.1f}% |\n"
+                f"| Entries on disk | {s['size']} |\n"
+                f"| Est. tokens saved | {s['estimated_tokens_saved']:,} |\n"
+                f"\n---\n\n"
+            )
+    except Exception:
+        pass  # journal write failure is non-fatal
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # AGENTS (extracted to solo_builder/agents/)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2858,6 +2894,11 @@ def main() -> None:
         if args.export and cli is not None:
             _export_path, _export_count = cli._cmd_export()
         _release_lock(_LOCK_PATH)
+        if cli is not None:
+            _append_cache_session_stats(
+                getattr(cli.executor.anthropic, "cache", None),
+                cli.step,
+            )
         if _quiet_mode:
             sys.stderr = sys.__stderr__
             if _null_fh:

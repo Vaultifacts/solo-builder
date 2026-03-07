@@ -400,5 +400,102 @@ class TestExecutorLocalRouting(unittest.TestCase):
         claude_run.assert_not_called()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# _append_cache_session_stats
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestAppendCacheSessionStats(unittest.TestCase):
+    """Tests for the _append_cache_session_stats CLI helper."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._journal = os.path.join(self._tmp, "journal.md")
+        self._cache_dir = os.path.join(self._tmp, "cache")
+
+    def _get_fn(self):
+        """Import the function fresh each time to avoid module caching issues."""
+        import importlib
+        import solo_builder_cli as _m
+        importlib.reload(_m)  # noqa — needed to pick up patched JOURNAL_PATH
+        return _m._append_cache_session_stats
+
+    def _read_journal(self):
+        try:
+            with open(self._journal, encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return ""
+
+    def test_skips_when_cache_is_none(self):
+        # Patch JOURNAL_PATH so the function writes to our tmp file
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(None, steps=5)
+        self.assertEqual(self._read_journal(), "")
+
+    def test_skips_when_no_cache_activity(self):
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        # No gets — hits=0, misses=0
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=3)
+        self.assertEqual(self._read_journal(), "")
+
+    def test_writes_summary_when_hits_exist(self):
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        key = ResponseCache.make_key("p")
+        cache.set(key, "v")
+        cache.get(key)   # 1 hit
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=7)
+        content = self._read_journal()
+        self.assertIn("Cache session summary", content)
+        self.assertIn("Hits", content)
+        self.assertIn("1", content)
+
+    def test_writes_summary_when_only_misses(self):
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        cache.get("nonexistent")   # 1 miss
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=2)
+        content = self._read_journal()
+        self.assertIn("Cache session summary", content)
+        self.assertIn("Misses", content)
+
+    def test_creates_journal_header_when_file_absent(self):
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        cache.get("miss")
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=1)
+        content = self._read_journal()
+        self.assertIn("Solo Builder", content)
+
+    def test_appends_to_existing_journal(self):
+        with open(self._journal, "w", encoding="utf-8") as f:
+            f.write("# Solo Builder — Live Journal\n\nexisting entry\n\n")
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        cache.get("miss")
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=4)
+        content = self._read_journal()
+        self.assertIn("existing entry", content)
+        self.assertIn("Cache session summary", content)
+
+    def test_estimated_tokens_in_output(self):
+        cache = ResponseCache(cache_dir=self._cache_dir)
+        key = ResponseCache.make_key("q")
+        cache.set(key, "result")
+        cache.get(key)  # 1 hit → 550 tokens saved
+        with patch("solo_builder_cli.JOURNAL_PATH", self._journal):
+            import solo_builder_cli as _m
+            _m._append_cache_session_stats(cache, steps=1)
+        content = self._read_journal()
+        self.assertIn("550", content)
+
+
 if __name__ == "__main__":
     unittest.main()
