@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-018
+TASK-019
 
-Integrate workflow_preflight into deterministic task initialization flow.
+Design CI integration for Solo Builder workflow invariants (state consistency, preflight checks, and verification contract enforcement).

@@ -1,159 +1,69 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-009
+TASK-019
 
-## Summary of changes
-- Updated `_cmd_undo` output in `solo_builder/solo_builder_cli.py` to use an encoding-safe ASCII arrow.
-- Replaced Unicode arrow `→` with `->` in the undo status print line only.
-- No logic changes to undo behavior.
+## Summary of implementation
+Implemented CI verification-only invariant enforcement by introducing a CI-specific checker and wiring GitHub Actions to it.
 
-## Files changed
-- solo_builder/solo_builder_cli.py
+## Files modified (implementation scope)
+- tools/ci_invariant_check.ps1 (new)
+- .github/workflows/ci.yml
+- claude/WORKFLOW_SPEC.md
 
-## Commands run
-1. `python -m unittest solo_builder.discord_bot.test_bot.TestUndoCommand.test_undo_restores_previous_step`
-2. `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`
-3. `pwsh tools/audit_check.ps1`
+## Runtime/workflow artifacts modified
+- claude/JOURNAL.md (expected workflow logging)
+- claude/allowed_files.txt (runtime artifact from allowed-file extraction)
 
-## Results
-- Target unittest: PASS (no UnicodeEncodeError)
-- `dev_gate` manual run: PASS
-- `audit_check`: PASS (`unittest-discover`, `git-status`, `git-diff-stat`)
+## What changed
+1. Added `tools/ci_invariant_check.ps1`:
+   - Runs `tools/check_next_action_consistency.ps1` first.
+   - Loads `claude/VERIFY.json` and executes listed commands with timeout handling.
+   - Fails nonzero when any required command fails.
+   - Does not mutate workflow state and does not call lifecycle-transition commands.
 
-## UnicodeEncodeError status
-- The `_cmd_undo` UnicodeEncodeError is resolved for the targeted test path.
+2. Updated `.github/workflows/ci.yml`:
+   - Replaced CI step `pwsh tools/audit_check.ps1` with `pwsh tools/ci_invariant_check.ps1`.
+   - Updated `ci_bundle/repro.ps1` to use `ci_invariant_check.ps1`.
 
-## settings.json cleanliness
-- `solo_builder/config/settings.json` remained clean after validation (`git diff` shows no changes).
+3. Updated `claude/WORKFLOW_SPEC.md`:
+   - Added CI verification-only contract section.
+   - Documented canonical CI command path (`pwsh tools/ci_invariant_check.ps1`).
+   - Explicitly prohibited lifecycle-mutating commands in CI (`advance_state`, `start_task`, branch ops).
 
-## AUDITOR results (TASK-009)
-- pass/fail result: pass (`claude/verify_last.json` has `passed: true`)
-- working_tree_dirty: false
-- dirty_files: []
-- `_cmd_undo` UnicodeEncodeError resolved: yes (targeted `_cmd_undo` path now emits `->` and no longer raises UnicodeEncodeError)
-- `solo_builder/config/settings.json` remained clean: yes (no dirty file reported)
-- final verdict: TASK-009 resolved
+## Verification run
+- `pwsh tools/ci_invariant_check.ps1` -> PASS
+  - Included: state/next_action consistency check
+  - Ran required commands from `claude/VERIFY.json`
+- `pwsh tools/dev_gate.ps1 -Mode Manual` -> PASS
 
-## AUDITOR results (TASK-011)
-- pass/fail result: PASS
-- workflow verifier: `pwsh tools/audit_check.ps1` passed
-- extraction check: `pwsh tools/extract_allowed_files.ps1` produced `claude/allowed_files.txt`
-- output correctness: extracted path `tools/extract_allowed_files.ps1`
-- scope check: implementation commit touched only `tools/extract_allowed_files.ps1`
-- final verdict: TASK-011 resolved
+## Acceptance criteria mapping
+- Automatic CI path for invariant checks: satisfied via `.github/workflows/ci.yml` calling `tools/ci_invariant_check.ps1`.
+- CI fails nonzero on required-check failures: implemented in `ci_invariant_check.ps1`.
+- CI remains verification-only with no lifecycle mutations: enforced by script scope and documented in workflow spec.
+- No product-code changes: satisfied.
 
-## AUDITOR results (TASK-012)
-- Timestamp (UTC): 2026-03-06T20:25:04.1870519Z
-- Verdict: PASS
-- Audit command: pwsh tools/audit_check.ps1
-- verify_last.json: passed=true, working_tree_dirty=false
-- Acceptance criteria: satisfied
-- Scope check: limited to claude/templates/HANDOFF_DEV_TEMPLATE.md and claude/prompts/architect_prompt.txt
+## Risks / notes
+- `tools/plan_extract.ps1` is referenced in prompting but does not exist in repo (pre-existing workflow mismatch, out of TASK-019 scope).
+- `claude/allowed_files.txt` remains a runtime artifact and should not be committed.
 
-## DEV summary (TASK-013)
-
-### Summary of changes
-- Created `claude/templates/` directory.
-- Created `claude/templates/NEXT_ACTION_TEMPLATE.md` with all nine `{{PLACEHOLDER}}` sections matching the inline fallback in `tools/claude_orchestrate.ps1`.
-
-### Files changed
-- claude/templates/NEXT_ACTION_TEMPLATE.md (created)
-
-### Commands run
-1. `pwsh tools/extract_allowed_files.ps1`
-2. `pwsh tools/claude_orchestrate.ps1` (confirms external template is read)
-
-### Results
-- `extract_allowed_files.ps1`: extracted `claude/templates/NEXT_ACTION_TEMPLATE.md` from HANDOFF_DEV.md
-- `claude_orchestrate.ps1`: reads external template, NEXT_ACTION.md output unchanged
-- No files under `solo_builder/*` modified.
-- `STATE.json` remains machine-readable source of state.
-
-## AUDITOR results (TASK-013)
-- Timestamp (UTC): 2026-03-06T21:08:13.8776556Z
-- Verdict: PASS
-- Audit command: pwsh tools/audit_check.ps1
-- verify_last.json: passed=true, working_tree_dirty=false
-- Required commands: git-status PASS, git-diff-stat PASS
-- Optional commands: unittest-discover FAIL (1 pre-existing failure in test_stalled_shows_stuck — non-required, does not affect verdict)
-- Acceptance criteria: all satisfied
-  - claude/templates/NEXT_ACTION_TEMPLATE.md exists with all nine {{PLACEHOLDER}} sections
-  - pwsh tools/claude_orchestrate.ps1 reads external template without error
-  - STATE.json remains machine-readable source of workflow state
-  - No product-code changes under solo_builder/*
-- Scope check: implementation limited to claude/templates/NEXT_ACTION_TEMPLATE.md and workflow handoff artifacts
-- final verdict: TASK-013 resolved
-
-## AUDITOR results (TASK-014)
-- Timestamp (UTC): 2026-03-06T21:34:03.0345784Z
-- Verdict: PASS
-- Audit command: pwsh tools/audit_check.ps1
-- verify_last.json: passed=true, working_tree_dirty=false
-- Acceptance criteria: satisfied
-- Scope check: limited to tools/check_next_action_consistency.ps1 and tools/audit_check.ps1
-
-## AUDITOR results (TASK-015)
-- Timestamp (UTC): 2026-03-06T22:14:47.7646890Z
-- Verdict: PASS
-- Audit command: pwsh tools/audit_check.ps1
-- verify_last.json: passed=true, working_tree_dirty=false
-- Acceptance criteria: satisfied after serial done/ARCHITECT + done/AUDITOR checks
-- Scope check: limited to tools/claude_orchestrate.ps1
-
-## AUDITOR results (TASK-016)
-- Timestamp (UTC): 2026-03-07T00:44:57.0801817Z
-- Verdict: PASS
-- Audit command: pwsh tools/audit_check.ps1
-- verify_last.json: passed=true, working_tree_dirty=false
-- Acceptance criteria: satisfied
-- Scope check: docs-only implementation limited to claude/WORKFLOW_SPEC.md
-- Required spec coverage present:
-  - task lifecycle
-  - branch lifecycle
-  - workflow phases and roles
-  - closeout procedure
-  - merge-first baseline rule
-  - local-only runtime artifact handling
-- Semantics check: documents current behavior; no workflow semantics changes introduced
-- Product-code check: no changes under solo_builder/*
-- final verdict: TASK-016 resolved
-
-## AUDITOR results (TASK-017)
-- Timestamp (UTC): 2026-03-07T01:34:30.8172671Z
-- Verdict: PASS
-- Audit command: pwsh tools/audit_check.ps1
-- verify_last.json: passed=true, working_tree_dirty=false
-- Acceptance criteria: satisfied
-- Behavior checks:
-  - failing case returned nonzero (dirty runtime artifact)
-  - passing case returned zero on a clean tree
-  - preflight reuses tools/check_next_action_consistency.ps1
-  - baseline check is conservative (master contains previous task branch when applicable)
-- Scope check: implementation limited to tools/workflow_preflight.ps1
-- No product-code changes under solo_builder/*
-- final verdict: TASK-017 resolved
-
-## TASK-018 — AUDITOR
+## TASK-019 — AUDITOR
 
 Verdict: PASS
 
-Required verification passed via `pwsh tools/audit_check.ps1`.
+Verification result:
+- `pwsh tools/audit_check.ps1` passed required verification commands.
+- `claude/verify_last.json` reports `"passed": true`.
 
-Evidence:
-- `claude/verify_last.json` recorded `"passed": true`
-- `tools/start_task.ps1` dry-run proved preflight occurs before branch creation
-- dirty-tree dry-run failed nonzero before branch creation
-- clean-tree dry-run passed with expected ordered flow
-- scope remained limited to:
-  - `tools/start_task.ps1`
-  - `tools/workflow_preflight.ps1`
-  - `claude/WORKFLOW_SPEC.md`
+Note on transient drift:
+- After initial audit, a transient drift was detected: `claude/STATE.json` showed `done` while
+  `claude/NEXT_ACTION.md` still showed `verify/AUDITOR`.
+- This was a rendering/state-sync issue, not an implementation defect.
+- Resolved by rerunning `pwsh tools/claude_orchestrate.ps1`, which reconciled the two files.
+- No implementation change was required; CI invariant check (`tools/ci_invariant_check.ps1`) passed
+  throughout.
 
-Acceptance criteria status:
-- Automatic preflight gating integrated into task initialization: satisfied
-- Nonzero preflight abort before branch creation: satisfied
-- Canonical scripted path documented: satisfied
-
-Blocking issues:
-- None
+Scope check:
+- Implementation scope remained within intended workflow files.
+- No defect found in the CI invariant implementation itself.
+- Drift was operational/workflow-state only; resolved without code changes.
