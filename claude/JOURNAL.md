@@ -125,3 +125,6 @@
 - [2026-03-07T07:49:50.6224900Z] state transition: build/DEV -> verify/AUDITOR | note: build complete, 195/0
 - [2026-03-07T07:50:18.7614917Z] state transition: done/AUDITOR -> done/AUDITOR | note: all checks pass, 195/0
 - [2026-03-07T07:58:17.9544946Z] Starting TASK-027 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-07T08:01:32.6485907Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: runners: 3 clean + Executor with 2 new params
+- [2026-03-07T08:01:33.3807919Z] state transition: research/ARCHITECT -> plan/DEV | note: plan complete
+- [2026-03-07T08:01:34.0897188Z] state transition: plan/DEV -> build/DEV | note: starting build
