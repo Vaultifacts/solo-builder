@@ -57,15 +57,26 @@ class ResponseCache:
             return {}
 
     def persist_stats(self) -> None:
-        """Write updated cumulative hit/miss totals to session_stats.json."""
+        """Write updated cumulative totals and append a session record to session_stats.json."""
         try:
-            data = {
-                "cumulative_hits":   self._cum_hits + self._hits,
-                "cumulative_misses": self._cum_misses + self._misses,
-                "updated_at":        datetime.now(timezone.utc).isoformat(),
-            }
             path = self._dir / self._STATS_FILE
-            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            existing = self._load_cumulative()
+            cum_hits   = self._cum_hits + self._hits
+            cum_misses = self._cum_misses + self._misses
+            sessions = existing.get("sessions", [])
+            sessions.append({
+                "hits":              self._hits,
+                "misses":            self._misses,
+                "cumulative_hits":   cum_hits,
+                "cumulative_misses": cum_misses,
+                "ended_at":          datetime.now(timezone.utc).isoformat(),
+            })
+            path.write_text(json.dumps({
+                "cumulative_hits":   cum_hits,
+                "cumulative_misses": cum_misses,
+                "updated_at":        datetime.now(timezone.utc).isoformat(),
+                "sessions":          sessions,
+            }, indent=2), encoding="utf-8")
         except Exception:
             pass  # non-fatal
 
