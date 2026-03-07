@@ -1,53 +1,45 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Problem summary
-The workflow now renders `claude/NEXT_ACTION.md` from `claude/STATE.json`, but verification does not currently enforce that these two views stay consistent. Agents can therefore act on stale or drifted rendered state without a fail-fast signal.
+When workflow state is `done`, `tools/claude_orchestrate.ps1` shows summary fields from persisted state but emits a hardcoded AUDITOR copy/paste prompt. This produces inconsistent terminal output after closeout transitions that set `done/ARCHITECT`.
 
 ## Root cause
-`tools/audit_check.ps1` validates command results and working-tree cleanliness, but has no preflight check that compares machine state (`STATE.json`) with rendered agent-facing state (`NEXT_ACTION.md`) for core routing fields.
+In `Get-RoleContract`, the `if ($Phase -eq 'done')` branch returns a fixed contract with `Prompt = "You are AUDITOR..."`, ignoring the persisted `next_role` value passed as `$Role`.
 
 ## Minimal fix strategy
-1. Add a dedicated helper script that parses `claude/STATE.json` and `claude/NEXT_ACTION.md`, then compares:
-   - `task_id` vs `Task`
-   - `phase` vs `Phase`
-   - `next_role` vs `Role`
-2. Keep parsing deterministic and narrow:
-   - parse `NEXT_ACTION.md` by exact heading labels (`## Task`, `## Phase`, `## Role`)
-   - trim whitespace; do not parse unrelated sections
-3. Integrate helper at the start of `tools/audit_check.ps1` (before verify command loop):
-   - fail immediately with clear mismatch details if check fails
-   - preserve all existing audit behavior when check passes
+1. Update only the done-phase branch in `tools/claude_orchestrate.ps1` so prompt rendering respects persisted `$Role` (or is made role-neutral in a way that remains consistent with displayed `Next role`).
+2. Keep all non-done role contracts unchanged (`RESEARCH`, `ARCHITECT`, `DEV`, `AUDITOR`).
+3. Preserve existing state validation and transition semantics; change only terminal rendering consistency.
 
 ## Allowed files to modify
-- tools/check_next_action_consistency.ps1
-- tools/audit_check.ps1
+- tools/claude_orchestrate.ps1
 
 ## Files that must not be modified
 - Any files under `solo_builder/*`
-- tools/claude_orchestrate.ps1
+- tools/advance_state.ps1
+- tools/audit_check.ps1
 - claude/templates/NEXT_ACTION_TEMPLATE.md
-- claude/AGENT_ENTRY.md
-- claude/CONTROL.md
-- claude/RULES.md
+- claude/STATE.json
 - claude/VERIFY.json
-- Any workflow state-machine semantics or phase mappings
+- Any lifecycle/phase mapping semantics outside done-phase rendering
 
 ## Risks
-- Brittle parsing if helper depends on markdown layout beyond required headings.
-- False negatives if newline/whitespace normalization is not handled.
-- Overreach if helper checks fields outside task/phase/role contract.
+- Over-correcting done behavior could unintentionally change expected post-close operator workflow.
+- Modifying shared prompt-generation logic could affect non-done phases if not tightly scoped.
+- Inconsistent wording between `Next role` summary and copy/paste prompt may persist if only one path is updated.
 
 ## Acceptance criteria
-- Helper exits 0 when `STATE.json` and `NEXT_ACTION.md` match on required fields.
-- Helper exits nonzero on mismatch and prints clear expected/actual values.
-- `tools/audit_check.ps1` invokes helper early and exits nonzero on mismatch.
-- Existing audit semantics remain unchanged when consistency check passes.
-- No product-code changes under `solo_builder/*`.
+- With persisted state `done/ARCHITECT`, orchestrator displays `Next role: ARCHITECT` and emits a matching terminal prompt contract (no AUDITOR mismatch).
+- With persisted state `done/AUDITOR`, orchestrator displays and emits consistent AUDITOR terminal contract.
+- Non-done phases (`triage`, `research`, `plan`, `build`, `verify`) preserve existing behavior.
+- No product-code changes are introduced.
 
 ## Verification commands
-1. `pwsh tools/claude_orchestrate.ps1`
-2. `pwsh tools/check_next_action_consistency.ps1`
-3. Introduce controlled mismatch (edit local `claude/NEXT_ACTION.md` role/task/phase) and rerun helper to confirm nonzero exit.
-4. Restore `claude/NEXT_ACTION.md` by rerunning orchestrator.
-5. `pwsh tools/audit_check.ps1`
-6. `git diff --stat`
+1. `pwsh tools/advance_state.ps1 -ToPhase done -ToRole ARCHITECT -TaskId TASK-015 -Note "terminal render test"`
+2. `pwsh tools/claude_orchestrate.ps1`
+3. Confirm summary `Next role` and copy/paste prompt role are consistent.
+4. `pwsh tools/advance_state.ps1 -ToPhase done -ToRole AUDITOR -TaskId TASK-015 -Note "terminal render test"`
+5. `pwsh tools/claude_orchestrate.ps1`
+6. Reconfirm consistency.
+7. `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`
+8. `git diff --stat`

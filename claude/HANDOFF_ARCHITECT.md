@@ -1,59 +1,52 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Context
-- Active task: `TASK-014`
-- Goal: add fail-fast consistency verification between machine state (`claude/STATE.json`) and rendered agent-facing state (`claude/NEXT_ACTION.md`).
-- Scope: workflow scripts/docs only.
+- Active task: `TASK-015`
+- Goal: fix post-close role rendering mismatch in `tools/claude_orchestrate.ps1` for `phase=done`.
+- Scope: workflow/orchestrator behavior only.
 
 ## Evidence collected
-- `tools/claude_orchestrate.ps1` now renders `claude/NEXT_ACTION.md` from `STATE.json` each run.
-  - Rendering placeholders are deterministic: `{{TASK_ID}}`, `{{PHASE}}`, `{{ROLE}}`, etc.
-  - Role source is direct from state: `{{ROLE}}` = `$state.next_role`.
-  - Phase source is direct from state: `{{PHASE}}` = `$state.phase`.
-  - Task source is direct from state: `{{TASK_ID}}` = `$state.task_id`.
-- Current `claude/NEXT_ACTION.md` structure is stable markdown with explicit sections:
-  - `## Task`
-  - `## Phase`
-  - `## Role`
-  - plus additional contract fields.
-- `tools/audit_check.ps1` currently validates command execution and working-tree cleanliness, but does not validate `STATE.json` vs `NEXT_ACTION.md` consistency.
-- No dedicated helper exists today for state/render consistency (`tools/*check*.ps1` currently only includes `audit_check.ps1`).
+- `tools/advance_state.ps1` behavior:
+  - Accepts `-ToPhase done -ToRole <role>` without phase-role mapping restriction for `done`.
+  - Persists both `state.phase` and `state.next_role` exactly as passed.
+  - Therefore, when called with `done/ARCHITECT`, persisted machine state is expected to be `phase=done`, `next_role=ARCHITECT`.
+- `tools/claude_orchestrate.ps1` behavior:
+  - Summary output (`Current task`, `Phase`, `Next role`) is written from `$state.*`.
+  - Contract/prompt output is produced by `Get-RoleContract`.
+  - In `Get-RoleContract`, when `$Phase -eq 'done'`, the returned prompt is hardcoded to `You are AUDITOR...` regardless of `$Role`.
+  - This creates a done-phase terminal prompt mismatch with persisted `next_role`.
+- `NEXT_ACTION.md` rendering in orchestrator:
+  - Uses `{{ROLE}}` replacement from `$state.next_role`.
+  - Uses other placeholders from `$state` and contract fields.
+  - Done-phase prompt contract and rendered role can therefore diverge if contract is hardcoded.
 
-## Current field mappings
-- `STATE.json.task_id` <-> `NEXT_ACTION.md` section `## Task`
-- `STATE.json.phase` <-> `NEXT_ACTION.md` section `## Phase`
-- `STATE.json.next_role` <-> `NEXT_ACTION.md` section `## Role`
+## Current role-rendering logic
+- Displayed summary role source: `state.next_role`.
+- Rendered contract role source in `done` branch: hardcoded AUDITOR prompt text, independent of `state.next_role`.
+- Non-done phases: contract selection follows role switch (`RESEARCH|ARCHITECT|DEV|AUDITOR`) using passed role.
 
-These are currently one-way rendered by orchestrator but not independently verified during audit.
+## Mismatch cause
+- Done-phase handling in `Get-RoleContract` is treated as a special branch that ignores role-specific prompt semantics.
+- This branch returns an AUDITOR prompt unconditionally, which conflicts with expected post-close `done/ARCHITECT` state used by lifecycle.
 
-## Parsing/normalization observations
-- `Role` text in NEXT_ACTION is currently exact role tokens (`RESEARCH|ARCHITECT|DEV|AUDITOR`) and does not require normalization in normal flow.
-- `Phase` text is currently exact lower-case state phase values (`triage|research|plan|build|verify|done`) and does not require normalization in normal flow.
-- For robustness, consistency checks should still trim whitespace and handle trailing newline differences.
-- Because `NEXT_ACTION.md` is template-backed markdown, parsers should avoid brittle line-number assumptions and instead extract by heading labels.
+## Likely minimal safe fix direction (research-level)
+- Keep lifecycle semantics unchanged.
+- Narrow fix surface to `tools/claude_orchestrate.ps1` done-phase contract rendering:
+  - make done-phase prompt/role rendering consistent with persisted `state.next_role`, or
+  - make terminal done contract explicitly role-neutral and consistent across both summary and prompt output.
+- Ensure `NEXT_ACTION.md` role and copy/paste prompt align in done-phase.
 
-## Likely mismatch/failure modes
-- Orchestrator not run after state transition leaves stale `NEXT_ACTION.md`.
-- Manual edits to `NEXT_ACTION.md` (even though gitignored) can diverge from state.
-- Template changes that alter heading text could break naive parser extraction.
-- Role mismatch after `done` transitions (observed earlier) can be detected quickly if consistency check is enforced before/within audit path.
+## Files involved
+- `tools/claude_orchestrate.ps1` (primary)
+- `claude/templates/NEXT_ACTION_TEMPLATE.md` only if needed for a stable terminal contract wording (likely not required)
 
-## Minimal safe implementation direction (research-level)
-- Add a dedicated workflow helper script to compare `STATE.json` and `NEXT_ACTION.md` on the three required fields and exit nonzero on mismatch.
-- Invoke that helper from `tools/audit_check.ps1` as an early guard (before verify command loop), preserving existing audit semantics otherwise.
-- Keep check narrowly scoped to required fields only (`task_id/task`, `phase/phase`, `next_role/role`) to avoid over-coupling to other markdown text.
-
-## Files involved (candidate scope)
-- `tools/audit_check.ps1` (integration point)
-- new helper script under `tools/` for consistency check
-- `claude/templates/NEXT_ACTION_TEMPLATE.md` only if extraction labels need to be explicitly locked (currently labels already explicit)
-
-## Risks / edge cases
-- If parser ties to exact markdown formatting beyond headings, small template formatting edits could cause false negatives.
-- If check runs before orchestrator in some flows, stale NEXT_ACTION may intentionally exist; guard behavior must align with existing workflow expectations.
-- Check should report actionable mismatch details (expected vs actual values) to reduce debugging time.
+## Possible regression risks
+- Changing done-phase prompt behavior could unintentionally affect expected closeout operator habits.
+- If done-phase becomes role-neutral, downstream scripts/prompts expecting explicit role labels may need to be verified.
+- Non-done role prompts must remain unchanged.
 
 ## Constraints / non-negotiables
 - No product-code changes under `solo_builder/*`.
 - No task lifecycle semantic changes.
-- Preserve deterministic workflow conventions; add verification, do not alter role progression.
+- Preserve deterministic workflow conventions.
+- Keep fix minimal and done-phase focused.

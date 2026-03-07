@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-014
+TASK-015
 
-Add STATE/NEXT_ACTION consistency verification to fail fast on workflow drift.
+Fix post-close orchestrator next-role rendering mismatch for done phase.
