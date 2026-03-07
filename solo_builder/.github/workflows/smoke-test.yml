@@ -98,7 +98,7 @@ jobs:
       - name: Run bot unit tests (202 tests)  # includes filter, timeline, priority, stalled, heal, agents, forecast, cache
         run: PYTHONIOENCODING=utf-8 python discord_bot/test_bot.py
 
-      - name: Run API unit tests (95 tests)
+      - name: Run API unit tests (121 tests)  # includes GET /cache, DELETE /cache
         run: PYTHONIOENCODING=utf-8 python api/test_app.py
 
       - name: Profiler dry-run (patch smoke test)

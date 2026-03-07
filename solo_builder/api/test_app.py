@@ -60,6 +60,8 @@ class _Base(unittest.TestCase):
         self._snapshot_path           = Path(self._tmp) / "state" / "snapshot_trigger"
         self._pause_path              = Path(self._tmp) / "state" / "pause_trigger"
         self._dag_import_path         = Path(self._tmp) / "state" / "dag_import_trigger.json"
+        self._cache_dir               = Path(self._tmp) / "cache"
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
 
         self._patches = [
             patch.object(app_module, "STATE_PATH", new=self._state_path),
@@ -82,6 +84,7 @@ class _Base(unittest.TestCase):
             patch.object(app_module, "SNAPSHOT_TRIGGER", new=self._snapshot_path),
             patch.object(app_module, "PAUSE_TRIGGER", new=self._pause_path),
             patch.object(app_module, "DAG_IMPORT_TRIGGER", new=self._dag_import_path),
+            patch.object(app_module, "CACHE_DIR", new=self._cache_dir),
         ]
         for p in self._patches:
             p.start()
@@ -1173,6 +1176,80 @@ class TestErrorHandlers(_Base):
     def test_cors_headers_present(self):
         r = self.client.get("/status")
         self.assertEqual(r.headers.get("Access-Control-Allow-Origin"), "*")
+
+
+# ---------------------------------------------------------------------------
+# GET /cache  /  DELETE /cache
+# ---------------------------------------------------------------------------
+
+class TestCache(_Base):
+
+    def _write_entries(self, n: int) -> None:
+        for i in range(n):
+            (self._cache_dir / f"entry_{i:04d}.json").write_text(
+                '{"response": "x"}', encoding="utf-8"
+            )
+
+    # GET /cache
+
+    def test_get_cache_empty(self):
+        r = self.client.get("/cache")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["entries"], 0)
+        self.assertEqual(d["estimated_tokens_held"], 0)
+        self.assertIn("cache_dir", d)
+
+    def test_get_cache_counts_entries(self):
+        self._write_entries(3)
+        r = self.client.get("/cache")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["entries"], 3)
+
+    def test_get_cache_estimated_tokens(self):
+        self._write_entries(2)  # 2 × 550 = 1100
+        r = self.client.get("/cache")
+        d = r.get_json()
+        self.assertEqual(d["estimated_tokens_held"], 1100)
+
+    def test_get_cache_reports_directory(self):
+        r = self.client.get("/cache")
+        d = r.get_json()
+        self.assertIn("cache_dir", d)
+        self.assertIsInstance(d["cache_dir"], str)
+
+    # DELETE /cache
+
+    def test_delete_cache_empty_returns_zero(self):
+        r = self.client.delete("/cache")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["deleted"], 0)
+
+    def test_delete_cache_removes_entries(self):
+        self._write_entries(4)
+        r = self.client.delete("/cache")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["deleted"], 4)
+        self.assertEqual(len(list(self._cache_dir.glob("*.json"))), 0)
+
+    def test_delete_cache_subsequent_get_shows_zero(self):
+        self._write_entries(2)
+        self.client.delete("/cache")
+        r = self.client.get("/cache")
+        self.assertEqual(r.get_json()["entries"], 0)
+
+    def test_delete_cache_missing_dir_returns_ok(self):
+        import shutil
+        shutil.rmtree(self._cache_dir, ignore_errors=True)
+        r = self.client.delete("/cache")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
 
 
 # ---------------------------------------------------------------------------
