@@ -30,4 +30,5 @@ solo_builder/tests/test_cache.py
 tools/cache_stats.py
 solo_builder/discord_bot/bot.py
 solo_builder/discord_bot/test_bot.py
+solo_builder/.github/workflows/smoke-test.yml
 .gitignore
