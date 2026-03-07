@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-026
+TASK-027
 
-Extract 5 clean agents to solo_builder/agents/
+Extract ClaudeRunner, AnthropicRunner, SdkToolRunner, and Executor from solo_builder_cli.py into solo_builder/runners/ package

@@ -1,0 +1,283 @@
+"""Executor — advances subtasks through Pending → Running → Verified."""
+import asyncio
+import json as _json
+import logging
+import os
+import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Callable, Dict, List, Optional, Tuple
+
+from utils.helper_functions import add_memory_snapshot, BLUE, CYAN, RESET
+
+from .claude_runner import ClaudeRunner
+from .anthropic_runner import AnthropicRunner
+from .sdk_tool_runner import SdkToolRunner
+
+# ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
+_SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_CFG_PATH = os.path.join(_SOLO, "config", "settings.json")
+try:
+    with open(_CFG_PATH, encoding="utf-8") as _f:
+        _CFG: dict = _json.load(_f)
+except Exception:
+    _CFG = {}
+
+CLAUDE_TIMEOUT       : int  = _CFG.get("CLAUDE_TIMEOUT", 60)
+CLAUDE_ALLOWED_TOOLS : str  = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
+ANTHROPIC_MODEL      : str  = _CFG.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+ANTHROPIC_MAX_TOKENS : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
+REVIEW_MODE          : bool = bool(_CFG.get("REVIEW_MODE", False))
+
+logger = logging.getLogger("solo_builder")
+
+
+class Executor:
+    """Advances subtasks through Pending → Running → Verified."""
+
+    def __init__(
+        self,
+        max_per_step: int,
+        verify_prob: float,
+        project_context: str = "",
+        append_journal: Optional[Callable] = None,
+    ) -> None:
+        self.max_per_step     = max_per_step
+        self.verify_prob      = verify_prob
+        self.review_mode      = REVIEW_MODE
+        self._project_context = project_context
+        self._append_journal  = append_journal or (lambda *a, **kw: None)
+        self.claude    = ClaudeRunner(timeout=CLAUDE_TIMEOUT, allowed_tools=CLAUDE_ALLOWED_TOOLS)
+        self.anthropic = AnthropicRunner(model=ANTHROPIC_MODEL, max_tokens=ANTHROPIC_MAX_TOKENS)
+        # SDK tool-use runner — replaces subprocess for tool-bearing subtasks
+        self.sdk_tool = SdkToolRunner(
+            client=self.anthropic.client,
+            async_client=self.anthropic.async_client,
+            model=ANTHROPIC_MODEL,
+            max_tokens=max(ANTHROPIC_MAX_TOKENS, 512),
+        )
+
+    # ── Async gather helpers (class-level to avoid per-step closure allocation) ─
+    @staticmethod
+    async def _gather_sdktool(runner, jobs):
+        return await asyncio.gather(
+            *(runner.arun(_ctx + sd.get("description", ""), st)
+              for _, _, _, sd, st, _ctx in jobs),
+            return_exceptions=True,
+        )
+
+    @staticmethod
+    async def _gather_sdk(runner, jobs):
+        return await asyncio.gather(
+            *(runner.arun(p) for _, _, _, _, p in jobs),
+            return_exceptions=True,
+        )
+
+    def execute_step(
+        self,
+        dag: Dict,
+        priority_list: List[Tuple[str, str, str, int]],
+        step: int,
+        memory_store: Dict,
+    ) -> Dict[str, str]:
+        """
+        Advance up to max_per_step subtasks.
+        Returns {subtask_name: action} where action ∈ {"started", "verified"}.
+        """
+        actions: Dict[str, str] = {}
+        advanced = 0
+        sdk_tool_jobs: list = []   # SDK tool-use (preferred for tool-bearing subtasks)
+        claude_jobs:   list = []   # subprocess fallback when SDK unavailable
+        sdk_jobs:      list = []   # SDK direct (no tools)
+
+        for task_name, branch_name, st_name, _ in priority_list:
+            if advanced >= self.max_per_step:
+                break
+
+            st_data = dag[task_name]["branches"][branch_name]["subtasks"][st_name]
+            status  = st_data.get("status", "Pending")
+
+            if status == "Pending":
+                st_data["status"]      = "Running"
+                st_data["last_update"] = step
+                st_data.setdefault("history", []).append({"status": "Running", "step": step})
+                dag[task_name]["status"]                              = "Running"
+                dag[task_name]["branches"][branch_name]["status"]     = "Running"
+                add_memory_snapshot(memory_store, branch_name, f"{st_name}_started", step)
+                actions[st_name] = "started"
+                advanced += 1
+                logger.debug("subtask_started step=%d task=%s branch=%s subtask=%s", step, task_name, branch_name, st_name)
+
+            elif status == "Running":
+                st_tools    = st_data.get("tools", "").strip()
+                description = st_data.get("description", "").strip()
+                if st_tools:
+                    if self.sdk_tool.available:
+                        # SDK tool-use (preferred — no subprocess overhead)
+                        sdk_tool_jobs.append((task_name, branch_name, st_name, st_data, st_tools, self._project_context))
+                        advanced += 1
+                    elif self.claude.available:
+                        # Subprocess fallback when SDK unavailable
+                        claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
+                        advanced += 1
+                elif self.anthropic.available:
+                    # No tools — use SDK directly (faster, no subprocess)
+                    raw_prompt = (
+                        description
+                        or f"You completed subtask '{st_name}' in task '{task_name}'. "
+                           f"Write one concrete sentence describing what was accomplished."
+                    )
+                    auto_prompt = self._project_context + raw_prompt
+                    sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
+                    advanced += 1
+                elif random.random() < self.verify_prob:
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
+                        st_data["shadow"]      = "Done"
+                        st_data["last_update"] = step
+                        self._record_history(st_data, new_status, step)
+                        add_memory_snapshot(memory_store, branch_name, f"{st_name}_verified", step)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        advanced += 1
+                        logger.debug("subtask_%s step=%d task=%s subtask=%s via=dice_roll", new_status.lower(), step, task_name, st_name)
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
+
+        # ── SDK tool-use jobs (async, no subprocess) ─────────────────────────
+        if sdk_tool_jobs:
+            names = ", ".join(j[2] for j in sdk_tool_jobs)
+            print(f"  {BLUE}SDK+tools executing {names}…{RESET}", flush=True)
+            _sdktool_results = asyncio.run(
+                self._gather_sdktool(self.sdk_tool, sdk_tool_jobs)
+            )
+            for (task_name, branch_name, st_name, st_data, st_tools, _ctx), result \
+                    in zip(sdk_tool_jobs, _sdktool_results):
+                success, output = (False, str(result)[:200]) \
+                    if isinstance(result, Exception) else result
+                if success:
+                    new_status             = "Review" if self.review_mode else "Verified"
+                    st_data["status"]      = new_status
+                    st_data["shadow"]      = "Done"
+                    st_data["output"]      = output[:400]
+                    st_data["last_update"] = step
+                    self._record_history(st_data, new_status, step)
+                    add_memory_snapshot(memory_store, branch_name,
+                                        f"{st_name}_sdktool_verified", step)
+                    actions[st_name] = "review" if self.review_mode else "verified"
+                    logger.info("subtask_%s step=%d task=%s subtask=%s via=sdk_tool", new_status.lower(), step, task_name, st_name)
+                    if not self.review_mode:
+                        self._roll_up(dag, task_name, branch_name)
+                    self._append_journal(
+                        st_name, task_name, branch_name,
+                        st_data.get("description", ""), output, step,
+                    )
+                else:
+                    logger.warning("sdk_tool_failed step=%d task=%s subtask=%s error=%.100s", step, task_name, st_name, output)
+                    # SDK tool run failed — escalate to subprocess or dice-roll
+                    if self.claude.available:
+                        claude_jobs.append(
+                            (task_name, branch_name, st_name, st_data, st_tools)
+                        )
+                    elif random.random() < self.verify_prob:
+                        # No subprocess available — dice-roll so pipeline isn't blocked
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
+                        st_data["shadow"]      = "Done"
+                        st_data["last_update"] = step
+                        self._record_history(st_data, new_status, step)
+                        add_memory_snapshot(memory_store, branch_name,
+                                            f"{st_name}_verified", step)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
+
+        # ── Run Claude jobs in parallel ───────────────────────────────────────
+        if claude_jobs:
+            names = ", ".join(j[2] for j in claude_jobs)
+            print(f"  {CYAN}Claude executing {names}…{RESET}", flush=True)
+            with ThreadPoolExecutor(max_workers=len(claude_jobs)) as pool:
+                futures = {
+                    pool.submit(self.claude.run, st_data.get("description", ""), st_name,
+                                st_tools): (task_name, branch_name, st_name, st_data)
+                    for task_name, branch_name, st_name, st_data, st_tools in claude_jobs
+                }
+                for future in as_completed(futures):
+                    task_name, branch_name, st_name, st_data = futures[future]
+                    success, output = future.result()
+                    if success:
+                        new_status             = "Review" if self.review_mode else "Verified"
+                        st_data["status"]      = new_status
+                        st_data["shadow"]      = "Done"
+                        st_data["output"]      = output
+                        st_data["last_update"] = step
+                        self._record_history(st_data, new_status, step)
+                        add_memory_snapshot(memory_store, branch_name, f"{st_name}_claude_verified", step)
+                        actions[st_name] = "review" if self.review_mode else "verified"
+                        logger.info("subtask_%s step=%d task=%s subtask=%s via=claude_subprocess", new_status.lower(), step, task_name, st_name)
+                        if not self.review_mode:
+                            self._roll_up(dag, task_name, branch_name)
+                        self._append_journal(
+                            st_name, task_name, branch_name,
+                            st_data.get("description", ""), output, step,
+                        )
+                    # On failure: stay Running → will retry next step or self-heal
+
+        # ── SDK jobs (async Anthropic API, no subprocess) ─────────────────────
+        if sdk_jobs:
+            names = ", ".join(j[2] for j in sdk_jobs)
+            print(f"  {BLUE}SDK executing {names}…{RESET}", flush=True)
+            _sdk_results = asyncio.run(
+                self._gather_sdk(self.anthropic, sdk_jobs)
+            )
+            for (task_name, branch_name, st_name, st_data, _), result \
+                    in zip(sdk_jobs, _sdk_results):
+                success, output = (False, str(result)[:200]) \
+                    if isinstance(result, Exception) else result
+                if success:
+                    new_status             = "Review" if self.review_mode else "Verified"
+                    st_data["status"]      = new_status
+                    st_data["shadow"]      = "Done"
+                    st_data["output"]      = output[:400]
+                    st_data["last_update"] = step
+                    self._record_history(st_data, new_status, step)
+                    add_memory_snapshot(memory_store, branch_name,
+                                        f"{st_name}_sdk_verified", step)
+                    actions[st_name] = "review" if self.review_mode else "verified"
+                    logger.info("subtask_%s step=%d task=%s subtask=%s via=sdk_direct", new_status.lower(), step, task_name, st_name)
+                    if not self.review_mode:
+                        self._roll_up(dag, task_name, branch_name)
+                else:
+                    logger.warning("sdk_direct_failed step=%d task=%s subtask=%s error=%.100s", step, task_name, st_name, output)
+                    # SDK failed — dice-roll so pipeline isn't blocked
+                    if random.random() < self.verify_prob:
+                        st_data["status"]      = "Verified"
+                        st_data["shadow"]      = "Done"
+                        st_data["last_update"] = step
+                        self._record_history(st_data, "Verified", step)
+                        add_memory_snapshot(memory_store, branch_name,
+                                            f"{st_name}_verified", step)
+                        actions[st_name] = "verified"
+                        self._roll_up(dag, task_name, branch_name)
+
+        return actions
+
+    @staticmethod
+    def _record_history(st_data: Dict, new_status: str, step: int) -> None:
+        """Append a status transition to the subtask's history timeline."""
+        st_data.setdefault("history", []).append({"status": new_status, "step": step})
+
+    # ── Roll-up helpers ──────────────────────────────────────────────────────
+    def _roll_up(self, dag: Dict, task_name: str, branch_name: str) -> None:
+        self._update_branch(dag, task_name, branch_name)
+        self._update_task(dag, task_name)
+
+    def _update_branch(self, dag: Dict, task_name: str, branch_name: str) -> None:
+        sts = dag[task_name]["branches"][branch_name]["subtasks"]
+        if all(s.get("status") == "Verified" for s in sts.values()):
+            dag[task_name]["branches"][branch_name]["status"] = "Verified"
+
+    def _update_task(self, dag: Dict, task_name: str) -> None:
+        branches = dag[task_name]["branches"]
+        if all(b.get("status") == "Verified" for b in branches.values()):
+            dag[task_name]["status"] = "Verified"
+        elif any(b.get("status") == "Running" for b in branches.values()):
+            dag[task_name]["status"] = "Running"
