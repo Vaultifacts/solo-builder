@@ -991,6 +991,7 @@ def metrics_export():
     Query params
     ------------
     format  csv (default) | json
+    since   S — return only rows with step_index > S (applied before limit)
     limit   N — return the most recent N rows only (all rows if omitted or <= 0)
     """
     state = _load_state()
@@ -1002,6 +1003,10 @@ def metrics_export():
         h = entry.get("healed", 0)
         cumulative += v
         rows.append({"step_index": i + 1, "verified": v, "healed": h, "cumulative": cumulative})
+
+    since = request.args.get("since", type=int)
+    if since is not None and since >= 0:
+        rows = [r for r in rows if r["step_index"] > since]
 
     limit = request.args.get("limit", type=int)
     if limit is not None and limit > 0:

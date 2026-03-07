@@ -1436,6 +1436,39 @@ class TestMetricsExport(_Base):
         rows = self.client.get("/metrics/export?format=json&limit=1").get_json()
         self.assertEqual(rows[0]["cumulative"], 6)  # last row's cumulative = 1+2+3
 
+    # ?since=S
+
+    def test_since_filters_rows_after_step(self):
+        self._write_state(self._state_with_history(5))
+        rows = self.client.get("/metrics/export?format=json&since=3").get_json()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["step_index"], 4)
+        self.assertEqual(rows[1]["step_index"], 5)
+
+    def test_since_zero_returns_all(self):
+        self._write_state(self._state_with_history(4))
+        rows = self.client.get("/metrics/export?format=json&since=0").get_json()
+        self.assertEqual(len(rows), 4)
+
+    def test_since_beyond_history_returns_empty(self):
+        self._write_state(self._state_with_history(3))
+        rows = self.client.get("/metrics/export?format=json&since=99").get_json()
+        self.assertEqual(rows, [])
+
+    def test_since_and_limit_compose(self):
+        # 5 rows: step_index 1-5; since=2 → [3,4,5]; limit=2 → [4,5]
+        self._write_state(self._state_with_history(5))
+        rows = self.client.get("/metrics/export?format=json&since=2&limit=2").get_json()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["step_index"], 4)
+        self.assertEqual(rows[1]["step_index"], 5)
+
+    def test_since_works_with_csv(self):
+        self._write_state(self._state_with_history(4))
+        r = self.client.get("/metrics/export?since=2")
+        lines = r.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 3)  # header + rows 3 and 4
+
 
 # ---------------------------------------------------------------------------
 # /cache/history
