@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-043
+TASK-044
 
-Add GET /cache/history endpoint returning timestamped per-session stats accumulated in session_stats.json
+Persist expanded journal entry state across ticks using a Set keyed by step-subtask so show-more stays open during live polling

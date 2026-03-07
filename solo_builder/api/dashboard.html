@@ -1072,6 +1072,8 @@
     } catch (_) {}
   }
 
+  const _journalExpanded = new Set();
+
   function renderJournal(entries) {
     const el = document.getElementById("journal-content");
     if (!entries || entries.length === 0) {
@@ -1083,17 +1085,20 @@
     el.innerHTML = reversed.map(e => {
       const safe = (e.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const long = safe.length > TRUNC;
-      const body = long ? safe.substring(0, TRUNC) + "…" : safe;
+      const key  = `${e.step}-${e.subtask}`;
+      const expanded = long && _journalExpanded.has(key);
+      const body = long && !expanded ? safe.substring(0, TRUNC) + "…" : safe;
       const btn  = long
-        ? `<button class="journal-toggle" onclick="toggleJournal(this)" data-full="${safe.replace(/"/g, "&quot;")}" data-trunc="${TRUNC}">▼ more</button>`
+        ? `<button class="journal-toggle" onclick="toggleJournal(this)" data-full="${safe.replace(/"/g, "&quot;")}" data-trunc="${TRUNC}" data-key="${key}">${expanded ? "▲ less" : "▼ more"}</button>`
         : "";
       return `<div class="journal-entry">
         <div class="journal-meta">${e.subtask} · ${e.task} / ${e.branch} · Step ${e.step}</div>
         <div class="journal-body">${body}</div>${btn}
       </div>`;
     }).join("");
+    // Only auto-scroll to newest when no entries are expanded (user may be reading)
     const pane = document.getElementById("tab-journal");
-    if (pane && pane.classList.contains("active")) pane.scrollTop = 0;
+    if (pane && pane.classList.contains("active") && _journalExpanded.size === 0) pane.scrollTop = 0;
   }
 
   /* ── Journal toggle ──────────────────────────────────────── */
@@ -1101,12 +1106,15 @@
     const body = btn.previousElementSibling;
     const full = btn.dataset.full;
     const trunc = parseInt(btn.dataset.trunc, 10) || 300;
+    const key  = btn.dataset.key;
     if (btn.textContent.includes("more")) {
       body.innerHTML = full;
       btn.textContent = "▲ less";
+      _journalExpanded.add(key);
     } else {
       body.innerHTML = full.substring(0, trunc) + "…";
       btn.textContent = "▼ more";
+      _journalExpanded.delete(key);
     }
   }
 
