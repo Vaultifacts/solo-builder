@@ -141,6 +141,57 @@ class TestResponseCache(unittest.TestCase):
             result = make_cache(cache_dir=self._tmp)
         self.assertIsInstance(result, ResponseCache)
 
+    # ── hit / miss counters ───────────────────────────────────────────────────
+
+    def test_hit_counter_increments_on_cache_hit(self):
+        key = ResponseCache.make_key("prompt")
+        self.cache.set(key, "response")
+        self.cache.get(key)
+        self.assertEqual(self.cache.stats()["hits"], 1)
+        self.assertEqual(self.cache.stats()["misses"], 0)
+
+    def test_miss_counter_increments_on_cache_miss(self):
+        self.cache.get("nonexistent_key")
+        self.assertEqual(self.cache.stats()["hits"], 0)
+        self.assertEqual(self.cache.stats()["misses"], 1)
+
+    def test_counters_accumulate_across_calls(self):
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)       # hit
+        self.cache.get(key)       # hit
+        self.cache.get("miss1")   # miss
+        self.assertEqual(self.cache.stats()["hits"], 2)
+        self.assertEqual(self.cache.stats()["misses"], 1)
+
+    def test_miss_on_corrupted_file(self):
+        key = "deadbeef" * 8
+        path = Path(self._tmp) / f"{key}.json"
+        path.write_text("not valid json", encoding="utf-8")
+        self.cache.get(key)
+        self.assertEqual(self.cache.stats()["misses"], 1)
+
+    # ── stats() ───────────────────────────────────────────────────────────────
+
+    def test_stats_initial_state(self):
+        s = self.cache.stats()
+        self.assertEqual(s["hits"], 0)
+        self.assertEqual(s["misses"], 0)
+        self.assertEqual(s["size"], 0)
+        self.assertEqual(s["estimated_tokens_saved"], 0)
+
+    def test_stats_estimated_tokens_saved(self):
+        key = ResponseCache.make_key("p")
+        self.cache.set(key, "v")
+        self.cache.get(key)   # 1 hit
+        s = self.cache.stats()
+        self.assertEqual(s["estimated_tokens_saved"], ResponseCache._AVG_TOKENS_PER_ENTRY)
+
+    def test_stats_size_matches_disk(self):
+        self.cache.set(ResponseCache.make_key("a"), "x")
+        self.cache.set(ResponseCache.make_key("b"), "y")
+        self.assertEqual(self.cache.stats()["size"], 2)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # AnthropicRunner + cache integration

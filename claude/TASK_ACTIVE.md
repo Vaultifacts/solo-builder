@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-029
+TASK-030
 
-Add disk-backed response cache to AnthropicRunner; add CLAUDE_LOCAL=1 routing to Executor
+Add hit/miss tracking to ResponseCache and a standalone cache-stats script
