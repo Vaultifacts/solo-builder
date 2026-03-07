@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-020
+TASK-021
 
-Add automated validation that workflow contracts reference only existing tools/scripts.
+Fix pre-existing test_stalled_shows_stuck failure so optional unittest verification is clean.
