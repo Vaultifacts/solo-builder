@@ -375,11 +375,13 @@ def search():
 def history():
     """Aggregated step-by-step activity log across all subtasks.
 
-    Query params: since, limit, task, branch, subtask, status
+    Query params: since, limit, page, task, branch, subtask, status
+    page  P — 1-based page number; used with limit as page size (default page=1)
     """
     dag = _load_dag()
     since = request.args.get("since", type=int)
     limit = request.args.get("limit", 30, type=int)
+    page  = max(1, request.args.get("page", 1, type=int))
     task_q    = (request.args.get("task")    or "").strip().lower()
     branch_q  = (request.args.get("branch")  or "").strip().lower()
     subtask_q = (request.args.get("subtask") or "").strip().lower()
@@ -407,9 +409,14 @@ def history():
     if status_q:
         events = [e for e in events if status_q in e["status"].lower()]
     events.sort(key=lambda e: e["step"], reverse=True)
+    total = len(events)
     if limit:
-        events = events[:limit]
-    return jsonify({"events": events})
+        pages = max(1, -(-total // limit))  # ceiling division
+        start = (page - 1) * limit
+        events = events[start: start + limit]
+    else:
+        pages = 1
+    return jsonify({"events": events, "total": total, "page": page, "pages": pages})
 
 
 @app.get("/history/export")

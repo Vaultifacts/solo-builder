@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-058
+TASK-061
 
-Batch: history filter in export links (058), ?task/?branch on GET /history (059), metrics sparkline chart (060)
+Batch: /history pagination ?page=N (061), Export tab filter sync (062), dashboard favicon status badge (063)

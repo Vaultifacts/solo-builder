@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Solo Builder — Live Dashboard</title>
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23555'/%3E%3C/svg%3E">
 <style>
   :root {
     --bg:       #0d0d0d;
@@ -768,10 +769,10 @@
           </div>
         </div>
         <div>
-          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Activity History</div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Activity History <span id="export-tab-filter-hint" style="color:var(--dim);font-size:9px"></span></div>
           <div style="display:flex;gap:6px">
-            <a class="toolbar-btn" href="/history/export" download="history.csv">CSV</a>
-            <a class="toolbar-btn" href="/history/export?format=json" download="history.json">JSON</a>
+            <a id="export-tab-history-csv"  class="toolbar-btn" href="/history/export" download="history.csv">CSV</a>
+            <a id="export-tab-history-json" class="toolbar-btn" href="/history/export?format=json" download="history.json">JSON</a>
           </div>
         </div>
         <div>
@@ -953,9 +954,19 @@
         badge.textContent  = "Idle";
         badge.className    = "status-badge badge-pending";
       }
+      _updateFavicon(d);
     } catch (e) {
       toast("⚠ /status unreachable — is the Flask server running?");
     }
+  }
+
+  function _updateFavicon(d) {
+    const color = d.complete ? "%2322c55e"   // green
+                : d.running > 0 ? "%2306b6d4" // cyan
+                : "%23555555";                 // grey (idle)
+    const svg = `%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='${color}'/%3E%3C/svg%3E`;
+    const fav = document.getElementById("favicon");
+    if (fav) fav.href = `data:image/svg+xml,${svg}`;
   }
 
   /* ── Task grid ───────────────────────────────────────────── */
@@ -1271,10 +1282,21 @@
   function _updateHistoryExportLinks() {
     const q = (document.getElementById("history-filter")?.value || "").trim();
     const qs = q ? `&subtask=${encodeURIComponent(q)}` : "";
+    const csvHref  = `/history/export${qs ? "?" + qs.slice(1) : ""}`;
+    const jsonHref = `/history/export?format=json${qs}`;
+    // History tab links
     const csv  = document.getElementById("history-export-csv");
     const json = document.getElementById("history-export-json");
-    if (csv)  csv.href  = `/history/export${qs ? "?" + qs.slice(1) : ""}`;
-    if (json) json.href = `/history/export?format=json${qs}`;
+    if (csv)  csv.href  = csvHref;
+    if (json) json.href = jsonHref;
+    // Export tab links — keep in sync
+    const tabCsv  = document.getElementById("export-tab-history-csv");
+    const tabJson = document.getElementById("export-tab-history-json");
+    if (tabCsv)  tabCsv.href  = csvHref;
+    if (tabJson) tabJson.href = jsonHref;
+    // Show filter hint in Export tab
+    const hint = document.getElementById("export-tab-filter-hint");
+    if (hint) hint.textContent = q ? `(filtered: "${q}")` : "";
   }
 
   function renderHistory(events) {

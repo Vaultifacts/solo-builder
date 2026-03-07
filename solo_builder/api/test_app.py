@@ -438,6 +438,12 @@ class TestHistory(_Base):
         d = r.get_json()
         self.assertEqual(d["events"], [])
 
+    def test_history_response_has_pagination_keys(self):
+        r = self.client.get("/history")
+        d = r.get_json()
+        for key in ("events", "total", "page", "pages"):
+            self.assertIn(key, d)
+
     def test_history_with_events(self):
         state = self._make_state({"A1": "Verified"})
         st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
@@ -555,6 +561,40 @@ class TestHistory(_Base):
         d = self.client.get("/history?since=1&limit=0").get_json()
         self.assertEqual(len(d["events"]), 1)
         self.assertEqual(d["events"][0]["subtask"], "A2")
+
+    # ?page=N pagination (TASK-061)
+
+    def test_page_one_returns_first_events(self):
+        self._write_state(self._state_with_history_events([1, 2, 3, 4, 5]))
+        d = self.client.get("/history?limit=2&page=1").get_json()
+        self.assertEqual(len(d["events"]), 2)
+        self.assertEqual(d["events"][0]["step"], 5)  # newest first
+
+    def test_page_two_returns_next_events(self):
+        self._write_state(self._state_with_history_events([1, 2, 3, 4, 5]))
+        d = self.client.get("/history?limit=2&page=2").get_json()
+        self.assertEqual(len(d["events"]), 2)
+        self.assertEqual(d["events"][0]["step"], 3)
+
+    def test_page_beyond_last_returns_empty(self):
+        self._write_state(self._state_with_history_events([1, 2, 3]))
+        d = self.client.get("/history?limit=2&page=5").get_json()
+        self.assertEqual(d["events"], [])
+
+    def test_page_total_is_all_events(self):
+        self._write_state(self._state_with_history_events([1, 2, 3, 4, 5]))
+        d = self.client.get("/history?limit=2&page=1").get_json()
+        self.assertEqual(d["total"], 5)
+
+    def test_pages_count_is_correct(self):
+        self._write_state(self._state_with_history_events([1, 2, 3, 4, 5]))
+        d = self.client.get("/history?limit=2&page=1").get_json()
+        self.assertEqual(d["pages"], 3)  # ceil(5/2)
+
+    def test_page_defaults_to_one(self):
+        self._write_state(self._state_with_history_events([1, 2, 3]))
+        d = self.client.get("/history?limit=2").get_json()
+        self.assertEqual(d["page"], 1)
 
 
 # ---------------------------------------------------------------------------
