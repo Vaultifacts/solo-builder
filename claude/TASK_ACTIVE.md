@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-022
+TASK-023
 
-Integrate workflow_contract_check.ps1 into workflow_preflight.ps1 so workflow contract drift is caught before task initialization.
+Isolate test_stalled_empty from live config
