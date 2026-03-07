@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-025
+TASK-026
 
-Add -DryRun flag to claude_heal.ps1
+Extract 5 clean agents to solo_builder/agents/
