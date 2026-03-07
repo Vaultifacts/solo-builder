@@ -1,120 +1,93 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Context
-- Active task: `TASK-017`
-- Objective: define the smallest safe way to add `tools/workflow_preflight.ps1` as a baseline-safety gate before next-task initialization.
-- Scope: workflow-only (no product code).
+- Active task: `TASK-018`
+- Goal: integrate preflight into task initialization so it runs automatically (not optional/manual).
+- Scope: workflow scripts/docs only.
 
-## Files consulted
+## Files/scripts inspected
 - `claude/AGENT_ENTRY.md`
 - `claude/CONTROL.md`
 - `claude/NEXT_ACTION.md`
 - `claude/WORKFLOW_SPEC.md`
+- `claude/TASK_QUEUE.md`
 - `claude/TASK_ACTIVE.md`
 - `claude/STATE.json`
 - `tools/research_extract.ps1`
+- `tools/workflow_preflight.ps1`
 - `tools/check_next_action_consistency.ps1`
-- `tools/audit_check.ps1`
 - `tools/claude_orchestrate.ps1`
 - `tools/advance_state.ps1`
-- tool inventory via `Get-ChildItem tools -File`
+- `tools/task_lock.ps1`
 
-## Existing reusable checks (already available)
-1. STATE/NEXT_ACTION consistency check
-- Existing script: `tools/check_next_action_consistency.ps1`
-- Current behavior:
-  - Parses stable sections from `claude/NEXT_ACTION.md`: `## Task`, `## Phase`, `## Role`
-  - Compares to `claude/STATE.json` fields: `task_id`, `phase`, `next_role`
-  - Exits nonzero on mismatch with explicit mismatch lines
-- Reuse value: avoids duplicating parsing/consistency logic in preflight.
+## Current task initialization flow (as practiced)
+1. Verify clean repo.
+2. Checkout `master` and merge previous task branch.
+3. (Currently manual) run `pwsh tools/workflow_preflight.ps1`.
+4. Create next `task/TASK-<N>` branch.
+5. Update workflow metadata (`TASK_QUEUE`, `TASK_ACTIVE`, local `STATE.json`, `JOURNAL`).
+6. Run `pwsh tools/claude_orchestrate.ps1`.
+7. Commit initialization metadata.
 
-2. Working-tree tracked-change detection logic
-- Existing implementation pattern appears in `tools/audit_check.ps1` (`Get-TrackedChangedPaths` via `git status --porcelain`).
-- Reuse value: deterministic detection of modified tracked files.
+## Existing checks available
+- `tools/workflow_preflight.ps1` already enforces:
+  - clean working tree
+  - runtime artifact cleanliness (`claude/allowed_files.txt`, `claude/verify_last.json`)
+  - STATE/NEXT_ACTION consistency (delegated to `tools/check_next_action_consistency.ps1`)
+  - conservative master-baseline ancestry rule
+- `tools/claude_orchestrate.ps1` renders role prompts/contracts but does not perform task-creation side effects.
+- No dedicated `start_task`/`init_task` script exists in `tools/`.
 
-3. Orchestrator/state invariants
-- `tools/claude_orchestrate.ps1` enforces valid phase/role enums and non-done mapping.
-- `tools/advance_state.ps1` mutates state and journal using same model.
-- Reuse value: preflight should validate baseline safety only, not redefine lifecycle semantics.
+## Candidate integration points
 
-## Missing checks (gap TASK-017 must cover)
-No current dedicated pre-task-init guard exists that simultaneously verifies:
-- clean working tree baseline,
-- runtime-artifact cleanliness for `claude/allowed_files.txt` and `claude/verify_last.json`,
-- STATE/NEXT_ACTION consistency,
-- branch baseline safety against `master`.
+### Option A (recommended): add a dedicated initialization script entry point
+- Introduce a single workflow script for task bootstrap (for example `tools/start_task.ps1`) that performs the deterministic init sequence and *always* calls `workflow_preflight.ps1` after switching to `master` and before creating the new task branch.
+- Pros:
+  - true automatic enforcement
+  - deterministic sequence encoded in one place
+  - easy to audit and reuse across chats/agents
+- Risk:
+  - new script must be narrowly scoped to avoid semantic drift.
 
-## Deterministic detection requirements
+### Option B: enforce via orchestrator prompt/contracts only
+- Update done-phase ARCHITECT prompt text to include preflight command before branch creation.
+- Pros:
+  - minimal code touch
+- Cons:
+  - still operator/agent optional; not true automatic enforcement
+  - does not satisfy strong interpretation of “runs automatically”.
 
-### A) Dirty working tree
-Deterministic source:
-- `git status --porcelain`
-- fail if any tracked or untracked entries exist (for strict pre-init safety), or fail at minimum for tracked changes.
+### Option C: embed preflight in existing unrelated scripts
+- Add preflight execution to `claude_orchestrate.ps1` or `advance_state.ps1`.
+- Cons:
+  - mixes concerns (state rendering/transition vs branch bootstrap)
+  - higher regression risk to lifecycle semantics.
 
-Risk note:
-- If untracked files are ignored, init can still proceed with hidden clutter; strict fail is safer for deterministic workflow.
+## Recommended approach (high-level)
+- Prefer Option A: create a dedicated initialization workflow script that owns task bootstrap and invokes preflight at the required point.
+- Keep orchestration/state semantics unchanged; do not alter role mapping/transition logic.
+- Optionally update docs/prompts to direct operators to the new script as canonical initialization path.
 
-### B) Runtime artifact dirtiness
-Required artifacts (explicit in task acceptance):
-- `claude/allowed_files.txt`
-- `claude/verify_last.json`
+## Integration requirements to preserve
+- Preflight invocation order must be fixed:
+  - checkout/update `master` -> run preflight -> create `task/TASK-<N>`.
+- Initialization must abort immediately on nonzero preflight exit.
+- No product-code changes under `solo_builder/*`.
+- Deterministic lifecycle remains unchanged.
 
-Deterministic checks:
-- if artifact exists and appears in `git status --porcelain` as modified/staged/deleted, fail.
-- if artifact is absent and untracked (common when gitignored), do not fail by absence alone.
+## Edge cases and risks
+- Existing branch `task/TASK-<N>` already exists: initializer should fail cleanly with actionable message.
+- Missing upstream on `master`: init flow should not require network; pull remains optional.
+- Non-contiguous task numbering: baseline check remains conservative via existing preflight behavior.
+- Worktree dirtiness from expected runtime artifacts: should still block init unless resolved.
 
-### C) STATE/NEXT_ACTION mismatch
-Deterministic method:
-- invoke `tools/check_next_action_consistency.ps1`
-- fail preflight if helper exits nonzero.
-
-### D) Safe baseline (master contains previous task branch)
-Observed convention from workflow history/spec:
-- new task branches must start from updated `master` that already includes previous task branch.
-
-Deterministic evaluation shape (minimal and practical):
-- Resolve current branch via `git branch --show-current`.
-- If on `master` for pre-init: pass merge check branch-specific condition (baseline branch itself).
-- If on `task/TASK-NNN`:
-  - derive previous branch by decrementing numeric suffix to `task/TASK-(NNN-1)` when it exists.
-  - verify previous branch is contained in `master` using `git branch --contains <prev-branch-tip> master` or merge-base ancestry check.
-  - fail if previous branch exists but is not merged into master.
-
-Research caveat:
-- branch numbers are not fully contiguous historically (`TASK-010` exists but older low numbers were not all branch-created), so the check should be conservative:
-  - only enforce when derived previous branch exists locally.
-  - if it does not exist, emit informative warning/pass behavior per architect decision.
-
-## Suggested minimal integration surface
-- New script: `tools/workflow_preflight.ps1` (single entry point).
-- Reuse helper: `tools/check_next_action_consistency.ps1` (invoke directly).
-- No mandatory changes required to `tools/audit_check.ps1` or `tools/claude_orchestrate.ps1` for this task’s core objective.
-
-## Edge cases to handle explicitly in spec/plan
-1. Running preflight from `master` vs from a task branch.
-2. Missing runtime artifact files (gitignored not yet generated).
-3. Non-contiguous task numbers and missing local `task/TASK-(N-1)` branches.
-4. Detached HEAD or non-task branch names.
-5. Repositories without upstream configured for `master` (preflight should not require network).
-
-## Failure messaging requirements (actionable)
-Messages should clearly identify:
-- exact failing check,
-- exact file/branch mismatch,
-- one-line remediation (e.g., restore runtime artifacts, merge previous task branch into master, regenerate NEXT_ACTION via orchestrator).
-
-## Risks
-- Overly strict branch inference can block valid flows in non-contiguous branch histories.
-- Coupling to branch naming assumptions must remain bounded to `task/TASK-<number>` pattern.
-- Duplicating existing helper logic would increase drift risk; delegation is safer.
-
-## Hypotheses (ranked)
-- H1: A single preflight script that delegates STATE/NEXT_ACTION consistency to existing helper and performs explicit baseline checks will satisfy TASK-017 with minimal blast radius.
-- H2: The highest regression risk is branch-baseline inference, not working-tree or runtime-artifact checks.
-- H3: No product or lifecycle semantic changes are needed; this is a guardrail addition only.
+## Hypotheses
+- H1: Encoding init flow in one script is the smallest path to *automatic* preflight enforcement.
+- H2: Prompt-only enforcement is insufficient for acceptance criteria requiring automatic execution.
+- H3: Minimal script + docs update will satisfy task with low regression risk.
 
 ## Constraints / non-negotiables
-- No changes under `solo_builder/*`.
-- No task lifecycle semantic changes.
-- Preserve deterministic workflow conventions.
-- Keep implementation scope to workflow scripts/docs only.
+- No lifecycle semantic changes.
+- No role transition changes.
+- No product-code modifications.
+- Keep implementation scope narrow and deterministic.
