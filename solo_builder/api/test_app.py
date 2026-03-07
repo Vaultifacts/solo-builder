@@ -508,6 +508,54 @@ class TestHistory(_Base):
         steps = [e["step"] for e in d["events"]]
         self.assertEqual(steps, sorted(steps, reverse=True))
 
+    # ?task / ?branch / ?subtask / ?status filters (TASK-059)
+
+    def _state_with_two_subtasks(self):
+        state = self._make_state({"A1": "Verified", "A2": "Pending"})
+        br = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        br["A1"]["history"] = [{"status": "Verified", "step": 1}]
+        br["A2"]["history"] = [{"status": "Running",  "step": 2}]
+        return state
+
+    def test_history_filter_subtask(self):
+        self._write_state(self._state_with_two_subtasks())
+        d = self.client.get("/history?subtask=A1&limit=0").get_json()
+        self.assertTrue(all(e["subtask"] == "A1" for e in d["events"]))
+        self.assertEqual(len(d["events"]), 1)
+
+    def test_history_filter_status(self):
+        self._write_state(self._state_with_two_subtasks())
+        d = self.client.get("/history?status=Running&limit=0").get_json()
+        self.assertEqual(len(d["events"]), 1)
+        self.assertEqual(d["events"][0]["status"], "Running")
+
+    def test_history_filter_case_insensitive(self):
+        self._write_state(self._state_with_two_subtasks())
+        d = self.client.get("/history?status=running&limit=0").get_json()
+        self.assertEqual(len(d["events"]), 1)
+
+    def test_history_filter_task(self):
+        self._write_state(self._state_with_two_subtasks())
+        d = self.client.get("/history?task=Task+0&limit=0").get_json()
+        self.assertEqual(len(d["events"]), 2)
+
+    def test_history_filter_branch(self):
+        self._write_state(self._state_with_two_subtasks())
+        d = self.client.get("/history?branch=Branch+A&limit=0").get_json()
+        self.assertEqual(len(d["events"]), 2)
+
+    def test_history_filter_no_match(self):
+        self._write_state(self._state_with_two_subtasks())
+        d = self.client.get("/history?subtask=ZZZ&limit=0").get_json()
+        self.assertEqual(d["events"], [])
+
+    def test_history_filter_composes_with_since(self):
+        self._write_state(self._state_with_two_subtasks())
+        # A2 step=2, A1 step=1; since=1 → only step>1 = A2
+        d = self.client.get("/history?since=1&limit=0").get_json()
+        self.assertEqual(len(d["events"]), 1)
+        self.assertEqual(d["events"][0]["subtask"], "A2")
+
 
 # ---------------------------------------------------------------------------
 # GET /history/export
