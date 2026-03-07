@@ -904,7 +904,10 @@ def cache_clear():
 
 @app.get("/cache/history")
 def cache_history():
-    """Return per-session cache hit/miss history from session_stats.json."""
+    """Return per-session cache hit/miss history from session_stats.json.
+
+    Query params: since
+    """
     try:
         path = CACHE_DIR / _STATS_FILE
         if not path.exists():
@@ -912,6 +915,7 @@ def cache_history():
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         return jsonify({"error": f"Could not read cache history: {exc}"}), 500
+    since = request.args.get("since", type=int)
     raw_sessions = data.get("sessions", [])
     sessions = []
     for i, s in enumerate(raw_sessions):
@@ -927,6 +931,8 @@ def cache_history():
             "cumulative_misses": s.get("cumulative_misses", 0),
             "ended_at":          s.get("ended_at", ""),
         })
+    if since is not None:
+        sessions = [s for s in sessions if s["session"] > since]
     return jsonify({
         "sessions":          sessions,
         "cumulative_hits":   data.get("cumulative_hits", 0),

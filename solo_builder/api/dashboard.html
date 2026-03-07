@@ -734,6 +734,17 @@
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-cache-history">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:10px;color:var(--dim)">Show last</span>
+        <select id="cache-history-limit" onchange="pollCacheHistory()"
+                style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:1px 4px">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="0">All</option>
+        </select>
+        <span style="font-size:10px;color:var(--dim)">sessions</span>
+      </div>
       <div id="cache-history-content">
         <div class="detail-placeholder">Loading cache history…</div>
       </div>
@@ -1199,23 +1210,39 @@
     el.innerHTML = html;
   }
 
-  /* ── History panel ────────────────────────────────────────── */
+  /* ── History panel (incremental) ─────────────────────────── */
+  let _historyLastStep = 0;
+  const _historyRows = [];  // accumulated events, newest-first
+
   async function pollHistory() {
     try {
-      const d = await api("/history?limit=30");
-      renderHistory(d);
+      const url = _historyLastStep > 0
+        ? `/history?since=${_historyLastStep}&limit=0`
+        : `/history?limit=50`;
+      const d = await api(url);
+      if (!d.events || d.events.length === 0) {
+        if (_historyRows.length === 0) renderHistory([]);
+        return;
+      }
+      d.events.forEach(e => {
+        if (e.step > _historyLastStep) _historyLastStep = e.step;
+        _historyRows.unshift(e);  // prepend — events arrive newest-first from API
+      });
+      // Keep at most 100 rows in memory
+      if (_historyRows.length > 100) _historyRows.splice(100);
+      renderHistory(_historyRows);
     } catch (_) {}
   }
 
-  function renderHistory(d) {
+  function renderHistory(events) {
     const el = document.getElementById("history-content");
-    if (!d.events || d.events.length === 0) {
+    if (!events || events.length === 0) {
       el.innerHTML = `<div class="detail-placeholder">No history yet.</div>`;
       return;
     }
     const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
     let html = "";
-    d.events.forEach(e => {
+    events.forEach(e => {
       html += `<div class="diff-entry"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
     });
     el.innerHTML = html;
@@ -1492,7 +1519,9 @@
       const d = await api("/cache/history");
       const el = document.getElementById("cache-history-content");
       if (!el) return;
-      const sessions = d.sessions || [];
+      const limitSel = document.getElementById("cache-history-limit");
+      const limitN = limitSel ? parseInt(limitSel.value, 10) : 10;
+      let sessions = d.sessions || [];
       const cumHits   = d.cumulative_hits ?? 0;
       const cumMisses = d.cumulative_misses ?? 0;
       const cumTotal  = cumHits + cumMisses;
@@ -1501,7 +1530,9 @@
         el.innerHTML = `<div class="detail-placeholder">No session history yet.<br>Stats accumulate after each CLI run.</div>`;
         return;
       }
-      const rows = sessions.slice().reverse().map(s => {
+      // Slice to N most-recent (limitN=0 means all)
+      const visible = limitN > 0 ? sessions.slice(-limitN) : sessions;
+      const rows = visible.slice().reverse().map(s => {
         const rate = s.hit_rate != null ? s.hit_rate.toFixed(1) + "%" : "—";
         const ended = s.ended_at ? s.ended_at.replace("T", " ").substring(0, 19) + "Z" : "—";
         return `<div class="diff-entry" style="font-size:10px">` +
