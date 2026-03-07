@@ -7,3 +7,5 @@ claude/STATE.json
 claude/allowed_files.txt
 claude/NEXT_ACTION.md
 claude/verify_last.json
+claude/TASK_ACTIVE.md
+claude/TASK_QUEUE.md

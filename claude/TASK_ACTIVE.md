@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-019
+TASK-020
 
-Design CI integration for Solo Builder workflow invariants (state consistency, preflight checks, and verification contract enforcement).
+Add automated validation that workflow contracts reference only existing tools/scripts.

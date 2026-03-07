@@ -1,102 +1,111 @@
 # HANDOFF TO ARCHITECT (from RESEARCH)
 
 ## Context
-- Active task: `TASK-019`
-- Goal: design CI integration for Solo Builder workflow invariants (state consistency, preflight checks, verification contract enforcement).
+- Active task: `TASK-020`
+- Goal: Add automated validation that workflow contracts reference only existing tools/scripts,
+  and that lifecycle scripts only write files declared in `claude/allowed_files.txt`.
 - Scope: workflow infrastructure only; no product-code changes.
 
 ## 1) Problem framing
-Current workflow invariants are enforced reliably in local scripted flows (`audit_check`, `workflow_preflight`, orchestrator/state contracts), but merge safety still depends on operators manually running those checks before push/merge. CI integration is needed to make invariant verification automatic at integration boundaries (push/PR), so broken workflow-state contracts or guard regressions cannot be merged silently.
 
-## 2) Invariants to protect
-Evidence-backed invariants currently present in repo logic:
-- `STATE.json` <-> `NEXT_ACTION.md` consistency:
-  - enforced by `tools/check_next_action_consistency.ps1` (Task/Phase/Role matching).
-  - currently called by both `tools/workflow_preflight.ps1` and `tools/audit_check.ps1`.
-- Preflight guarantees before task initialization:
-  - `tools/workflow_preflight.ps1` enforces clean tree, runtime artifact cleanliness, state/contract consistency, and conservative baseline ancestry checks.
-  - `tools/start_task.ps1` invokes preflight before new task branch creation.
-- Verification contract execution:
-  - `tools/audit_check.ps1` executes commands from `claude/VERIFY.json`, writes `claude/verify_last.json`, and fails nonzero when required checks fail.
-- Deterministic lifecycle integrity:
-  - orchestrator and state scripts assume phase/role progression consistency and consume the above checks as safety rails.
+Workflow contract drift can occur in two directions and neither is currently caught at authoring time:
 
-## 3) CI execution model options
-### Option A: GitHub Actions only (current baseline-ready)
-- Repo already contains `.github/workflows/ci.yml` running:
-  - `pwsh tools/bootstrap_verify.ps1`
-  - `pwsh tools/audit_check.ps1`
-- Pros: native PR/push enforcement, lowest operator burden.
-- Risk: CI environment differences (Windows vs Linux shell behavior) can surface false negatives if scripts are platform-sensitive.
+**Direction A — command-reference integrity:**
+A workflow contract file (NEXT_ACTION.md, WORKFLOW_SPEC.md, AGENT_ENTRY.md, VERIFY.json, ci.yml)
+references a script under `tools/` that no longer exists or was renamed. Example:
+- `tools/plan_extract.ps1` was referenced in prompting but does not exist in the repo.
+  Documented as a known gap in TASK-019 HANDOFF_AUDIT.md, never caught automatically.
 
-### Option B: Local CI mirror only
-- Rely on local preflight/audit gates without hosted CI enforcement.
-- Pros: deterministic local behavior, no external dependency.
-- Cons: does not protect against unsafe merges when local discipline slips.
+**Direction B — allowed-file declaration integrity:**
+A lifecycle script writes to a file not declared in `claude/allowed_files.txt`. The
+pre-commit hook (`enforce_allowed_files.ps1`) catches this, but only at commit time — it
+blocks the commit rather than catching the gap earlier. Concrete confirmed instance:
+- `start_task.ps1` writes `claude/TASK_ACTIVE.md` and `claude/TASK_QUEUE.md`.
+- Neither was in `allowed_files.txt` until TASK-020 init hit the blocker and required
+  an inline fix. This was not detected by any earlier automated check.
 
-### Option C: Hybrid (recommended direction for ARCHITECT evaluation)
-- Keep local scripted gates as developer controls.
-- Keep/strengthen hosted CI as merge gate using same invariant checks.
-- Pros: strongest defense-in-depth with minimal semantic change.
+## 2) Evidence gathered
 
-## 4) Safety constraints for CI (must-hold)
-CI must remain verification-only. CI must NOT:
-- mutate workflow state (`claude/STATE.json`) as durable repo state,
-- run `tools/advance_state.ps1`,
-- initialize tasks (`tools/start_task.ps1`),
-- create/switch/merge branches.
+### Contract sources surveyed
+- `claude/AGENT_ENTRY.md` — references `audit_check.ps1`, `dev_gate.ps1`
+- `claude/NEXT_ACTION.md` — references `research_extract.ps1` (phase-specific)
+- `claude/WORKFLOW_SPEC.md` — references `advance_state.ps1`, `claude_orchestrate.ps1`,
+  `audit_check.ps1`, `start_task.ps1`, `workflow_preflight.ps1`, `ci_invariant_check.ps1`
+- `.github/workflows/ci.yml` — references `bootstrap_verify.ps1`, `ci_invariant_check.ps1`
+- `claude/RULES.md` — references `claude_snapshot.ps1`
+- `claude/checklists/AUDITOR.md` — references `audit_check.ps1`
+- `claude/checklists/DEV.md` — references `precommit_gate.ps1`
 
-CI should only execute invariant/verification checks and fail/pass accordingly.
+### Script-reference integrity check (Direction A)
+All contract-referenced scripts verified against `tools/`:
+- `advance_state.ps1` ✓, `audit_check.ps1` ✓, `bootstrap_verify.ps1` ✓,
+  `ci_invariant_check.ps1` ✓, `claude_orchestrate.ps1` ✓, `claude_snapshot.ps1` ✓,
+  `dev_gate.ps1` ✓, `precommit_gate.ps1` ✓, `research_extract.ps1` ✓,
+  `start_task.ps1` ✓, `workflow_preflight.ps1` ✓
+- No currently-active contract references point to missing scripts.
+- Historical gap (`plan_extract.ps1`): present only in HANDOFF_AUDIT.md as a documented
+  note; not machine-read by any current contract file. Low-priority, but a `workflow_contract_check`
+  script would surface it.
 
-## 5) Existing workflow checks and integration surface
-### Files/scripts inspected
-- `claude/AGENT_ENTRY.md`
-- `claude/CONTROL.md`
-- `claude/NEXT_ACTION.md`
-- `claude/TASK_QUEUE.md`
-- `claude/TASK_ACTIVE.md`
-- `claude/VERIFY.json`
-- `claude/WORKFLOW_SPEC.md`
-- `tools/research_extract.ps1`
-- `tools/check_next_action_consistency.ps1`
-- `tools/workflow_preflight.ps1`
-- `tools/audit_check.ps1`
-- `tools/start_task.ps1`
-- `.github/workflows/ci.yml`
+### Lifecycle script → file write inventory (Direction B)
+`start_task.ps1` confirmed writes:
+- `claude/TASK_QUEUE.md` — was missing from `allowed_files.txt` (now fixed)
+- `claude/TASK_ACTIVE.md` — was missing from `allowed_files.txt` (now fixed)
+- `claude/JOURNAL.md` — present ✓
+- `claude/STATE.json` — present ✓
 
-### Observed current CI behavior
-- CI workflow already exists and invokes `bootstrap_verify` then `audit_check` on push/PR.
-- This means CI integration is partially present; TASK-019 likely concerns making invariant coverage explicit, stable, and policy-aligned with workflow rules (not introducing product-code testing changes).
+`claude_orchestrate.ps1` writes: `claude/NEXT_ACTION.md` — present ✓
+`audit_check.ps1` writes: `claude/verify_last.json` — present ✓
+`extract_allowed_files.ps1` writes: `claude/allowed_files.txt` — present ✓
 
-## 6) Conventions vs script-enforced behavior (relevant to CI)
-Script-enforced today:
-- state/contract consistency check command behavior,
-- preflight failure conditions,
-- verification command execution from `VERIFY.json`.
+Current `allowed_files.txt` (after TASK-020 fix):
+```
+claude/templates/NEXT_ACTION_TEMPLATE.md
+claude/HANDOFF_ARCHITECT.md
+claude/HANDOFF_DEV.md
+claude/HANDOFF_AUDIT.md
+claude/JOURNAL.md
+claude/STATE.json
+claude/allowed_files.txt
+claude/NEXT_ACTION.md
+claude/verify_last.json
+claude/TASK_ACTIVE.md
+claude/TASK_QUEUE.md
+```
 
-Convention-driven today:
-- operator interpretation of which checks are required for merge readiness,
-- explicit CI policy language tying workflow invariants to merge gates.
+### Enforcement gap
+- `enforce_allowed_files.ps1` (pre-commit hook) catches Direction B at commit time.
+- Nothing catches Direction A (missing referenced scripts) at any automated boundary.
+- Nothing catches Direction B before commit time (no CI-level or pre-task check).
+- `ci_invariant_check.ps1` (TASK-019 deliverable) does not cover either direction.
 
-## 7) Risks and edge cases
-- `audit_check.ps1` updates local state artifacts (`STATE.json`, `verify_last.json`) as part of its local workflow contract; CI usage must avoid treating those writes as semantic lifecycle transitions.
-- Cross-platform shell differences can affect git/status parsing and path handling.
-- If CI and local `VERIFY.json` contract diverge over time, developers may get pass locally/fail in CI drift.
+## 3) Hypotheses for implementation
 
-## 8) Research hypotheses for ARCHITECT to evaluate
-- H1: Reusing existing invariant scripts (`check_next_action_consistency`, `workflow_preflight`, `audit_check`) is the minimal-risk path; avoid new checker duplication.
-- H2: CI should enforce invariant checks at PR/push while preserving local deterministic role lifecycle semantics.
-- H3: The correct design boundary is to keep CI verification-only and explicitly prohibit lifecycle-mutating workflow actions in CI.
-- H4: A small workflow-doc and CI-contract alignment change can close current convention gaps without changing orchestration/state semantics.
+**H1 — New script `tools/workflow_contract_check.ps1`:**
+Performs both checks:
+- Phase A: grep contract source files for `tools/[a-z_]+\.ps1` patterns; assert each
+  referenced file exists on disk.
+- Phase B: grep lifecycle scripts for `Set-Content`, `Add-Content`, `Out-File`
+  patterns targeting `claude/`; assert each matched file appears in `allowed_files.txt`.
+Exit 0 if all pass; exit 1 with descriptive error listing each violation.
 
-## 9) Recommended high-level direction (research-level)
-Architect should design a minimal CI contract alignment that:
-- uses existing scripts as primary check engines,
-- codifies verification-only CI behavior,
-- ensures invariant checks are explicit and reproducible in CI and local runs,
-- preserves current deterministic lifecycle semantics unchanged.
+**H2 — Wire into CI (`ci.yml`):**
+Add a step before `ci_invariant_check.ps1`:
+```yaml
+- name: Workflow contract check
+  shell: pwsh
+  run: pwsh tools/workflow_contract_check.ps1
+```
 
-## Non-goals (for TASK-019)
-- No product-code changes under `solo_builder/*`.
-- No role-mapping or lifecycle semantic changes.
-- No automatic state advancement in CI.
+**H3 — Update `claude/WORKFLOW_SPEC.md`:**
+Add a section: "Workflow Contract Integrity" documenting the two drift directions and
+the canonical check command.
+
+## 4) Scope constraints
+- Do not modify product code (`solo_builder/`).
+- New script: `tools/workflow_contract_check.ps1` only.
+- Modify: `.github/workflows/ci.yml`, `claude/WORKFLOW_SPEC.md`,
+  `claude/allowed_files.txt` (already updated in init commit).
+- No changes to `enforce_allowed_files.ps1` or other existing hooks.
+- Implementation decisions (exact grep patterns, error format, whether to integrate
+  into `workflow_preflight.ps1`) are ARCHITECT decisions, not RESEARCH decisions.
