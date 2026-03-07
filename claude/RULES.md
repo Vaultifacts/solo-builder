@@ -13,4 +13,4 @@ Evidence discipline:
 Stateless mode:
 - Assume agent memory is ephemeral.
 - Repo files are the only trusted state.
-- Do not rely on hidden context.## See also: pwsh tools/ghost_script.ps1
+- Do not rely on hidden context.
