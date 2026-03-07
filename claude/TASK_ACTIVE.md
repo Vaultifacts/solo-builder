@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-030
+TASK-031
 
-Add hit/miss tracking to ResponseCache and a standalone cache-stats script
+Log ResponseCache hit/miss stats to JOURNAL.md at CLI exit for observability
