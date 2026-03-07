@@ -124,3 +124,4 @@
 - [2026-03-07T07:49:31.9088655Z] state transition: plan/DEV -> build/DEV | note: agents package extracted, CLI updated
 - [2026-03-07T07:49:50.6224900Z] state transition: build/DEV -> verify/AUDITOR | note: build complete, 195/0
 - [2026-03-07T07:50:18.7614917Z] state transition: done/AUDITOR -> done/AUDITOR | note: all checks pass, 195/0
+- [2026-03-07T07:58:17.9544946Z] Starting TASK-027 via tools/start_task.ps1 with automated preflight gating.
