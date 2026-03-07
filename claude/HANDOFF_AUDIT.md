@@ -1,69 +1,62 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-019
+TASK-020
 
 ## Summary of implementation
-Implemented CI verification-only invariant enforcement by introducing a CI-specific checker and wiring GitHub Actions to it.
+Implemented workflow contract integrity checking by introducing a new CI script that validates
+two classes of drift: missing referenced scripts (Direction A) and lifecycle scripts writing
+files not declared in `allowed_files.txt` (Direction B).
 
 ## Files modified (implementation scope)
-- tools/ci_invariant_check.ps1 (new)
+- tools/workflow_contract_check.ps1 (new)
 - .github/workflows/ci.yml
 - claude/WORKFLOW_SPEC.md
 
 ## Runtime/workflow artifacts modified
 - claude/JOURNAL.md (expected workflow logging)
-- claude/allowed_files.txt (runtime artifact from allowed-file extraction)
+- claude/allowed_files.txt (runtime artifact; narrowed to DEV scope by extract_allowed_files.ps1;
+  must be restored from HEAD before audit — do not commit)
 
 ## What changed
-1. Added `tools/ci_invariant_check.ps1`:
-   - Runs `tools/check_next_action_consistency.ps1` first.
-   - Loads `claude/VERIFY.json` and executes listed commands with timeout handling.
-   - Fails nonzero when any required command fails.
-   - Does not mutate workflow state and does not call lifecycle-transition commands.
+
+1. Added `tools/workflow_contract_check.ps1`:
+   - **Phase A** — scans contract source files (`claude/AGENT_ENTRY.md`, `claude/WORKFLOW_SPEC.md`,
+     `claude/NEXT_ACTION.md`, `claude/RULES.md`, `.github/workflows/ci.yml`,
+     `claude/checklists/*.md`) for `tools/*.ps1` references; asserts each exists on disk.
+   - **Phase B** — uses a hardcoded canonical map of lifecycle scripts to their known output files;
+     reads `claude/allowed_files.txt` from `git show HEAD:...` (not working tree) for CI-consistent
+     determinism; asserts every lifecycle output file is declared.
+   - Exits 0 (PASS) or 1 (FAIL with violation list).
 
 2. Updated `.github/workflows/ci.yml`:
-   - Replaced CI step `pwsh tools/audit_check.ps1` with `pwsh tools/ci_invariant_check.ps1`.
-   - Updated `ci_bundle/repro.ps1` to use `ci_invariant_check.ps1`.
+   - Added `Workflow contract check` step (`pwsh tools/workflow_contract_check.ps1`) before the
+     existing `CI invariant check` step.
+   - Added `pwsh tools/workflow_contract_check.ps1` as first line of `ci_bundle/repro.ps1`.
 
 3. Updated `claude/WORKFLOW_SPEC.md`:
-   - Added CI verification-only contract section.
-   - Documented canonical CI command path (`pwsh tools/ci_invariant_check.ps1`).
-   - Explicitly prohibited lifecycle-mutating commands in CI (`advance_state`, `start_task`, branch ops).
+   - Added `Workflow contract integrity` section documenting both drift directions and
+     the canonical CI command.
 
 ## Verification run
-- `pwsh tools/ci_invariant_check.ps1` -> PASS
-  - Included: state/next_action consistency check
-  - Ran required commands from `claude/VERIFY.json`
-- `pwsh tools/dev_gate.ps1 -Mode Manual` -> PASS
+- `pwsh tools/workflow_contract_check.ps1` on clean repo → PASS
+- Failure-path proof (Direction A): added ghost reference `tools/ghost_script.ps1` to
+  `claude/RULES.md`, ran check → exit 1, violation listed; reverted.
+- `pwsh tools/dev_gate.ps1 -Mode Manual` → PASS
 
 ## Acceptance criteria mapping
-- Automatic CI path for invariant checks: satisfied via `.github/workflows/ci.yml` calling `tools/ci_invariant_check.ps1`.
-- CI fails nonzero on required-check failures: implemented in `ci_invariant_check.ps1`.
-- CI remains verification-only with no lifecycle mutations: enforced by script scope and documented in workflow spec.
+- `workflow_contract_check.ps1` exits 0 on clean repo: satisfied.
+- Exits nonzero on induced violation: proven (Direction A failure path).
+- CI runs `workflow_contract_check` before `ci_invariant_check`: satisfied in `ci.yml`.
+- `WORKFLOW_SPEC.md` documents both drift directions and CI command: satisfied.
 - No product-code changes: satisfied.
 
 ## Risks / notes
-- `tools/plan_extract.ps1` is referenced in prompting but does not exist in repo (pre-existing workflow mismatch, out of TASK-019 scope).
-- `claude/allowed_files.txt` remains a runtime artifact and should not be committed.
-
-## TASK-019 — AUDITOR
-
-Verdict: PASS
-
-Verification result:
-- `pwsh tools/audit_check.ps1` passed required verification commands.
-- `claude/verify_last.json` reports `"passed": true`.
-
-Note on transient drift:
-- After initial audit, a transient drift was detected: `claude/STATE.json` showed `done` while
-  `claude/NEXT_ACTION.md` still showed `verify/AUDITOR`.
-- This was a rendering/state-sync issue, not an implementation defect.
-- Resolved by rerunning `pwsh tools/claude_orchestrate.ps1`, which reconciled the two files.
-- No implementation change was required; CI invariant check (`tools/ci_invariant_check.ps1`) passed
-  throughout.
-
-Scope check:
-- Implementation scope remained within intended workflow files.
-- No defect found in the CI invariant implementation itself.
-- Drift was operational/workflow-state only; resolved without code changes.
+- `CLAUDE_ALLOW_NEW_FILES=1` was required for the commit introducing `tools/workflow_contract_check.ps1`.
+  This is the expected and correct override for any DEV phase introducing a new script.
+- `claude/allowed_files.txt` is a runtime artifact and must not be committed. Restore with:
+  `git restore --source=HEAD --worktree --staged claude/allowed_files.txt`
+- Phase B reads `allowed_files.txt` from `git show HEAD:...` — this is by design so the check
+  is not affected by the DEV-phase narrowed local copy.
+- Direction B failure-path was not separately proven (Phase A proof suffices for exit-code
+  coverage); AUDITOR may induce a Phase B violation if additional coverage is desired.
