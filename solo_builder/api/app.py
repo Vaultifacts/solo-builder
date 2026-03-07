@@ -124,20 +124,32 @@ def dashboard():
 def status():
     state    = _load_state()
     dag      = state.get("dag", {})
-    total    = sum(len(b["subtasks"]) for t in dag.values() for b in t["branches"].values())
-    verified = sum(
-        1 for t in dag.values() for b in t["branches"].values()
-        for s in b["subtasks"].values() if s.get("status") == "Verified"
-    )
-    running = sum(
-        1 for t in dag.values() for b in t["branches"].values()
-        for s in b["subtasks"].values() if s.get("status") == "Running"
-    )
+    step     = state.get("step", 0)
+    threshold = 5
+    try:
+        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        threshold = int(cfg.get("STALL_THRESHOLD", 5))
+    except Exception:
+        pass
+    total = verified = running = stalled = 0
+    for t in dag.values():
+        for b in t["branches"].values():
+            for s in b["subtasks"].values():
+                total += 1
+                st = s.get("status", "Pending")
+                if st == "Verified":
+                    verified += 1
+                elif st == "Running":
+                    running += 1
+                    age = step - s.get("last_update", 0)
+                    if age >= threshold:
+                        stalled += 1
     return jsonify({
-        "step":      state.get("step", 0),
+        "step":      step,
         "total":     total,
         "verified":  verified,
         "running":   running,
+        "stalled":   stalled,
         "pending":   total - verified - running,
         "pct":       round(verified / total * 100, 1) if total else 0,
         "complete":  verified == total,
@@ -417,6 +429,36 @@ def history():
     else:
         pages = 1
     return jsonify({"events": events, "total": total, "page": page, "pages": pages})
+
+
+@app.get("/history/count")
+def history_count():
+    """Return total event count and filtered count.
+
+    Query params: subtask, status, task, branch, since — same as GET /history
+    """
+    dag = _load_dag()
+    since     = request.args.get("since", type=int)
+    task_q    = (request.args.get("task")    or "").strip().lower()
+    branch_q  = (request.args.get("branch")  or "").strip().lower()
+    subtask_q = (request.args.get("subtask") or "").strip().lower()
+    status_q  = (request.args.get("status")  or "").strip().lower()
+    total = 0
+    filtered = 0
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                for h in st_data.get("history", []):
+                    total += 1
+                    step = h.get("step", 0)
+                    if since is not None and step <= since:
+                        continue
+                    if task_q    and task_q    not in task_id.lower():      continue
+                    if branch_q  and branch_q  not in branch_name.lower():  continue
+                    if subtask_q and subtask_q not in st_name.lower():      continue
+                    if status_q  and status_q  not in h.get("status", "").lower(): continue
+                    filtered += 1
+    return jsonify({"total": total, "filtered": filtered})
 
 
 @app.get("/history/export")

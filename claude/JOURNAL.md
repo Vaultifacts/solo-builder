@@ -219,3 +219,7 @@
 - [2026-03-07T20:54:37.1013966Z] state transition: triage/RESEARCH -> build/DEV
 - [2026-03-07T20:54:44.5268117Z] state transition: build/DEV -> verify/AUDITOR
 - [2026-03-07T20:55:11.6021725Z] state transition: done/AUDITOR -> done/AUDITOR
+- [2026-03-07T22:55:47.1862314Z] Starting TASK-064 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-07T22:58:00.6034743Z] state transition: triage/RESEARCH -> build/DEV
+- [2026-03-07T22:58:08.3829317Z] state transition: build/DEV -> verify/AUDITOR
+- [2026-03-07T22:58:35.3926862Z] state transition: done/AUDITOR -> done/AUDITOR

@@ -693,13 +693,19 @@
     <div class="sidebar-tab-content" id="tab-history">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
         <input id="history-filter" type="text" placeholder="Filter subtask/status…"
-               oninput="renderHistory(_historyRows); _updateHistoryExportLinks()"
+               oninput="_historyPage=1;renderHistory(_historyRows); _updateHistoryExportLinks()"
                style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
         <a id="history-export-csv"  class="toolbar-btn" href="/history/export" download="history.csv" style="font-size:9px;padding:2px 5px">CSV</a>
         <a id="history-export-json" class="toolbar-btn" href="/history/export?format=json" download="history.json" style="font-size:9px;padding:2px 5px">JSON</a>
       </div>
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
+      </div>
+      <div id="history-pager" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px">
+        <button class="toolbar-btn" style="padding:1px 6px" onclick="_historyPageStep(-1)">◀</button>
+        <span id="history-page-label" style="color:var(--dim)"></span>
+        <button class="toolbar-btn" style="padding:1px 6px" onclick="_historyPageStep(1)">▶</button>
+        <span id="history-count-label" style="color:var(--dim);margin-left:4px"></span>
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-branches">
@@ -961,9 +967,10 @@
   }
 
   function _updateFavicon(d) {
-    const color = d.complete ? "%2322c55e"   // green
-                : d.running > 0 ? "%2306b6d4" // cyan
-                : "%23555555";                 // grey (idle)
+    const color = d.complete      ? "%2322c55e"   // green  — all done
+                : d.stalled > 0   ? "%23eab308"   // yellow — stalled
+                : d.running > 0   ? "%2306b6d4"   // cyan   — running
+                : "%23555555";                     // grey   — idle
     const svg = `%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='${color}'/%3E%3C/svg%3E`;
     const fav = document.getElementById("favicon");
     if (fav) fav.href = `data:image/svg+xml,${svg}`;
@@ -1255,15 +1262,17 @@
     el.innerHTML = html;
   }
 
-  /* ── History panel (incremental) ─────────────────────────── */
+  /* ── History panel (incremental + paged) ─────────────────── */
   let _historyLastStep = 0;
+  let _historyPage = 1;
+  const _PAGE_SIZE = 20;
   const _historyRows = [];  // accumulated events, newest-first
 
   async function pollHistory() {
     try {
       const url = _historyLastStep > 0
         ? `/history?since=${_historyLastStep}&limit=0`
-        : `/history?limit=50`;
+        : `/history?limit=100`;
       const d = await api(url);
       if (!d.events || d.events.length === 0) {
         if (_historyRows.length === 0) renderHistory([]);
@@ -1273,10 +1282,21 @@
         if (e.step > _historyLastStep) _historyLastStep = e.step;
         _historyRows.unshift(e);  // prepend — events arrive newest-first from API
       });
-      // Keep at most 100 rows in memory
-      if (_historyRows.length > 100) _historyRows.splice(100);
+      // Keep at most 500 rows in memory
+      if (_historyRows.length > 500) _historyRows.splice(500);
       renderHistory(_historyRows);
     } catch (_) {}
+  }
+
+  function _historyPageStep(delta) {
+    const filterEl = document.getElementById("history-filter");
+    const q = filterEl ? filterEl.value.trim().toLowerCase() : "";
+    const filtered = q
+      ? _historyRows.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
+      : _historyRows;
+    const pages = Math.max(1, Math.ceil(filtered.length / _PAGE_SIZE));
+    _historyPage = Math.max(1, Math.min(pages, _historyPage + delta));
+    renderHistory(_historyRows);
   }
 
   function _updateHistoryExportLinks() {
@@ -1303,6 +1323,8 @@
     const el = document.getElementById("history-content");
     if (!events || events.length === 0) {
       el.innerHTML = `<div class="detail-placeholder">No history yet.</div>`;
+      const pager = document.getElementById("history-pager");
+      if (pager) pager.style.display = "none";
       return;
     }
     const filterEl = document.getElementById("history-filter");
@@ -1310,16 +1332,30 @@
     const filtered = q
       ? events.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
       : events;
-    if (filtered.length === 0) {
+    const total = filtered.length;
+    const pages = Math.max(1, Math.ceil(total / _PAGE_SIZE));
+    if (_historyPage > pages) _historyPage = pages;
+    const start = (_historyPage - 1) * _PAGE_SIZE;
+    const page  = filtered.slice(start, start + _PAGE_SIZE);
+    if (page.length === 0) {
       el.innerHTML = `<div class="detail-placeholder">No matching events.</div>`;
+      const pager = document.getElementById("history-pager");
+      if (pager) pager.style.display = "none";
       return;
     }
     const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
     let html = "";
-    filtered.forEach(e => {
+    page.forEach(e => {
       html += `<div class="diff-entry"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
     });
     el.innerHTML = html;
+    // Update pager
+    const pager = document.getElementById("history-pager");
+    const label = document.getElementById("history-page-label");
+    const count = document.getElementById("history-count-label");
+    if (pager) pager.style.display = pages > 1 ? "flex" : "none";
+    if (label) label.textContent = `${_historyPage}/${pages}`;
+    if (count) count.textContent = `${total} event${total !== 1 ? "s" : ""}`;
   }
 
   /* ── Branches panel ─────────────────────────────────────── */
