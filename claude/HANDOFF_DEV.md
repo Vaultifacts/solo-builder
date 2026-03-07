@@ -1,61 +1,63 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Problem summary
-`workflow_preflight.ps1` exists but is currently invoked manually during task initialization. Because there is no single initialization entry script, preflight enforcement is optional in practice and can be skipped.
+TASK-019 needs CI enforcement of workflow invariants so pushes/PRs fail when core workflow contracts drift. Current CI runs `tools/audit_check.ps1`, which is built for local workflow progression and mutates local workflow runtime files (`claude/STATE.json`, `claude/verify_last.json`). For CI, we need a verification-only execution path.
 
 ## Root cause
-Task initialization is performed through operator convention (multiple manual commands) rather than a dedicated workflow entry point. This prevents deterministic, automatic enforcement of preflight before task branch creation.
+There is no CI-dedicated invariant runner. CI currently reuses a local lifecycle script (`audit_check.ps1`) that includes side effects beyond pure verification.
 
 ## Minimal fix strategy
-1. Add one dedicated initialization entry script: `tools/start_task.ps1`.
-2. In `start_task.ps1`, implement the canonical init sequence with fixed order:
-   - verify clean repo state
-   - switch to `master`
-   - optionally pull only when upstream exists
-   - merge previous task branch (when provided/derivable)
-   - run `pwsh tools/workflow_preflight.ps1`
-   - if preflight passes, create `task/TASK-<N>`
-   - update workflow metadata (`TASK_QUEUE`, `TASK_ACTIVE`, local `STATE.json`, `JOURNAL`)
-   - run orchestrator
-3. Abort immediately on any nonzero preflight result (do not create new task branch).
-4. Add minimal documentation update in `claude/WORKFLOW_SPEC.md` to state the canonical initialization command/path (no semantic changes).
+1. Add one CI-dedicated verification script (new file): `tools/ci_invariant_check.ps1`.
+2. In that script, run only verification checks:
+   - call `tools/check_next_action_consistency.ps1`
+   - execute required commands listed in `claude/VERIFY.json`
+   - fail nonzero when any required check fails
+3. Keep CI runner side-effect free for workflow state:
+   - do not call `tools/advance_state.ps1`
+   - do not update `claude/STATE.json`
+   - do not initialize tasks or create branches
+4. Update `.github/workflows/ci.yml` to use the new CI invariant runner in place of direct `audit_check.ps1` execution.
+5. Update `claude/WORKFLOW_SPEC.md` minimally to document CI as verification-only and reference the CI invariant command path.
 
-## Allowed files to modify
-- tools/start_task.ps1
+## Allowed changes
+- tools/ci_invariant_check.ps1
+- .github/workflows/ci.yml
 - claude/WORKFLOW_SPEC.md
 
 ## Files that must not be modified
 - Any files under `solo_builder/*`
-- tools/workflow_preflight.ps1
-- tools/check_next_action_consistency.ps1
-- tools/claude_orchestrate.ps1
 - tools/advance_state.ps1
+- tools/claude_orchestrate.ps1
+- tools/start_task.ps1
+- tools/workflow_preflight.ps1
+- tools/audit_check.ps1
 - claude/STATE_SCHEMA.md
-- Any role/phase lifecycle semantics
+- claude/TASK_ACTIVE.md
+- claude/TASK_QUEUE.md
 
 ## Risks
-- Over-automating initialization could inadvertently change operator expectations if script behavior differs from existing manual sequence.
-- Merge-target derivation for previous task branch can be brittle if naming is non-contiguous.
-- Incorrectly handling missing upstream/pull behavior could introduce network dependency where none is required.
+- Parsing/executing commands from `VERIFY.json` in CI may differ from local shell expectations.
+- If CI runner diverges from local verification contract, local/CI outcomes can drift.
+- Overly broad command execution in CI could introduce flaky behavior if optional commands are not handled consistently.
 
 ## Acceptance criteria
-- `workflow_preflight.ps1` runs automatically during initialization via `tools/start_task.ps1`.
-- Initialization stops before branch creation if preflight exits nonzero.
-- Preflight execution order is guaranteed: after switching to `master`, before creating `task/TASK-<N>`.
-- Existing workflow semantics remain unchanged.
-- No product code under `solo_builder/*` is modified.
+- CI runs a dedicated verification-only workflow command path.
+- CI checks include STATE/NEXT_ACTION consistency and required verification commands from `claude/VERIFY.json`.
+- CI fails nonzero when required checks fail.
+- CI path does not mutate workflow lifecycle state (`STATE.json` phase/role transitions are not performed).
+- No product-code files are changed.
 
 ## Verification commands
-1. Positive path (expected pass):
-   - run `pwsh tools/start_task.ps1 -TaskId TASK-018 -NoCommit` (or equivalent dry-run/safe mode if implemented)
-   - confirm preflight was executed before branch creation step.
-2. Negative path (expected fail):
-   - dirty `claude/verify_last.json` or `claude/allowed_files.txt`
-   - run `pwsh tools/start_task.ps1 -TaskId TASK-018 -NoCommit`
-   - confirm nonzero exit and no new task branch creation.
-3. Confirm docs update:
+1. Local dry run of CI invariant runner:
+   - `pwsh tools/ci_invariant_check.ps1`
+2. Failure-path proof (nonzero):
+   - induce a controlled required-check failure (for example temporary required command failure context), run `pwsh tools/ci_invariant_check.ps1`, confirm nonzero exit
+3. CI workflow wiring check:
+   - `Get-Content -Raw .github/workflows/ci.yml`
+   - confirm workflow uses `pwsh tools/ci_invariant_check.ps1`
+4. Spec alignment check:
    - `Get-Content -Raw claude/WORKFLOW_SPEC.md`
-   - verify canonical init flow includes `start_task.ps1` with preflight gating.
-4. Safety check:
+   - confirm CI is documented as verification-only (no state mutation, no task init/branch creation)
+5. Safety/status check:
+   - `git diff --stat`
    - `git status --short --branch`
-   - confirm no product-code files changed.
