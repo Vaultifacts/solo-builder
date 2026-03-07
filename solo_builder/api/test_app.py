@@ -1297,6 +1297,65 @@ class TestCache(_Base):
 
 
 # ---------------------------------------------------------------------------
+# /metrics/export
+# ---------------------------------------------------------------------------
+
+class TestMetricsExport(_Base):
+
+    def test_export_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_content_type_is_csv(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export")
+        self.assertIn("text/csv", r.content_type)
+
+    def test_export_content_disposition(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export")
+        self.assertIn("metrics.csv", r.headers.get("Content-Disposition", ""))
+
+    def test_export_header_row(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export")
+        first_line = r.data.decode("utf-8").splitlines()[0]
+        self.assertEqual(first_line, "step_index,verified,healed,cumulative")
+
+    def test_export_empty_history_has_only_header(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/metrics/export")
+        lines = r.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 1)  # header only
+
+    def test_export_rows_match_history(self):
+        state = self._make_state()
+        state["meta_history"] = [
+            {"verified": 2, "healed": 0},
+            {"verified": 3, "healed": 1},
+        ]
+        self._write_state(state)
+        r = self.client.get("/metrics/export")
+        lines = r.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(lines[1], "1,2,0,2")
+        self.assertEqual(lines[2], "2,3,1,5")
+
+    def test_export_cumulative_is_running_total(self):
+        state = self._make_state()
+        state["meta_history"] = [
+            {"verified": 1, "healed": 0},
+            {"verified": 4, "healed": 0},
+            {"verified": 2, "healed": 0},
+        ]
+        self._write_state(state)
+        r = self.client.get("/metrics/export")
+        lines = r.data.decode("utf-8").strip().splitlines()
+        cumulatives = [line.split(",")[3] for line in lines[1:]]
+        self.assertEqual(cumulatives, ["1", "5", "7"])
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

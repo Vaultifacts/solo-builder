@@ -1405,7 +1405,8 @@
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Avg rate</span> ${s.avg_verified_per_step ?? "—"} v/step</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Peak rate</span> ${s.peak_verified_per_step ?? "—"} v/step</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Steps w/ heals</span> ${s.steps_with_heals ?? 0}</div>` +
-        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total healed</span> ${d.total_healed ?? 0}</div>`;
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total healed</span> ${d.total_healed ?? 0}</div>` +
+        `<div style="margin-top:8px"><a class="toolbar-btn" href="/metrics/export" download="metrics.csv">Download CSV</a></div>`;
     } catch (_) {}
   }
 
