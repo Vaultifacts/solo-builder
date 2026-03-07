@@ -8,6 +8,7 @@ Run:      python api/app.py
 """
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -38,6 +39,8 @@ PAUSE_TRIGGER           = _PROJECT_ROOT / "state" / "pause_trigger"
 HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
 JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
 OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
+CACHE_DIR     = Path(os.environ.get("CACHE_DIR",
+                     str(_PROJECT_ROOT.parent / "claude" / "cache")))
 
 
 # ---------------------------------------------------------------------------
@@ -823,6 +826,47 @@ def resume_auto():
     except OSError:
         pass
     return jsonify({"ok": True}), 202
+
+
+# ---------------------------------------------------------------------------
+# Cache
+# ---------------------------------------------------------------------------
+
+_AVG_TOKENS_PER_ENTRY = 550  # matches ResponseCache._AVG_TOKENS_PER_ENTRY
+
+
+@app.get("/cache")
+def cache_stats():
+    """Return response cache disk stats."""
+    try:
+        entries = list(CACHE_DIR.glob("*.json")) if CACHE_DIR.exists() else []
+        size = len(entries)
+    except Exception as exc:
+        return jsonify({"error": f"Could not read cache directory: {exc}"}), 500
+    return jsonify({
+        "entries":               size,
+        "estimated_tokens_held": size * _AVG_TOKENS_PER_ENTRY,
+        "cache_dir":             str(CACHE_DIR),
+    })
+
+
+@app.delete("/cache")
+def cache_clear():
+    """Delete all cached response entries. Returns count of files deleted."""
+    if not CACHE_DIR.exists():
+        return jsonify({"ok": True, "deleted": 0})
+    deleted = 0
+    errors = 0
+    try:
+        for f in CACHE_DIR.glob("*.json"):
+            try:
+                f.unlink()
+                deleted += 1
+            except OSError:
+                errors += 1
+    except Exception as exc:
+        return jsonify({"error": f"Could not clear cache: {exc}"}), 500
+    return jsonify({"ok": True, "deleted": deleted, "errors": errors})
 
 
 # ---------------------------------------------------------------------------
