@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-024
+TASK-025
 
-Atomic STATE.json write in advance_state.ps1
+Add -DryRun flag to claude_heal.ps1

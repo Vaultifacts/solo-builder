@@ -112,3 +112,4 @@
 - [2026-03-07T07:17:57.6170231Z] state transition: plan/DEV -> build/DEV
 - [2026-03-07T07:18:39.3526857Z] state transition: build/DEV -> verify/AUDITOR
 - [2026-03-07T07:19:13.4919299Z] state transition: done/AUDITOR -> done/AUDITOR
+- [2026-03-07T07:19:21.4744045Z] Starting TASK-025 via tools/start_task.ps1 with automated preflight gating.
