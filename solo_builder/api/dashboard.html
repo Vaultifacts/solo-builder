@@ -665,6 +665,7 @@
       <button class="sidebar-tab" onclick="switchTab('agents')">Agents</button>
       <button class="sidebar-tab" onclick="switchTab('forecast')">Forecast</button>
       <button class="sidebar-tab" onclick="switchTab('metrics')">Metrics</button>
+      <button class="sidebar-tab" onclick="switchTab('cache')">Cache</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -719,6 +720,11 @@
     <div class="sidebar-tab-content" id="tab-metrics">
       <div id="metrics-content">
         <div class="detail-placeholder">Loading metrics…</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-cache">
+      <div id="cache-content">
+        <div class="detail-placeholder">Loading cache stats…</div>
       </div>
     </div>
   </div>
@@ -1397,9 +1403,33 @@
     } catch (_) {}
   }
 
+  /* ── Cache panel ─────────────────────────────────────────── */
+  async function pollCache() {
+    try {
+      const d = await api("/cache");
+      const el = document.getElementById("cache-content");
+      if (!el) return;
+      const entries = d.entries ?? 0;
+      const tokens = d.estimated_tokens_held ?? 0;
+      const dir = d.cache_dir ?? "—";
+      el.innerHTML =
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Entries on disk</span> ${entries}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Est. tokens held</span> ${tokens.toLocaleString()}</div>` +
+        `<div class="diff-entry" style="font-size:10px;word-break:break-all"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cache dir</span> <span style="color:var(--dim)">${dir}</span></div>` +
+        `<div style="margin-top:8px"><button class="toolbar-btn" onclick="clearCache()">Clear Cache</button></div>`;
+    } catch (_) {}
+  }
+
+  async function clearCache() {
+    try {
+      await fetch("/cache", { method: "DELETE" });
+      await pollCache();
+    } catch (_) {}
+  }
+
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollAgents(), pollForecast(), pollMetrics()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollAgents(), pollForecast(), pollMetrics(), pollCache()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {

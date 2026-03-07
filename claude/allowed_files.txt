@@ -33,4 +33,5 @@ solo_builder/discord_bot/test_bot.py
 solo_builder/.github/workflows/smoke-test.yml
 solo_builder/api/app.py
 solo_builder/api/test_app.py
+solo_builder/api/dashboard.html
 .gitignore
