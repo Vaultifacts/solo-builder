@@ -411,6 +411,11 @@
   }
   .journal-meta { font-size: 10px; color: var(--dim); margin-bottom: 2px; }
   .journal-body { font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .journal-toggle {
+    background: none; border: none; cursor: pointer;
+    font-size: 10px; color: var(--cyan); padding: 2px 0; margin-top: 2px;
+  }
+  .journal-toggle:hover { text-decoration: underline; }
 
   /* ── Command toolbar ─────────────────────────────────────── */
   .cmd-toolbar {
@@ -1073,14 +1078,36 @@
       el.innerHTML = `<div class="detail-placeholder">No journal entries.</div>`;
       return;
     }
+    const TRUNC = 300;
     const reversed = [...entries].reverse();
-    el.innerHTML = reversed.map(e => `
-      <div class="journal-entry">
+    el.innerHTML = reversed.map(e => {
+      const safe = (e.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const long = safe.length > TRUNC;
+      const body = long ? safe.substring(0, TRUNC) + "…" : safe;
+      const btn  = long
+        ? `<button class="journal-toggle" onclick="toggleJournal(this)" data-full="${safe.replace(/"/g, "&quot;")}" data-trunc="${TRUNC}">▼ more</button>`
+        : "";
+      return `<div class="journal-entry">
         <div class="journal-meta">${e.subtask} · ${e.task} / ${e.branch} · Step ${e.step}</div>
-        <div class="journal-body">${(e.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;").substring(0, 300)}</div>
-      </div>`).join("");
+        <div class="journal-body">${body}</div>${btn}
+      </div>`;
+    }).join("");
     const pane = document.getElementById("tab-journal");
     if (pane && pane.classList.contains("active")) pane.scrollTop = 0;
+  }
+
+  /* ── Journal toggle ──────────────────────────────────────── */
+  function toggleJournal(btn) {
+    const body = btn.previousElementSibling;
+    const full = btn.dataset.full;
+    const trunc = parseInt(btn.dataset.trunc, 10) || 300;
+    if (btn.textContent.includes("more")) {
+      body.innerHTML = full;
+      btn.textContent = "▲ less";
+    } else {
+      body.innerHTML = full.substring(0, trunc) + "…";
+      btn.textContent = "▼ more";
+    }
   }
 
   /* ── Sidebar tabs ────────────────────────────────────────── */
