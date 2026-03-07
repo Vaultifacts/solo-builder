@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-033
+TASK-034
 
-Add 'cache' and 'cache clear' commands to Discord bot for remote cache stats visibility
+Add agents/runners/cache unit tests to CI smoke-test.yml; fix stale test count comment
