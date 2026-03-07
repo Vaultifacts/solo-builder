@@ -510,6 +510,89 @@ class TestHistory(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /history/export
+# ---------------------------------------------------------------------------
+
+class TestHistoryExport(_Base):
+
+    def _state_with_steps(self, steps):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [{"status": "Running", "step": s} for s in steps]
+        return state
+
+    def test_export_csv_status(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/history/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_csv_content_type(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/history/export")
+        self.assertIn("text/csv", r.content_type)
+
+    def test_export_csv_header_row(self):
+        self._write_state(self._make_state())
+        lines = self.client.get("/history/export").data.decode().strip().splitlines()
+        self.assertEqual(lines[0], "step,subtask,task,branch,status")
+
+    def test_export_csv_empty_has_only_header(self):
+        self._write_state(self._make_state())
+        lines = self.client.get("/history/export").data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 1)
+
+    def test_export_csv_rows(self):
+        self._write_state(self._state_with_steps([2, 5]))
+        lines = self.client.get("/history/export").data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 3)  # header + 2 rows
+
+    def test_export_csv_sorted_ascending(self):
+        self._write_state(self._state_with_steps([5, 1, 3]))
+        lines = self.client.get("/history/export").data.decode().strip().splitlines()
+        steps = [int(l.split(",")[0]) for l in lines[1:]]
+        self.assertEqual(steps, sorted(steps))
+
+    def test_export_json_status(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/history/export?format=json")
+        self.assertEqual(r.status_code, 200)
+        self.assertIsInstance(r.get_json(), list)
+
+    def test_export_json_empty_is_list(self):
+        self._write_state(self._make_state())
+        self.assertEqual(self.client.get("/history/export?format=json").get_json(), [])
+
+    def test_export_json_row_keys(self):
+        self._write_state(self._state_with_steps([1]))
+        rows = self.client.get("/history/export?format=json").get_json()
+        self.assertEqual(len(rows), 1)
+        for key in ("step", "subtask", "task", "branch", "status"):
+            self.assertIn(key, rows[0])
+
+    def test_export_since_filters(self):
+        self._write_state(self._state_with_steps([1, 2, 3, 4, 5]))
+        rows = self.client.get("/history/export?format=json&since=3").get_json()
+        steps = [r["step"] for r in rows]
+        self.assertEqual(sorted(steps), [4, 5])
+
+    def test_export_limit_caps_rows(self):
+        self._write_state(self._state_with_steps([1, 2, 3, 4, 5]))
+        rows = self.client.get("/history/export?format=json&limit=2").get_json()
+        self.assertEqual(len(rows), 2)
+
+    def test_export_since_and_limit_compose(self):
+        self._write_state(self._state_with_steps([1, 2, 3, 4, 5]))
+        rows = self.client.get("/history/export?format=json&since=1&limit=2").get_json()
+        steps = [r["step"] for r in rows]
+        self.assertEqual(steps, [4, 5])
+
+    def test_export_disposition(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/history/export")
+        self.assertIn("history.csv", r.headers.get("Content-Disposition", ""))
+
+
+# ---------------------------------------------------------------------------
 # GET /diff
 # ---------------------------------------------------------------------------
 
