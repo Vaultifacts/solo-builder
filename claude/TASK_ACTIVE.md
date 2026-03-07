@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-067
+TASK-070
 
-Batch: wire /history/count to dashboard (067), j/k history pager shortcuts (068), stale-data banner (069)
+Batch: History tab unread badge (070), /status latency display (071), keyboard shortcut help overlay (072)

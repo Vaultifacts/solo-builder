@@ -666,7 +666,7 @@
       <button class="sidebar-tab active" onclick="switchTab('journal')">Journal</button>
       <button class="sidebar-tab" onclick="switchTab('diff')">Diff</button>
       <button class="sidebar-tab" onclick="switchTab('stats')">Stats</button>
-      <button class="sidebar-tab" onclick="switchTab('history')">History</button>
+      <button class="sidebar-tab" onclick="switchTab('history')" id="tab-btn-history">History <span id="history-unread-badge" style="display:none;background:var(--red);color:#fff;border-radius:8px;font-size:9px;padding:0 4px;vertical-align:middle"></span></button>
       <button class="sidebar-tab" onclick="switchTab('branches')">Branches</button>
       <button class="sidebar-tab" onclick="switchTab('settings')">Settings</button>
       <button class="sidebar-tab" onclick="switchTab('priority')">Priority</button>
@@ -792,6 +792,27 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="keys-overlay" onclick="if(event.target===this)closeKeysModal()" style="display:none">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">Keyboard Shortcuts</span>
+      <button class="modal-close" onclick="closeKeysModal()">✕</button>
+    </div>
+    <div style="font-size:11px;line-height:1.8;padding:8px 0">
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="color:var(--cyan);width:120px"><kbd>j</kbd> / <kbd>k</kbd></td><td style="color:var(--dim)">Next / previous task</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>←</kbd> / <kbd>→</kbd></td><td style="color:var(--dim)">Prev / next history page (History tab)</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>r</kbd></td><td style="color:var(--dim)">Run one step</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>g</kbd></td><td style="color:var(--dim)">Toggle graph / list view</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>v</kbd></td><td style="color:var(--dim)">Verify first pending subtask of selected task</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>Enter</kbd></td><td style="color:var(--dim)">Open detail modal for selected task</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>Esc</kbd></td><td style="color:var(--dim)">Close modal</td></tr>
+        <tr><td style="color:var(--cyan)"><kbd>?</kbd></td><td style="color:var(--dim)">Show this help</td></tr>
+      </table>
     </div>
   </div>
 </div>
@@ -937,9 +958,13 @@
 
   async function pollStatus() {
     try {
+      const t0 = performance.now();
       const d = await api("/status");
+      const latencyMs = Math.round(performance.now() - t0);
       _lastStatusOk = Date.now();
       _checkStaleBanner();
+      const stepEl = document.getElementById("hdr-step");
+      if (stepEl) stepEl.title = `Poll latency: ${latencyMs}ms`;
       document.getElementById("hdr-verified").textContent = d.verified;
       document.getElementById("hdr-running").textContent  = d.running;
       document.getElementById("hdr-pending").textContent  = d.pending;
@@ -1212,6 +1237,10 @@
       const pane = document.getElementById("tab-journal");
       if (pane) pane.scrollTop = 0;
     }
+    if (name === "history") {
+      _historyUnread = 0;
+      _updateHistoryBadge();
+    }
   }
 
   /* ── Diff panel ──────────────────────────────────────────── */
@@ -1283,6 +1312,18 @@
   const _historyRows = [];  // accumulated events, newest-first
 
   let _historyServerTotal = null;  // server-side total from /history/count
+  let _historyUnread = 0;          // new events since user last visited the History tab
+
+  function _updateHistoryBadge() {
+    const badge = document.getElementById("history-unread-badge");
+    if (!badge) return;
+    if (_historyUnread > 0) {
+      badge.textContent = _historyUnread > 99 ? "99+" : String(_historyUnread);
+      badge.style.display = "inline-block";
+    } else {
+      badge.style.display = "none";
+    }
+  }
 
   async function pollHistory() {
     try {
@@ -1298,10 +1339,15 @@
         if (_historyRows.length === 0) renderHistory([]);
         return;
       }
+      const historyActive = document.getElementById("tab-history")?.classList.contains("active");
       d.events.forEach(e => {
         if (e.step > _historyLastStep) _historyLastStep = e.step;
         _historyRows.unshift(e);  // prepend — events arrive newest-first from API
       });
+      if (!historyActive) {
+        _historyUnread += d.events.length;
+        _updateHistoryBadge();
+      }
       // Keep at most 500 rows in memory
       if (_historyRows.length > 500) _historyRows.splice(500);
       renderHistory(_historyRows);
@@ -1949,13 +1995,21 @@
     _modalSt = null;
   };
 
+  window.openKeysModal = function () {
+    document.getElementById("keys-overlay").style.display = "flex";
+  };
+  window.closeKeysModal = function () {
+    document.getElementById("keys-overlay").style.display = "none";
+  };
+
   /* ── Keyboard shortcuts ───────────────────────────────────── */
   document.addEventListener("keydown", function (e) {
     // Ignore when typing in inputs
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "select") return;
 
-    if (e.key === "Escape") { closeModal(); return; }
+    if (e.key === "Escape") { closeModal(); closeKeysModal(); return; }
+    if (e.key === "?") { openKeysModal(); return; }
 
     // j/k — navigate tasks
     if (e.key === "j" || e.key === "k") {
