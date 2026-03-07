@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-055
+TASK-058
 
-Batch: history/export filter param (055), Export sidebar tab (056), GET /cache/export endpoint (057)
+Batch: history filter in export links (058), ?task/?branch on GET /history (059), metrics sparkline chart (060)
