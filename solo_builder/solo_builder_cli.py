@@ -351,6 +351,8 @@ def _append_cache_session_stats(cache, steps: int) -> None:
         if total == 0:
             return  # cache unused this session — nothing worth logging
         hit_rate = s["hits"] / total * 100
+        cum_total = s["cumulative_hits"] + s["cumulative_misses"]
+        cum_rate = s["cumulative_hits"] / cum_total * 100 if cum_total else 0.0
         parent = os.path.dirname(JOURNAL_PATH)
         if parent:
             os.makedirs(parent, exist_ok=True)
@@ -362,9 +364,12 @@ def _append_cache_session_stats(cache, steps: int) -> None:
                 f"## Cache session summary · Step {steps}\n\n"
                 f"| Metric | Value |\n"
                 f"|--------|-------|\n"
-                f"| Hits | {s['hits']} |\n"
-                f"| Misses | {s['misses']} |\n"
-                f"| Hit rate | {hit_rate:.1f}% |\n"
+                f"| Hits (session) | {s['hits']} |\n"
+                f"| Misses (session) | {s['misses']} |\n"
+                f"| Hit rate (session) | {hit_rate:.1f}% |\n"
+                f"| Hits (all-time) | {s['cumulative_hits']:,} |\n"
+                f"| Misses (all-time) | {s['cumulative_misses']:,} |\n"
+                f"| Hit rate (all-time) | {cum_rate:.1f}% |\n"
                 f"| Entries on disk | {s['size']} |\n"
                 f"| Est. tokens saved | {s['estimated_tokens_saved']:,} |\n"
                 f"\n---\n\n"
@@ -2474,11 +2479,18 @@ class SoloBuilderCLI:
         s = cache.stats()
         total = s["hits"] + s["misses"]
         hit_rate = f"{s['hits'] / total * 100:.1f}%" if total else "n/a"
+        cum_total = s["cumulative_hits"] + s["cumulative_misses"]
+        cum_rate = f"{s['cumulative_hits'] / cum_total * 100:.1f}%" if cum_total else "n/a"
         print(f"\n  {BOLD}{CYAN}Response Cache{RESET}")
         print(f"  {'─' * 44}")
         print(f"  {'Hits this session':<24} {s['hits']}")
         print(f"  {'Misses this session':<24} {s['misses']}")
-        print(f"  {'Hit rate':<24} {hit_rate}")
+        print(f"  {'Hit rate (session)':<24} {hit_rate}")
+        print(f"  {'─' * 44}")
+        print(f"  {'Hits all sessions':<24} {s['cumulative_hits']:,}")
+        print(f"  {'Misses all sessions':<24} {s['cumulative_misses']:,}")
+        print(f"  {'Hit rate (all-time)':<24} {cum_rate}")
+        print(f"  {'─' * 44}")
         print(f"  {'Entries on disk':<24} {s['size']}")
         print(f"  {'Est. tokens saved':<24} {s['estimated_tokens_saved']:,}")
         print(f"  {'─' * 44}")

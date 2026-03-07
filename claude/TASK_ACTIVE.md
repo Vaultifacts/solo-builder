@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-039
+TASK-040
 
-Add GET /metrics/export endpoint returning CSV of step history and a Download CSV button in the dashboard Metrics tab
+Surface cumulative hit rate in CLI cache command output and JOURNAL entries
