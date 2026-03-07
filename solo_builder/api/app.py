@@ -400,6 +400,56 @@ def history():
     return jsonify({"events": events})
 
 
+@app.get("/history/export")
+def history_export():
+    """Return full activity-log events as CSV (default) or JSON (?format=json).
+
+    Query params
+    ------------
+    format  csv (default) | json
+    since   S — return only events with step > S
+    limit   N — return the most recent N events (all if omitted or <= 0)
+    """
+    dag = _load_dag()
+    events = []
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                for h in st_data.get("history", []):
+                    events.append({
+                        "step":    h.get("step", 0),
+                        "subtask": st_name,
+                        "task":    task_id,
+                        "branch":  branch_name,
+                        "status":  h.get("status", "?"),
+                    })
+
+    since = request.args.get("since", type=int)
+    if since is not None:
+        events = [e for e in events if e["step"] > since]
+
+    events.sort(key=lambda e: e["step"])
+
+    limit = request.args.get("limit", type=int)
+    if limit is not None and limit > 0:
+        events = events[-limit:]
+
+    fmt = request.args.get("format", "csv").strip().lower()
+    if fmt == "json":
+        return jsonify(events)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["step", "subtask", "task", "branch", "status"])
+    for e in events:
+        writer.writerow([e["step"], e["subtask"], e["task"], e["branch"], e["status"]])
+    return Response(
+        buf.getvalue().encode("utf-8"),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=history.csv"},
+    )
+
+
 @app.get("/diff")
 def diff():
     """Compare current state to .1 backup and return JSON diff."""

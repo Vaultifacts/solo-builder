@@ -689,6 +689,13 @@
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-history">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <input id="history-filter" type="text" placeholder="Filter subtask/status…"
+               oninput="renderHistory(_historyRows)"
+               style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+        <a class="toolbar-btn" href="/history/export" download="history.csv" style="font-size:9px;padding:2px 5px">CSV</a>
+        <a class="toolbar-btn" href="/history/export?format=json" download="history.json" style="font-size:9px;padding:2px 5px">JSON</a>
+      </div>
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
       </div>
@@ -736,7 +743,7 @@
     <div class="sidebar-tab-content" id="tab-cache-history">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:10px;color:var(--dim)">Show last</span>
-        <select id="cache-history-limit" onchange="pollCacheHistory()"
+        <select id="cache-history-limit" onchange="_renderCacheHistory()"
                 style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:1px 4px">
           <option value="5">5</option>
           <option value="10" selected>10</option>
@@ -1240,9 +1247,18 @@
       el.innerHTML = `<div class="detail-placeholder">No history yet.</div>`;
       return;
     }
+    const filterEl = document.getElementById("history-filter");
+    const q = filterEl ? filterEl.value.trim().toLowerCase() : "";
+    const filtered = q
+      ? events.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
+      : events;
+    if (filtered.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No matching events.</div>`;
+      return;
+    }
     const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
     let html = "";
-    events.forEach(e => {
+    filtered.forEach(e => {
       html += `<div class="diff-entry"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
     });
     el.innerHTML = html;
@@ -1513,40 +1529,63 @@
     } catch (_) {}
   }
 
-  /* ── Cache history panel ─────────────────────────────────── */
+  /* ── Cache history panel (incremental) ───────────────────── */
+  let _cacheHistoryLastSession = 0;
+  let _cacheHistoryAllSessions = [];   // accumulated, ordered oldest→newest
+  let _cacheHistoryCumHits = 0;
+  let _cacheHistoryCumMisses = 0;
+
   async function pollCacheHistory() {
     try {
-      const d = await api("/cache/history");
+      const url = _cacheHistoryLastSession > 0
+        ? `/cache/history?since=${_cacheHistoryLastSession}`
+        : `/cache/history`;
+      const d = await api(url);
       const el = document.getElementById("cache-history-content");
       if (!el) return;
-      const limitSel = document.getElementById("cache-history-limit");
-      const limitN = limitSel ? parseInt(limitSel.value, 10) : 10;
-      let sessions = d.sessions || [];
-      const cumHits   = d.cumulative_hits ?? 0;
-      const cumMisses = d.cumulative_misses ?? 0;
-      const cumTotal  = cumHits + cumMisses;
-      const cumRate   = cumTotal > 0 ? (cumHits / cumTotal * 100).toFixed(1) + "%" : "—";
-      if (sessions.length === 0) {
-        el.innerHTML = `<div class="detail-placeholder">No session history yet.<br>Stats accumulate after each CLI run.</div>`;
-        return;
-      }
-      // Slice to N most-recent (limitN=0 means all)
-      const visible = limitN > 0 ? sessions.slice(-limitN) : sessions;
-      const rows = visible.slice().reverse().map(s => {
-        const rate = s.hit_rate != null ? s.hit_rate.toFixed(1) + "%" : "—";
-        const ended = s.ended_at ? s.ended_at.replace("T", " ").substring(0, 19) + "Z" : "—";
-        return `<div class="diff-entry" style="font-size:10px">` +
-          `<span style="color:var(--cyan);min-width:24px;display:inline-block">#${s.session}</span>` +
-          `<span style="min-width:48px;display:inline-block">${s.hits}H ${s.misses}M</span>` +
-          `<span style="min-width:48px;display:inline-block">${rate}</span>` +
-          `<span style="color:var(--dim);font-size:9px">${ended}</span>` +
-          `</div>`;
-      }).join("");
-      el.innerHTML =
-        `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">Sessions (newest first):</div>` +
-        rows +
-        `<div style="font-size:10px;color:var(--dim);margin-top:6px">All-time: ${cumHits.toLocaleString()}H ${cumMisses.toLocaleString()}M ${cumRate}</div>`;
+      // Append any new sessions
+      (d.sessions || []).forEach(s => {
+        if (s.session > _cacheHistoryLastSession) {
+          _cacheHistoryAllSessions.push(s);
+          _cacheHistoryLastSession = s.session;
+        }
+      });
+      // Always update cumulative totals (always present in response)
+      _cacheHistoryCumHits   = d.cumulative_hits ?? _cacheHistoryCumHits;
+      _cacheHistoryCumMisses = d.cumulative_misses ?? _cacheHistoryCumMisses;
+      _renderCacheHistory();
     } catch (_) {}
+  }
+
+  function _renderCacheHistory() {
+    const el = document.getElementById("cache-history-content");
+    if (!el) return;
+    const limitSel = document.getElementById("cache-history-limit");
+    const limitN = limitSel ? parseInt(limitSel.value, 10) : 10;
+    const cumHits   = _cacheHistoryCumHits;
+    const cumMisses = _cacheHistoryCumMisses;
+    const cumTotal  = cumHits + cumMisses;
+    const cumRate   = cumTotal > 0 ? (cumHits / cumTotal * 100).toFixed(1) + "%" : "—";
+    if (_cacheHistoryAllSessions.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No session history yet.<br>Stats accumulate after each CLI run.</div>`;
+      return;
+    }
+    // Slice to N most-recent (limitN=0 means all), then reverse for newest-first display
+    const pool = limitN > 0 ? _cacheHistoryAllSessions.slice(-limitN) : _cacheHistoryAllSessions;
+    const rows = pool.slice().reverse().map(s => {
+      const rate = s.hit_rate != null ? s.hit_rate.toFixed(1) + "%" : "—";
+      const ended = s.ended_at ? s.ended_at.replace("T", " ").substring(0, 19) + "Z" : "—";
+      return `<div class="diff-entry" style="font-size:10px">` +
+        `<span style="color:var(--cyan);min-width:24px;display:inline-block">#${s.session}</span>` +
+        `<span style="min-width:48px;display:inline-block">${s.hits}H ${s.misses}M</span>` +
+        `<span style="min-width:48px;display:inline-block">${rate}</span>` +
+        `<span style="color:var(--dim);font-size:9px">${ended}</span>` +
+        `</div>`;
+    }).join("");
+    el.innerHTML =
+      `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">Sessions (newest first):</div>` +
+      rows +
+      `<div style="font-size:10px;color:var(--dim);margin-top:6px">All-time: ${cumHits.toLocaleString()}H ${cumMisses.toLocaleString()}M ${cumRate}</div>`;
   }
 
   /* ── Polling loop ────────────────────────────────────────── */
