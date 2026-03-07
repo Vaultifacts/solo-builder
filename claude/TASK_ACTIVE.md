@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-042
+TASK-043
 
-Extend GET /metrics/export to support ?format=json returning a JSON array; default remains CSV
+Add GET /cache/history endpoint returning timestamped per-session stats accumulated in session_stats.json
