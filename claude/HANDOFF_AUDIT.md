@@ -58,5 +58,29 @@ if ($LASTEXITCODE -ne 0) {
 - `claude/allowed_files.txt` must not be committed. Restore with:
   `git restore --source=HEAD --worktree --staged claude/allowed_files.txt`
 - The failure-path proof used a temporary `git revert` commit (`9dc71fc`) which is now
-  in the branch history. This is a legitimate revert; AUDITOR should note it is not a
-  defect — it was the standard failure-path testing pattern used in prior tasks.
+  in the branch history. This is a legitimate revert; it was the standard failure-path
+  testing pattern used in prior tasks, not a defect.
+
+## TASK-022 — AUDITOR
+
+Verdict: PASS
+
+Verification result:
+- `pwsh tools/audit_check.ps1` passed all required verification commands.
+- `claude/verify_last.json` reports `"passed": true`.
+
+Required command results:
+- `git-status` (required): PASS — only `claude/JOURNAL.md` modified.
+- `git-diff-stat` (required): PASS — JOURNAL.md only.
+- `unittest-discover` (optional): PASS — 195 tests, 0 failures. Second consecutive
+  clean optional run (first clean run established in TASK-021).
+
+Scope check:
+- Implementation confined to `tools/workflow_preflight.ps1` (+9 lines).
+- `workflow_contract_check.ps1` and `WORKFLOW_SPEC.md` unmodified as specified.
+- `9dc71fc` revert commit is a deliberate failure-path test artifact, not a defect.
+
+Preflight integration confirmed:
+- `workflow_contract_check: PASS` line appears in preflight output before consistency check.
+- Contract check fires before consistency check on induced violation (proven).
+- Dry-run `start_task.ps1` exercises contract check via preflight cleanly.
