@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-034
+TASK-035
 
-Add agents/runners/cache unit tests to CI smoke-test.yml; fix stale test count comment
+Add GET /cache and DELETE /cache endpoints to Flask API for dashboard cache observability
