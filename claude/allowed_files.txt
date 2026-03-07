@@ -9,3 +9,10 @@ claude/NEXT_ACTION.md
 claude/verify_last.json
 claude/TASK_ACTIVE.md
 claude/TASK_QUEUE.md
+solo_builder/solo_builder_cli.py
+solo_builder/agents/__init__.py
+solo_builder/agents/planner.py
+solo_builder/agents/shadow_agent.py
+solo_builder/agents/verifier.py
+solo_builder/agents/self_healer.py
+solo_builder/agents/meta_optimizer.py
