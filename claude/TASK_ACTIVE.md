@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-016
+TASK-017
 
-Add canonical WORKFLOW_SPEC.md documentation for deterministic workflow behavior.
+Add tools/workflow_preflight.ps1 to enforce baseline workflow safety checks before task initialization.

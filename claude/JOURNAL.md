@@ -71,3 +71,4 @@
 - [2026-03-07T00:34:44.0337014Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-016
 - [2026-03-07T00:40:38.6409040Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-016
 - [2026-03-07T00:45:04.4501865Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-016 verified and closed
+- [2026-03-07T00:54:14.9328966Z] Starting TASK-017 to add workflow preflight enforcement for safe task initialization.

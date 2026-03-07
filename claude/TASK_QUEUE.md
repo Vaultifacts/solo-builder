@@ -210,3 +210,21 @@ Constraints:
 - Do not modify product code under solo_builder/*.
 - Do not change orchestrator, state-machine, or task lifecycle semantics.
 - Preserve deterministic workflow conventions.
+
+## TASK-017
+Goal: Add tools/workflow_preflight.ps1 to enforce baseline workflow safety checks before initializing a new task.
+
+Acceptance criteria:
+- tools/workflow_preflight.ps1 fails if the current branch is not clean.
+- tools/workflow_preflight.ps1 fails if runtime artifacts are still dirty (claude/allowed_files.txt, claude/verify_last.json).
+- tools/workflow_preflight.ps1 verifies STATE.json and NEXT_ACTION.md consistency by invoking tools/check_next_action_consistency.ps1.
+- tools/workflow_preflight.ps1 verifies the repo is on a safe baseline for new task initialization (master contains the previous task branch).
+- tools/workflow_preflight.ps1 exits 0 only when the repo is safe for next-task initialization.
+- No workflow semantics are changed.
+- No product-code changes are introduced.
+
+Constraints:
+- Modify only workflow scripts/docs needed for preflight enforcement.
+- Do not modify product code under solo_builder/*.
+- Do not change task lifecycle semantics.
+- Preserve deterministic workflow conventions.
