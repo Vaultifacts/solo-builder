@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+  [switch]$DryRun
+)
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -24,6 +26,15 @@ if (-not $failed) {
 }
 
 $runId = [string]$failed.databaseId
+
+if ($DryRun) {
+  Write-Host "[DRY-RUN] Would triage run $runId | workflow: $($failed.workflowName) | branch: $($failed.headBranch) | title: $($failed.displayTitle)"
+  Write-Host "[DRY-RUN] Would download artifacts to claude/artifacts/$runId"
+  Write-Host "[DRY-RUN] Would reset STATE.json to triage/RESEARCH with run_id=$runId"
+  Write-Host "[DRY-RUN] No files modified."
+  exit 0
+}
+
 $artifactDir = Join-Path $claudeDir ("artifacts/$runId")
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
 gh run download $runId -D $artifactDir | Out-Null
