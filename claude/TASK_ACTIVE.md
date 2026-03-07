@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-061
+TASK-064
 
-Batch: /history pagination ?page=N (061), Export tab filter sync (062), dashboard favicon status badge (063)
+Batch: history pager UI (064), /history/count endpoint (065), stalled favicon yellow (066)
