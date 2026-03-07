@@ -2063,8 +2063,10 @@ class TestStalledCommand(unittest.IsolatedAsyncioTestCase):
     async def test_stalled_empty(self):
         """'stalled' with all verified shows none."""
         state = _make_state({"A1": "Verified"}, step=1)
+        mock_cfg = json.dumps({"STALL_THRESHOLD": 5})
         with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
-             patch.object(bot_module, "_load_state", return_value=state):
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.read_text", return_value=mock_cfg):
             await bot_module._handle_text_command(_make_msg("stalled"))
         text = mock_send.call_args[0][1]
         self.assertIn("none", text)
