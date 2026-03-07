@@ -465,6 +465,49 @@ class TestHistory(_Base):
         d = r.get_json()
         self.assertEqual(len(d["events"]), 1)
 
+    # ?since=S
+
+    def _state_with_history_events(self, steps):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["history"] = [{"status": "Running", "step": s} for s in steps]
+        return state
+
+    def test_since_filters_events_after_step(self):
+        self._write_state(self._state_with_history_events([1, 2, 3, 4, 5]))
+        d = self.client.get("/history?since=3&limit=0").get_json()
+        steps = [e["step"] for e in d["events"]]
+        self.assertEqual(sorted(steps), [4, 5])
+
+    def test_since_zero_returns_all_events(self):
+        self._write_state(self._state_with_history_events([1, 2, 3]))
+        d = self.client.get("/history?since=0&limit=0").get_json()
+        self.assertEqual(len(d["events"]), 3)
+
+    def test_since_beyond_history_returns_empty(self):
+        self._write_state(self._state_with_history_events([1, 2, 3]))
+        d = self.client.get("/history?since=99&limit=0").get_json()
+        self.assertEqual(d["events"], [])
+
+    def test_since_and_limit_compose(self):
+        # steps 1-5; since=2 → [3,4,5]; limit=2 → [5,4] (desc)
+        self._write_state(self._state_with_history_events([1, 2, 3, 4, 5]))
+        d = self.client.get("/history?since=2&limit=2").get_json()
+        self.assertEqual(len(d["events"]), 2)
+        self.assertEqual(d["events"][0]["step"], 5)
+        self.assertEqual(d["events"][1]["step"], 4)
+
+    def test_limit_zero_returns_all(self):
+        self._write_state(self._state_with_history_events([1, 2, 3, 4]))
+        d = self.client.get("/history?limit=0").get_json()
+        self.assertEqual(len(d["events"]), 4)
+
+    def test_since_result_sorted_descending(self):
+        self._write_state(self._state_with_history_events([1, 3, 5, 7]))
+        d = self.client.get("/history?since=2&limit=0").get_json()
+        steps = [e["step"] for e in d["events"]]
+        self.assertEqual(steps, sorted(steps, reverse=True))
+
 
 # ---------------------------------------------------------------------------
 # GET /diff

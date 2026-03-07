@@ -373,8 +373,12 @@ def search():
 
 @app.get("/history")
 def history():
-    """Aggregated step-by-step activity log across all subtasks."""
+    """Aggregated step-by-step activity log across all subtasks.
+
+    Query params: since, limit
+    """
     dag = _load_dag()
+    since = request.args.get("since", type=int)
     limit = request.args.get("limit", 30, type=int)
     events = []
     for task_id, task_data in dag.items():
@@ -388,8 +392,12 @@ def history():
                         "branch": branch_name,
                         "status": h.get("status", "?"),
                     })
+    if since is not None:
+        events = [e for e in events if e["step"] > since]
     events.sort(key=lambda e: e["step"], reverse=True)
-    return jsonify({"events": events[:limit]})
+    if limit:
+        events = events[:limit]
+    return jsonify({"events": events})
 
 
 @app.get("/diff")
