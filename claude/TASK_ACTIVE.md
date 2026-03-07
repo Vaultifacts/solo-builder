@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-038
+TASK-039
 
-Auto-scroll the dashboard journal tab to the bottom after each pollJournal() tick when the journal tab is active
+Add GET /metrics/export endpoint returning CSV of step history and a Download CSV button in the dashboard Metrics tab
