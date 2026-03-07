@@ -189,3 +189,24 @@ Constraints:
 - Do not modify product code under solo_builder/*.
 - Do not change task lifecycle semantics.
 - Preserve deterministic workflow conventions.
+
+## TASK-016
+Goal: Add claude/WORKFLOW_SPEC.md as the canonical written specification for the Solo Builder deterministic workflow.
+
+Acceptance criteria:
+- claude/WORKFLOW_SPEC.md exists and documents:
+  - task lifecycle
+  - branch lifecycle
+  - workflow phases and roles
+  - closeout procedure
+  - merge-first baseline rule
+  - local-only runtime artifact handling
+- The spec matches the workflow currently enforced in the repo.
+- No workflow semantics are changed by this task.
+- No product-code changes are introduced.
+
+Constraints:
+- Modify only workflow documentation files needed for the specification.
+- Do not modify product code under solo_builder/*.
+- Do not change orchestrator, state-machine, or task lifecycle semantics.
+- Preserve deterministic workflow conventions.

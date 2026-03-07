@@ -66,3 +66,8 @@
 - [2026-03-06T22:13:43.2995326Z] state transition: done/ARCHITECT -> done/AUDITOR | note: serial audit render check
 - [2026-03-06T22:13:47.2598274Z] state transition: done/AUDITOR -> verify/AUDITOR | note: restore verify state after serial audit render checks
 - [2026-03-06T22:14:56.9380230Z] state transition: verify/AUDITOR -> done/ARCHITECT | note: TASK-015 verified and closed
+- [2026-03-07T00:24:10.8125796Z] Starting TASK-016 to add canonical WORKFLOW_SPEC.md documentation.
+- [2026-03-07T00:30:34.6149086Z] state transition: triage/RESEARCH -> research/ARCHITECT | note: Research complete for TASK-016
+- [2026-03-07T00:34:44.0337014Z] state transition: research/ARCHITECT -> plan/DEV | note: Architect handoff complete for TASK-016
+- [2026-03-07T00:40:38.6409040Z] state transition: plan/DEV -> verify/AUDITOR | note: DEV complete for TASK-016
+- [2026-03-07T00:45:04.4501865Z] state transition: done/AUDITOR -> done/ARCHITECT | note: TASK-016 verified and closed

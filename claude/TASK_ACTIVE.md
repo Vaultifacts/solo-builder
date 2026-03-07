@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-015
+TASK-016
 
-Fix post-close orchestrator next-role rendering mismatch for done phase.
+Add canonical WORKFLOW_SPEC.md documentation for deterministic workflow behavior.

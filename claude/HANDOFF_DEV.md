@@ -1,45 +1,67 @@
 # HANDOFF TO DEV (from ARCHITECT)
 
 ## Problem summary
-When workflow state is `done`, `tools/claude_orchestrate.ps1` shows summary fields from persisted state but emits a hardcoded AUDITOR copy/paste prompt. This produces inconsistent terminal output after closeout transitions that set `done/ARCHITECT`.
+The deterministic Solo Builder workflow is currently enforced by scripts plus conventions, but there is no single canonical written specification that clearly documents the full lifecycle and distinguishes script-enforced rules from operator conventions.
 
 ## Root cause
-In `Get-RoleContract`, the `if ($Phase -eq 'done')` branch returns a fixed contract with `Prompt = "You are AUDITOR..."`, ignoring the persisted `next_role` value passed as `$Role`.
+Workflow knowledge is distributed across multiple files (`tools/*.ps1`, `claude/*.md`, prompts, and historical journal/task patterns). This creates avoidable ambiguity for agents and operators, especially around branch baseline discipline, closeout cleanup, and runtime artifact handling.
 
 ## Minimal fix strategy
-1. Update only the done-phase branch in `tools/claude_orchestrate.ps1` so prompt rendering respects persisted `$Role` (or is made role-neutral in a way that remains consistent with displayed `Next role`).
-2. Keep all non-done role contracts unchanged (`RESEARCH`, `ARCHITECT`, `DEV`, `AUDITOR`).
-3. Preserve existing state validation and transition semantics; change only terminal rendering consistency.
+1. Create one canonical specification file at `claude/WORKFLOW_SPEC.md` that documents current behavior only.
+2. Structure the spec to explicitly separate:
+   - Script-enforced behavior
+   - Convention/operator-required behavior
+3. Document, without changing semantics:
+   - task lifecycle
+   - branch lifecycle
+   - workflow phases and roles
+   - closeout procedure
+   - merge-first baseline rule
+   - local-only runtime artifact handling
+4. Keep this task documentation-only; do not edit scripts, orchestration logic, or product code.
 
 ## Allowed files to modify
-- tools/claude_orchestrate.ps1
+- claude/WORKFLOW_SPEC.md
 
 ## Files that must not be modified
 - Any files under `solo_builder/*`
-- tools/advance_state.ps1
-- tools/audit_check.ps1
-- claude/templates/NEXT_ACTION_TEMPLATE.md
-- claude/STATE.json
-- claude/VERIFY.json
-- Any lifecycle/phase mapping semantics outside done-phase rendering
+- All `tools/*.ps1` scripts
+- `claude/STATE.json`
+- `claude/NEXT_ACTION.md`
+- `claude/TASK_QUEUE.md`
+- `claude/TASK_ACTIVE.md`
+- `claude/JOURNAL.md`
+- `claude/HANDOFF_ARCHITECT.md`
+- Any workflow semantics or state-machine behavior
 
 ## Risks
-- Over-correcting done behavior could unintentionally change expected post-close operator workflow.
-- Modifying shared prompt-generation logic could affect non-done phases if not tightly scoped.
-- Inconsistent wording between `Next role` summary and copy/paste prompt may persist if only one path is updated.
+- If wording is not precise, the spec could accidentally imply new semantics instead of documenting existing ones.
+- If enforced vs convention sections are mixed, future agents may misinterpret optional practices as script guarantees.
+- Over-documenting edge cases could add noise and reduce operational clarity.
 
 ## Acceptance criteria
-- With persisted state `done/ARCHITECT`, orchestrator displays `Next role: ARCHITECT` and emits a matching terminal prompt contract (no AUDITOR mismatch).
-- With persisted state `done/AUDITOR`, orchestrator displays and emits consistent AUDITOR terminal contract.
-- Non-done phases (`triage`, `research`, `plan`, `build`, `verify`) preserve existing behavior.
+- `claude/WORKFLOW_SPEC.md` exists.
+- The spec documents:
+  - task lifecycle
+  - branch lifecycle
+  - workflow phases and roles
+  - closeout procedure
+  - merge-first baseline rule
+  - local-only runtime artifact handling
+- The spec matches currently enforced behavior and current conventions in the repo.
+- The spec clearly separates script-enforced rules from conventions.
+- No workflow semantics are changed.
 - No product-code changes are introduced.
 
 ## Verification commands
-1. `pwsh tools/advance_state.ps1 -ToPhase done -ToRole ARCHITECT -TaskId TASK-015 -Note "terminal render test"`
-2. `pwsh tools/claude_orchestrate.ps1`
-3. Confirm summary `Next role` and copy/paste prompt role are consistent.
-4. `pwsh tools/advance_state.ps1 -ToPhase done -ToRole AUDITOR -TaskId TASK-015 -Note "terminal render test"`
-5. `pwsh tools/claude_orchestrate.ps1`
-6. Reconfirm consistency.
-7. `pwsh tools/dev_gate.ps1 -Mode Manual -SnapshotOnFail`
-8. `git diff --stat`
+1. `git diff -- claude/WORKFLOW_SPEC.md`
+2. `Get-Content -Raw claude/WORKFLOW_SPEC.md`
+3. Confirm the spec explicitly contains sections for:
+   - task lifecycle
+   - branch lifecycle
+   - workflow phases and roles
+   - closeout procedure
+   - merge-first baseline rule
+   - local-only runtime artifact handling
+4. Confirm wording distinguishes script-enforced behavior from convention/operator policy.
+5. `git status --short --branch`
