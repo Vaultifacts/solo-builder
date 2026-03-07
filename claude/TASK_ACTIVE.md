@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-040
+TASK-041
 
-Surface cumulative hit rate in CLI cache command output and JOURNAL entries
+Add show-more/collapse toggle to dashboard journal entries truncated beyond 300 chars
