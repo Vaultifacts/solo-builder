@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-047
+TASK-048
 
-Add ?since=step_index query param to GET /metrics/export: return only rows with step_index > since (both CSV and JSON)
+Add ?since=step_index query param to GET /history for incremental fetching (parity with /metrics/export)
