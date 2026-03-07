@@ -1079,12 +1079,18 @@
         <div class="journal-meta">${e.subtask} · ${e.task} / ${e.branch} · Step ${e.step}</div>
         <div class="journal-body">${(e.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;").substring(0, 300)}</div>
       </div>`).join("");
+    const pane = document.getElementById("tab-journal");
+    if (pane && pane.classList.contains("active")) pane.scrollTop = 0;
   }
 
   /* ── Sidebar tabs ────────────────────────────────────────── */
   function switchTab(name) {
     document.querySelectorAll(".sidebar-tab").forEach(t => t.classList.toggle("active", t.textContent.toLowerCase() === name));
     document.querySelectorAll(".sidebar-tab-content").forEach(c => c.classList.toggle("active", c.id === "tab-" + name));
+    if (name === "journal") {
+      const pane = document.getElementById("tab-journal");
+      if (pane) pane.scrollTop = 0;
+    }
   }
 
   /* ── Diff panel ──────────────────────────────────────────── */
