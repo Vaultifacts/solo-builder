@@ -60,3 +60,28 @@ files not declared in `allowed_files.txt` (Direction B).
   is not affected by the DEV-phase narrowed local copy.
 - Direction B failure-path was not separately proven (Phase A proof suffices for exit-code
   coverage); AUDITOR may induce a Phase B violation if additional coverage is desired.
+
+## TASK-020 — AUDITOR
+
+Verdict: PASS
+
+Verification result:
+- `pwsh tools/audit_check.ps1` passed all required verification commands.
+- `claude/verify_last.json` reports `"passed": true`.
+
+Required command results:
+- `git-status` (required): PASS — only `claude/JOURNAL.md` modified (3 workflow tracking insertions).
+- `git-diff-stat` (required): PASS — `claude/JOURNAL.md | 3 +++` only.
+- `unittest-discover` (required: false): 1 failure (`test_stalled_shows_stuck`) — pre-existing,
+  unrelated to TASK-020 scope. Same failure present in TASK-019 audit. Not a blocker.
+
+Scope check:
+- Implementation confined to `tools/workflow_contract_check.ps1`, `.github/workflows/ci.yml`,
+  `claude/WORKFLOW_SPEC.md`. No files outside the declared allowed scope were modified.
+- `working_tree_dirty: false` in verify_last.json.
+
+Design review:
+- Phase B reads `allowed_files.txt` from `git show HEAD:...` — confirmed deliberate design,
+  documented in HANDOFF_DEV.md. Matches ARCHITECT handoff intent. Not drift.
+- `CLAUDE_ALLOW_NEW_FILES=1` override for new script commit: expected and correct per workflow.
+- `claude/allowed_files.txt` was not committed (correctly treated as runtime artifact).
