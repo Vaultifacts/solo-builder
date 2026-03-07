@@ -66,3 +66,4 @@
 - [2026-03-06T22:13:43.2995326Z] state transition: done/ARCHITECT -> done/AUDITOR | note: serial audit render check
 - [2026-03-06T22:13:47.2598274Z] state transition: done/AUDITOR -> verify/AUDITOR | note: restore verify state after serial audit render checks
 - [2026-03-06T22:14:56.9380230Z] state transition: verify/AUDITOR -> done/ARCHITECT | note: TASK-015 verified and closed
+- [2026-03-07T00:24:10.8125796Z] Starting TASK-016 to add canonical WORKFLOW_SPEC.md documentation.
