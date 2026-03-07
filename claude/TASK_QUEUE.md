@@ -462,3 +462,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-037
+Goal: Persist ResponseCache hit/miss stats to claude/cache/session_stats.json across CLI sessions; expose cumulative totals via GET /cache and dashboard Cache tab
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

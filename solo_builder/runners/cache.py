@@ -28,11 +28,13 @@ class ResponseCache:
 
     Per-session hit/miss counters are held in memory; call stats() to read them.
     Disk state (size, clear) reflects the persistent on-disk cache directory.
+    Cumulative hit/miss totals are persisted across sessions in session_stats.json.
     """
 
     # Approximate tokens per cached entry (prompt + response).
     # Used only for the estimated_tokens_saved figure in stats().
     _AVG_TOKENS_PER_ENTRY = 550
+    _STATS_FILE = "session_stats.json"
 
     def __init__(self, cache_dir: str = "") -> None:
         self._dir = Path(cache_dir or os.environ.get("CACHE_DIR", _DEFAULT_CACHE_DIR))
@@ -42,6 +44,30 @@ class ResponseCache:
             pass  # cache dir creation failure is non-fatal; get/set will no-op
         self._hits   = 0
         self._misses = 0
+        prev = self._load_cumulative()
+        self._cum_hits   = prev.get("cumulative_hits", 0)
+        self._cum_misses = prev.get("cumulative_misses", 0)
+
+    def _load_cumulative(self) -> dict:
+        """Load persisted cumulative stats from disk, returning empty dict on any error."""
+        try:
+            path = self._dir / self._STATS_FILE
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def persist_stats(self) -> None:
+        """Write updated cumulative hit/miss totals to session_stats.json."""
+        try:
+            data = {
+                "cumulative_hits":   self._cum_hits + self._hits,
+                "cumulative_misses": self._cum_misses + self._misses,
+                "updated_at":        datetime.now(timezone.utc).isoformat(),
+            }
+            path = self._dir / self._STATS_FILE
+            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception:
+            pass  # non-fatal
 
     # ── Key construction ──────────────────────────────────────────────────────
 
@@ -112,20 +138,26 @@ class ResponseCache:
             return 0
 
     def stats(self) -> dict:
-        """Return per-session hit/miss counters and disk-state summary.
+        """Return per-session hit/miss counters, cumulative totals, and disk-state summary.
 
         Keys
         ----
         hits                  : int   — cache hits this session
         misses                : int   — cache misses this session
+        cumulative_hits       : int   — total hits across all sessions (prev + current)
+        cumulative_misses     : int   — total misses across all sessions (prev + current)
         size                  : int   — entries currently on disk
-        estimated_tokens_saved: int   — hits × _AVG_TOKENS_PER_ENTRY
+        estimated_tokens_saved: int   — cumulative_hits × _AVG_TOKENS_PER_ENTRY
         """
+        cum_hits   = self._cum_hits + self._hits
+        cum_misses = self._cum_misses + self._misses
         return {
             "hits":                   self._hits,
             "misses":                 self._misses,
+            "cumulative_hits":        cum_hits,
+            "cumulative_misses":      cum_misses,
             "size":                   self.size(),
-            "estimated_tokens_saved": self._hits * self._AVG_TOKENS_PER_ENTRY,
+            "estimated_tokens_saved": cum_hits * self._AVG_TOKENS_PER_ENTRY,
         }
 
 

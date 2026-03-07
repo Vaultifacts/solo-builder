@@ -345,6 +345,7 @@ def _append_cache_session_stats(cache, steps: int) -> None:
     if cache is None:
         return
     try:
+        cache.persist_stats()
         s = cache.stats()
         total = s["hits"] + s["misses"]
         if total == 0:

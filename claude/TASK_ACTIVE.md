@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-036
+TASK-037
 
-Add cache stats widget to dashboard.html: poll GET /cache, show entries/tokens, Clear button
+Persist ResponseCache hit/miss stats to claude/cache/session_stats.json across CLI sessions; expose cumulative totals via GET /cache and dashboard Cache tab
