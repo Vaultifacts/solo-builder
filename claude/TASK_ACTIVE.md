@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-048
+TASK-049
 
-Add ?since=step_index query param to GET /history for incremental fetching (parity with /metrics/export)
+Batch: add ?since to /cache/history (049), incremental history polling in dashboard (050), cache history N-session dropdown (051)
