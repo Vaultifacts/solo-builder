@@ -780,3 +780,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-091
+Goal: Batch: GET /metrics endpoint (091), live step counter widget in dashboard header (092), dark/light theme toggle for dashboard SPA (093)
+
+Acceptance criteria:
+- TASK-091: GET /metrics returns a JSON summary of run health: {step, total, verified, pending, running, review, stalled, pct, elapsed_s, steps_per_min}; sources data from state file and step history.
+- TASK-092: Dashboard header displays a live step counter ("Step N / 70 — X verified") that updates every tick without a full page reload; counter reflects /status fields.
+- TASK-093: A theme toggle button in the dashboard header switches between dark and light CSS variable sets; selection persists in localStorage as "sb-theme"; default remains dark.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
