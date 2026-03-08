@@ -1798,6 +1798,54 @@ class TestMetrics(_Base):
         self.assertEqual(hist[1]["cumulative"], 5)
 
 
+class TestMetricsHealth(_Base):
+    """TASK-091: GET /metrics health summary fields."""
+
+    def test_health_fields_present(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/metrics").get_json()
+        for key in ("total", "verified", "pending", "running", "review", "stalled", "pct"):
+            self.assertIn(key, d)
+
+    def test_elapsed_s_and_steps_per_min_present(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/metrics").get_json()
+        self.assertIn("elapsed_s", d)
+        self.assertIn("steps_per_min", d)
+
+    def test_health_counts_match_dag(self):
+        state = self._make_state()
+        self._write_state(state)
+        d = self.client.get("/metrics").get_json()
+        # _make_state creates subtasks with mixed statuses; total must be positive
+        self.assertGreater(d["total"], 0)
+        self.assertEqual(d["verified"] + d["pending"] + d["running"] + d["review"], d["total"])
+
+    def test_pct_is_float(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/metrics").get_json()
+        self.assertIsInstance(d["pct"], float)
+
+    def test_stalled_zero_when_no_running(self):
+        state = self._make_state()
+        # Force all subtasks to Pending
+        for t in state["dag"].values():
+            for b in t["branches"].values():
+                for s in b["subtasks"].values():
+                    s["status"] = "Pending"
+        self._write_state(state)
+        d = self.client.get("/metrics").get_json()
+        self.assertEqual(d["stalled"], 0)
+
+    def test_analytics_still_present(self):
+        """Backward-compat: existing analytics fields still returned."""
+        self._write_state(self._make_state())
+        d = self.client.get("/metrics").get_json()
+        self.assertIn("summary", d)
+        self.assertIn("history", d)
+        self.assertIn("total_healed", d)
+
+
 class TestErrorHandlers(_Base):
 
     def test_404_returns_json(self):

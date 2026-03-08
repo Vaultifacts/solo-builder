@@ -1025,7 +1025,7 @@
       document.getElementById("hdr-total").textContent    = d.total;
       document.getElementById("hdr-bar").style.width      = d.pct + "%";
       document.getElementById("hdr-pct").textContent      = d.pct + "%";
-      document.getElementById("hdr-step").textContent     = "Step " + d.step;
+      document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified`;
       if (d.step > _prevStep) {
         const delta = (d.verified - _prevVerified) / (d.step - _prevStep);
         _rateEma = _rateEma === null ? delta : 0.3 * delta + 0.7 * _rateEma;
@@ -1789,7 +1789,18 @@
       } else {
         sparkline = `<div class="detail-placeholder" style="font-size:10px">Not enough data yet (run more steps).</div>`;
       }
+      const elapsedStr = d.elapsed_s != null ? `${d.elapsed_s}s` : "—";
+      const rateStr    = d.steps_per_min != null ? `${d.steps_per_min}/min` : "—";
       el.innerHTML =
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Run health</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Verified</span> ${d.verified ?? "—"} / ${d.total ?? "—"} (${d.pct ?? 0}%)</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Pending</span> ${d.pending ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Running</span> ${d.running ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Review</span> ${d.review ?? 0}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:${(d.stalled??0)>0?"var(--yellow)":"var(--cyan)"};min-width:110px;display:inline-block">Stalled</span> ${d.stalled ?? 0}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Elapsed</span> ${elapsedStr}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Step rate</span> ${rateStr}</div>` +
+        `<div style="font-size:10px;color:var(--dim);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px">Analytics</div>` +
         `<div style="font-size:10px;color:var(--dim);margin-bottom:2px">Verified/step over time:</div>${sparkline}` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total steps</span> ${s.total_steps ?? "—"}</div>` +
         `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total verifies</span> ${s.total_verifies ?? "—"}</div>` +
