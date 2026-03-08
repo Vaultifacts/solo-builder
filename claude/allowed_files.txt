@@ -7,6 +7,8 @@ claude/STATE.json
 claude/allowed_files.txt
 claude/NEXT_ACTION.md
 claude/verify_last.json
+claude/arch_score_baseline.json
+claude/arch_last.json
 claude/TASK_ACTIVE.md
 claude/TASK_QUEUE.md
 solo_builder/solo_builder_cli.py
@@ -27,6 +29,7 @@ solo_builder/runners/cache.py
 solo_builder/runners/anthropic_runner.py
 solo_builder/runners/executor.py
 solo_builder/tests/test_cache.py
+tools/audit_check.ps1
 tools/cache_stats.py
 tools/auto_batch.py
 tools/schedule_auto_batch.ps1

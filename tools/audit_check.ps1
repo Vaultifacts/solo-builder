@@ -9,6 +9,14 @@ $resultPath = Join-Path $claudeDir 'verify_last.json'
 $statePath = Join-Path $claudeDir 'STATE.json'
 $nextActionCheckPath = Join-Path $PSScriptRoot 'check_next_action_consistency.ps1'
 
+# Autonomous Architecture Auditor -- resolved from env var or sibling directory.
+$auditorDir = if ($env:ARCH_AUDITOR_PATH) {
+  $env:ARCH_AUDITOR_PATH
+} else {
+  $candidate = Join-Path (Split-Path $repoRoot -Parent) 'Autonomous-Architecture-Auditor'
+  if (Test-Path (Join-Path $candidate 'main.py')) { $candidate } else { $null }
+}
+
 function Get-TrackedChangedPaths {
   $lines = @(git status --porcelain 2>$null)
   if ($LASTEXITCODE -ne 0) { throw 'git status --porcelain failed.' }
@@ -39,11 +47,16 @@ function Invoke-CommandWithTimeout {
     $proc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/s', '/c', $Command -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
     $timedOut = -not $proc.WaitForExit($TimeoutSec * 1000)
     if ($timedOut) { try { $proc.Kill() } catch {} }
+    # Scalars only -- strip PSObject metadata that Get-Content -Raw attaches.
+    # Prevents ConvertTo-Json circular-reference infinite loops in PS 5.1.
+    $ec  = if ($timedOut) { 124 } else { [int]$proc.ExitCode }
+    $out = if (Test-Path $stdoutFile) { [string](Get-Content -Raw -Path $stdoutFile) } else { '' }
+    $err = if (Test-Path $stderrFile) { [string](Get-Content -Raw -Path $stderrFile) } else { '' }
     [pscustomobject]@{
-      exit_code = if ($timedOut) { 124 } else { $proc.ExitCode }
+      exit_code = $ec
       timed_out = $timedOut
-      stdout = if (Test-Path $stdoutFile) { Get-Content -Raw -Path $stdoutFile } else { '' }
-      stderr = if (Test-Path $stderrFile) { Get-Content -Raw -Path $stderrFile } else { '' }
+      stdout    = $out
+      stderr    = $err
     }
   } finally {
     Remove-Item -Force -ErrorAction SilentlyContinue $stdoutFile, $stderrFile
@@ -102,6 +115,53 @@ if ($workingTreeDirty) {
   $message = if ($passedAll) { 'All required verification commands passed.' } else { "$requiredFailures required command(s) failed." }
 }
 
+# -- Architecture audit (non-blocking -- appended as extra data) ------------
+$archResult = [pscustomobject]@{ ran = $false; skipped_reason = 'auditor not found' }
+if ($auditorDir) {
+  $tmpOut = Join-Path ([IO.Path]::GetTempPath()) "sb_arch_$([DateTime]::UtcNow.Ticks)"
+  $null = New-Item -ItemType Directory -Path $tmpOut -Force -ErrorAction SilentlyContinue
+  try {
+    Write-Host "Running: architecture-audit"
+    $env:PYTHONIOENCODING = 'utf-8'
+    # Use & (synchronous call operator) -- avoids Start-Process/WaitForExit
+    # deadlock on shared-console child processes on Windows.
+    Push-Location $auditorDir
+    & python main.py "$repoRoot" --output-format json-summary --output-dir "$tmpOut" --quiet --diff-from master --plugins-dir plugins --no-snapshot
+    $archExitCode = $LASTEXITCODE
+    Pop-Location
+
+    $archFile = Get-ChildItem -Path $tmpOut -Filter '*.json-summary' -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($archFile -and ($archExitCode -le 3)) {
+      $ad = Get-Content -Raw -Path $archFile.FullName | ConvertFrom-Json
+      # Scalars only -- nested PSCustomObjects from ConvertFrom-Json cause
+      # ConvertTo-Json to loop forever in PS 5.1 (circular reference bug).
+      # The full json-summary file is preserved in claude/arch_last.json.
+      Copy-Item -Path $archFile.FullName -Destination (Join-Path $claudeDir 'arch_last.json') -Force -ErrorAction SilentlyContinue
+      $archResult = [pscustomobject]@{
+        ran            = $true
+        health_score   = [double]$ad.health_score
+        risk_score     = [double]$ad.risk_score
+        critical       = [int]$ad.counts.critical
+        major          = [int]$ad.counts.major
+        minor          = [int]$ad.counts.minor
+        gaps           = [int]$ad.counts.gaps
+        recommendation = [string]$ad.recommendation
+        exit_code      = [int]$archExitCode
+      }
+    } else {
+      $archResult = [pscustomobject]@{
+        ran           = $false
+        skipped_reason = "exit $archExitCode"
+      }
+    }
+  } catch {
+    $archResult = [pscustomobject]@{ ran = $false; skipped_reason = "exception: $_" }
+  } finally {
+    Remove-Item -Recurse -Force $tmpOut -ErrorAction SilentlyContinue
+  }
+}
+
 [pscustomobject]@{
   generated_at = [DateTime]::UtcNow.ToString('o')
   passed = $passedAll
@@ -110,6 +170,7 @@ if ($workingTreeDirty) {
   dirty_files = $dirtyFiles
   dirty_files_remaining = $dirtyFilesRemaining
   results = $results
+  architecture = $archResult
 } | ConvertTo-Json -Depth 12 | Set-Content -Path $resultPath -Encoding UTF8
 
 $state = Get-Content -Raw -Path $statePath | ConvertFrom-Json

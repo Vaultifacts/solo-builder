@@ -41,6 +41,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TASK_QUEUE_PATH = REPO_ROOT / "claude" / "TASK_QUEUE.md"
 STATE_PATH = REPO_ROOT / "claude" / "STATE.json"
+ARCH_BASELINE_PATH = REPO_ROOT / "claude" / "arch_score_baseline.json"
+VERIFY_LAST_PATH = REPO_ROOT / "claude" / "verify_last.json"
 TOOLS_DIR = REPO_ROOT / "tools"
 SOLO_DIR = REPO_ROOT / "solo_builder"
 
@@ -423,6 +425,86 @@ def generate_next_batch(completed_count: int, dry_run: bool) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Architecture gate
+# ---------------------------------------------------------------------------
+
+def _read_arch_score() -> float | None:
+    """Read architecture.health_score from verify_last.json; return None if absent."""
+    try:
+        import json as _json
+        data = _json.loads(VERIFY_LAST_PATH.read_text(encoding="utf-8"))
+        arch = data.get("architecture") or {}
+        if arch.get("ran") and arch.get("health_score") is not None:
+            return float(arch["health_score"])
+    except Exception:
+        pass
+    return None
+
+
+def _read_arch_baseline() -> float | None:
+    """Read the stored master architecture health score baseline."""
+    try:
+        import json as _json
+        data = _json.loads(ARCH_BASELINE_PATH.read_text(encoding="utf-8"))
+        return float(data["score"])
+    except Exception:
+        return None
+
+
+def _write_arch_baseline(score: float, tag: str) -> None:
+    """Persist architecture health score as the new master baseline."""
+    import json as _json
+    ARCH_BASELINE_PATH.write_text(
+        _json.dumps({"score": score, "tag": tag}, indent=2),
+        encoding="utf-8",
+    )
+
+
+def check_architecture_gate(
+    task_id: str,
+    min_score: float = 60.0,
+    max_drop: float = 5.0,
+) -> None:
+    """
+    Raise RuntimeError if architecture health score fails the gate.
+
+    Rules (both must pass):
+      1. Absolute floor: score >= min_score  (default 60)
+      2. Regression cap: score >= baseline - max_drop  (default 5 pts, if baseline exists)
+
+    If the architecture audit did not run (auditor not installed), the gate
+    is skipped silently so auto_batch works without the auditor.
+    """
+    score = _read_arch_score()
+    if score is None:
+        print("  Architecture gate: auditor did not run — skipping.", flush=True)
+        return
+
+    print(f"  Architecture health score: {score:.1f}", flush=True)
+
+    if score < min_score:
+        raise RuntimeError(
+            f"Architecture gate FAILED for {task_id}: "
+            f"score {score:.1f} < minimum {min_score:.1f}. "
+            f"Fix architecture issues before merging."
+        )
+
+    baseline = _read_arch_baseline()
+    if baseline is not None:
+        drop = baseline - score
+        if drop > max_drop:
+            raise RuntimeError(
+                f"Architecture gate FAILED for {task_id}: "
+                f"score {score:.1f} dropped {drop:.1f} pts from baseline {baseline:.1f} "
+                f"(max allowed drop: {max_drop:.1f}). "
+                f"Resolve new architecture regressions before merging."
+            )
+        print(f"  Architecture baseline: {baseline:.1f}  drop: {drop:+.1f}  OK", flush=True)
+    else:
+        print(f"  Architecture baseline: (none — will establish after merge)", flush=True)
+
+
+# ---------------------------------------------------------------------------
 # Single-batch executor
 # ---------------------------------------------------------------------------
 
@@ -490,6 +572,7 @@ def execute_batch(task: dict, dry_run: bool, tag: str) -> str:
     _pwsh("advance_state.ps1", "-ToPhase", "verify", "-ToRole", "AUDITOR")
     _pwsh("claude_orchestrate.ps1")
     _pwsh("audit_check.ps1")
+    check_architecture_gate(task_id)
 
     # 7. Advance: verify/AUDITOR → done/AUDITOR
     print("\n[6/8] advance_state → done/AUDITOR", flush=True)
@@ -513,6 +596,12 @@ def execute_batch(task: dict, dry_run: bool, tag: str) -> str:
         f"Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
     )
     _git("tag", new_tag)
+
+    # Update architecture score baseline now that master has this task's changes.
+    arch_score = _read_arch_score()
+    if arch_score is not None:
+        _write_arch_baseline(arch_score, new_tag)
+        print(f"  Architecture baseline updated: {arch_score:.1f} @ {new_tag}", flush=True)
 
     print(f"\n  OK  {task_id} complete — tagged {new_tag}", flush=True)
     return new_tag
