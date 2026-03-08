@@ -604,6 +604,12 @@
     <button id="btn-stop" onclick="stopRun()" title="Stop auto-run after current step" style="background:#3a1a1a;color:#f77;border:1px solid #733;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏹ Stop</button>
   </div>
   <button id="btn-poll-pause" onclick="togglePollPause()" title="Pause/resume live polling" style="background:#1a2a1a;color:#6f6;border:1px solid #373;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏸ Pause</button>
+  <select id="poll-interval-select" onchange="setPollInterval(+this.value)" title="Poll interval" style="background:var(--bg2);color:var(--dim);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:1px 4px;font-family:var(--font)">
+    <option value="2000">2s</option>
+    <option value="5000">5s</option>
+    <option value="10000">10s</option>
+    <option value="30000">30s</option>
+  </select>
   <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
 </header>
 <div id="stale-banner" style="display:none;background:#78350f;color:#fef3c7;font-size:11px;text-align:center;padding:4px 8px">
@@ -696,12 +702,17 @@
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-history">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <input id="history-filter" type="text" placeholder="Filter subtask/status…"
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input id="history-filter" type="text" placeholder="Filter subtask/status…"
+                 oninput="_historyPage=1;renderHistory(_historyRows); _updateHistoryExportLinks()"
+                 style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+          <a id="history-export-csv"  class="toolbar-btn" href="/history/export" download="history.csv" style="font-size:9px;padding:2px 5px">CSV</a>
+          <a id="history-export-json" class="toolbar-btn" href="/history/export?format=json" download="history.json" style="font-size:9px;padding:2px 5px">JSON</a>
+        </div>
+        <input id="history-branch-filter" type="text" placeholder="Filter branch…"
                oninput="_historyPage=1;renderHistory(_historyRows); _updateHistoryExportLinks()"
-               style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
-        <a id="history-export-csv"  class="toolbar-btn" href="/history/export" download="history.csv" style="font-size:9px;padding:2px 5px">CSV</a>
-        <a id="history-export-json" class="toolbar-btn" href="/history/export?format=json" download="history.json" style="font-size:9px;padding:2px 5px">JSON</a>
+               style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
       </div>
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
@@ -894,7 +905,8 @@
   "use strict";
 
   const BASE = "";          // same origin
-  const POLL_MS = 2000;
+  let POLL_MS = parseInt(localStorage.getItem("sb-poll-ms") || "2000", 10);
+  let _pollIntervalId = null;
 
   let selectedTask  = null;
   let tasksCache    = {};    // id → task data from /tasks/<id> (detailed)
@@ -1411,8 +1423,10 @@
   }
 
   function _updateHistoryExportLinks() {
-    const q = (document.getElementById("history-filter")?.value || "").trim();
-    const qs = q ? `&subtask=${encodeURIComponent(q)}` : "";
+    const q  = (document.getElementById("history-filter")?.value || "").trim();
+    const bq = (document.getElementById("history-branch-filter")?.value || "").trim();
+    let qs = q  ? `&subtask=${encodeURIComponent(q)}`  : "";
+    if (bq) qs += `&branch=${encodeURIComponent(bq)}`;
     const csvHref  = `/history/export${qs ? "?" + qs.slice(1) : ""}`;
     const jsonHref = `/history/export?format=json${qs}`;
     // History tab links
@@ -1427,7 +1441,8 @@
     if (tabJson) tabJson.href = jsonHref;
     // Show filter hint in Export tab
     const hint = document.getElementById("export-tab-filter-hint");
-    if (hint) hint.textContent = q ? `(filtered: "${q}")` : "";
+    const parts = [q ? `"${q}"` : "", bq ? `branch:"${bq}"` : ""].filter(Boolean);
+    if (hint) hint.textContent = parts.length ? `(filtered: ${parts.join(", ")})` : "";
   }
 
   function renderHistory(events) {
@@ -1439,10 +1454,12 @@
       return;
     }
     const filterEl = document.getElementById("history-filter");
-    const q = filterEl ? filterEl.value.trim().toLowerCase() : "";
-    const filtered = q
+    const q  = filterEl ? filterEl.value.trim().toLowerCase() : "";
+    const bq = (document.getElementById("history-branch-filter")?.value || "").trim().toLowerCase();
+    let filtered = q
       ? events.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
       : events;
+    if (bq) filtered = filtered.filter(e => e.branch.toLowerCase().includes(bq));
     _historyRowsFiltered = filtered;
     const total = filtered.length;
     const pages = Math.max(1, Math.ceil(total / _PAGE_SIZE));
@@ -2352,8 +2369,19 @@
     _applyTheme(next);
   };
 
+  window.setPollInterval = function (ms) {
+    POLL_MS = ms;
+    localStorage.setItem("sb-poll-ms", ms);
+    if (_pollIntervalId !== null) clearInterval(_pollIntervalId);
+    _pollIntervalId = setInterval(tick, POLL_MS);
+  };
+
+  // Restore dropdown to saved value
+  const pollSel = document.getElementById("poll-interval-select");
+  if (pollSel) pollSel.value = String(POLL_MS);
+
   tick();
-  setInterval(tick, POLL_MS);
+  _pollIntervalId = setInterval(tick, POLL_MS);
 })();
 </script>
 </body>

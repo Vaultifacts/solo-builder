@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-079
+TASK-082
 
-Batch: GET /subtask/<id>/output endpoint (079), auto-webhook on completion in dashboard (080), Fire Webhook button in Export tab (081)
+Batch: GET /tasks/export DAG JSON download (082), history branch filter UI (083), poll interval selector (084)
