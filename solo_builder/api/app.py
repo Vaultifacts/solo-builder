@@ -779,6 +779,67 @@ def update_config():
         return jsonify({"error": "Could not update settings."}), 500
 
 
+_CONFIG_DEFAULTS = {
+    "STALL_THRESHOLD": 5,
+    "SNAPSHOT_INTERVAL": 20,
+    "DAG_UPDATE_INTERVAL": 5,
+    "PDF_OUTPUT_PATH": "./snapshots/",
+    "STATE_PATH": "./state/solo_builder_state.json",
+    "JOURNAL_PATH": "journal.md",
+    "AUTO_SAVE_INTERVAL": 10,
+    "AUTO_STEP_DELAY": 1.5,
+    "MAX_SUBTASKS_PER_BRANCH": 20,
+    "MAX_BRANCHES_PER_TASK": 10,
+    "VERBOSITY": "INFO",
+    "BAR_WIDTH": 20,
+    "MAX_ALERTS": 10,
+    "EXECUTOR_MAX_PER_STEP": 6,
+    "EXECUTOR_VERIFY_PROBABILITY": 0.9,
+    "CLAUDE_TIMEOUT": 60,
+    "CLAUDE_ALLOWED_TOOLS": "",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_MAX_TOKENS": 256,
+    "REVIEW_MODE": False,
+    "WEBHOOK_URL": "",
+}
+
+
+@app.post("/config/reset")
+def reset_config():
+    """Restore config/settings.json to compiled-in defaults.
+
+    Returns {ok, restored, config} where config is the resulting settings.
+    409 if settings file does not exist.
+    """
+    if not SETTINGS_PATH.exists():
+        return jsonify({"ok": False, "reason": "Settings file not found."}), 409
+    try:
+        SETTINGS_PATH.write_text(json.dumps(_CONFIG_DEFAULTS, indent=4), encoding="utf-8")
+        return jsonify({"ok": True, "restored": True, "config": _CONFIG_DEFAULTS})
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+
+
+_SHORTCUTS = [
+    {"key": "j",    "description": "Select next task"},
+    {"key": "k",    "description": "Select previous task"},
+    {"key": "←",    "description": "History: previous page"},
+    {"key": "→",    "description": "History: next page"},
+    {"key": "r",    "description": "Run one step"},
+    {"key": "g",    "description": "Open Graph tab"},
+    {"key": "v",    "description": "Focus Verify input"},
+    {"key": "p",    "description": "Pause / resume polling"},
+    {"key": "?",    "description": "Toggle keyboard shortcut help"},
+    {"key": "Esc",  "description": "Close modal / clear search"},
+]
+
+
+@app.get("/shortcuts")
+def shortcuts():
+    """Return all active keyboard shortcuts as a JSON array of {key, description}."""
+    return jsonify({"shortcuts": _SHORTCUTS, "count": len(_SHORTCUTS)})
+
+
 @app.get("/graph")
 def graph():
     """Return ASCII dependency graph as JSON."""
