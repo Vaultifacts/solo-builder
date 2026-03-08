@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, jsonify, abort, send_from_directory, request, Response
@@ -1280,6 +1281,77 @@ def dag_import():
         "exported_step": body.get("exported_step"),
     }), encoding="utf-8")
     return jsonify({"ok": True, "tasks": len(dag)}), 202
+
+
+# ---------------------------------------------------------------------------
+# GET /subtask/<subtask_id>  (TASK-076)
+# ---------------------------------------------------------------------------
+
+@app.get("/subtask/<subtask_id>")
+def get_subtask(subtask_id: str):
+    """Return current state of a named subtask (e.g. 'A1') across the DAG."""
+    dag = _load_dag()
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            subtasks = branch_data.get("subtasks", {})
+            if subtask_id in subtasks:
+                st = subtasks[subtask_id]
+                return jsonify({
+                    "subtask": subtask_id,
+                    "task": task_id,
+                    "branch": branch_name,
+                    "status": st.get("status", "Pending"),
+                    "output": st.get("output", ""),
+                    "history": st.get("history", []),
+                })
+    abort(404, description=f"Subtask '{subtask_id}' not found.")
+
+
+# ---------------------------------------------------------------------------
+# POST /webhook  (TASK-078)
+# ---------------------------------------------------------------------------
+
+@app.post("/webhook")
+def fire_webhook():
+    """POST completion payload to WEBHOOK_URL if configured and pipeline is complete."""
+    import urllib.request
+    state = _load_state()
+    dag = state.get("dag", {})
+    step = state.get("step", 0)
+    total = verified = 0
+    for t in dag.values():
+        for b in t.get("branches", {}).values():
+            for s in b.get("subtasks", {}).values():
+                total += 1
+                if s.get("status") == "Verified":
+                    verified += 1
+    pct = round(verified / total * 100, 1) if total else 0.0
+    webhook_url = ""
+    try:
+        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        webhook_url = cfg.get("WEBHOOK_URL", "")
+    except Exception:
+        pass
+    if not webhook_url:
+        return jsonify({"ok": False, "reason": "WEBHOOK_URL not configured"}), 200
+    payload = json.dumps({
+        "event": "complete",
+        "step": step,
+        "total": total,
+        "verified": verified,
+        "pct": pct,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }).encode("utf-8")
+    try:
+        req = urllib.request.Request(
+            webhook_url, data=payload,
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10):
+            pass
+        return jsonify({"ok": True, "sent": True, "url": webhook_url}), 200
+    except Exception as exc:
+        return jsonify({"ok": False, "sent": False, "error": str(exc)}), 200
 
 
 # ---------------------------------------------------------------------------
