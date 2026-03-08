@@ -951,6 +951,128 @@ class TestBranches(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /branches  (TASK-085)
+# ---------------------------------------------------------------------------
+
+class TestBranchesAll(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/branches")
+        self.assertEqual(r.status_code, 200)
+
+    def test_response_has_branches_and_count(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/branches").get_json()
+        self.assertIn("branches", d)
+        self.assertIn("count", d)
+
+    def test_each_branch_has_required_fields(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/branches").get_json()
+        self.assertGreater(len(d["branches"]), 0)
+        br = d["branches"][0]
+        for key in ("task", "branch", "total", "verified", "running", "pending", "pct"):
+            self.assertIn(key, br)
+
+    def test_counts_are_correct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}))
+        d = self.client.get("/branches").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["verified"], 1)
+        self.assertEqual(br["running"], 1)
+        self.assertEqual(br["pending"], 1)
+        self.assertEqual(br["total"], 3)
+
+    def test_task_filter(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/branches?task=Task+0").get_json()
+        self.assertTrue(all(b["task"] == "Task 0" for b in d["branches"]))
+
+    def test_task_filter_no_match(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/branches?task=ZZZ").get_json()
+        self.assertEqual(d["branches"], [])
+        self.assertEqual(d["count"], 0)
+
+    def test_pct_calculated(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/branches").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["pct"], 50.0)
+
+    def test_empty_state_returns_empty(self):
+        state = {"step": 0, "dag": {}}
+        self._write_state(state)
+        d = self.client.get("/branches").get_json()
+        self.assertEqual(d["branches"], [])
+
+
+# ---------------------------------------------------------------------------
+# GET /subtasks  (TASK-087)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksAll(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtasks")
+        self.assertEqual(r.status_code, 200)
+
+    def test_response_has_subtasks_and_count(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/subtasks").get_json()
+        self.assertIn("subtasks", d)
+        self.assertIn("count", d)
+
+    def test_each_subtask_has_required_fields(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks").get_json()
+        self.assertGreater(len(d["subtasks"]), 0)
+        st = d["subtasks"][0]
+        for key in ("subtask", "task", "branch", "status", "output_length"):
+            self.assertIn(key, st)
+
+    def test_output_not_included_by_default(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks").get_json()
+        self.assertNotIn("output", d["subtasks"][0])
+
+    def test_output_included_with_param(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?output=1").get_json()
+        self.assertIn("output", d["subtasks"][0])
+
+    def test_status_filter(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}))
+        d = self.client.get("/subtasks?status=Verified").get_json()
+        self.assertTrue(all(s["status"] == "Verified" for s in d["subtasks"]))
+
+    def test_task_filter(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?task=Task+0").get_json()
+        self.assertTrue(all(s["task"] == "Task 0" for s in d["subtasks"]))
+
+    def test_task_filter_no_match(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/subtasks?task=ZZZ").get_json()
+        self.assertEqual(d["subtasks"], [])
+
+    def test_branch_filter(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?branch=Branch+A").get_json()
+        self.assertTrue(all(s["branch"] == "Branch A" for s in d["subtasks"]))
+
+    def test_output_length_reflects_content(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "hello"
+        self._write_state(state)
+        d = self.client.get("/subtasks").get_json()
+        st = next(s for s in d["subtasks"] if s["subtask"] == "A1")
+        self.assertEqual(st["output_length"], 5)
+
+
+# ---------------------------------------------------------------------------
 # POST /rename
 # ---------------------------------------------------------------------------
 

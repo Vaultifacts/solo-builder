@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-082
+TASK-085
 
-Batch: GET /tasks/export DAG JSON download (082), history branch filter UI (083), poll interval selector (084)
+Batch: GET /branches summary (085), dashboard branch drill-down (086), GET /subtasks list endpoint (087)

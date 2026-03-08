@@ -1498,16 +1498,38 @@
 
   async function pollBranches() {
     try {
-      if (!selectedTask) {
-        document.getElementById("branches-content").innerHTML = `<div class="detail-placeholder">Select a task to see branches.</div>`;
-        return;
+      if (selectedTask) {
+        const d = await api("/branches/" + encodeURIComponent(selectedTask));
+        renderBranchesDetail(d);
+      } else {
+        const d = await api("/branches");
+        renderBranchesAll(d);
       }
-      const d = await api("/branches/" + encodeURIComponent(selectedTask));
-      renderBranches(d);
     } catch (_) {}
   }
 
-  function renderBranches(d) {
+  function renderBranchesAll(d) {
+    const el = document.getElementById("branches-content");
+    if (!d.branches || d.branches.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No branches yet.</div>`;
+      return;
+    }
+    const barW = 60;
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} branches across all tasks</div>`;
+    d.branches.forEach(br => {
+      const w = Math.round(br.pct * barW / 100);
+      html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="selectTask(${JSON.stringify(br.task)})" title="Click to select task">`;
+      html += `<span style="color:var(--dim);font-size:10px;min-width:60px;flex-shrink:0">${br.task}</span>`;
+      html += `<span style="color:var(--cyan);min-width:80px;flex-shrink:0">${br.branch}</span>`;
+      html += `<div style="width:${barW}px;height:6px;background:var(--bg2);border-radius:3px;flex-shrink:0"><div style="width:${w}px;height:6px;background:var(--green);border-radius:3px"></div></div>`;
+      html += `<span style="color:var(--dim);font-size:10px">${br.verified}/${br.total}</span>`;
+      if (br.running > 0) html += `<span style="font-size:10px;color:var(--cyan)">${br.running}▶</span>`;
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  function renderBranchesDetail(d) {
     const el = document.getElementById("branches-content");
     if (!d.branches || d.branches.length === 0) {
       el.innerHTML = `<div class="detail-placeholder">No branches.</div>`;
