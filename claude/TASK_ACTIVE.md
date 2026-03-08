@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-070
+TASK-073
 
-Batch: History tab unread badge (070), /status latency display (071), keyboard shortcut help overlay (072)
+Batch: dashboard polling pause/resume button (073), subtask detail modal on history row click (074), GET /settings endpoint + dashboard settings panel (075)

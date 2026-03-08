@@ -402,6 +402,7 @@ def history():
     for task_id, task_data in dag.items():
         for branch_name, branch_data in task_data.get("branches", {}).items():
             for st_name, st_data in branch_data.get("subtasks", {}).items():
+                st_output = st_data.get("output", "")
                 for h in st_data.get("history", []):
                     events.append({
                         "step": h.get("step", 0),
@@ -409,6 +410,7 @@ def history():
                         "task": task_id,
                         "branch": branch_name,
                         "status": h.get("status", "?"),
+                        "output": st_output,
                     })
     if since is not None:
         events = [e for e in events if e["step"] > since]
