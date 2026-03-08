@@ -1471,6 +1471,20 @@ class TestDagExport(_Base):
         r = self.client.get("/dag/export")
         self.assertEqual(r.status_code, 200)
 
+    # /tasks/export alias (TASK-082)
+
+    def test_tasks_export_alias_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/tasks/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_tasks_export_alias_returns_same_dag(self):
+        self._write_state(self._make_state())
+        d1 = self.client.get("/dag/export").get_json()
+        d2 = self.client.get("/tasks/export").get_json()
+        self.assertEqual(d1, d2)
+
+
 
 class TestDagImport(_Base):
 

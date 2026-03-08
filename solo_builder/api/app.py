@@ -1237,6 +1237,7 @@ DAG_EXPORT_PATH      = _PROJECT_ROOT / "dag_export.json"
 DAG_IMPORT_TRIGGER   = _PROJECT_ROOT / "state" / "dag_import_trigger.json"
 
 
+@app.get("/tasks/export")
 @app.get("/dag/export")
 def dag_export():
     """Return the current DAG structure as a downloadable JSON file."""
