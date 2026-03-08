@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-076
+TASK-079
 
-Batch: GET /subtask/<id> endpoint (076), global task search bar (077), task completion webhook POST (078)
+Batch: GET /subtask/<id>/output endpoint (079), auto-webhook on completion in dashboard (080), Fire Webhook button in Export tab (081)
