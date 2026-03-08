@@ -1073,6 +1073,93 @@ class TestSubtasksAll(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /subtasks/export  (TASK-088)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksExport(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtasks/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_default_is_csv(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtasks/export")
+        self.assertIn("text/csv", r.content_type)
+
+    def test_csv_has_header(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/subtasks/export")
+        text = r.data.decode("utf-8")
+        self.assertIn("subtask", text)
+        self.assertIn("status", text)
+
+    def test_json_format(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/subtasks/export?format=json")
+        self.assertIn("application/json", r.content_type)
+        d = r.get_json()
+        self.assertIsInstance(d, list)
+
+    def test_json_has_required_fields(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks/export?format=json").get_json()
+        self.assertGreater(len(d), 0)
+        row = d[0]
+        for key in ("subtask", "task", "branch", "status", "output_length"):
+            self.assertIn(key, row)
+
+    def test_status_filter(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/subtasks/export?format=json&status=Verified").get_json()
+        self.assertTrue(all(r["status"] == "Verified" for r in d))
+
+    def test_task_filter(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks/export?format=json&task=Task+0").get_json()
+        self.assertTrue(all(r["task"] == "Task 0" for r in d))
+
+    def test_branch_filter(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks/export?format=json&branch=Branch+A").get_json()
+        self.assertTrue(all(r["branch"] == "Branch A" for r in d))
+
+    def test_attachment_header_csv(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtasks/export")
+        self.assertIn("subtasks.csv", r.headers.get("Content-Disposition", ""))
+
+    def test_attachment_header_json(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtasks/export?format=json")
+        self.assertIn("subtasks.json", r.headers.get("Content-Disposition", ""))
+
+
+# ---------------------------------------------------------------------------
+# GET /timeline enhanced  (TASK-090)
+# ---------------------------------------------------------------------------
+
+class TestTimelineEnhanced(_Base):
+
+    def test_timeline_has_last_update(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = 7
+        self._write_state(state)
+        d = self.client.get("/timeline/A1").get_json()
+        self.assertIn("last_update", d)
+        self.assertEqual(d["last_update"], 7)
+
+    def test_timeline_last_update_none_when_absent(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"].pop("last_update", None)
+        self._write_state(state)
+        d = self.client.get("/timeline/A1").get_json()
+        self.assertIn("last_update", d)
+        self.assertIsNone(d["last_update"])
+
+
+# ---------------------------------------------------------------------------
 # POST /rename
 # ---------------------------------------------------------------------------
 

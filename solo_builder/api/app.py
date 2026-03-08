@@ -629,6 +629,52 @@ def subtasks_all():
     return jsonify({"subtasks": result, "count": len(result)})
 
 
+@app.get("/subtasks/export")
+def subtasks_export():
+    """Export all subtasks as CSV (default) or JSON (?format=json).
+
+    Supports same ?task=, ?branch=, ?status= filters as GET /subtasks.
+    CSV columns: subtask,task,branch,status,output_length
+    """
+    dag = _load_dag()
+    task_q   = (request.args.get("task")   or "").strip().lower()
+    branch_q = (request.args.get("branch") or "").strip().lower()
+    status_q = (request.args.get("status") or "").strip().lower()
+    fmt = (request.args.get("format") or "csv").strip().lower()
+    rows = []
+    for task_id, task_data in dag.items():
+        if task_q and task_q not in task_id.lower():
+            continue
+        for br_name, br_data in task_data.get("branches", {}).items():
+            if branch_q and branch_q not in br_name.lower():
+                continue
+            for st_name, st_data in br_data.get("subtasks", {}).items():
+                st_status = st_data.get("status", "Pending")
+                if status_q and status_q not in st_status.lower():
+                    continue
+                rows.append({
+                    "subtask": st_name,
+                    "task": task_id,
+                    "branch": br_name,
+                    "status": st_status,
+                    "output_length": len(st_data.get("output", "")),
+                })
+    if fmt == "json":
+        data = json.dumps(rows, indent=2).encode("utf-8")
+        return Response(
+            data, mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=subtasks.json"},
+        )
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["subtask", "task", "branch", "status", "output_length"])
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        buf.getvalue(), mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=subtasks.csv"},
+    )
+
+
 @app.get("/branches/<path:task_id>")
 def branches(task_id: str):
     """Per-task branch listing with subtask counts and status breakdown."""
@@ -673,6 +719,7 @@ def timeline(subtask: str):
                         "output": st_data.get("output", ""),
                         "history": st_data.get("history", []),
                         "tools": st_data.get("tools", ""),
+                        "last_update": st_data.get("last_update"),
                     })
     abort(404, description=f"Subtask '{subtask}' not found.")
 

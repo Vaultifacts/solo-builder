@@ -679,6 +679,7 @@
       <button class="sidebar-tab" onclick="switchTab('settings')">Settings</button>
       <button class="sidebar-tab" onclick="switchTab('priority')">Priority</button>
       <button class="sidebar-tab" onclick="switchTab('stalled')">Stalled</button>
+      <button class="sidebar-tab" data-tab="subtasks" onclick="switchTab('subtasks')">Subtasks</button>
       <button class="sidebar-tab" onclick="switchTab('agents')">Agents</button>
       <button class="sidebar-tab" onclick="switchTab('forecast')">Forecast</button>
       <button class="sidebar-tab" onclick="switchTab('metrics')">Metrics</button>
@@ -742,6 +743,18 @@
     <div class="sidebar-tab-content" id="tab-stalled">
       <div id="stalled-content">
         <div class="detail-placeholder">Loading stalled subtasks…</div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-subtasks">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <input id="subtasks-filter" type="text" placeholder="Filter subtask/status/branch…"
+               oninput="renderSubtasks()"
+               style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+        <a class="toolbar-btn" href="/subtasks/export" download="subtasks.csv" style="font-size:9px;padding:2px 5px">CSV</a>
+        <a class="toolbar-btn" href="/subtasks/export?format=json" download="subtasks.json" style="font-size:9px;padding:2px 5px">JSON</a>
+      </div>
+      <div id="subtasks-content">
+        <div class="detail-placeholder">Loading subtasks…</div>
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-agents">
@@ -1665,6 +1678,46 @@
     } catch(_) { toast("Network error"); }
   };
 
+  /* ── Subtasks tab ───────────────────────────────────────── */
+  let _subtasksAll = [];
+
+  async function pollSubtasks() {
+    try {
+      const d = await api("/subtasks");
+      _subtasksAll = d.subtasks || [];
+      renderSubtasks();
+    } catch (_) {}
+  }
+
+  function renderSubtasks() {
+    const el = document.getElementById("subtasks-content");
+    if (!el) return;
+    const q = (document.getElementById("subtasks-filter")?.value || "").trim().toLowerCase();
+    const rows = q
+      ? _subtasksAll.filter(s =>
+          s.subtask.toLowerCase().includes(q) ||
+          s.status.toLowerCase().includes(q) ||
+          s.branch.toLowerCase().includes(q) ||
+          s.task.toLowerCase().includes(q))
+      : _subtasksAll;
+    if (rows.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">${q ? "No matching subtasks." : "No subtasks yet."}</div>`;
+      return;
+    }
+    const statusColor = s => ({Verified:"var(--green)",Running:"var(--cyan)",Review:"var(--yellow)",Pending:"var(--dim)"})[s]||"var(--text)";
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:4px">${rows.length} subtask${rows.length!==1?"s":""}</div>`;
+    rows.forEach(s => {
+      const ev = {subtask:s.subtask,task:s.task,branch:s.branch,status:s.status,step:"—",output:""};
+      html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:6px" onclick='openSubtaskModal(${JSON.stringify(ev)})' title="Click for detail">`;
+      html += `<span class="diff-st" style="min-width:30px">${s.subtask}</span>`;
+      html += `<span style="color:${statusColor(s.status)};min-width:60px;font-size:10px">${s.status}</span>`;
+      html += `<span style="color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.branch}</span>`;
+      html += `<span style="color:var(--dim);font-size:9px">${s.output_length}b</span>`;
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
   async function pollAgents() {
     try {
       const d = await api("/agents");
@@ -1842,7 +1895,7 @@
   /* ── Polling loop ────────────────────────────────────────── */
   async function tick() {
     if (_pollPaused) return;
-    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory()]);
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory()]);
     // Refresh detail panel if a task is selected
     if (selectedTask && tasksCache[selectedTask]) {
       try {
