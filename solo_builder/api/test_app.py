@@ -1983,6 +1983,101 @@ class TestCacheHistory(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /subtask/<id>  (TASK-076)
+# ---------------------------------------------------------------------------
+
+class TestGetSubtask(_Base):
+
+    def test_returns_404_for_unknown(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtask/ZZZ")
+        self.assertEqual(r.status_code, 404)
+
+    def test_returns_subtask_fields(self):
+        state = self._make_state({"A1": "Verified"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st["output"] = "done"
+        st["history"] = [{"step": 1, "status": "Verified"}]
+        self._write_state(state)
+        d = self.client.get("/subtask/A1").get_json()
+        self.assertEqual(d["subtask"], "A1")
+        self.assertEqual(d["task"], "Task 0")
+        self.assertEqual(d["branch"], "Branch A")
+        self.assertEqual(d["status"], "Verified")
+        self.assertEqual(d["output"], "done")
+        self.assertEqual(len(d["history"]), 1)
+
+    def test_output_defaults_to_empty(self):
+        state = self._make_state({"A1": "Pending"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st.pop("output", None)
+        self._write_state(state)
+        d = self.client.get("/subtask/A1").get_json()
+        self.assertEqual(d["output"], "")
+
+    def test_history_defaults_to_empty_list(self):
+        state = self._make_state({"A1": "Pending"})
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        st.pop("history", None)
+        self._write_state(state)
+        d = self.client.get("/subtask/A1").get_json()
+        self.assertEqual(d["history"], [])
+
+
+# ---------------------------------------------------------------------------
+# POST /webhook  (TASK-078)
+# ---------------------------------------------------------------------------
+
+class TestWebhook(_Base):
+
+    def test_no_webhook_url_returns_ok_false(self):
+        self._write_state(self._make_state())
+        # Explicitly write settings without WEBHOOK_URL
+        self._settings_path.parent.mkdir(parents=True, exist_ok=True)
+        self._settings_path.write_text('{}', encoding="utf-8")
+        r = self.client.post("/webhook")
+        d = r.get_json()
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(d["ok"])
+        self.assertIn("reason", d)
+
+    def test_webhook_url_set_triggers_post(self):
+        from unittest.mock import patch, MagicMock
+        self._write_state(self._make_state({"A1": "Verified"}))
+        self._settings_path.parent.mkdir(parents=True, exist_ok=True)
+        self._settings_path.write_text('{"WEBHOOK_URL": "http://example.com/hook"}', encoding="utf-8")
+        mock_resp = MagicMock()
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            r = self.client.post("/webhook")
+        d = r.get_json()
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(d["ok"])
+        self.assertTrue(d["sent"])
+
+    def test_webhook_payload_has_required_keys(self):
+        from unittest.mock import patch, MagicMock
+        self._write_state(self._make_state({"A1": "Verified"}))
+        self._settings_path.parent.mkdir(parents=True, exist_ok=True)
+        self._settings_path.write_text('{"WEBHOOK_URL": "http://example.com/hook"}', encoding="utf-8")
+        captured = {}
+        def fake_urlopen(req, timeout=10):
+            import json as _json
+            captured["body"] = _json.loads(req.data)
+            m = MagicMock()
+            m.__enter__ = lambda s: s
+            m.__exit__ = MagicMock(return_value=False)
+            return m
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            self.client.post("/webhook")
+        body = captured.get("body", {})
+        for key in ("event", "step", "total", "verified", "pct", "timestamp"):
+            self.assertIn(key, body)
+        self.assertEqual(body["event"], "complete")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
