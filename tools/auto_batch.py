@@ -77,6 +77,17 @@ def _git(*args, capture=False, check=True, quiet=False):
     return _run(["git"] + list(args), check=check, capture_output=capture, quiet=quiet)
 
 
+def _claude_env() -> dict:
+    """Return os.environ with CLAUDECODE unset.
+
+    claude -p refuses to run when CLAUDECODE is set (nested session guard).
+    Unsetting it is the documented bypass for scripted/programmatic use.
+    """
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    env.pop("CLAUDECODE", None)
+    return env
+
+
 # ---------------------------------------------------------------------------
 # Working-tree helpers
 # ---------------------------------------------------------------------------
@@ -348,7 +359,6 @@ def generate_next_batch(completed_count: int, dry_run: bool) -> int:
         return 3  # pretend we generated tasks so the loop can continue in dry-run
 
     prompt = build_draft_prompt(completed_count)
-    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
     result = _run(
         [
@@ -357,7 +367,7 @@ def generate_next_batch(completed_count: int, dry_run: bool) -> int:
             "--output-format", "text",
         ],
         cwd=REPO_ROOT,
-        env=env,
+        env=_claude_env(),
         capture_output=True,
         check=False,
     )
@@ -456,7 +466,7 @@ def execute_batch(task: dict, dry_run: bool, tag: str) -> str:
             "--output-format", "text",
         ],
         cwd=REPO_ROOT,
-        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        env=_claude_env(),
     )
 
     # 5. Safety-net: verify tests pass
