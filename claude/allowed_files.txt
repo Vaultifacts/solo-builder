@@ -28,6 +28,7 @@ solo_builder/runners/anthropic_runner.py
 solo_builder/runners/executor.py
 solo_builder/tests/test_cache.py
 tools/cache_stats.py
+tools/auto_batch.py
 solo_builder/discord_bot/bot.py
 solo_builder/discord_bot/test_bot.py
 solo_builder/.github/workflows/smoke-test.yml
