@@ -754,3 +754,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-085
+Goal: Batch: GET /branches summary endpoint (085), dashboard branch detail drill-down in Branches tab (086), GET /subtasks list endpoint with filter params (087)
+
+Acceptance criteria:
+- TASK-085: GET /branches returns a flat list of all branches across all tasks: [{task, branch, total, verified, running, pending, pct}]; supports ?task= filter.
+- TASK-086: Branches tab in dashboard polls GET /branches (already exists structurally); renders a table with task/branch/progress bar/counts; clicking a row loads that task's detail panel.
+- TASK-087: GET /subtasks returns a flat list of all subtasks: [{subtask, task, branch, status, output_length}]; supports ?task=, ?branch=, ?status= filters; ?output=1 includes full output field.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
