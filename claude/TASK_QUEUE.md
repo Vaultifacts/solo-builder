@@ -715,3 +715,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-076
+Goal: Batch: GET /subtask/<id> endpoint (076), dashboard subtask search bar across all tabs (077), task completion webhook POST with summary payload (078)
+
+Acceptance criteria:
+- TASK-076: GET /subtask/<subtask_id> returns current status, output, history, task, branch for a named subtask (e.g. "A1"); 404 if not found.
+- TASK-077: A global search input in the header filters the task list (main panel) by task name/status; clears on Escape.
+- TASK-078: When all subtasks reach Verified, POST /webhook (if WEBHOOK_URL is set) with JSON {event:"complete", step, total, verified, pct, timestamp}; returns 200 with {ok, sent}.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
