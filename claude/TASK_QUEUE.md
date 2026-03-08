@@ -819,3 +819,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-100
+Goal: Batch: GET /run/history step execution log (100), per-subtask tool override form in dashboard Settings tab (101), GET /dag/diff comparison endpoint (102)
+
+Acceptance criteria:
+- TASK-100: GET /run/history returns a list of the last N step-execution records from meta_history: [{step_index, verified, healed}]; supports ?limit=N and ?since=step_index params; mirrors /metrics/export but as JSON API.
+- TASK-101: Dashboard Settings tab gains a "Tool override" form: subtask input + tools input + submit button that POSTs to /tools; form clears on success; feedback shown inline.
+- TASK-102: GET /dag/diff?from=<step>&to=<step> compares two historical snapshots stored in state meta_history and returns list of subtasks that changed status between those two step indices; returns {from, to, changes:[{subtask, task, branch, from_status, to_status}]}.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
