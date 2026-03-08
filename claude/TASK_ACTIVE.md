@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-088
+TASK-091
 
-Batch: GET /subtasks/export CSV/JSON (088), dashboard Subtasks tab (089), GET /timeline enhanced response (090)
+Batch: GET /metrics endpoint, live step counter widget, dark/light theme toggle
