@@ -728,3 +728,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-079
+Goal: Batch: GET /subtask/<id>/output raw text endpoint (079), dashboard auto-webhook on completion (080), POST /webhook button in Export tab (081)
+
+Acceptance criteria:
+- TASK-079: GET /subtask/<id>/output returns the subtask output as plain text (Content-Type: text/plain); 404 if subtask not found.
+- TASK-080: When pollStatus() detects complete=true for the first time (transition from false→true), the dashboard automatically fires POST /webhook and shows a toast notification.
+- TASK-081: Export tab has a "Fire Webhook" button that calls POST /webhook and shows the response (ok/reason) as inline feedback; button is disabled when WEBHOOK_URL is not configured.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
