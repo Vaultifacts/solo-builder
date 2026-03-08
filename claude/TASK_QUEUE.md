@@ -741,3 +741,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-082
+Goal: Batch: GET /tasks/export full DAG JSON download (082), history branch filter UI in dashboard (083), dashboard poll interval selector (084)
+
+Acceptance criteria:
+- TASK-082: GET /tasks/export returns the full DAG as a JSON file download (Content-Disposition: attachment; filename=dag.json); includes all tasks, branches, subtasks, statuses, and outputs.
+- TASK-083: History tab gains a branch filter input alongside the existing text filter; both compose (AND); branch filter syncs into /history/export hrefs and export tab links.
+- TASK-084: A poll-interval dropdown in the header lets the user select 2s/5s/10s/30s; changes POLL_MS live (clears and restarts setInterval); selected value persists in localStorage.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
