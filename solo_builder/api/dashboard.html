@@ -793,6 +793,13 @@
             <a class="toolbar-btn" href="/cache/export?format=json" download="cache.json">JSON</a>
           </div>
         </div>
+        <div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Webhook</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button id="btn-fire-webhook" class="toolbar-btn" onclick="fireWebhook()" title="POST completion payload to WEBHOOK_URL">Fire Webhook</button>
+            <span id="fb-webhook" style="font-size:10px;color:var(--dim)"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1010,6 +1017,10 @@
       const badge = document.getElementById("hdr-badge");
       if (d.complete && badge.textContent !== "Complete") {
         _playCompletionSound();
+        // Auto-fire webhook on first completion detection (TASK-080)
+        fetch(BASE + "/webhook", {method: "POST"}).then(r => r.json()).then(wd => {
+          if (wd.ok) toast("Pipeline complete — webhook fired");
+        }).catch(() => {});
       }
       if (d.complete) {
         badge.textContent  = "Complete";
@@ -2037,6 +2048,22 @@
   };
   window.closeKeysModal = function () {
     document.getElementById("keys-overlay").style.display = "none";
+  };
+
+  /* ── Webhook ──────────────────────────────────────────────── */
+  window.fireWebhook = async function () {
+    const btn = document.getElementById("btn-fire-webhook");
+    const fb  = document.getElementById("fb-webhook");
+    if (btn) btn.disabled = true;
+    try {
+      const d = await fetch(BASE + "/webhook", {method: "POST"}).then(r => r.json());
+      if (fb) { fb.textContent = d.ok ? "Sent" : (d.reason || d.error || "Failed"); fb.style.color = d.ok ? "var(--green)" : "var(--red)"; }
+      if (d.ok) toast("Webhook fired");
+    } catch (e) {
+      if (fb) { fb.textContent = "Network error"; fb.style.color = "var(--red)"; }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   };
 
   /* ── Poll pause/resume ─────────────────────────────────────── */

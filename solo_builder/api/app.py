@@ -1307,6 +1307,19 @@ def get_subtask(subtask_id: str):
     abort(404, description=f"Subtask '{subtask_id}' not found.")
 
 
+@app.get("/subtask/<subtask_id>/output")
+def get_subtask_output(subtask_id: str):
+    """Return the raw output text of a named subtask as plain text."""
+    dag = _load_dag()
+    for task_data in dag.values():
+        for branch_data in task_data.get("branches", {}).values():
+            subtasks = branch_data.get("subtasks", {})
+            if subtask_id in subtasks:
+                output = subtasks[subtask_id].get("output", "")
+                return Response(output, mimetype="text/plain")
+    abort(404, description=f"Subtask '{subtask_id}' not found.")
+
+
 # ---------------------------------------------------------------------------
 # POST /webhook  (TASK-078)
 # ---------------------------------------------------------------------------

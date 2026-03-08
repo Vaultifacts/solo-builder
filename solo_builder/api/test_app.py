@@ -2078,6 +2078,35 @@ class TestWebhook(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /subtask/<id>/output  (TASK-079)
+# ---------------------------------------------------------------------------
+
+class TestGetSubtaskOutput(_Base):
+
+    def test_returns_404_for_unknown(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/subtask/ZZZ/output")
+        self.assertEqual(r.status_code, 404)
+
+    def test_returns_plain_text(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "hello\nworld"
+        self._write_state(state)
+        r = self.client.get("/subtask/A1/output")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/plain", r.content_type)
+        self.assertEqual(r.data.decode("utf-8"), "hello\nworld")
+
+    def test_empty_output_returns_empty_body(self):
+        state = self._make_state({"A1": "Pending"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"].pop("output", None)
+        self._write_state(state)
+        r = self.client.get("/subtask/A1/output")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data, b"")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
