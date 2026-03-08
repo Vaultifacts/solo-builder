@@ -360,22 +360,30 @@ def generate_next_batch(completed_count: int, dry_run: bool) -> int:
 
     prompt = build_draft_prompt(completed_count)
 
-    result = _run(
+    import subprocess as _sp
+    proc = _sp.run(
         [
             "claude", "-p", prompt,
-            "--allowedTools", "Read",          # read-only — just needs context files
+            "--allowedTools", "Read",
             "--output-format", "text",
         ],
-        cwd=REPO_ROOT,
+        cwd=str(REPO_ROOT),
         env=_claude_env(),
-        capture_output=True,
-        check=False,
+        stdin=_sp.DEVNULL,
+        stdout=_sp.PIPE,
+        stderr=_sp.PIPE,
+        text=True,
     )
 
-    if result.returncode != 0:
-        print(f"  claude -p failed (exit {result.returncode}):", flush=True)
-        print(result.stderr[:500], flush=True)
+    if proc.returncode != 0:
+        print(f"  claude -p failed (exit {proc.returncode}):", flush=True)
+        if proc.stderr.strip():
+            print(f"  STDERR: {proc.stderr.strip()[:600]}", flush=True)
+        if proc.stdout.strip():
+            print(f"  STDOUT: {proc.stdout.strip()[:600]}", flush=True)
         return 0
+
+    result = proc  # reuse variable name below
 
     raw = result.stdout.strip()
     if not raw:
