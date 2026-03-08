@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-100
+TASK-103
 
-Batch: GET /run/history, tool override form in Settings tab, GET /dag/diff
+Refactor solo_builder_cli.py: split the 2881-line monolith into focused modules (commands, auto-loop, triggers, IPC) to reduce file size, improve maintainability, and address architecture auditor large-file findings

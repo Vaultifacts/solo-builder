@@ -832,3 +832,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-103
+Goal: Refactor solo_builder_cli.py: split the 2881-line monolith into focused modules (commands, auto-loop, triggers, IPC) to reduce file size, improve maintainability, and address architecture auditor large-file findings
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
