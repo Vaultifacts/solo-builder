@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-094
+TASK-097
 
-Batch: subtask timeline mini-chart in modal, POST /config/reset, GET /shortcuts
+Batch: GET /health, toast history panel, POST /subtask/<id>/reset
