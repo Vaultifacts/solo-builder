@@ -956,6 +956,53 @@ class TestDiff(_Base):
         self.assertEqual(d["changes"], [])
 
 
+class TestDagDiff(_Base):
+    """TASK-102: GET /dag/diff compares subtask status between step indices."""
+
+    def _make_state_with_history(self):
+        state = self._make_state()
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        st["A1"]["history"] = [
+            {"step": 1, "status": "Running"},
+            {"step": 3, "status": "Verified"},
+        ]
+        st["A2"]["history"] = [
+            {"step": 2, "status": "Running"},
+        ]
+        return state
+
+    def test_missing_from_returns_400(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/dag/diff")
+        self.assertEqual(r.status_code, 400)
+
+    def test_no_changes_same_step(self):
+        self._write_state(self._make_state_with_history())
+        d = self.client.get("/dag/diff?from=3&to=3").get_json()
+        self.assertEqual(d["changes"], [])
+
+    def test_detects_status_change(self):
+        self._write_state(self._make_state_with_history())
+        d = self.client.get("/dag/diff?from=0&to=3").get_json()
+        names = [c["subtask"] for c in d["changes"]]
+        self.assertIn("A1", names)
+
+    def test_change_fields(self):
+        self._write_state(self._make_state_with_history())
+        d = self.client.get("/dag/diff?from=0&to=3").get_json()
+        change = next(c for c in d["changes"] if c["subtask"] == "A1")
+        self.assertIn("from_status", change)
+        self.assertIn("to_status", change)
+        self.assertEqual(change["to_status"], "Verified")
+
+    def test_returns_from_to_count(self):
+        self._write_state(self._make_state_with_history())
+        d = self.client.get("/dag/diff?from=0&to=5").get_json()
+        self.assertEqual(d["from"], 0)
+        self.assertEqual(d["to"], 5)
+        self.assertIn("count", d)
+
+
 # ---------------------------------------------------------------------------
 # GET /branches/<task>
 # ---------------------------------------------------------------------------
@@ -2248,6 +2295,55 @@ class TestMetricsExport(_Base):
         r = self.client.get("/metrics/export?since=2")
         lines = r.data.decode("utf-8").strip().splitlines()
         self.assertEqual(len(lines), 3)  # header + rows 3 and 4
+
+
+# ---------------------------------------------------------------------------
+# /run/history
+# ---------------------------------------------------------------------------
+
+class TestRunHistory(_Base):
+    """TASK-100: GET /run/history step execution log."""
+
+    def test_returns_200(self):
+        self._write_state(self._make_state())
+        self.assertEqual(self.client.get("/run/history").status_code, 200)
+
+    def test_has_records_and_count(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/run/history").get_json()
+        self.assertIn("records", d)
+        self.assertIn("count", d)
+        self.assertIn("total_steps", d)
+
+    def test_empty_history_returns_empty_records(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/run/history").get_json()
+        self.assertEqual(d["records"], [])
+        self.assertEqual(d["count"], 0)
+
+    def test_records_match_meta_history(self):
+        state = self._make_state()
+        state["meta_history"] = [{"verified": 2, "healed": 0}, {"verified": 3, "healed": 1}]
+        self._write_state(state)
+        d = self.client.get("/run/history").get_json()
+        self.assertEqual(d["count"], 2)
+        self.assertEqual(d["records"][0]["step_index"], 1)
+        self.assertEqual(d["records"][1]["verified"], 3)
+
+    def test_limit_param(self):
+        state = self._make_state()
+        state["meta_history"] = [{"verified": i, "healed": 0} for i in range(5)]
+        self._write_state(state)
+        d = self.client.get("/run/history?limit=2").get_json()
+        self.assertEqual(d["count"], 2)
+
+    def test_since_param(self):
+        state = self._make_state()
+        state["meta_history"] = [{"verified": i, "healed": 0} for i in range(4)]
+        self._write_state(state)
+        d = self.client.get("/run/history?since=2").get_json()
+        for r in d["records"]:
+            self.assertGreater(r["step_index"], 2)
 
 
 # ---------------------------------------------------------------------------

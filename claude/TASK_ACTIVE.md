@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-097
+TASK-100
 
-Batch: GET /health, toast history panel, POST /subtask/<id>/reset
+Batch: GET /run/history, tool override form in Settings tab, GET /dag/diff
