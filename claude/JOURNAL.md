@@ -240,3 +240,5 @@
 - [2026-03-08T00:07:13.0704158Z] state transition: build/DEV -> verify/AUDITOR
 - [2026-03-08T00:07:40.0240306Z] state transition: done/AUDITOR -> done/AUDITOR
 - [2026-03-08T00:10:48.8041482Z] Starting TASK-079 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-08T00:10:54.3015847Z] state transition: triage/RESEARCH -> build/DEV
+- [2026-03-08T00:12:41.8271417Z] state transition: build/DEV -> verify/AUDITOR
