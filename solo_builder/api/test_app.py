@@ -60,6 +60,7 @@ class _Base(unittest.TestCase):
         self._snapshot_path           = Path(self._tmp) / "state" / "snapshot_trigger"
         self._pause_path              = Path(self._tmp) / "state" / "pause_trigger"
         self._dag_import_path         = Path(self._tmp) / "state" / "dag_import_trigger.json"
+        self._heal_trigger_path       = Path(self._tmp) / "state" / "heal_trigger.json"
         self._cache_dir               = Path(self._tmp) / "cache"
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -84,6 +85,7 @@ class _Base(unittest.TestCase):
             patch.object(app_module, "SNAPSHOT_TRIGGER", new=self._snapshot_path),
             patch.object(app_module, "PAUSE_TRIGGER", new=self._pause_path),
             patch.object(app_module, "DAG_IMPORT_TRIGGER", new=self._dag_import_path),
+            patch.object(app_module, "HEAL_TRIGGER", new=self._heal_trigger_path),
             patch.object(app_module, "CACHE_DIR", new=self._cache_dir),
         ]
         for p in self._patches:
@@ -374,6 +376,42 @@ class TestHeartbeat(_Base):
         self._heartbeat_path.write_text("garbage")
         d = self.client.get("/heartbeat").get_json()
         self.assertEqual(d["step"], 0)
+
+
+class TestHealth(_Base):
+    """TASK-097: GET /health liveness probe."""
+
+    def test_returns_200(self):
+        self._write_state(self._make_state())
+        self.assertEqual(self.client.get("/health").status_code, 200)
+
+    def test_ok_is_true(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health").get_json()
+        self.assertTrue(d["ok"])
+
+    def test_required_fields(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health").get_json()
+        for key in ("ok", "uptime_s", "step", "state_file_exists"):
+            self.assertIn(key, d)
+
+    def test_uptime_s_is_non_negative(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health").get_json()
+        self.assertGreaterEqual(d["uptime_s"], 0)
+
+    def test_step_reflects_state(self):
+        state = self._make_state()
+        state["step"] = 42
+        self._write_state(state)
+        d = self.client.get("/health").get_json()
+        self.assertEqual(d["step"], 42)
+
+    def test_state_file_exists_true_when_present(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health").get_json()
+        self.assertTrue(d["state_file_exists"])
 
 
 # ---------------------------------------------------------------------------
@@ -2354,6 +2392,45 @@ class TestGetSubtask(_Base):
         self._write_state(state)
         d = self.client.get("/subtask/A1").get_json()
         self.assertEqual(d["history"], [])
+
+
+class TestSubtaskReset(_Base):
+    """TASK-099: POST /subtask/<id>/reset writes heal trigger and returns status."""
+
+    def test_returns_200_for_known_subtask(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/subtask/A1/reset")
+        self.assertEqual(r.status_code, 200)
+
+    def test_returns_ok_true(self):
+        self._write_state(self._make_state())
+        d = self.client.post("/subtask/A1/reset").get_json()
+        self.assertTrue(d["ok"])
+
+    def test_returns_previous_status(self):
+        state = self._make_state({"A1": "Running"})
+        self._write_state(state)
+        d = self.client.post("/subtask/A1/reset").get_json()
+        self.assertEqual(d["previous_status"], "Running")
+
+    def test_returns_subtask_task_branch(self):
+        self._write_state(self._make_state())
+        d = self.client.post("/subtask/A1/reset").get_json()
+        self.assertEqual(d["subtask"], "A1")
+        self.assertEqual(d["task"], "Task 0")
+        self.assertEqual(d["branch"], "Branch A")
+
+    def test_writes_heal_trigger(self):
+        self._write_state(self._make_state())
+        self.client.post("/subtask/A1/reset")
+        import json as _json
+        payload = _json.loads(self._heal_trigger_path.read_text())
+        self.assertEqual(payload["subtask"], "A1")
+
+    def test_returns_404_for_unknown(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/subtask/ZZZ/reset")
+        self.assertEqual(r.status_code, 404)
 
 
 # ---------------------------------------------------------------------------
