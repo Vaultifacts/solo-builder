@@ -10,7 +10,6 @@ Run:      python api/app.py
 import csv
 import io
 import json
-import os
 import re
 import time
 from datetime import datetime, timezone
@@ -18,93 +17,24 @@ from pathlib import Path
 
 from flask import Flask, jsonify, abort, send_from_directory, request, Response
 
+from .constants import (
+    STATE_PATH, TRIGGER_PATH, VERIFY_TRIGGER, DESCRIBE_TRIGGER,
+    TOOLS_TRIGGER, SET_TRIGGER, SETTINGS_PATH, RENAME_TRIGGER,
+    STOP_TRIGGER, HEAL_TRIGGER, ADD_TASK_TRIGGER, ADD_BRANCH_TRIGGER,
+    PRIORITY_BRANCH_TRIGGER, UNDO_TRIGGER, DEPENDS_TRIGGER,
+    UNDEPENDS_TRIGGER, RESET_TRIGGER, SNAPSHOT_TRIGGER, PAUSE_TRIGGER,
+    HEARTBEAT_PATH, JOURNAL_PATH, OUTPUTS_PATH, CACHE_DIR,
+    DAG_EXPORT_PATH, DAG_IMPORT_TRIGGER,
+    _CONFIG_DEFAULTS, _SHORTCUTS,
+    _AVG_TOKENS_PER_ENTRY, _STATS_FILE,
+)
+from .helpers import (
+    _load_state, _load_dag, _write_trigger, _task_summary,
+    _load_cumulative_stats,
+)
+
 app = Flask(__name__)
 _APP_START_TIME = time.time()
-
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-STATE_PATH    = _PROJECT_ROOT / "state" / "solo_builder_state.json"
-TRIGGER_PATH  = _PROJECT_ROOT / "state" / "run_trigger"
-VERIFY_TRIGGER  = _PROJECT_ROOT / "state" / "verify_trigger.json"
-DESCRIBE_TRIGGER = _PROJECT_ROOT / "state" / "describe_trigger.json"
-TOOLS_TRIGGER   = _PROJECT_ROOT / "state" / "tools_trigger.json"
-SET_TRIGGER     = _PROJECT_ROOT / "state" / "set_trigger.json"
-SETTINGS_PATH   = _PROJECT_ROOT / "config" / "settings.json"
-RENAME_TRIGGER  = _PROJECT_ROOT / "state" / "rename_trigger.json"
-STOP_TRIGGER    = _PROJECT_ROOT / "state" / "stop_trigger"
-HEAL_TRIGGER    = _PROJECT_ROOT / "state" / "heal_trigger.json"
-ADD_TASK_TRIGGER        = _PROJECT_ROOT / "state" / "add_task_trigger.json"
-ADD_BRANCH_TRIGGER      = _PROJECT_ROOT / "state" / "add_branch_trigger.json"
-PRIORITY_BRANCH_TRIGGER = _PROJECT_ROOT / "state" / "prioritize_branch_trigger.json"
-UNDO_TRIGGER            = _PROJECT_ROOT / "state" / "undo_trigger"
-DEPENDS_TRIGGER         = _PROJECT_ROOT / "state" / "depends_trigger.json"
-UNDEPENDS_TRIGGER       = _PROJECT_ROOT / "state" / "undepends_trigger.json"
-RESET_TRIGGER           = _PROJECT_ROOT / "state" / "reset_trigger"
-SNAPSHOT_TRIGGER        = _PROJECT_ROOT / "state" / "snapshot_trigger"
-PAUSE_TRIGGER           = _PROJECT_ROOT / "state" / "pause_trigger"
-HEARTBEAT_PATH = _PROJECT_ROOT / "state" / "step.txt"
-JOURNAL_PATH  = _PROJECT_ROOT / "journal.md"
-OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
-CACHE_DIR     = Path(os.environ.get("CACHE_DIR",
-                     str(_PROJECT_ROOT.parent / "claude" / "cache")))
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _load_state() -> dict:
-    try:
-        with open(STATE_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"dag": {}, "step": 0}
-
-
-def _load_dag() -> dict:
-    return _load_state().get("dag", {})
-
-
-def _write_trigger(path: Path, fields: dict[str, bool],
-                   defaults: dict | None = None) -> tuple:
-    """Parse body, validate, write trigger JSON.  fields maps name→uppercase."""
-    body = request.get_json(silent=True) or {}
-    defs = defaults or {}
-    payload = {}
-    for key, upper in fields.items():
-        val = (body.get(key) or defs.get(key, "")).strip()
-        if upper:
-            val = val.upper()
-        if not val:
-            return jsonify({"ok": False,
-                            "reason": f"Missing '{key}' field."}), 400
-        payload[key] = val
-    path.parent.mkdir(exist_ok=True)
-    path.write_text(json.dumps(payload), encoding="utf-8")
-    return jsonify({"ok": True, **payload}), 202
-
-
-def _task_summary(task_id: str, task: dict) -> dict:
-    branches      = task.get("branches", {})
-    subtask_count = sum(len(b.get("subtasks", {})) for b in branches.values())
-    verified      = sum(
-        1 for b in branches.values()
-        for s in b.get("subtasks", {}).values()
-        if s.get("status") == "Verified"
-    )
-    running = sum(
-        1 for b in branches.values()
-        for s in b.get("subtasks", {}).values()
-        if s.get("status") == "Running"
-    )
-    return {
-        "id":               task_id,
-        "status":           task.get("status"),
-        "depends_on":       task.get("depends_on", []),
-        "branch_count":     len(branches),
-        "subtask_count":    subtask_count,
-        "verified_subtasks": verified,
-        "running_subtasks": running,
-    }
 
 
 @app.after_request
@@ -844,30 +774,6 @@ def update_config():
         return jsonify({"error": "Could not update settings."}), 500
 
 
-_CONFIG_DEFAULTS = {
-    "STALL_THRESHOLD": 5,
-    "SNAPSHOT_INTERVAL": 20,
-    "DAG_UPDATE_INTERVAL": 5,
-    "PDF_OUTPUT_PATH": "./snapshots/",
-    "STATE_PATH": "./state/solo_builder_state.json",
-    "JOURNAL_PATH": "journal.md",
-    "AUTO_SAVE_INTERVAL": 10,
-    "AUTO_STEP_DELAY": 1.5,
-    "MAX_SUBTASKS_PER_BRANCH": 20,
-    "MAX_BRANCHES_PER_TASK": 10,
-    "VERBOSITY": "INFO",
-    "BAR_WIDTH": 20,
-    "MAX_ALERTS": 10,
-    "EXECUTOR_MAX_PER_STEP": 6,
-    "EXECUTOR_VERIFY_PROBABILITY": 0.9,
-    "CLAUDE_TIMEOUT": 60,
-    "CLAUDE_ALLOWED_TOOLS": "",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_MAX_TOKENS": 256,
-    "REVIEW_MODE": False,
-    "WEBHOOK_URL": "",
-}
-
 
 @app.post("/config/reset")
 def reset_config():
@@ -884,19 +790,6 @@ def reset_config():
     except Exception as exc:
         return jsonify({"ok": False, "reason": str(exc)}), 500
 
-
-_SHORTCUTS = [
-    {"key": "j",    "description": "Select next task"},
-    {"key": "k",    "description": "Select previous task"},
-    {"key": "←",    "description": "History: previous page"},
-    {"key": "→",    "description": "History: next page"},
-    {"key": "r",    "description": "Run one step"},
-    {"key": "g",    "description": "Open Graph tab"},
-    {"key": "v",    "description": "Focus Verify input"},
-    {"key": "p",    "description": "Pause / resume polling"},
-    {"key": "?",    "description": "Toggle keyboard shortcut help"},
-    {"key": "Esc",  "description": "Close modal / clear search"},
-]
 
 
 @app.get("/shortcuts")
@@ -1206,20 +1099,6 @@ def resume_auto():
 # ---------------------------------------------------------------------------
 # Cache
 # ---------------------------------------------------------------------------
-
-_AVG_TOKENS_PER_ENTRY = 550  # matches ResponseCache._AVG_TOKENS_PER_ENTRY
-
-
-_STATS_FILE = "session_stats.json"
-
-
-def _load_cumulative_stats() -> dict:
-    """Read cumulative hit/miss totals from session_stats.json; returns zeros on error."""
-    try:
-        path = CACHE_DIR / _STATS_FILE
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
 
 
 @app.get("/cache")
@@ -1548,9 +1427,6 @@ def run_history():
 # ---------------------------------------------------------------------------
 # DAG import / export
 # ---------------------------------------------------------------------------
-
-DAG_EXPORT_PATH      = _PROJECT_ROOT / "dag_export.json"
-DAG_IMPORT_TRIGGER   = _PROJECT_ROOT / "state" / "dag_import_trigger.json"
 
 
 @app.get("/tasks/export")
