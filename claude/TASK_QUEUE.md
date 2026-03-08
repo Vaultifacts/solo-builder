@@ -793,3 +793,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-094
+Goal: Batch: subtask timeline mini-chart in detail modal (094), POST /config/reset endpoint (095), GET /shortcuts endpoint (096)
+
+Acceptance criteria:
+- TASK-094: When the subtask detail modal opens, fetch GET /timeline/<id> and render an inline SVG sparkline of the subtask's status transitions (step on x-axis, status encoded as colour); displayed below the output field.
+- TASK-095: POST /config/reset restores config/settings.json to its compiled-in defaults (same keys/values used at CLI startup); returns {ok, restored} with the resulting config; 409 if settings file is missing.
+- TASK-096: GET /shortcuts returns a JSON array of {key, description} objects listing all active keyboard shortcuts; dashboard Keyboard Shortcuts modal table is rendered from this endpoint instead of being hardcoded.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
