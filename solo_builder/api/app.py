@@ -12,12 +12,14 @@ import io
 import json
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, jsonify, abort, send_from_directory, request, Response
 
 app = Flask(__name__)
+_APP_START_TIME = time.time()
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH    = _PROJECT_ROOT / "state" / "solo_builder_state.json"
@@ -266,6 +268,18 @@ def heartbeat():
     except (ValueError, IndexError):
         return jsonify({"step": 0, "verified": 0, "total": 0,
                         "pending": 0, "running": 0, "review": 0})
+
+
+@app.get("/health")
+def health():
+    """Liveness probe: returns server uptime, current step, and state file presence."""
+    state = _load_state()
+    return jsonify({
+        "ok": True,
+        "uptime_s": round(time.time() - _APP_START_TIME, 1),
+        "step": state.get("step", 0),
+        "state_file_exists": STATE_PATH.exists(),
+    })
 
 
 @app.get("/export")
@@ -1539,6 +1553,33 @@ def get_subtask_output(subtask_id: str):
             if subtask_id in subtasks:
                 output = subtasks[subtask_id].get("output", "")
                 return Response(output, mimetype="text/plain")
+    abort(404, description=f"Subtask '{subtask_id}' not found.")
+
+
+@app.post("/subtask/<subtask_id>/reset")
+def reset_subtask(subtask_id: str):
+    """Reset a subtask to Pending via heal_trigger.json.
+
+    Composes on existing heal infrastructure; CLI SelfHealer consumes the trigger.
+    Returns {ok, subtask, previous_status} or 404 if not found.
+    """
+    dag = _load_dag()
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            subtasks = branch_data.get("subtasks", {})
+            if subtask_id in subtasks:
+                prev = subtasks[subtask_id].get("status", "Pending")
+                HEAL_TRIGGER.parent.mkdir(exist_ok=True)
+                HEAL_TRIGGER.write_text(
+                    json.dumps({"subtask": subtask_id}), encoding="utf-8"
+                )
+                return jsonify({
+                    "ok": True,
+                    "subtask": subtask_id,
+                    "task": task_id,
+                    "branch": branch_name,
+                    "previous_status": prev,
+                })
     abort(404, description=f"Subtask '{subtask_id}' not found.")
 
 

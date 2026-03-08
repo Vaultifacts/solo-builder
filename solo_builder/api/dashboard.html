@@ -611,7 +611,18 @@
     <option value="30000">30s</option>
   </select>
   <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
+  <button id="btn-notif" onclick="toggleNotifPanel()" title="Notification history" style="position:relative;background:var(--surface);color:var(--dim);border:1px solid var(--border);border-radius:3px;padding:2px 10px;cursor:pointer;font-size:11px;font-family:var(--font)">🔔<span id="notif-count-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--yellow);color:#000;font-size:8px;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center">0</span></button>
 </header>
+
+<div id="notif-panel" style="display:none;position:fixed;top:52px;right:12px;z-index:500;background:var(--surface);border:1px solid var(--border);border-radius:4px;width:320px;max-height:380px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;color:var(--cyan);letter-spacing:1px;text-transform:uppercase">Notifications</span>
+    <button onclick="clearNotifHistory()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:10px">Clear</button>
+  </div>
+  <div id="notif-list" style="padding:4px 0">
+    <div style="color:var(--dim);font-size:10px;padding:8px 10px">No notifications yet.</div>
+  </div>
+</div>
 <div id="stale-banner" style="display:none;background:#78350f;color:#fef3c7;font-size:11px;text-align:center;padding:4px 8px">
   ⚠ Data may be stale — is the Flask server running?
 </div>
@@ -960,12 +971,55 @@
     if (l === "blocked")  return "dot-blocked";
     return "dot-pending";
   }
-  function toast(msg) {
+  const _notifHistory = [];
+  const _NOTIF_MAX = 20;
+
+  function _renderNotifPanel() {
+    const list = document.getElementById("notif-list");
+    const badge = document.getElementById("notif-count-badge");
+    if (!list) return;
+    if (_notifHistory.length === 0) {
+      list.innerHTML = `<div style="color:var(--dim);font-size:10px;padding:8px 10px">No notifications yet.</div>`;
+    } else {
+      list.innerHTML = _notifHistory.slice().reverse().map(function (n) {
+        const c = n.type === "error" ? "var(--red)" : n.type === "warn" ? "var(--yellow)" : "var(--text)";
+        return `<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px">` +
+          `<span style="color:var(--dim);margin-right:6px">${n.ts}</span>` +
+          `<span style="color:${c}">${n.msg}</span></div>`;
+      }).join("");
+    }
+    if (badge) {
+      badge.textContent = String(_notifHistory.length);
+      badge.style.display = _notifHistory.length > 0 ? "block" : "none";
+    }
+  }
+
+  function _pushNotif(msg, type) {
+    const now = new Date();
+    const ts = now.toTimeString().slice(0, 8);
+    _notifHistory.push({msg, type: type || "info", ts});
+    if (_notifHistory.length > _NOTIF_MAX) _notifHistory.shift();
+    _renderNotifPanel();
+  }
+
+  window.toggleNotifPanel = function () {
+    const panel = document.getElementById("notif-panel");
+    if (!panel) return;
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+
+  window.clearNotifHistory = function () {
+    _notifHistory.length = 0;
+    _renderNotifPanel();
+  };
+
+  function toast(msg, type) {
     const el = document.getElementById("toast");
     el.textContent = msg;
     el.style.display = "block";
     clearTimeout(toast._t);
     toast._t = setTimeout(() => { el.style.display = "none"; }, 4000);
+    _pushNotif(msg, type || "info");
   }
 
   function _playCompletionSound() {
@@ -2246,6 +2300,8 @@
 
     if (e.key === "Escape") {
       closeModal(); closeKeysModal(); closeSubtaskModal();
+      const np = document.getElementById("notif-panel");
+      if (np) np.style.display = "none";
       const ts = document.getElementById("task-search");
       if (ts && ts.value) { ts.value = ""; _applyTaskSearch(); }
       return;
