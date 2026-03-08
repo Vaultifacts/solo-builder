@@ -41,3 +41,10 @@ solo_builder/api/app.py
 solo_builder/api/test_app.py
 solo_builder/api/dashboard.html
 .gitignore
+solo_builder/dag_definition.py
+solo_builder/display.py
+solo_builder/commands/__init__.py
+solo_builder/commands/query_cmds.py
+solo_builder/commands/subtask_cmds.py
+solo_builder/commands/dag_cmds.py
+solo_builder/commands/settings_cmds.py
