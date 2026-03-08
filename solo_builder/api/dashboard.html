@@ -1638,8 +1638,32 @@
       html += `</div>`;
     });
     html += `<span class="feedback" id="fb-settings"></span>`;
+    html += `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">` +
+      `<div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tool override</div>` +
+      `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">` +
+      `<input id="tool-override-st" class="cmd-input" placeholder="A1" title="Subtask name" style="width:50px">` +
+      `<input id="tool-override-tools" class="cmd-input-wide" placeholder="Read,Glob,Grep" title="Comma-separated tool names">` +
+      `<button class="cmd-btn btn-tools" onclick="submitToolOverride()">⚙ Set</button>` +
+      `</div>` +
+      `<span class="feedback" id="fb-tool-override"></span>` +
+      `</div>`;
     el.innerHTML = html;
   }
+  window.submitToolOverride = async function () {
+    const st    = (document.getElementById("tool-override-st")?.value    || "").trim().toUpperCase();
+    const tools = (document.getElementById("tool-override-tools")?.value || "").trim();
+    if (!st)    { _flash("fb-tool-override", "Subtask required"); return; }
+    if (!tools) { _flash("fb-tool-override", "Tools required"); return; }
+    try {
+      const r = await fetch(BASE + "/tools", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({subtask:st, tools})});
+      const d = await r.json();
+      if (d.ok) {
+        _flash("fb-tool-override", `Tools set for ${st}`);
+        document.getElementById("tool-override-st").value    = "";
+        document.getElementById("tool-override-tools").value = "";
+      } else { _flash("fb-tool-override", d.reason || "Error"); }
+    } catch (e) { _flash("fb-tool-override", "Network error"); }
+  };
   window.saveSetting = async function(key, val) {
     if (typeof val === "string") {
       const n = Number(val);

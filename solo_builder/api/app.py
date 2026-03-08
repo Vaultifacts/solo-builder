@@ -578,6 +578,57 @@ def diff():
     })
 
 
+@app.get("/dag/diff")
+def dag_diff():
+    """Compare DAG status between two step indices using subtask history arrays.
+
+    Query params:
+        from  F — starting step index (inclusive)
+        to    T — ending step index (inclusive); defaults to current step
+
+    For each subtask, reconstructs its status at step F and step T using its
+    history list, then reports any transitions.
+
+    Returns {from, to, changes:[{subtask, task, branch, from_status, to_status}]}
+    """
+    state = _load_state()
+    dag = state.get("dag", {})
+    current_step = state.get("step", 0)
+
+    step_from = request.args.get("from", type=int)
+    step_to   = request.args.get("to", current_step, type=int)
+
+    if step_from is None:
+        return jsonify({"ok": False, "reason": "Missing required 'from' query param."}), 400
+
+    def _status_at(history: list, target: int) -> str:
+        """Return the subtask's status as of target step (last entry with step <= target)."""
+        status = "Pending"
+        for h in history:
+            if h.get("step", 0) <= target:
+                status = h.get("status", status)
+        return status
+
+    changes = []
+    for task_id, task_data in dag.items():
+        for branch_name, branch_data in task_data.get("branches", {}).items():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                hist = st_data.get("history", [])
+                s_from = _status_at(hist, step_from)
+                s_to   = _status_at(hist, step_to)
+                if s_from != s_to:
+                    changes.append({
+                        "subtask":     st_name,
+                        "task":        task_id,
+                        "branch":      branch_name,
+                        "from_status": s_from,
+                        "to_status":   s_to,
+                    })
+
+    return jsonify({"from": step_from, "to": step_to,
+                    "count": len(changes), "changes": changes})
+
+
 @app.get("/branches")
 def branches_all():
     """Flat list of all branches across all tasks.
@@ -1462,6 +1513,36 @@ def metrics_export():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=metrics.csv"},
     )
+
+
+@app.get("/run/history")
+def run_history():
+    """Step execution log from meta_history as a JSON API.
+
+    Query params:
+        since  S — return only records with step_index > S
+        limit  N — return the most recent N records (all if omitted or <= 0)
+    """
+    state = _load_state()
+    meta_history = state.get("meta_history", [])
+    cumulative = 0
+    records = []
+    for i, entry in enumerate(meta_history):
+        v = entry.get("verified", 0)
+        h = entry.get("healed", 0)
+        cumulative += v
+        records.append({"step_index": i + 1, "verified": v, "healed": h, "cumulative": cumulative})
+
+    since = request.args.get("since", type=int)
+    if since is not None and since >= 0:
+        records = [r for r in records if r["step_index"] > since]
+
+    limit = request.args.get("limit", type=int)
+    if limit is not None and limit > 0:
+        records = records[-limit:]
+
+    return jsonify({"records": records, "count": len(records),
+                    "total_steps": len(meta_history)})
 
 
 # ---------------------------------------------------------------------------
