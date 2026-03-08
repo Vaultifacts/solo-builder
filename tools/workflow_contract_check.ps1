@@ -53,7 +53,7 @@ $allowedRaw = & git -C $repoRoot show "HEAD:claude/allowed_files.txt" 2>$null
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($allowedRaw)) {
   # Fall back to working tree when HEAD version is unavailable
   if (!(Test-Path $allowedPath)) {
-    Write-Error "workflow_contract_check: FAIL — claude/allowed_files.txt not found in HEAD or working tree."
+    Write-Error "workflow_contract_check: FAIL -- claude/allowed_files.txt not found in HEAD or working tree."
     exit 1
   }
   $allowedRaw = Get-Content -Raw -Path $allowedPath

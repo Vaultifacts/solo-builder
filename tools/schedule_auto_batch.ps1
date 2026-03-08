@@ -46,7 +46,7 @@ if ($Remove) {
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
     Write-Host "Task '$TaskName' removed."
   } else {
-    Write-Host "Task '$TaskName' not found — nothing to remove."
+    Write-Host "Task '$TaskName' not found -- nothing to remove."
   }
   exit 0
 }
@@ -71,7 +71,7 @@ if (Test-Path `$lock) {
     `$pid2 = Get-Content `$lock -ErrorAction SilentlyContinue
     `$proc = Get-Process -Id `$pid2 -ErrorAction SilentlyContinue
     if (`$proc) {
-        Write-Host "$(Get-Date -f 'o') auto_batch already running (PID `$pid2) — skipping." >> `$log
+        Write-Host "$(Get-Date -f 'o') auto_batch already running (PID `$pid2) -- skipping." >> `$log
         exit 0
     }
     Remove-Item `$lock -Force
@@ -85,7 +85,7 @@ try {
     "=== auto_batch run started `$ts ===" | Add-Content `$log
     & `$py `$scr --auto-generate $maxTotalArg 2>&1 | Tee-Object -FilePath `$log -Append
     if (`$LASTEXITCODE -ne 0) {
-        `$msg = "auto_batch FAILED (exit `$LASTEXITCODE) — check `$log"
+        `$msg = "auto_batch FAILED (exit `$LASTEXITCODE) -- check `$log"
         Add-Type -AssemblyName PresentationFramework
         [System.Windows.MessageBox]::Show(`$msg, 'SoloBuilder', 'OK', 'Error') | Out-Null
     }
@@ -125,7 +125,7 @@ $settings = New-ScheduledTaskSettingsSet `
   -MultipleInstances  IgnoreNew `
   -StartWhenAvailable
 
-# Run as current user (BUILTIN\Users workaround not needed — uses current login)
+# Run as current user (BUILTIN\Users workaround not needed -- uses current login)
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
   -LogonType Interactive -RunLevel Limited
 
@@ -136,7 +136,7 @@ if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
 } else {
   Register-ScheduledTask -TaskName $TaskName `
     -Action $action -Trigger $trigger -Settings $settings -Principal $principal | Out-Null
-  Write-Host "Task '$TaskName' registered — runs daily at $StartTime."
+  Write-Host "Task '$TaskName' registered -- runs daily at $StartTime."
 }
 
 Write-Host "Log file : $logFile"
