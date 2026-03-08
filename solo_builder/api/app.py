@@ -39,9 +39,11 @@ _APP_START_TIME = time.time()
 from .blueprints.cache import cache_bp
 from .blueprints.metrics import metrics_bp
 from .blueprints.history import history_bp
+from .blueprints.triggers import triggers_bp
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
 app.register_blueprint(history_bp)
+app.register_blueprint(triggers_bp)
 
 
 @app.after_request
@@ -155,35 +157,10 @@ def stop_run():
     return jsonify({"ok": True}), 202
 
 
-@app.post("/verify")
-def verify_subtask():
-    """Queue a subtask verify via trigger file."""
-    return _write_trigger(VERIFY_TRIGGER, {"subtask": True, "note": False},
-                          defaults={"note": "Dashboard verify"})
-
-
-@app.post("/describe")
-def describe_subtask():
-    """Queue a subtask describe via trigger file."""
-    return _write_trigger(DESCRIBE_TRIGGER, {"subtask": True, "desc": False})
-
-
-@app.post("/tools")
-def tools_subtask():
-    """Queue a subtask tools change via trigger file."""
-    return _write_trigger(TOOLS_TRIGGER, {"subtask": True, "tools": False})
-
-
 @app.post("/set")
 def set_setting():
     """Queue a settings change via trigger file."""
     return _write_trigger(SET_TRIGGER, {"key": True, "value": False})
-
-
-@app.post("/rename")
-def rename_subtask():
-    """Queue a subtask rename via trigger file."""
-    return _write_trigger(RENAME_TRIGGER, {"subtask": True, "desc": False})
 
 
 @app.get("/heartbeat")
@@ -664,88 +641,12 @@ def stalled():
                     "count": len(stuck), "stalled": stuck})
 
 
-@app.post("/heal")
-def heal():
-    """Write heal_trigger.json so the CLI resets a Running subtask to Pending."""
-    data = request.get_json(force=True, silent=True) or {}
-    subtask = data.get("subtask", "").strip().upper()
-    if not subtask:
-        return jsonify({"ok": False, "reason": "Missing 'subtask' field."}), 400
-    HEAL_TRIGGER.parent.mkdir(exist_ok=True)
-    HEAL_TRIGGER.write_text(json.dumps({"subtask": subtask}), encoding="utf-8")
-    return jsonify({"ok": True, "subtask": subtask}), 202
-
-
-@app.post("/add_task")
-def add_task():
-    """Queue a new task (writes add_task_trigger.json)."""
-    data = request.get_json(force=True, silent=True) or {}
-    spec = data.get("spec", "").strip()
-    if not spec:
-        return jsonify({"ok": False, "reason": "Missing 'spec' field."}), 400
-    ADD_TASK_TRIGGER.parent.mkdir(exist_ok=True)
-    ADD_TASK_TRIGGER.write_text(json.dumps({"spec": spec}), encoding="utf-8")
-    return jsonify({"ok": True, "spec": spec}), 202
-
-
-@app.post("/add_branch")
-def add_branch():
-    """Queue a new branch on an existing task (writes add_branch_trigger.json)."""
-    data = request.get_json(force=True, silent=True) or {}
-    task = data.get("task", "").strip()
-    spec = data.get("spec", "").strip()
-    if not task or not spec:
-        return jsonify({"ok": False, "reason": "Missing 'task' or 'spec' field."}), 400
-    ADD_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
-    ADD_BRANCH_TRIGGER.write_text(json.dumps({"task": task, "spec": spec}), encoding="utf-8")
-    return jsonify({"ok": True, "task": task, "spec": spec}), 202
-
-
-@app.post("/prioritize_branch")
-def prioritize_branch():
-    """Boost a branch to the front of the execution queue."""
-    data = request.get_json(force=True, silent=True) or {}
-    task   = data.get("task", "").strip()
-    branch = data.get("branch", "").strip()
-    if not task or not branch:
-        return jsonify({"ok": False, "reason": "Missing 'task' or 'branch' field."}), 400
-    PRIORITY_BRANCH_TRIGGER.parent.mkdir(exist_ok=True)
-    PRIORITY_BRANCH_TRIGGER.write_text(json.dumps({"task": task, "branch": branch}), encoding="utf-8")
-    return jsonify({"ok": True, "task": task, "branch": branch}), 202
-
-
 @app.post("/undo")
 def undo():
     """Restore the pre-step backup (writes undo_trigger)."""
     UNDO_TRIGGER.parent.mkdir(exist_ok=True)
     UNDO_TRIGGER.write_text("1")
     return jsonify({"ok": True}), 202
-
-
-@app.post("/depends")
-def add_depends():
-    """Add a task dependency (writes depends_trigger.json)."""
-    data   = request.get_json(force=True, silent=True) or {}
-    target = data.get("target", "").strip()
-    dep    = data.get("dep", "").strip()
-    if not target or not dep:
-        return jsonify({"ok": False, "reason": "Missing 'target' or 'dep' field."}), 400
-    DEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
-    DEPENDS_TRIGGER.write_text(json.dumps({"target": target, "dep": dep}), encoding="utf-8")
-    return jsonify({"ok": True, "target": target, "dep": dep}), 202
-
-
-@app.post("/undepends")
-def remove_depends():
-    """Remove a task dependency (writes undepends_trigger.json)."""
-    data   = request.get_json(force=True, silent=True) or {}
-    target = data.get("target", "").strip()
-    dep    = data.get("dep", "").strip()
-    if not target or not dep:
-        return jsonify({"ok": False, "reason": "Missing 'target' or 'dep' field."}), 400
-    UNDEPENDS_TRIGGER.parent.mkdir(exist_ok=True)
-    UNDEPENDS_TRIGGER.write_text(json.dumps({"target": target, "dep": dep}), encoding="utf-8")
-    return jsonify({"ok": True, "target": target, "dep": dep}), 202
 
 
 @app.post("/reset")
