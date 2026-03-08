@@ -806,3 +806,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-097
+Goal: Batch: GET /health liveness probe (097), toast/notification history panel in dashboard (098), POST /subtask/<id>/reset endpoint (099)
+
+Acceptance criteria:
+- TASK-097: GET /health returns {ok, uptime_s, step, state_file_exists}; uptime_s is seconds since server start (Flask app_start_time); step is current step from state file; state_file_exists is true if STATE_PATH exists on disk.
+- TASK-098: Dashboard maintains an in-memory list of the last 20 toast messages; a "Notifications" button in the header opens a panel showing each entry with timestamp, message, and type (info/warn/error); panel dismisses on Esc or button click.
+- TASK-099: POST /subtask/<id>/reset writes a heal_trigger.json to reset the subtask to Pending; returns {ok, subtask, previous_status} with 404 if subtask not found; compose on existing heal infrastructure.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
