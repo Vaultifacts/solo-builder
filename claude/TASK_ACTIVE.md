@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-091
+TASK-094
 
-Batch: GET /metrics endpoint, live step counter widget, dark/light theme toggle
+Batch: subtask timeline mini-chart in modal, POST /config/reset, GET /shortcuts

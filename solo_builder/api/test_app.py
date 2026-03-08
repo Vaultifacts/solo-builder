@@ -1256,6 +1256,67 @@ class TestConfig(_Base):
         self.assertEqual(r.status_code, 400)
 
 
+class TestConfigReset(_Base):
+    """TASK-095: POST /config/reset restores compiled-in defaults."""
+
+    def test_returns_200_and_ok(self):
+        r = self.client.post("/config/reset")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d.get("ok"))
+        self.assertTrue(d.get("restored"))
+
+    def test_config_key_in_response(self):
+        d = self.client.post("/config/reset").get_json()
+        self.assertIn("config", d)
+        self.assertIn("STALL_THRESHOLD", d["config"])
+
+    def test_defaults_written_to_settings(self):
+        # Change a value, then reset, then read back
+        self.client.post("/config", json={"STALL_THRESHOLD": 99})
+        self.client.post("/config/reset")
+        d = self.client.get("/config").get_json()
+        self.assertEqual(d.get("STALL_THRESHOLD"), 5)
+
+    def test_missing_settings_file_returns_409(self):
+        import os
+        backup = self._settings_path.read_bytes()
+        self._settings_path.unlink()
+        try:
+            r = self.client.post("/config/reset")
+            self.assertEqual(r.status_code, 409)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+
+class TestShortcuts(_Base):
+    """TASK-096: GET /shortcuts returns keyboard shortcut list."""
+
+    def test_returns_200(self):
+        self.assertEqual(self.client.get("/shortcuts").status_code, 200)
+
+    def test_has_shortcuts_list(self):
+        d = self.client.get("/shortcuts").get_json()
+        self.assertIn("shortcuts", d)
+        self.assertIsInstance(d["shortcuts"], list)
+
+    def test_has_count(self):
+        d = self.client.get("/shortcuts").get_json()
+        self.assertIn("count", d)
+        self.assertEqual(d["count"], len(d["shortcuts"]))
+
+    def test_each_shortcut_has_key_and_description(self):
+        shortcuts = self.client.get("/shortcuts").get_json()["shortcuts"]
+        for s in shortcuts:
+            self.assertIn("key", s)
+            self.assertIn("description", s)
+
+    def test_includes_common_keys(self):
+        keys = {s["key"] for s in self.client.get("/shortcuts").get_json()["shortcuts"]}
+        for expected in ("j", "k", "r", "p", "?", "Esc"):
+            self.assertIn(expected, keys)
+
+
 # Graph
 # ---------------------------------------------------------------------------
 
