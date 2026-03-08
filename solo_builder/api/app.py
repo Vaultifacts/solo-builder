@@ -564,6 +564,71 @@ def diff():
     })
 
 
+@app.get("/branches")
+def branches_all():
+    """Flat list of all branches across all tasks.
+
+    Query params: task — filter by task name (case-insensitive substring)
+    """
+    dag = _load_dag()
+    task_q = (request.args.get("task") or "").strip().lower()
+    result = []
+    for task_id, task_data in dag.items():
+        if task_q and task_q not in task_id.lower():
+            continue
+        for br_name, br_data in task_data.get("branches", {}).items():
+            subs = br_data.get("subtasks", {})
+            total = len(subs)
+            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r = sum(1 for s in subs.values() if s.get("status") == "Running")
+            p = total - v - r
+            result.append({
+                "task": task_id,
+                "branch": br_name,
+                "total": total,
+                "verified": v,
+                "running": r,
+                "pending": p,
+                "pct": round(v / total * 100, 1) if total else 0.0,
+            })
+    return jsonify({"branches": result, "count": len(result)})
+
+
+@app.get("/subtasks")
+def subtasks_all():
+    """Flat list of all subtasks across all tasks.
+
+    Query params: task, branch, status (case-insensitive substring); output=1 includes full output.
+    """
+    dag = _load_dag()
+    task_q   = (request.args.get("task")   or "").strip().lower()
+    branch_q = (request.args.get("branch") or "").strip().lower()
+    status_q = (request.args.get("status") or "").strip().lower()
+    include_output = request.args.get("output", "0") == "1"
+    result = []
+    for task_id, task_data in dag.items():
+        if task_q and task_q not in task_id.lower():
+            continue
+        for br_name, br_data in task_data.get("branches", {}).items():
+            if branch_q and branch_q not in br_name.lower():
+                continue
+            for st_name, st_data in br_data.get("subtasks", {}).items():
+                st_status = st_data.get("status", "Pending")
+                if status_q and status_q not in st_status.lower():
+                    continue
+                entry = {
+                    "subtask": st_name,
+                    "task": task_id,
+                    "branch": br_name,
+                    "status": st_status,
+                    "output_length": len(st_data.get("output", "")),
+                }
+                if include_output:
+                    entry["output"] = st_data.get("output", "")
+                result.append(entry)
+    return jsonify({"subtasks": result, "count": len(result)})
+
+
 @app.get("/branches/<path:task_id>")
 def branches(task_id: str):
     """Per-task branch listing with subtask counts and status breakdown."""
