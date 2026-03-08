@@ -767,3 +767,16 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-088
+Goal: Batch: GET /subtasks/export CSV/JSON (088), dashboard Subtasks sidebar tab (089), GET /timeline/<subtask> enhanced response with branch/task context (090)
+
+Acceptance criteria:
+- TASK-088: GET /subtasks/export returns all subtasks as CSV (default) or JSON (?format=json); supports same ?task=, ?branch=, ?status= filters as GET /subtasks; CSV columns: subtask,task,branch,status,output_length.
+- TASK-089: New "Subtasks" sidebar tab polls GET /subtasks every tick; renders a filterable table with subtask/task/branch/status/output_length columns; clicking a row opens the subtask detail modal.
+- TASK-090: GET /timeline/<subtask> currently returns basic history; enhance to also return task, branch, current status, current output, and description fields alongside existing history array.
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
