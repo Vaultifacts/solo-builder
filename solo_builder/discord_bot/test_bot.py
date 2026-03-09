@@ -2807,6 +2807,96 @@ class TestBulkVerifySlashCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Z9", text)
 
 
+class TestTaskProgressCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot task_progress command."""
+
+    async def test_task_progress_valid(self):
+        """task_progress Task0 returns branch breakdown."""
+        state = _make_state({"A1": "Verified", "A2": "Running"}, step=3)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("task_progress Task0"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Task0", text)
+
+    async def test_task_progress_contains_branch_name(self):
+        """task_progress output includes branch name."""
+        state = _make_state({"A1": "Verified"}, step=1)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("task_progress Task0"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("BranchA", text)
+
+    async def test_task_progress_not_found(self):
+        """task_progress with unknown task returns warning."""
+        state = _make_state({"A1": "Pending"}, step=1)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("task_progress TASK-999"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("not found", text)
+
+    async def test_task_progress_no_args_shows_usage(self):
+        """task_progress with no args shows usage hint."""
+        state = _make_state({"A1": "Pending"}, step=1)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("task_progress"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+    async def test_task_progress_shows_totals(self):
+        """task_progress output includes a TOTAL row."""
+        state = _make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}, step=2)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("task_progress Task0"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("TOTAL", text)
+
+
+class TestTaskProgressSlashCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for /task_progress slash command."""
+
+    async def _run(self, task_id_str, state, allowed=True):
+        cmds = _make_slash_cmds()
+        interaction = _make_interaction(allowed=allowed)
+        with patch.object(bot_module, "_allowed", return_value=allowed), \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await cmds["task_progress"](interaction, task_id_str)
+        return interaction
+
+    async def test_slash_task_progress_sends_message(self):
+        state = _make_state({"A1": "Verified"}, step=1)
+        iact = await self._run("Task0", state)
+        iact.response.send_message.assert_called_once()
+
+    async def test_slash_task_progress_contains_task_id(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        iact = await self._run("Task0", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("Task0", text)
+
+    async def test_slash_task_progress_not_found(self):
+        state = _make_state({"A1": "Pending"}, step=1)
+        iact = await self._run("TASK-999", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("not found", text)
+
+    async def test_slash_task_progress_unauthorized(self):
+        state = _make_state({"A1": "Pending"}, step=1)
+        iact = await self._run("Task0", state, allowed=False)
+        args, kwargs = iact.response.send_message.call_args
+        self.assertTrue(kwargs.get("ephemeral") or "Wrong" in (args[0] if args else ""))
+
+    async def test_slash_task_progress_shows_branch(self):
+        state = _make_state({"A1": "Verified", "A2": "Pending"}, step=1)
+        iact = await self._run("Task0", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("BranchA", text)
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
