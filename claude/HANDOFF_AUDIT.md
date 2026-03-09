@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-124
+TASK-125
 
 ## Verdict: PASS
 
@@ -12,13 +12,11 @@ TASK-124
 - architecture-audit: 93.8/100 (unchanged)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/config.py` — new GET /config/export endpoint
-- `solo_builder/api/test_app.py` — 5 new tests in TestConfigExport class
+One file modified:
+- `solo_builder/api/static/dashboard_panels.js` — added Export settings.json download link in _renderSettings()
 
 ## Feature Description
-GET /config/export returns settings.json as a downloadable JSON attachment
-(Content-Disposition: attachment; filename=settings.json). Returns 404 if file
-missing, 500 on read error. Tests cover: success (200 + content-disposition header
-+ valid JSON body), file missing (404), correct MIME type, correct filename in header,
-and bytes match the on-disk file.
+Added a `<a class="toolbar-btn" href="/config/export" download="settings.json">` link in the
+Settings tab, rendered just below the save-feedback span. Clicking it triggers a browser download
+of the current settings.json via the existing GET /config/export endpoint (added in TASK-124).
+No new endpoints, no new test files — purely a UI wire-up.
