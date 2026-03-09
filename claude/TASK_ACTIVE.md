@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-136
+TASK-137
 
-Add GET /tasks/<id>/export endpoint for single-task JSON/CSV download
+Add reset_branch command to Discord bot (plain-text + slash)
