@@ -1818,3 +1818,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-305
+Goal: GET /stalled: add ?min_age=N filter to return only Running subtasks stalled >= N steps; reuse min_age pattern from GET /subtasks; 3 new tests in TestStalled
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

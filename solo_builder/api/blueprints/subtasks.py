@@ -353,6 +353,7 @@ def stalled():
     """Return subtasks stuck in Running longer than STALL_THRESHOLD.
 
     Query params: task, branch — substring filters (case-insensitive).
+    Optional: min_age=N — override threshold; only return subtasks with age >= N.
     """
     _app = _get_app()
     state = _load_state()
@@ -365,6 +366,12 @@ def stalled():
         cfg = json.loads(_app.SETTINGS_PATH.read_text(encoding="utf-8"))
         threshold = int(cfg.get("STALL_THRESHOLD", 5))
     except Exception:
+        pass
+    try:
+        min_age_param = request.args.get("min_age")
+        if min_age_param is not None:
+            threshold = max(0, int(min_age_param))
+    except (TypeError, ValueError):
         pass
     stuck = []
     for task_name, task in dag.items():
