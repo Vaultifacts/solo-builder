@@ -1,21 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-166
+TASK-167
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (429 tests, 0 failures)
+- unittest-discover (api): PASS (439 tests, 0 failures — +10 TestPostTaskBulkReset)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_panels.js` — extracted _fbSet() helper; applied to both bulk functions
+Two files modified:
+- `solo_builder/api/blueprints/tasks.py` — added POST /tasks/<path:task_id>/bulk-reset
+- `solo_builder/api/test_app.py` — added TestPostTaskBulkReset (10 tests)
 
 ## Implementation Detail
-- _fbSet(fb, msg): sets fb.textContent, schedules setTimeout 3000ms clear
-- Both success paths (↺ N reset / ✔ N verified) and error paths (reason / "Network error") now auto-clear
-- Pattern consistent with dashboard_branches.js bulk feedback (TASK-157)
-- No new API or test changes (JS-only)
+Distinct from POST /tasks/<id>/reset:
+- Does NOT clear output or remove shadow key
+- Has include_verified=false body flag to optionally reset Verified subtasks
+- task["status"] = "Pending" only when reset_count > 0
+- Returns {ok, task, reset_count, skipped_count}
+- 404 if task not found

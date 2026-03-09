@@ -3174,6 +3174,71 @@ class TestPostTaskReset(_Base):
         self.assertEqual(st.get("output", ""), "")
 
 
+class TestPostTaskBulkReset(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        r = self.client.post("/tasks/Task 0/bulk-reset")
+        self.assertEqual(r.status_code, 200)
+
+    def test_returns_ok(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
+        self.assertTrue(d["ok"])
+
+    def test_404_for_unknown_task(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/tasks/No Such Task/bulk-reset")
+        self.assertEqual(r.status_code, 404)
+
+    def test_reset_count_correct(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
+        self.assertEqual(d["reset_count"], 2)
+
+    def test_verified_skipped_by_default(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
+        self.assertEqual(d["reset_count"], 1)
+        self.assertEqual(d["skipped_count"], 1)
+
+    def test_include_verified_flag_resets_all(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.post("/tasks/Task 0/bulk-reset",
+                             json={"include_verified": True},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["reset_count"], 2)
+        self.assertEqual(d["skipped_count"], 0)
+
+    def test_task_field_in_response(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
+        self.assertEqual(d["task"], "Task 0")
+
+    def test_state_persisted(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/tasks/Task 0/bulk-reset")
+        s = json.loads(self._state_path.read_text())
+        st = s["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Pending")
+
+    def test_task_status_set_pending_when_reset(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["status"] = "Running"
+        self._write_state(state)
+        self.client.post("/tasks/Task 0/bulk-reset")
+        s = json.loads(self._state_path.read_text())
+        self.assertEqual(s["dag"]["Task 0"]["status"], "Pending")
+
+    def test_all_verified_no_change_to_task_status(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["status"] = "Verified"
+        self._write_state(state)
+        self.client.post("/tasks/Task 0/bulk-reset")
+        s = json.loads(self._state_path.read_text())
+        self.assertEqual(s["dag"]["Task 0"]["status"], "Verified")
+
+
 # ---------------------------------------------------------------------------
 # GET /tasks/<id>/timeline  (TASK-139)
 # ---------------------------------------------------------------------------
