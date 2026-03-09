@@ -61,16 +61,22 @@ def _task_summary(task_id: str, task: dict) -> dict:
         for s in b.get("subtasks", {}).values()
         if s.get("status") == "Running"
     )
+    review = sum(
+        1 for b in branches.values()
+        for s in b.get("subtasks", {}).values()
+        if s.get("status") == "Review"
+    )
     pct = round(verified / subtask_count * 100, 1) if subtask_count else 0.0
     return {
-        "id":               task_id,
-        "status":           task.get("status"),
-        "depends_on":       task.get("depends_on", []),
-        "branch_count":     len(branches),
-        "subtask_count":    subtask_count,
+        "id":                task_id,
+        "status":            task.get("status"),
+        "depends_on":        task.get("depends_on", []),
+        "branch_count":      len(branches),
+        "subtask_count":     subtask_count,
         "verified_subtasks": verified,
-        "running_subtasks": running,
-        "pct":              pct,
+        "running_subtasks":  running,
+        "review_subtasks":   review,
+        "pct":               pct,
     }
 
 
