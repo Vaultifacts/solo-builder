@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-280
+TASK-281
 
-Dashboard header stalled badge: show worst-offending branch name in title tooltip when stalled > 0 (e.g. 'N stalled — worst: task/branch (count)')
+GET /history/export: add ?task= substring filter (parity with GET /history); 3+ new tests
