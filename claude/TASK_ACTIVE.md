@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-217
+TASK-218
 
-GET /history response includes review count in top-level metadata
+Dashboard History tab shows by_status chips from /history/count response
