@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-124
+TASK-125
 
-Add GET /config/export endpoint that downloads settings.json as attachment, complementing existing /config GET
+Add GET /config/export download link to dashboard Settings tab
