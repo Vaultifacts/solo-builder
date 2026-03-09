@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-254
+TASK-255
 
-Add GET /stalled multi-task cross-branch regression test: verify stall detection works correctly when stalled subtasks exist across multiple tasks and branches
+Add task quick-filter UI to Subtasks tab: a text input that filters subtasks by task name server-side via ?task= parameter, wired into pollSubtasks and export links
