@@ -1457,6 +1457,99 @@ class TestBranchesAll(_Base):
         self.assertEqual(d["total"], 3)
 
 
+# GET /branches/export  (TASK-258)
+# ---------------------------------------------------------------------------
+
+class TestBranchesExport(_Base):
+
+    def _two_branch_state(self):
+        return {
+            "step": 0,
+            "dag": {
+                "Task 0": {"status": "Running", "depends_on": [], "branches": {
+                    "Br A": {"subtasks": {"S1": {"status": "Verified"}, "S2": {"status": "Verified"}}},
+                    "Br B": {"subtasks": {"S3": {"status": "Running"}, "S4": {"status": "Pending"}}},
+                }},
+            },
+        }
+
+    def test_export_csv_status(self):
+        self._write_state(self._two_branch_state())
+        r = self.client.get("/branches/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_csv_content_type(self):
+        self._write_state(self._two_branch_state())
+        r = self.client.get("/branches/export")
+        self.assertIn("text/csv", r.content_type)
+
+    def test_export_csv_disposition(self):
+        self._write_state(self._two_branch_state())
+        r = self.client.get("/branches/export")
+        self.assertIn("branches.csv", r.headers.get("Content-Disposition", ""))
+
+    def test_export_csv_header_row(self):
+        self._write_state(self._two_branch_state())
+        lines = self.client.get("/branches/export").data.decode().strip().splitlines()
+        self.assertEqual(lines[0], "task,branch,total,verified,running,review,pending,pct")
+
+    def test_export_csv_row_count(self):
+        self._write_state(self._two_branch_state())
+        lines = self.client.get("/branches/export").data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 3)  # header + 2 branches
+
+    def test_export_json_status(self):
+        self._write_state(self._two_branch_state())
+        r = self.client.get("/branches/export?format=json")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("application/json", r.content_type)
+
+    def test_export_json_disposition(self):
+        self._write_state(self._two_branch_state())
+        r = self.client.get("/branches/export?format=json")
+        self.assertIn("branches.json", r.headers.get("Content-Disposition", ""))
+
+    def test_export_json_has_branches_key(self):
+        self._write_state(self._two_branch_state())
+        d = self.client.get("/branches/export?format=json").get_json()
+        self.assertIn("branches", d)
+        self.assertIn("total", d)
+        self.assertEqual(d["total"], 2)
+
+    def test_export_json_row_fields(self):
+        self._write_state(self._two_branch_state())
+        rows = self.client.get("/branches/export?format=json").get_json()["branches"]
+        for key in ("task", "branch", "total", "verified", "running", "review", "pending", "pct"):
+            self.assertIn(key, rows[0])
+
+    def test_export_status_filter_verified(self):
+        self._write_state(self._two_branch_state())
+        rows = self.client.get("/branches/export?format=json&status=verified").get_json()["branches"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["branch"], "Br A")
+
+    def test_export_status_filter_running(self):
+        self._write_state(self._two_branch_state())
+        rows = self.client.get("/branches/export?format=json&status=running").get_json()["branches"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["branch"], "Br B")
+
+    def test_export_task_filter(self):
+        self._write_state(self._two_branch_state())
+        rows = self.client.get("/branches/export?format=json&task=Task+0").get_json()["branches"]
+        self.assertEqual(len(rows), 2)
+
+    def test_export_task_filter_no_match(self):
+        self._write_state(self._two_branch_state())
+        rows = self.client.get("/branches/export?format=json&task=ZZZ").get_json()["branches"]
+        self.assertEqual(rows, [])
+
+    def test_export_empty_state_csv(self):
+        self._write_state({"step": 0, "dag": {}})
+        lines = self.client.get("/branches/export").data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 1)  # header only
+
+
 # POST /branches/<task>/reset
 # ---------------------------------------------------------------------------
 

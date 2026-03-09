@@ -1,12 +1,14 @@
-"""Branches blueprint — GET /branches, /branches/<task_id>, POST /branches/<task_id>/reset.
+"""Branches blueprint — GET /branches, /branches/export, /branches/<task_id>, POST /branches/<task_id>/reset.
 
 Note on /branches/<task_id> vs /tasks/<task_id>/branches:
 - /branches/<task_id>        includes subtasks[] array (name+status) — used by dashboard detail view
 - /tasks/<task_id>/branches  paginated, branch-level counts only, no subtask list
 """
+import csv
+import io
 import json
 
-from flask import Blueprint, jsonify, abort, request
+from flask import Blueprint, jsonify, abort, request, Response
 
 from ..helpers import _load_dag, _load_state
 
@@ -67,6 +69,58 @@ def branches_all():
     else:
         pages = 1
     return jsonify({"branches": result, "count": len(result), "total": all_count, "page": page, "pages": pages})
+
+
+@branches_bp.get("/branches/export")
+def branches_export():
+    """Export flat branch list as CSV (default) or JSON (?format=json).
+
+    Supports same ?task= and ?status= filters as GET /branches (no pagination).
+    CSV columns: task,branch,total,verified,running,review,pending,pct
+    """
+    dag = _load_dag()
+    task_q   = (request.args.get("task")   or "").strip().lower()
+    status_q = (request.args.get("status") or "").strip().lower()
+    rows = []
+    for task_id, task_data in dag.items():
+        if task_q and task_q not in task_id.lower():
+            continue
+        for br_name, br_data in task_data.get("branches", {}).items():
+            subs = br_data.get("subtasks", {})
+            total = len(subs)
+            v  = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r  = sum(1 for s in subs.values() if s.get("status") == "Running")
+            rv = sum(1 for s in subs.values() if s.get("status") == "Review")
+            p  = total - v - r - rv
+            rows.append({"task": task_id, "branch": br_name, "total": total,
+                         "verified": v, "running": r, "review": rv, "pending": p,
+                         "pct": round(v / total * 100, 1) if total else 0.0})
+    if status_q == "verified":
+        rows = [b for b in rows if b["verified"] == b["total"] and b["total"] > 0]
+    elif status_q == "running":
+        rows = [b for b in rows if b["running"] > 0]
+    elif status_q == "review":
+        rows = [b for b in rows if b["review"] > 0]
+    elif status_q == "pending":
+        rows = [b for b in rows if b["pending"] > 0]
+    fmt = (request.args.get("format") or "csv").strip().lower()
+    if fmt == "json":
+        return Response(
+            json.dumps({"branches": rows, "total": len(rows)}, indent=2).encode("utf-8"),
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=branches.json"},
+        )
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["task", "branch", "total", "verified", "running", "review", "pending", "pct"])
+    for b in rows:
+        writer.writerow([b["task"], b["branch"], b["total"], b["verified"],
+                         b["running"], b["review"], b["pending"], b["pct"]])
+    return Response(
+        buf.getvalue().encode("utf-8"),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=branches.csv"},
+    )
 
 
 @branches_bp.get("/branches/<path:task_id>")
