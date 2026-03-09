@@ -185,6 +185,53 @@ class TestGetStatus(_Base):
             d["total"]
         )
 
+    def test_stalled_by_branch_key_present(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/status").get_json()
+        self.assertIn("stalled_by_branch", d)
+
+    def test_stalled_by_branch_empty_when_no_stall(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/status").get_json()
+        self.assertEqual(d["stalled_by_branch"], [])
+
+    def _set_threshold_in_settings(self, n: int) -> None:
+        cfg = json.loads(self._settings_path.read_text(encoding="utf-8"))
+        cfg["STALL_THRESHOLD"] = n
+        self._settings_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    def test_stalled_by_branch_populated_when_stalled(self):
+        # threshold=5, step=10, last_update=0 → age=10 ≥ 5 → stalled
+        self._set_threshold_in_settings(5)
+        state = self._make_state({"A1": "Running"}, step=10)
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = 0
+        self._write_state(state)
+        d = self.client.get("/status").get_json()
+        self.assertEqual(len(d["stalled_by_branch"]), 1)
+        entry = d["stalled_by_branch"][0]
+        self.assertEqual(entry["task"], "Task 0")
+        self.assertEqual(entry["branch"], "Branch A")
+        self.assertEqual(entry["count"], 1)
+
+    def test_stalled_by_branch_count_matches_stalled_total(self):
+        self._set_threshold_in_settings(5)
+        state = self._make_state({"A1": "Running", "A2": "Running"}, step=10)
+        for k in ("A1", "A2"):
+            state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"][k]["last_update"] = 0
+        self._write_state(state)
+        d = self.client.get("/status").get_json()
+        branch_total = sum(e["count"] for e in d["stalled_by_branch"])
+        self.assertEqual(branch_total, d["stalled"])
+
+    def test_stalled_by_branch_not_stalled_not_included(self):
+        # threshold=5, last_update=9, step=10 → age=1 < 5 → not stalled
+        self._set_threshold_in_settings(5)
+        state = self._make_state({"A1": "Running"}, step=10)
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = 9
+        self._write_state(state)
+        d = self.client.get("/status").get_json()
+        self.assertEqual(d["stalled_by_branch"], [])
+
 
 # ---------------------------------------------------------------------------
 # GET /history/count
