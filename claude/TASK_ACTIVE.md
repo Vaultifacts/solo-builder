@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-233
+TASK-234
 
-Add pager UI to Tasks tab (◀/▶ nav buttons) using GET /tasks pagination
+Final audit of dashboard.html inline handlers vs window.* assignments; fix any remaining gaps
