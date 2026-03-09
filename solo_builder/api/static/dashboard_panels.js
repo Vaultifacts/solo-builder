@@ -552,7 +552,8 @@ window.renderSubtasks = function () {
     _subtasksPage = 1;
     pollSubtasks();
   } else {
-    // Non-status text, no server filter change → client-side re-render only
+    // Non-status text, no server filter change → reset to page 1, client-side re-render
+    _subtasksPage = 1;
     _renderSubtasks();
   }
 };
