@@ -41,15 +41,27 @@ function _renderNotifPanel() {
   const list  = document.getElementById("notif-list");
   const badge = document.getElementById("notif-count-badge");
   if (!list) return;
+  list.replaceChildren();
   if (state.notifHistory.length === 0) {
-    list.innerHTML = `<div style="color:var(--dim);font-size:10px;padding:8px 10px">No notifications yet.</div>`;
+    const placeholder = document.createElement("div");
+    placeholder.style.cssText = "color:var(--dim);font-size:10px;padding:8px 10px";
+    placeholder.textContent = "No notifications yet.";
+    list.appendChild(placeholder);
   } else {
-    list.innerHTML = state.notifHistory.slice().reverse().map(function (n) {
+    state.notifHistory.slice().reverse().forEach(function (n) {
       const c = n.type === "error" ? "var(--red)" : n.type === "warn" ? "var(--yellow)" : "var(--text)";
-      return `<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px">` +
-        `<span style="color:var(--dim);margin-right:6px">${esc(n.ts)}</span>` +
-        `<span style="color:${c}">${esc(n.msg)}</span></div>`;
-    }).join("");
+      const row = document.createElement("div");
+      row.style.cssText = "padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px";
+      const ts = document.createElement("span");
+      ts.style.cssText = "color:var(--dim);margin-right:6px";
+      ts.textContent = n.ts;
+      const msg = document.createElement("span");
+      msg.style.color = c;
+      msg.textContent = n.msg;
+      row.appendChild(ts);
+      row.appendChild(msg);
+      list.appendChild(row);
+    });
   }
   if (badge) {
     badge.textContent = String(state.notifHistory.length);
