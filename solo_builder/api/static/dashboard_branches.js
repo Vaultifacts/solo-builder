@@ -182,6 +182,9 @@ function _renderBranchesAll(d, summary) {
     if (br.running > 0) {
       row.appendChild(_span("font-size:10px;color:var(--cyan)", br.running + "▶"));
     }
+    if (br.review > 0) {
+      row.appendChild(_span("font-size:10px;color:var(--yellow)", br.review + "⏸"));
+    }
     children.push(row);
   });
 
