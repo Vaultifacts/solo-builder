@@ -1,4 +1,7 @@
-"""Tasks blueprint — GET /tasks, /tasks/<id>, /tasks/<id>/export, POST /tasks/<id>/trigger, POST /tasks/<id>/reset, GET /graph, /priority."""
+"""Tasks blueprint — GET /tasks, /tasks/<id>, /tasks/<id>/export, POST /tasks/<id>/trigger,
+POST /tasks/<id>/reset (destructive, clears output), POST /tasks/<id>/bulk-reset (preserves output),
+GET /tasks/<id>/progress, /tasks/<id>/branches, /tasks/<id>/subtasks, /tasks/<id>/timeline,
+GET /graph, /priority."""
 import csv
 import io
 import json
@@ -129,11 +132,12 @@ def trigger_task(task_id: str):
 
 @tasks_bp.post("/tasks/<path:task_id>/reset")
 def reset_task(task_id: str):
-    """Bulk-reset all subtasks in a task to Pending.
+    """Destructive reset: all non-Verified subtasks → Pending, output cleared.
 
-    Directly updates STATE.json; equivalent to running subtask reset for every
-    subtask in the task.  Returns {ok, task, reset_count, skipped_count}.
-    404 if task not found.
+    Clears output and removes the shadow key on each subtask — use this when
+    you want a clean slate.  Prefer POST /tasks/<id>/bulk-reset when you want
+    to preserve output or use the include_verified flag.
+    Returns {ok, task, reset_count, skipped_count}.  404 if task not found.
     """
     from .. import app as _app_mod
     state = _load_state()
