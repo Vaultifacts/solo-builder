@@ -23,6 +23,52 @@ function _bar(widthPx, totalPx, height, bg, fill) {
   return track;
 }
 
+/* ── Branches bulk-select state ─────────────────────────── */
+const _branchesSel = new Set();
+
+function _updateBranchesBulkBar() {
+  const bar = document.getElementById("branches-bulk-bar");
+  const cnt = document.getElementById("branches-sel-count");
+  if (!bar) return;
+  const n = _branchesSel.size;
+  bar.style.display = n > 0 ? "flex" : "none";
+  if (cnt) cnt.textContent = `${n} selected`;
+}
+
+window.branchesClearSel = function () {
+  _branchesSel.clear();
+  document.querySelectorAll("#branches-content input[type=checkbox]").forEach(c => { c.checked = false; });
+  _updateBranchesBulkBar();
+};
+
+window.branchesBulkReset = async function () {
+  if (!_branchesSel.size) return;
+  const fb = document.getElementById("fb-branches-bulk");
+  try {
+    const d = await fetch(state.base + "/subtasks/bulk-reset", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({subtasks: [..._branchesSel]}),
+    }).then(r => r.json());
+    if (fb) { fb.textContent = `Reset ${d.reset_count ?? 0}`; setTimeout(() => { fb.textContent = ""; }, 3000); }
+  } catch (_) {}
+  _branchesSel.clear();
+  await pollBranches();
+};
+
+window.branchesBulkVerify = async function () {
+  if (!_branchesSel.size) return;
+  const fb = document.getElementById("fb-branches-bulk");
+  try {
+    const d = await fetch(state.base + "/subtasks/bulk-verify", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({subtasks: [..._branchesSel]}),
+    }).then(r => r.json());
+    if (fb) { fb.textContent = `Verified ${d.verified_count ?? 0}`; setTimeout(() => { fb.textContent = ""; }, 3000); }
+  } catch (_) {}
+  _branchesSel.clear();
+  await pollBranches();
+};
+
 export async function pollBranches() {
   try {
     if (state.selectedTask) {
@@ -37,6 +83,10 @@ export async function pollBranches() {
 
 function _renderBranchesAll(d, summary) {
   const el = document.getElementById("branches-content");
+  // bulk bar only applies to detail view; hide it in all-tasks view
+  _branchesSel.clear();
+  _updateBranchesBulkBar();
+
   if (!d.branches || d.branches.length === 0) {
     const ph = _div(null, "detail-placeholder");
     ph.textContent = "No branches yet.";
@@ -106,6 +156,8 @@ function _renderBranchesAll(d, summary) {
 function _renderBranchesDetail(d) {
   const el = document.getElementById("branches-content");
   if (!d.branches || d.branches.length === 0) {
+    _branchesSel.clear();
+    _updateBranchesBulkBar();
     const ph = _div(null, "detail-placeholder");
     ph.textContent = "No branches.";
     el.replaceChildren(ph);
@@ -132,11 +184,21 @@ function _renderBranchesDetail(d) {
     block.appendChild(pSpan);
 
     br.subtasks.forEach(st => {
-      const stRow = _div("padding-left:12px", "diff-entry");
+      const stRow = _div("padding-left:12px;display:flex;align-items:center;gap:4px", "diff-entry");
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.style.cssText = "width:10px;height:10px;cursor:pointer;flex-shrink:0";
+      chk.checked = _branchesSel.has(st.name);
+      chk.addEventListener("change", () => {
+        if (chk.checked) _branchesSel.add(st.name);
+        else _branchesSel.delete(st.name);
+        _updateBranchesBulkBar();
+      });
       const stName = _span(null);
       stName.className = "diff-st";
       stName.textContent = st.name;
       const stStatus = _span("color:" + statusColor(st.status), st.status);
+      stRow.appendChild(chk);
       stRow.appendChild(stName);
       stRow.appendChild(document.createTextNode(" "));
       stRow.appendChild(stStatus);
@@ -146,4 +208,5 @@ function _renderBranchesDetail(d) {
   });
 
   el.replaceChildren(...children);
+  _updateBranchesBulkBar();
 }

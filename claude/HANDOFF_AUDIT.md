@@ -1,21 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-156
+TASK-157
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (bot): PASS (231 tests, 0 failures — +10 slash command tests)
+- unittest-discover (api): PASS (406 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/discord_bot/test_bot.py` — added TestBulkResetSlashCommand (5) + TestBulkVerifySlashCommand (5)
+Two files modified:
+- `solo_builder/api/static/dashboard_branches.js` — added _branchesSel Set, _updateBranchesBulkBar(), branchesClearSel, branchesBulkReset, branchesBulkVerify; checkboxes in _renderBranchesDetail subtask rows
+- `solo_builder/api/dashboard.html` — added #branches-bulk-bar div with Reset/Verify/Clear buttons + feedback span
 
 ## Implementation Detail
-- Uses `_make_slash_cmds()` helper: mocks bot.tree.command with identity-capture decorator
-- Patches `discord.app_commands.describe` to `return_value=lambda fn: fn` so async functions are captured (not wrapped in MagicMock)
-- Tests: sends message, resets/verifies correct count, skips already-Verified, reports not-found, unauthorized returns ephemeral, multi-subtask split
-- Pattern documented in _make_interaction() + _make_slash_cmds() for reuse in future slash tests
+- Selection only active in task-detail view (_renderBranchesDetail); bulk bar hidden on all-tasks overview
+- Calls existing /subtasks/bulk-reset and /subtasks/bulk-verify endpoints
+- After bulk action: clears selection, refreshes via pollBranches()
+- Pattern mirrors the Subtasks tab bulk bar (TASK-150)
