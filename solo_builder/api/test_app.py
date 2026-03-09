@@ -176,6 +176,15 @@ class TestGetStatus(_Base):
         self.assertEqual(d["pending"], 1)
         self.assertEqual(d["review"], 1)
 
+    def test_pending_sum_to_total(self):
+        self._write_state(self._make_state(
+            {"A1": "Verified", "A2": "Running", "A3": "Review", "A4": "Pending"}))
+        d = self.client.get("/status").get_json()
+        self.assertEqual(
+            d["verified"] + d["running"] + d["review"] + d["pending"],
+            d["total"]
+        )
+
 
 # ---------------------------------------------------------------------------
 # GET /history/count
