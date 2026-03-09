@@ -2065,6 +2065,46 @@ class TestFilterCommand(unittest.IsolatedAsyncioTestCase):
         text = mock_send.call_args[0][1]
         self.assertIn("0", text)
 
+    async def test_filter_review_shows_review_subtasks(self):
+        """'filter Review' returns subtasks with Review status."""
+        state = _make_state({"A1": "Review", "A2": "Running"})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("filter Review"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Review", text)
+        self.assertIn("A1", text)
+        self.assertNotIn("A2", text)
+
+    async def test_filter_review_shows_pause_icon(self):
+        """'filter Review' output contains the ⏸ icon."""
+        state = _make_state({"A1": "Review"})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("filter Review"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("⏸", text)
+
+
+class TestFormatFilterDirect(unittest.TestCase):
+    """Direct unit tests for _format_filter in bot_formatters."""
+
+    def test_review_status_in_valid(self):
+        state = _make_state({"A1": "Review"})
+        text = bot_module._format_filter(state, "review")
+        self.assertIn("Review", text)
+        self.assertIn("A1", text)
+
+    def test_review_count_correct(self):
+        state = _make_state({"A1": "Review", "A2": "Review", "A3": "Pending"})
+        text = bot_module._format_filter(state, "review")
+        self.assertIn("2", text)
+
+    def test_non_review_excluded(self):
+        state = _make_state({"A1": "Review", "A2": "Running"})
+        text = bot_module._format_filter(state, "review")
+        self.assertNotIn("A2", text)
+
 
 class TestPriorityCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot priority command."""
