@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-215
+TASK-216
 
-GET /history/count returns review in status distribution
+CHANGELOG v4.3.x entry documenting TASK-213 through TASK-215
