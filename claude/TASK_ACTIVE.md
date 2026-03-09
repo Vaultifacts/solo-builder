@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-258
+TASK-259
 
-Add GET /branches/export endpoint: CSV and JSON download for branch data, supports same ?task= and ?status= filters as GET /branches, with Content-Disposition attachment header
+Add #subtasks-branch-filter input to Subtasks tab: wires to pollSubtasks with ?branch=X server-side filter, composes with existing name/status/task filters

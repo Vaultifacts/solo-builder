@@ -466,6 +466,7 @@ let _subtasksTotal        = 0;
 let _subtasksStatusFilter = "";   // "" = all; "Pending"|"Running"|"Review"|"Verified"
 let _subtasksNameFilter   = "";   // "" = all; substring matched against subtask name
 let _subtasksTaskFilter   = "";   // "" = all; substring matched against task name
+let _subtasksBranchFilter = "";   // "" = all; substring matched against branch name
 const _SUBTASKS_LIMIT     = 50;
 const _SUBTASKS_STATUS_VALS = new Set(["pending", "running", "review", "verified"]);
 
@@ -498,6 +499,7 @@ export async function pollSubtasks() {
     if (_subtasksStatusFilter) url += `&status=${encodeURIComponent(_subtasksStatusFilter)}`;
     if (_subtasksNameFilter)   url += `&name=${encodeURIComponent(_subtasksNameFilter)}`;
     if (_subtasksTaskFilter)   url += `&task=${encodeURIComponent(_subtasksTaskFilter)}`;
+    if (_subtasksBranchFilter) url += `&branch=${encodeURIComponent(_subtasksBranchFilter)}`;
     const d = await api(url);
     _subtasksAll   = d.subtasks || [];
     _subtasksTotal = d.total    ?? _subtasksAll.length;
@@ -513,7 +515,8 @@ function _updateSubtasksExportLinks() {
   if (!csv || !json) return;
   let qs = _subtasksStatusFilter ? `?status=${encodeURIComponent(_subtasksStatusFilter)}` : "";
   if (_subtasksNameFilter) qs += (qs ? "&" : "?") + `name=${encodeURIComponent(_subtasksNameFilter)}`;
-  if (_subtasksTaskFilter) qs += (qs ? "&" : "?") + `task=${encodeURIComponent(_subtasksTaskFilter)}`;
+  if (_subtasksTaskFilter)   qs += (qs ? "&" : "?") + `task=${encodeURIComponent(_subtasksTaskFilter)}`;
+  if (_subtasksBranchFilter) qs += (qs ? "&" : "?") + `branch=${encodeURIComponent(_subtasksBranchFilter)}`;
   csv.href  = `/subtasks/export${qs}`;
   json.href = `/subtasks/export${qs ? qs + "&format=json" : "?format=json"}`;
 }
@@ -529,6 +532,15 @@ window._applySubtasksTaskFilter = function () {
   const v = (document.getElementById("subtasks-task-filter")?.value || "").trim().toLowerCase();
   if (v === _subtasksTaskFilter) return;
   _subtasksTaskFilter = v;
+  _subtasksPage = 1;
+  _updateSubtasksExportLinks();
+  pollSubtasks();
+};
+
+window._applySubtasksBranchFilter = function () {
+  const v = (document.getElementById("subtasks-branch-filter")?.value || "").trim().toLowerCase();
+  if (v === _subtasksBranchFilter) return;
+  _subtasksBranchFilter = v;
   _subtasksPage = 1;
   _updateSubtasksExportLinks();
   pollSubtasks();
