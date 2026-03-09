@@ -196,7 +196,29 @@ window.switchTab = function (name) {
     _historyUnread = 0;
     _updateHistoryBadge();
   }
+  if (name === "export") {
+    _refreshExportHistoryByStatus();
+  }
 };
+
+async function _refreshExportHistoryByStatus() {
+  try {
+    const d = await api("/history/count");
+    const el = document.getElementById("export-history-by-status");
+    if (!el) return;
+    const byStatus = d.by_status || {};
+    const entries = Object.entries(byStatus).filter(([, n]) => n > 0);
+    if (!entries.length) { el.style.display = "none"; return; }
+    el.style.display = "flex";
+    el.replaceChildren();
+    for (const [s, n] of entries) {
+      const chip = document.createElement("span");
+      chip.textContent = `${s}: ${n}`;
+      chip.style.color = _STATUS_CHIP_COLORS[s] || "var(--dim)";
+      el.append(chip);
+    }
+  } catch (_) {}
+}
 
 /* ── Settings panel ─────────────────────────────────────── */
 let _settingsCache = {};
