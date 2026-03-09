@@ -244,6 +244,18 @@ class TestGetTasks(_Base):
         d = self.client.get("/tasks").get_json()
         self.assertEqual(d["tasks"][0]["pct"], 0.0)
 
+    def test_summary_includes_review_subtasks(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Running"}))
+        d = self.client.get("/tasks").get_json()
+        task = d["tasks"][0]
+        self.assertIn("review_subtasks", task)
+        self.assertEqual(task["review_subtasks"], 1)
+
+    def test_summary_review_subtasks_zero_when_none(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks").get_json()
+        self.assertEqual(d["tasks"][0]["review_subtasks"], 0)
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks/<id>
