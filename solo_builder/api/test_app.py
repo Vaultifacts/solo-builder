@@ -1176,6 +1176,65 @@ class TestHistoryExport(_Base):
         lines = r.data.decode().strip().splitlines()
         self.assertEqual(len(lines), 2)  # header + 1 row
 
+    # ?task= filter (TASK-281)
+
+    def _state_two_tasks(self):
+        """State with two tasks, each with one branch and history events."""
+        return {
+            "step": 5,
+            "dag": {
+                "Task Alpha": {
+                    "status": "Running", "depends_on": [],
+                    "branches": {
+                        "main": {"subtasks": {"A1": {
+                            "status": "Running", "output": "", "description": "",
+                            "history": [{"status": "Running", "step": 1},
+                                        {"status": "Verified", "step": 2}],
+                        }}},
+                    },
+                },
+                "Task Beta": {
+                    "status": "Running", "depends_on": [],
+                    "branches": {
+                        "main": {"subtasks": {"B1": {
+                            "status": "Pending", "output": "", "description": "",
+                            "history": [{"status": "Pending", "step": 3}],
+                        }}},
+                    },
+                },
+            },
+        }
+
+    def test_export_filter_task_match(self):
+        self._write_state(self._state_two_tasks())
+        rows = self.client.get("/history/export?format=json&task=Alpha").get_json()
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(r["task"] == "Task Alpha" for r in rows))
+
+    def test_export_filter_task_no_match(self):
+        self._write_state(self._state_two_tasks())
+        rows = self.client.get("/history/export?format=json&task=ZZZ").get_json()
+        self.assertEqual(rows, [])
+
+    def test_export_filter_task_case_insensitive(self):
+        self._write_state(self._state_two_tasks())
+        rows = self.client.get("/history/export?format=json&task=alpha").get_json()
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(r["task"] == "Task Alpha" for r in rows))
+
+    def test_export_filter_task_and_status_compose(self):
+        self._write_state(self._state_two_tasks())
+        rows = self.client.get(
+            "/history/export?format=json&task=Alpha&status=Running").get_json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status"], "Running")
+
+    def test_export_csv_task_filter(self):
+        self._write_state(self._state_two_tasks())
+        r = self.client.get("/history/export?task=Beta")
+        lines = r.data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 2)  # header + 1 row
+
 
 # ---------------------------------------------------------------------------
 # GET /cache/export
