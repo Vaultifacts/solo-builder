@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-201
+TASK-202
 
 ## Verdict: PASS
 
@@ -12,11 +12,9 @@ TASK-201
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/dashboard.html` — 4 quick-filter buttons added to History tab
+- `solo_builder/api/static/dashboard_tasks.js` — card review badge added
 
 ## Implementation Detail
-Added a row of 4 toggle buttons (⏳ Pending / ▶ Running / ⏸ Review / ✅ Verified) inside the
-History tab filter section, below the branch filter input. Each button sets history-filter input,
-resets to page 1, re-renders history, and updates export links. Toggle behaviour: clicking the
-same button again clears the filter. Mirrors the Subtasks tab buttons from TASK-199.
-HTML-only change; no new tests needed.
+renderGrid() card creation now adds a `card-review-badge` span in cardTop after the status badge.
+Each tick: if t.review_subtasks > 0 the span shows "⏸N" in yellow (var(--yellow)); otherwise hidden.
+Uses t.review_subtasks from TASK-196. JS-only; no new tests needed.
