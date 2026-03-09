@@ -1,5 +1,6 @@
 import { state } from "./dashboard_state.js";
 import { api, esc, statusClass, toast, flash, updateNotifBadge } from "./dashboard_utils.js";
+import { svgEl } from "./dashboard_svg.js";
 import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats } from "./dashboard_tasks.js";
 import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory } from "./dashboard_panels.js";
 
@@ -327,9 +328,9 @@ window.openSubtaskModal = function (ev) {
     const header = document.createElement("div");
     header.style.cssText = "font-size:10px;color:var(--dim);margin-bottom:3px";
     header.textContent = `Timeline (${hist.length} transition${hist.length !== 1 ? "s" : ""})`;
-    const svgEl = document.createElementNS(NS, "svg");
-    svgEl.setAttribute("width", W); svgEl.setAttribute("height", H);
-    svgEl.style.cssText = "display:block;overflow:visible";
+    const tlSvg = document.createElementNS(NS, "svg");
+    tlSvg.setAttribute("width", W); tlSvg.setAttribute("height", H);
+    tlSvg.style.cssText = "display:block;overflow:visible";
     const pts = hist.map((h, i) => {
       const v = statusVal[h.status] || 1;
       const x = pad + (hist.length < 2 ? (W - 2*pad)/2 : i / (hist.length - 1) * (W - 2*pad));
@@ -339,7 +340,7 @@ window.openSubtaskModal = function (ev) {
     const poly = document.createElementNS(NS, "polyline");
     poly.setAttribute("points", pts); poly.setAttribute("fill", "none");
     poly.setAttribute("stroke", "var(--border)"); poly.setAttribute("stroke-width", "1");
-    svgEl.appendChild(poly);
+    tlSvg.appendChild(poly);
     hist.forEach((h, i) => {
       const v = statusVal[h.status] || 1;
       const x = pad + (hist.length < 2 ? (W - 2*pad)/2 : i / (hist.length - 1) * (W - 2*pad));
@@ -349,14 +350,14 @@ window.openSubtaskModal = function (ev) {
       circle.setAttribute("r", "3"); circle.setAttribute("fill", statusClr[h.status] || "var(--dim)");
       const titleEl = document.createElementNS(NS, "title"); titleEl.textContent = `${h.status} @ step ${h.step}`;
       circle.appendChild(titleEl);
-      svgEl.appendChild(circle);
+      tlSvg.appendChild(circle);
     });
     const legend = document.createElement("div");
     legend.style.cssText = "display:flex;gap:10px;font-size:9px;margin-top:2px;color:var(--dim)";
     [["var(--dim)","▪ Pending"],["var(--cyan)","▪ Running"],["var(--yellow)","▪ Review"],["var(--green)","▪ Verified"]].forEach(([c, t]) => {
       const s = document.createElement("span"); s.style.color = c; s.textContent = t; legend.appendChild(s);
     });
-    sparkEl.replaceChildren(header, svgEl, legend);
+    sparkEl.replaceChildren(header, tlSvg, legend);
   }).catch(function () {});
 };
 
@@ -556,16 +557,9 @@ function renderGraph() {
     return "var(--node-bg-pending)";
   }
 
-  const NS = "http://www.w3.org/2000/svg";
-  const _svgEl = (tag, attrs) => {
-    const el = document.createElementNS(NS, tag);
-    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-    return el;
-  };
-
-  const defs = _svgEl("defs", {});
-  const marker = _svgEl("marker", {id:"arrow",markerWidth:"8",markerHeight:"6",refX:"8",refY:"3",orient:"auto"});
-  const markerPath = _svgEl("path", {d:"M0,0 L8,3 L0,6",fill:"var(--dim)"});
+  const defs = svgEl("defs", {});
+  const marker = svgEl("marker", {id:"arrow",markerWidth:"8",markerHeight:"6",refX:"8",refY:"3",orient:"auto"});
+  const markerPath = svgEl("path", {d:"M0,0 L8,3 L0,6",fill:"var(--dim)"});
   marker.appendChild(markerPath); defs.appendChild(marker);
 
   const nodes = [defs];
@@ -574,7 +568,7 @@ function renderGraph() {
     const deps = (taskMap[id].depends_on || []).filter(d => pos[d]);
     deps.forEach(dep => {
       const from = pos[dep], to = pos[id];
-      nodes.push(_svgEl("line", {x1:from.x + NW,y1:from.y,x2:to.x,y2:to.y,stroke:"var(--dim)","stroke-width":"1.5","marker-end":"url(#arrow)",opacity:"0.5"}));
+      nodes.push(svgEl("line", {x1:from.x + NW,y1:from.y,x2:to.x,y2:to.y,stroke:"var(--dim)","stroke-width":"1.5","marker-end":"url(#arrow)",opacity:"0.5"}));
     });
   });
 
@@ -588,15 +582,15 @@ function renderGraph() {
     const nV  = Object.values(branches).reduce((a, b) => a + Object.values(b.subtasks || {}).filter(s => s.status === "Verified").length, 0);
     const pct = nSt ? Math.round(nV / nSt * 100) : 0;
     const barW = NW - 16, barH = 5, barX = p.x + 8, barY = p.y + 10;
-    const rect = _svgEl("rect", {x:p.x,y:p.y - NH/2,width:NW,height:NH + 8,rx:"4",fill:bg,stroke:col,"stroke-width":"1.5"});
+    const rect = svgEl("rect", {x:p.x,y:p.y - NH/2,width:NW,height:NH + 8,rx:"4",fill:bg,stroke:col,"stroke-width":"1.5"});
     rect.style.cursor = "pointer";
     rect.addEventListener("click", () => window.selectTask(id));
-    const txt1 = _svgEl("text", {x:p.x + NW/2,y:p.y - 6,fill:col,"text-anchor":"middle","font-size":"11","font-family":"var(--font)","font-weight":"bold"});
+    const txt1 = svgEl("text", {x:p.x + NW/2,y:p.y - 6,fill:col,"text-anchor":"middle","font-size":"11","font-family":"var(--font)","font-weight":"bold"});
     txt1.textContent = id;
-    const txt2 = _svgEl("text", {x:p.x + NW/2,y:p.y + 6,fill:"var(--dim)","text-anchor":"middle","font-size":"9","font-family":"var(--font)"});
+    const txt2 = svgEl("text", {x:p.x + NW/2,y:p.y + 6,fill:"var(--dim)","text-anchor":"middle","font-size":"9","font-family":"var(--font)"});
     txt2.textContent = `${nV}/${nSt} (${pct}%)`;
-    const barBg = _svgEl("rect", {x:barX,y:barY,width:barW,height:barH,rx:"2",fill:"var(--surface)"});
-    const barFg = _svgEl("rect", {x:barX,y:barY,width:Math.round(barW * pct / 100),height:barH,rx:"2",fill:col});
+    const barBg = svgEl("rect", {x:barX,y:barY,width:barW,height:barH,rx:"2",fill:"var(--surface)"});
+    const barFg = svgEl("rect", {x:barX,y:barY,width:Math.round(barW * pct / 100),height:barH,rx:"2",fill:col});
     nodes.push(rect, txt1, txt2, barBg, barFg);
   });
 
