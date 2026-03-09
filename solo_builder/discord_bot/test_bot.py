@@ -2760,6 +2760,52 @@ class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("No history", text)
 
 
+class TestFormatHistoryFilters(unittest.TestCase):
+    """Unit tests for _format_history task/branch/status filter params (TASK-293)."""
+
+    def _history_state(self):
+        def _sub(status, step):
+            return {"status": status, "output": "", "description": "",
+                    "last_update": step,
+                    "history": [{"status": status, "step": step}]}
+        return {
+            "step": 10,
+            "dag": {
+                "Task Alpha": {"branches": {
+                    "main": {"subtasks": {
+                        "A1": _sub("Running",  1),
+                        "A2": _sub("Verified", 2),
+                    }},
+                }},
+                "Task Beta": {"branches": {
+                    "feat": {"subtasks": {
+                        "B1": _sub("Pending", 3),
+                    }},
+                }},
+            },
+        }
+
+    def test_task_filter(self):
+        result = bot_module._format_history(self._history_state(), task_filter="Alpha")
+        self.assertIn("A1", result)
+        self.assertNotIn("B1", result)
+
+    def test_branch_filter(self):
+        result = bot_module._format_history(self._history_state(), branch_filter="feat")
+        self.assertIn("B1", result)
+        self.assertNotIn("A1", result)
+
+    def test_status_filter(self):
+        result = bot_module._format_history(self._history_state(), status_filter="Running")
+        self.assertIn("A1", result)
+        self.assertNotIn("A2", result)
+        self.assertNotIn("B1", result)
+
+    def test_no_match_returns_no_history(self):
+        result = bot_module._format_history(self._history_state(), task_filter="ZZZ")
+        self.assertIn("No history", result)
+
+
 class TestSearchCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot search command."""
 

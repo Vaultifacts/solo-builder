@@ -1,19 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-292
+TASK-293
 
 ## Verdict: PASS
 
 ## Verification Results
 - lint_dashboard_handlers.js: PASS (49 handler calls, 0 gaps)
-- unittest-discover (api): PASS (579 tests, 0 failures; +0 new, UI-only)
+- unittest-discover (api): PASS (579 tests, 0 failures; +0 new)
+- unittest-discover (discord_bot): PASS (294 tests, 0 failures; +4 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — `_stalledBranchFilter` state var added; `pollStalled()` composes `?task=` and `?branch=` query params; `window._applyStalledBranchFilter` exposed for oninput handler
-- `solo_builder/api/dashboard.html` — `#stalled-branch-filter` input added beside task filter in Stalled tab toolbar row; calls `_applyStalledBranchFilter()` on input
+Three files modified:
+- `solo_builder/discord_bot/bot_formatters.py` — `_format_history` gains `task_filter`, `branch_filter`, `status_filter` optional params; applies case-insensitive substring matching at the branch and history-event level
+- `solo_builder/discord_bot/bot_slash.py` — `/history` command gains `task:`, `branch:`, `status:` optional string params; all forwarded to `_format_history`
+- `solo_builder/discord_bot/test_bot.py` — `TestFormatHistoryFilters` (4 tests): task filter, branch filter, status filter, no-match
 
 ## Implementation Detail
-Mirrors task filter pattern exactly. Filters compose: both `_stalledTaskFilter` and `_stalledBranchFilter` included in URL when set. No new tests — UI-only; `GET /stalled ?branch=` already tested (TASK-288).
+Same substring-lower pattern as all other filters. Existing history tests unaffected (defaults to empty strings = no filter). 294 Discord tests total.

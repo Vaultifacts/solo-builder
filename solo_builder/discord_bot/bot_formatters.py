@@ -166,16 +166,30 @@ def _subtasks_to_csv(state: dict, task_filter: str = "", status_filter: str = ""
     return buf.getvalue().encode("utf-8")
 
 
-def _format_history(state: dict, limit: int = 20) -> str:
-    """Return a formatted recent activity log across all subtasks."""
+def _format_history(state: dict, limit: int = 20, task_filter: str = "",
+                    branch_filter: str = "", status_filter: str = "") -> str:
+    """Return a formatted recent activity log across all subtasks.
+
+    Optional task_filter, branch_filter, status_filter apply case-insensitive substring matching.
+    """
     dag = state.get("dag", {})
+    task_q   = task_filter.strip().lower()
+    branch_q = branch_filter.strip().lower()
+    status_q = status_filter.strip().lower()
     events: list = []
     for task_name, task_data in dag.items():
-        for b in task_data.get("branches", {}).values():
+        if task_q and task_q not in task_name.lower():
+            continue
+        for br_name, b in task_data.get("branches", {}).items():
+            if branch_q and branch_q not in br_name.lower():
+                continue
             for st_name, st_data in b.get("subtasks", {}).items():
                 for h in st_data.get("history", []):
-                    icon = {"Running": "▶", "Verified": "✅", "Review": "⏸"}.get(h.get("status", "?"), "❓")
-                    events.append((h.get("step", 0), st_name, task_name, h.get("status", "?"), icon))
+                    st = h.get("status", "?")
+                    if status_q and status_q not in st.lower():
+                        continue
+                    icon = {"Running": "▶", "Verified": "✅", "Review": "⏸"}.get(st, "❓")
+                    events.append((h.get("step", 0), st_name, task_name, st, icon))
     events.sort(key=lambda x: x[0], reverse=True)
     events = events[:limit]
     if not events:

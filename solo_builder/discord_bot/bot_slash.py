@@ -264,12 +264,22 @@ def register_slash_commands(bot: discord.Client) -> None:
         await interaction.response.send_message(_b._format_forecast(_b._load_state()))
 
     @bot.tree.command(name="history", description="Show recent status transitions across all subtasks")
-    @app_commands.describe(limit="Number of entries to show (default 20)")
-    async def history_cmd(interaction: discord.Interaction, limit: int = 20) -> None:
+    @app_commands.describe(
+        limit="Number of entries to show (default 20)",
+        task="Filter by task name substring (case-insensitive)",
+        branch="Filter by branch name substring (case-insensitive)",
+        status="Filter by status: Pending, Running, Review, Verified",
+    )
+    async def history_cmd(
+        interaction: discord.Interaction, limit: int = 20,
+        task: str = "", branch: str = "", status: str = ""
+    ) -> None:
         if not _b._allowed(interaction):
             await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
             return
-        await interaction.response.send_message(_b._format_history(_b._load_state(), limit))
+        await interaction.response.send_message(
+            _b._format_history(_b._load_state(), limit, task, branch, status)
+        )
 
     @bot.tree.command(name="branches", description="List branches for a task with subtask counts")
     @app_commands.describe(
