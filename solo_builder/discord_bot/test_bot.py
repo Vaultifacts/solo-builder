@@ -102,6 +102,46 @@ class TestHasWork(unittest.TestCase):
         self.assertFalse(bot_module._has_work({}))
 
 
+class TestBranchesToCsv(unittest.TestCase):
+    """Unit tests for _branches_to_csv in bot_formatters."""
+
+    def test_returns_bytes(self):
+        state = _make_state({"A1": "Verified"})
+        result = bot_module._branches_to_csv(state)
+        self.assertIsInstance(result, bytes)
+
+    def test_header_row(self):
+        state = _make_state({"A1": "Verified"})
+        lines = bot_module._branches_to_csv(state).decode().splitlines()
+        self.assertEqual(lines[0], "task,branch,total,verified,running,review,pending,pct")
+
+    def test_data_row_counts(self):
+        state = _make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"})
+        lines = bot_module._branches_to_csv(state).decode().splitlines()
+        self.assertEqual(len(lines), 2)  # header + 1 branch
+        self.assertIn("Task0", lines[1])
+        self.assertIn("BranchA", lines[1])
+
+    def test_verified_count_correct(self):
+        state = _make_state({"A1": "Verified", "A2": "Verified", "A3": "Pending"})
+        row = bot_module._branches_to_csv(state).decode().splitlines()[1]
+        fields = row.split(",")
+        self.assertEqual(fields[3], "2")   # verified
+        self.assertEqual(fields[4], "0")   # running
+        self.assertEqual(fields[6], "1")   # pending
+
+    def test_empty_dag_header_only(self):
+        state = {"dag": {}, "step": 1}
+        lines = bot_module._branches_to_csv(state).decode().splitlines()
+        self.assertEqual(len(lines), 1)
+
+    def test_review_column(self):
+        state = _make_state({"A1": "Review", "A2": "Pending"})
+        row = bot_module._branches_to_csv(state).decode().splitlines()[1]
+        fields = row.split(",")
+        self.assertEqual(fields[5], "1")   # review
+
+
 class TestFormatStatus(unittest.TestCase):
     def test_all_verified(self):
         state = _make_state({"A1": "Verified", "A2": "Verified"}, step=5)

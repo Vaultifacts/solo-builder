@@ -7,6 +7,7 @@ All references to bot.py names go through the lazy `_b` import.
 """
 
 import asyncio
+import io
 import json
 from typing import Optional
 
@@ -265,12 +266,25 @@ def register_slash_commands(bot: discord.Client) -> None:
         await interaction.response.send_message(_b._format_history(_b._load_state(), limit))
 
     @bot.tree.command(name="branches", description="List branches for a task with subtask counts")
-    @app_commands.describe(task="Task name or number (e.g. 0, Task 0). Omit for overview.")
-    async def branches_cmd(interaction: discord.Interaction, task: str = "") -> None:
+    @app_commands.describe(
+        task="Task name or number (e.g. 0, Task 0). Omit for overview.",
+        export="Send as CSV file attachment instead of text",
+    )
+    async def branches_cmd(
+        interaction: discord.Interaction, task: str = "", export: bool = False
+    ) -> None:
         if not _b._allowed(interaction):
             await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
             return
-        await interaction.response.send_message(_b._format_branches(_b._load_state(), task))
+        state = _b._load_state()
+        if export:
+            csv_bytes = _b._branches_to_csv(state)
+            await interaction.response.send_message(
+                "📊 Branches export",
+                file=discord.File(io.BytesIO(csv_bytes), filename="branches.csv"),
+            )
+        else:
+            await interaction.response.send_message(_b._format_branches(state, task))
 
     @bot.tree.command(name="rename", description="Update a subtask's description")
     @app_commands.describe(subtask="Subtask name (e.g. A1)", description="New description text")
