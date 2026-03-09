@@ -126,6 +126,45 @@ class TestFormatStatus(unittest.TestCase):
         self.assertIn("Task0", result)
 
 
+class TestFormatTaskProgress(unittest.TestCase):
+    """Direct unit tests for _format_task_progress in bot_formatters."""
+
+    def test_unknown_task_returns_warning(self):
+        state = _make_state({"A1": "Verified"})
+        result = bot_module._format_task_progress(state, "NO_SUCH")
+        self.assertIn("not found", result)
+
+    def test_empty_task_id_returns_usage(self):
+        state = _make_state({"A1": "Verified"})
+        result = bot_module._format_task_progress(state, "")
+        self.assertIn("Usage", result)
+
+    def test_contains_task_id(self):
+        state = _make_state({"A1": "Verified", "A2": "Running"})
+        result = bot_module._format_task_progress(state, "Task0")
+        self.assertIn("Task0", result)
+
+    def test_contains_branch_name(self):
+        state = _make_state({"A1": "Running"})
+        result = bot_module._format_task_progress(state, "Task0")
+        self.assertIn("BranchA", result)
+
+    def test_contains_total_row(self):
+        state = _make_state({"A1": "Verified", "A2": "Pending", "A3": "Running"})
+        result = bot_module._format_task_progress(state, "Task0")
+        self.assertIn("TOTAL", result)
+
+    def test_verified_count_in_output(self):
+        state = _make_state({"A1": "Verified", "A2": "Verified", "A3": "Pending"})
+        result = bot_module._format_task_progress(state, "Task0")
+        self.assertIn("2/", result)
+
+    def test_no_branches_returns_no_branches_message(self):
+        state = {"dag": {"Task0": {"status": "Pending", "branches": {}}}, "step": 1}
+        result = bot_module._format_task_progress(state, "Task0")
+        self.assertIn("no branches", result)
+
+
 class TestAutoRunning(unittest.TestCase):
     def setUp(self):
         # Reset module-level _auto_task before each test

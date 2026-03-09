@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-177
+TASK-178
 
-Audit GET/POST /tasks/<id>/reset endpoint: verify it is still needed or can be removed; update tests if deprecated
+Verify TestTaskProgressCommand tests call bot_formatters._format_task_progress directly; add direct formatter unit tests
