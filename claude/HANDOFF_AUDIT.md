@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-130
+TASK-131
 
 ## Verdict: PASS
 
@@ -9,17 +9,15 @@ TASK-130
 - unittest-discover: PASS (393 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 96.6/100 (improved from 95.6 — 2 XSS findings removed)
+- architecture-audit: 96.6/100 (unchanged)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_branches.js` — all innerHTML replaced with DOM API
-- `solo_builder/api/static/dashboard_cache.js` — all innerHTML replaced with DOM API
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — added ↺ Reset task button in renderDetail() header; added window.resetTask() handler
 
-## Architecture Improvement
-Score: 95.6 → 96.6 (+1.0 pt). Two XSS major findings removed.
-- dashboard_branches.js: _renderBranchesAll and _renderBranchesDetail rewritten using
-  createElement/_div/_span/_bar helpers + replaceChildren(); selectTask wired via addEventListener
-- dashboard_cache.js: pollCache and _renderCacheHistory rewritten using createElement/replaceChildren();
-  _statRow() helper for key/value rows; _div/_span helpers for concision
-- No remaining innerHTML in either file
+## Feature Description
+The task detail panel now has a small "↺ Reset task" toolbar button next to the status badge.
+Clicking it calls POST /tasks/<id>/reset (added in TASK-129), toasts the result
+("↺ Task0 reset (3 subtasks)"), then reloads the detail via selectTask(). Verified subtasks
+are preserved by the endpoint. The button uses JSON.stringify for safe onclick attribute
+injection of the task ID.
