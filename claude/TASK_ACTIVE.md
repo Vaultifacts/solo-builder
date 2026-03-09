@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-108
+TASK-109
 
-Reduce solo_builder_cli.py below 600 lines by extracting journal helpers and main() subcommands to cli_utils.py
+Add unit tests for cli_utils._handle_status_subcommand and _handle_watch_subcommand

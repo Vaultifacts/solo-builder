@@ -42,3 +42,15 @@ Constraints:
 - Keep scope narrow
 
 Priority: Low
+
+## TASK-109
+Goal: Add unit tests for cli_utils._handle_status_subcommand and _handle_watch_subcommand
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
