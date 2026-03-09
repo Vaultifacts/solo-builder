@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-232
+TASK-233
 
-Add pager UI to Branches tab all-branches view (◀/▶ + count label) using GET /branches pagination
+Add pager UI to Tasks tab (◀/▶ nav buttons) using GET /tasks pagination

@@ -2,6 +2,28 @@ import { state } from "./dashboard_state.js";
 import { api, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
 export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 
+const _TASKS_LIMIT = 50;
+let _tasksPage = 1;
+
+function _updateTasksPager() {
+  const pager = document.getElementById("tasks-pager");
+  const lbl   = document.getElementById("tasks-page-label");
+  if (!pager) return;
+  if ((state.taskPages ?? 1) > 1) {
+    pager.style.display = "flex";
+    if (lbl) lbl.textContent = `${_tasksPage} / ${state.taskPages}`;
+  } else {
+    pager.style.display = "none";
+  }
+}
+
+window._tasksPageStep = function (delta) {
+  const next = _tasksPage + delta;
+  if (next < 1 || next > (state.taskPages ?? 1)) return;
+  _tasksPage = next;
+  pollTasks();
+};
+
 window.addEventListener("focus", function () {
   state.tabFocused = true;
   updateNotifBadge(state.prevStep);
@@ -76,16 +98,18 @@ function _updateFavicon(d) {
 /* ── Task grid ───────────────────────────────────────────── */
 export async function pollTasks() {
   try {
-    const d = await api("/tasks");
+    const d = await api(`/tasks?limit=${_TASKS_LIMIT}&page=${_tasksPage}`);
     state.allTasks = d.tasks || [];
     state.taskTotal = d.total ?? state.allTasks.length;
     state.taskPages = d.pages ?? 1;
+    _tasksPage = d.page ?? _tasksPage;
     const countEl = document.getElementById("tasks-count-lbl");
     if (countEl) {
       countEl.textContent = state.taskTotal > 0
-        ? `(${state.taskTotal}${state.taskPages > 1 ? ` · p${d.page}/${state.taskPages}` : ""})`
+        ? `(${state.taskTotal}${state.taskPages > 1 ? ` · p${_tasksPage}/${state.taskPages}` : ""})`
         : "";
     }
+    _updateTasksPager();
     applyTaskSearch();
   } catch (e) {}
 }
