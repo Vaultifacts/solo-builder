@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-247
+TASK-248
 
-Route task-search through pollTasks(?task=X) for server-side filtering across all pages
+Add stalled-subtask regression tests: boundary and multi-stall scenarios for GET /status stalled count and stall detection logic
