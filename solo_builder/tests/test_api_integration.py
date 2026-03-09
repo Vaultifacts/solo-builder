@@ -504,5 +504,60 @@ class TestStatusExtra(_Base):
         self.assertEqual(d["running"], 2)
 
 
+# ---------------------------------------------------------------------------
+# GET /dag/summary — new endpoint
+# ---------------------------------------------------------------------------
+
+class TestDagSummary(_Base):
+
+    def test_empty_dag_returns_zero_counts(self):
+        self._write_state({"step": 0, "dag": {}})
+        d = self.client.get("/dag/summary").get_json()
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["verified"], 0)
+        self.assertEqual(d["pct"], 0.0)
+        self.assertFalse(d["complete"])
+
+    def test_fields_present(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/dag/summary").get_json()
+        for field in ("step", "total", "verified", "running", "pending", "pct", "complete", "tasks", "summary"):
+            self.assertIn(field, d)
+
+    def test_verified_count_matches_state(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Verified", "A3": "Pending"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertEqual(d["verified"], 2)
+        self.assertEqual(d["total"], 3)
+
+    def test_complete_true_when_all_verified(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertTrue(d["complete"])
+
+    def test_tasks_list_has_task_id(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/dag/summary").get_json()
+        self.assertTrue(len(d["tasks"]) > 0)
+        self.assertIn("id", d["tasks"][0])
+
+    def test_summary_text_contains_step(self):
+        self._write_state(self._make_state(step=42))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertIn("42", d["summary"])
+
+    def test_pct_in_range(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertGreaterEqual(d["pct"], 0)
+        self.assertLessEqual(d["pct"], 100)
+
+    def test_multi_task_aggregation(self):
+        self._write_state(self._make_multi_task_state())
+        d = self.client.get("/dag/summary").get_json()
+        self.assertGreater(d["total"], 0)
+        self.assertEqual(len(d["tasks"]), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

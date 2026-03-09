@@ -1,4 +1,4 @@
-"""DAG blueprint — GET /tasks/export, /dag/export, POST /dag/import."""
+"""DAG blueprint — GET /dag/summary, /tasks/export, /dag/export, POST /dag/import."""
 import io
 import json
 
@@ -12,6 +12,72 @@ dag_bp = Blueprint("dag", __name__)
 def _get_app():
     from .. import app as _app_module
     return _app_module
+
+
+@dag_bp.get("/dag/summary")
+def dag_summary():
+    """Return a JSON pipeline summary with per-task breakdowns and a markdown text field."""
+    state = _load_state()
+    dag   = state.get("dag", {})
+    step  = state.get("step", 0)
+
+    total = verified = running = pending = 0
+    task_rows = []
+    for task_id, task_data in dag.items():
+        t_total = t_verified = t_running = 0
+        branches = task_data.get("branches", {})
+        for br in branches.values():
+            for st in br.get("subtasks", {}).values():
+                t_total += 1
+                s = st.get("status", "Pending")
+                if s == "Verified":
+                    t_verified += 1
+                elif s == "Running":
+                    t_running += 1
+        t_pct = round(t_verified / t_total * 100, 1) if t_total else 0.0
+        t_status = task_data.get("status", "Pending")
+        task_rows.append({
+            "id":       task_id,
+            "status":   t_status,
+            "branches": len(branches),
+            "subtasks": t_total,
+            "verified": t_verified,
+            "running":  t_running,
+            "pct":      t_pct,
+        })
+        total    += t_total
+        verified += t_verified
+        running  += t_running
+        pending  += t_total - t_verified - t_running
+
+    pct = round(verified / total * 100, 1) if total else 0.0
+
+    lines = [
+        "## Pipeline Summary",
+        f"- Step {step}",
+        f"- {verified}/{total} subtasks verified ({pct}%)",
+        f"- {running} running, {pending} pending",
+        "",
+        "### Tasks",
+    ]
+    for row in task_rows:
+        bar = ("=" * int(row["pct"] / 10)).ljust(10, "-")
+        lines.append(
+            f"- **{row['id']}** [{bar}] {row['verified']}/{row['subtasks']} "
+            f"({row['pct']}%)  {row['status']}"
+        )
+
+    return jsonify({
+        "step":     step,
+        "total":    total,
+        "verified": verified,
+        "running":  running,
+        "pending":  pending,
+        "pct":      pct,
+        "complete": verified == total and total > 0,
+        "tasks":    task_rows,
+        "summary":  "\n".join(lines),
+    })
 
 
 @dag_bp.get("/tasks/export")
