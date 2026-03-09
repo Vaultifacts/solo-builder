@@ -243,6 +243,7 @@
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Review'?'':'Review';renderSubtasks();})()">⏸ Review</button>
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Verified'?'':'Verified';renderSubtasks();})()">✅ Verified</button>
         <span id="subtasks-filter-label" style="font-size:9px;color:var(--yellow);margin-left:4px"></span>
+        <button class="toolbar-btn" id="subtasks-clear-filters" style="font-size:9px;padding:1px 5px;display:none" onclick="_clearSubtasksFilters()" title="Clear all filters">✕ Clear</button>
       </div>
       <div id="subtasks-bulk-bar" style="display:none;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
         <span id="subtasks-sel-count" style="font-size:9px;color:var(--dim)">0 selected</span>
