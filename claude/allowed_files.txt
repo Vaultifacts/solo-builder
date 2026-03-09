@@ -79,3 +79,6 @@ solo_builder/cli_utils.py
 solo_builder/config/settings.json
 solo_builder/tests/test_cli_utils.py
 docs/dev_notes.md
+
+solo_builder/tests/test_task001_smoke.py
+solo_builder/tests/test_api_integration.py

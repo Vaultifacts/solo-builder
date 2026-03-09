@@ -1,28 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-113
+TASK-114
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (333 tests, 0 failures)
+- unittest-discover: PASS (385 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 100.0/100 (0 critical, 0 major)
+- architecture-audit: 93.0/100 (improved from 92.6)
 
 ## Scope Check
-Only the four dashboard ES modules were modified:
-- `solo_builder/api/static/dashboard_utils.js` — added `esc()` export (already done in prior session)
-- `solo_builder/api/static/dashboard_tasks.js` — applied esc() throughout; renamed `const esc` shadow to `snameJson`
-- `solo_builder/api/static/dashboard_panels.js` — added esc import; applied esc() throughout
-- `solo_builder/api/static/dashboard.js` — added esc import; applied esc() throughout
+One new file added, one file updated:
+- `solo_builder/tests/test_api_integration.py` (NEW) — 52 integration tests across 11 classes
+- `claude/allowed_files.txt` — registered new test file
 
 ## Architecture Improvement
-Score: 100.0/100 (0 critical, 0 major). All four "Potential XSS" major findings eliminated:
-- `dashboard.js` — XSS in _renderModal (status, h.status), openKeysModal (s.key, s.description), renderGraph (id)
-- `dashboard_tasks.js` — XSS in renderGrid (t.id, t.status), renderDetail (t.id, bname, sname, preview from description), _renderJournal (e.subtask, e.task, e.branch), _renderStats (k, v)
-- `dashboard_panels.js` — XSS in _renderHistory, _renderBranchesAll/Detail, _renderSettings, _renderPriority, _renderStalled (incl. onclick), _renderSubtasks, pollCache (dir), _renderCacheHistory (ended)
-- Inline JS onclick handlers now use `JSON.stringify()` for values to prevent code injection
-
-Architecture score remains 100.0/100 (same as TASK-112 baseline).
+Score: 92.6 → 93.0 (+0.4 pts). Architecture auditor's "Insufficient test coverage" metric improved:
+- 7 test files → 8 test files (file ratio 2.20% → 2.52%)
+- New test file covers /priority, /stalled, /forecast, /agents, /metrics, /timeline,
+  /branches, /subtasks, /shortcuts, /health, /status endpoints with edge cases
+- 333 → 385 total tests (+52 new integration tests)

@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-113
+TASK-114
 
-Fix XSS findings in dashboard JS modules by escaping user data and using textContent where possible
+Add Flask API integration tests targeting endpoints with insufficient coverage — pollMetrics, pollForecast, pollPriority, pollStalled, GET /branches, GET /subtasks, GET /timeline/<id>, GET /shortcuts, POST /config/reset — to raise coverage score in architecture audit
