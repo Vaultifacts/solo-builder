@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-307
+TASK-308
 
-Discord /stalled slash command: add min_age:int=0 param; when >0, passes ?min_age=N to GET /stalled API call and includes note in output; 3 new tests in TestFormatStalled or similar
+GET /branches: add pending_pct field (% pending subtasks per branch, parity with pct and review_pct); 3 new tests in TestBranches
