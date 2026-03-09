@@ -28,6 +28,7 @@ let _branchesPage         = 1;
 let _branchesPages        = 1;
 let _branchesTotal        = 0;
 let _branchesStatusFilter = "";   // "" = all; "pending"|"running"|"review"|"verified"
+let _branchesTaskFilter   = "";   // "" = all; substring matched against task name
 let _branchesLastData     = null;
 let _branchesLastSummary  = null;
 const _BRANCHES_LIMIT     = 50;
@@ -57,6 +58,15 @@ window._branchesPageStep = function (delta) {
 window._branchesFilterStatus = function (status) {
   if (state.selectedTask) return; // filter only in all-tasks view
   _branchesStatusFilter = _branchesStatusFilter === status ? "" : status;
+  _branchesPage = 1;
+  pollBranches();
+};
+
+window._applyBranchesTaskFilter = function () {
+  if (state.selectedTask) return; // only in all-tasks view
+  const v = (document.getElementById("branches-task-filter")?.value || "").trim().toLowerCase();
+  if (v === _branchesTaskFilter) return;
+  _branchesTaskFilter = v;
   _branchesPage = 1;
   pollBranches();
 };
@@ -150,6 +160,7 @@ export async function pollBranches() {
     } else {
       let branchUrl = `/branches?limit=${_BRANCHES_LIMIT}&page=${_branchesPage}`;
       if (_branchesStatusFilter) branchUrl += `&status=${encodeURIComponent(_branchesStatusFilter)}`;
+      if (_branchesTaskFilter)   branchUrl += `&task=${encodeURIComponent(_branchesTaskFilter)}`;
       const [d, summary] = await Promise.all([
         api(branchUrl),
         api("/dag/summary").catch(() => null),
@@ -171,9 +182,11 @@ function _renderBranchesAll(d, summary) {
   _updateBranchesBulkBar();
 
   // Show quick-filter buttons only when no task selected
-  const filterBar = document.getElementById("branches-status-filters");
-  const filterLbl = document.getElementById("branches-filter-label");
-  if (filterBar) filterBar.style.display = "flex";
+  const filterBar    = document.getElementById("branches-status-filters");
+  const filterLbl    = document.getElementById("branches-filter-label");
+  const taskFilterRow = document.getElementById("branches-task-row");
+  if (filterBar)     filterBar.style.display = "flex";
+  if (taskFilterRow) taskFilterRow.style.display = "flex";
 
   // Server already applied status filter; just render what came back
   const f = _branchesStatusFilter;
@@ -329,9 +342,11 @@ function _renderBranchesDetail(d) {
 
   el.replaceChildren(...children);
   _updateBranchesBulkBar();
-  // pager and filter bar only shown in all-tasks view
+  // pager, status filter bar, and task filter row only shown in all-tasks view
   const pager = document.getElementById("branches-pager");
   if (pager) pager.style.display = "none";
   const filterBar = document.getElementById("branches-status-filters");
   if (filterBar) filterBar.style.display = "none";
+  const taskFilterRow = document.getElementById("branches-task-row");
+  if (taskFilterRow) taskFilterRow.style.display = "none";
 }
