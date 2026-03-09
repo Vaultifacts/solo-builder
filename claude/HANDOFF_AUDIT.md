@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-196
+TASK-197
 
 ## Verdict: PASS
 
@@ -11,12 +11,9 @@ TASK-196
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/helpers.py` — _task_summary now computes and returns `review_subtasks`
-- `solo_builder/api/test_app.py` — 2 tests in TestGetTasks
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — card counts line updated
 
 ## Implementation Detail
-Added `review` count (sum of status=="Review") to _task_summary parallel to existing `running`.
-GET /tasks now includes `review_subtasks` alongside `running_subtasks`. Two tests:
-- `test_summary_includes_review_subtasks` — field present, count correct
-- `test_summary_review_subtasks_zero_when_none` — zero when no Review subtasks
+renderGrid() card-counts now shows `N▶` (running) and `N⏸` (review) with zero-count suppression.
+Uses t.review_subtasks added by TASK-196. JS-only change; no new tests needed.

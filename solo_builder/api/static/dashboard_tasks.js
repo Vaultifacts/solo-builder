@@ -140,7 +140,8 @@ export function renderGrid(tasks) {
     card.querySelector(".card-bar-fg").style.width = pct + "%";
     card.querySelector(".card-counts").textContent =
       `${t.verified_subtasks}/${t.subtask_count} verified` +
-      (t.running_subtasks > 0 ? ` · ${t.running_subtasks} running` : "");
+      (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
+      (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "");
 
     const depEl = card.querySelector(".card-deps");
     if (t.depends_on && t.depends_on.length) {
