@@ -1620,6 +1620,16 @@ class TestShortcuts(_Base):
         self.assertIsNotNone(b_entry)
         self.assertIn("ranch", b_entry["description"])
 
+    def test_includes_s_subtasks_shortcut(self):
+        keys = {s["key"] for s in self.client.get("/shortcuts").get_json()["shortcuts"]}
+        self.assertIn("s", keys)
+
+    def test_s_shortcut_description_mentions_subtasks(self):
+        shortcuts = self.client.get("/shortcuts").get_json()["shortcuts"]
+        s_entry = next((s for s in shortcuts if s["key"] == "s"), None)
+        self.assertIsNotNone(s_entry)
+        self.assertIn("ubtask", s_entry["description"])
+
 
 # Graph
 # ---------------------------------------------------------------------------

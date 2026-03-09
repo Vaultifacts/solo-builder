@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-162
+TASK-164
 
-Add 'b' keyboard shortcut to toggle Branches tab; register in GET /shortcuts
+Add 's' keyboard shortcut for Subtasks tab; register in _SHORTCUTS and add tests
