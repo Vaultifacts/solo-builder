@@ -1,25 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-246
+TASK-247
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (498 tests, 0 failures)
+- unittest-discover (api): PASS (500 tests, 0 failures; +2 new)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
-- node tools/lint_dashboard_handlers.js: PASS (0 gaps, 44 handlers, 57 window.*)
+- node tools/lint_dashboard_handlers.js: PASS (0 gaps)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_branches.js` — _getBranchesFiltered(), _triggerDownload(), _downloadBranchesCSV(), _downloadBranchesJSON()
-- `solo_builder/api/dashboard.html` — CSV/JSON buttons added to branches-status-filters toolbar
+Three files modified:
+- `solo_builder/api/blueprints/tasks.py` — ?task= filter added to list_tasks()
+- `solo_builder/api/static/dashboard_tasks.js` — _tasksSearchFilter state, pollTasks() includes ?task=X, _applyTaskSearch sets filter and re-fetches
+- `solo_builder/api/test_app.py` — 2 tests: task_filter_substring_match, task_filter_no_match
 
 ## Implementation Detail
-No server export endpoint for /branches exists. Client-side download from
-_branchesLastData (cached on each pollBranches call), filtered by
-_branchesStatusFilter using identical logic as _renderBranchesAll.
-CSV columns: task,branch,total,verified,running,review,pending,pct.
-Buttons shown only in all-tasks view (inside branches-status-filters div).
-No test changes.
+GET /tasks previously had no task-name filter. Added ?task= (case-insensitive substring).
+_applyTaskSearch now sets _tasksSearchFilter from #task-search input and calls pollTasks()
+(server re-fetch) instead of client-side-only filtering. Filter composes with pagination.
+applyFilter() (detail panel #search-input) is unchanged.
