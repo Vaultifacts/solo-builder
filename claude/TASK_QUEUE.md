@@ -1674,3 +1674,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-292
+Goal: Stalled tab: add #stalled-branch-filter input (parity with #stalled-task-filter); wires to ?branch= on GET /stalled; window._applyStalledBranchFilter exposed
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

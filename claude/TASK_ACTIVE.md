@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-291
+TASK-292
 
-CHANGELOG v5.5.0: document TASK-287 through TASK-290 (stalled filters, Stalled tab task input, Discord /stalled filters)
+Stalled tab: add #stalled-branch-filter input (parity with #stalled-task-filter); wires to ?branch= on GET /stalled; window._applyStalledBranchFilter exposed
