@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-185
+TASK-186
 
-Enhance _format_task_progress in bot_formatters.py to show per-branch block-bar table with branch names and counts
+Add Review count to renderDetail() progress bar in dashboard_tasks.js; show as N⏸ alongside running▶
