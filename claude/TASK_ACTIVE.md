@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-293
+TASK-294
 
-Discord /history slash command: add optional task:, branch:, status: filter params forwarded to _format_history; update formatter to accept and apply filters; 4+ new tests
+GET /branches/export ?format=json: verify JSON response wraps rows in {total, branches:[...]} object instead of bare array; fix if needed and add tests
