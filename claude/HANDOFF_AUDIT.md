@@ -1,18 +1,19 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-277
+TASK-278
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (568 tests, 0 failures)
-- unittest-discover (discord_bot): PASS (274 tests, 0 failures)
+- lint_dashboard_handlers.js: PASS (47 handler calls, 0 gaps)
+- unittest-discover (api): PASS (568 tests, 0 failures; +0 new, UI-only)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `CHANGELOG.md` — v5.2.0 entry added documenting TASK-273 through TASK-277
+Two files modified:
+- `solo_builder/api/static/dashboard_branches.js` — `window._clearBranchesFilters` added: clears status+task filters, resets page, clears task input DOM value, calls `_updateBranchesExportLinks()`, polls only if filter was active; `_renderBranchesAll()` shows/hides `#branches-clear-filters` via `hasFilter`
+- `solo_builder/api/dashboard.html` — `#branches-clear-filters` button added (display:none default) in the status filter bar beside the filter label; calls `_clearBranchesFilters()`
 
 ## Implementation Detail
-Counts: 277 tasks, 568 API tests, 274 Discord tests. Milestone: v5.2.0.
+Mirrors TASK-274 (subtasks clear button) exactly — same guard pattern, same show/hide via `_renderBranches*`, same `hadFilter` check before poll.

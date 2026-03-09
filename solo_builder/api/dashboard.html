@@ -195,6 +195,7 @@
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="_branchesFilterStatus('review')">⏸ Review</button>
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="_branchesFilterStatus('verified')">✅ Verified</button>
         <span id="branches-filter-label" style="font-size:9px;color:var(--yellow)"></span>
+        <button class="toolbar-btn" id="branches-clear-filters" style="font-size:9px;padding:1px 5px;display:none" onclick="_clearBranchesFilters()" title="Clear all filters">✕ Clear</button>
         <a id="branches-export-csv"  class="toolbar-btn" href="/branches/export" download="branches.csv"  style="font-size:9px;padding:1px 5px;margin-left:auto">CSV</a>
         <a id="branches-export-json" class="toolbar-btn" href="/branches/export?format=json" download="branches.json" style="font-size:9px;padding:1px 5px">JSON</a>
       </div>

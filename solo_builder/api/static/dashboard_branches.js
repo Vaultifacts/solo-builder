@@ -71,6 +71,17 @@ window._applyBranchesTaskFilter = function () {
   pollBranches();
 };
 
+window._clearBranchesFilters = function () {
+  const hadFilter = _branchesStatusFilter || _branchesTaskFilter;
+  _branchesStatusFilter = "";
+  _branchesTaskFilter   = "";
+  _branchesPage = 1;
+  const tf = document.getElementById("branches-task-filter");
+  if (tf) tf.value = "";
+  _updateBranchesExportLinks();
+  if (hadFilter) pollBranches();
+};
+
 function _getBranchesFiltered() {
   const branches = (_branchesLastData && _branchesLastData.branches) || [];
   const f = _branchesStatusFilter;
@@ -202,7 +213,10 @@ function _renderBranchesAll(d, summary) {
   // Server already applied status filter; just render what came back
   const f = _branchesStatusFilter;
   const branches = d.branches || [];
+  const hasFilter = !!(f || _branchesTaskFilter);
   if (filterLbl) filterLbl.textContent = f ? `· ${f} filter (${branches.length})` : "";
+  const clearBtn = document.getElementById("branches-clear-filters");
+  if (clearBtn) clearBtn.style.display = hasFilter ? "" : "none";
 
   if (branches.length === 0) {
     const ph = _div(null, "detail-placeholder");
