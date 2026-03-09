@@ -6,6 +6,8 @@ These functions take state dicts as parameters and have no dependency on
 patched module-level constants from bot.py, making them safe to move.
 """
 
+import csv
+import io
 import json
 import os
 from pathlib import Path
@@ -93,6 +95,25 @@ def _format_branches(state: dict, task_filter: str = "") -> str:
             lines.append(f"  {br_name:<14} {len(subs)} STs  {v}✓ {r}▶ {p}●")
     lines.append("```")
     return "\n".join(lines)
+
+
+def _branches_to_csv(state: dict) -> bytes:
+    """Return CSV bytes of all branches (task,branch,total,verified,running,review,pending,pct)."""
+    dag = state.get("dag", {})
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["task", "branch", "total", "verified", "running", "review", "pending", "pct"])
+    for task_name, task_data in dag.items():
+        for br_name, br_data in task_data.get("branches", {}).items():
+            subs = br_data.get("subtasks", {})
+            total = len(subs)
+            v  = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r  = sum(1 for s in subs.values() if s.get("status") == "Running")
+            rv = sum(1 for s in subs.values() if s.get("status") == "Review")
+            p  = total - v - r - rv
+            pct = round(v / total * 100, 1) if total else 0.0
+            writer.writerow([task_name, br_name, total, v, r, rv, p, pct])
+    return buf.getvalue().encode("utf-8")
 
 
 def _format_history(state: dict, limit: int = 20) -> str:
