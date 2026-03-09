@@ -2075,6 +2075,32 @@ class TestSubtasksExport(_Base):
         self.assertIn("A2", names)
         self.assertNotIn("A1", names)
 
+    # JSON wrapper shape + Review/Pending status filters (TASK-296)
+
+    def test_json_wrapper_has_all_pagination_keys(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks/export?format=json").get_json()
+        for key in ("subtasks", "total", "page", "limit", "pages"):
+            self.assertIn(key, d)
+
+    def test_json_total_matches_subtasks_length_unfiltered(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}))
+        d = self.client.get("/subtasks/export?format=json").get_json()
+        self.assertEqual(d["total"], len(d["subtasks"]))
+        self.assertEqual(d["total"], 3)
+
+    def test_status_filter_review(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Review", "A3": "Pending"}))
+        d = self.client.get("/subtasks/export?format=json&status=Review").get_json()["subtasks"]
+        self.assertEqual(len(d), 1)
+        self.assertEqual(d[0]["subtask"], "A2")
+
+    def test_status_filter_pending(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}))
+        d = self.client.get("/subtasks/export?format=json&status=Pending").get_json()["subtasks"]
+        self.assertEqual(len(d), 1)
+        self.assertEqual(d[0]["subtask"], "A3")
+
 
 # ---------------------------------------------------------------------------
 # GET /subtasks/export pagination  (TASK-142)
