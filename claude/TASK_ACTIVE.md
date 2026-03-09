@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-222
+TASK-223
 
-Dashboard Export tab shows /history/count by_status summary alongside history export links
+GET /metrics health summary includes review count field
