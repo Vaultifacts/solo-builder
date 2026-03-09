@@ -1271,6 +1271,48 @@ class TestBranchesAll(_Base):
         d = self.client.get("/branches").get_json()
         self.assertEqual(d["branches"], [])
 
+    def test_review_field_present(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/branches").get_json()
+        br = d["branches"][0]
+        self.assertIn("review", br)
+        self.assertEqual(br["review"], 1)
+        self.assertEqual(br["pending"], 1)
+
+    def test_review_not_counted_in_pending(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending", "A3": "Verified"}))
+        d = self.client.get("/branches").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["verified"] + br["running"] + br["review"] + br["pending"], br["total"])
+
+    def test_pagination_keys_present(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/branches").get_json()
+        for key in ("total", "page", "pages"):
+            self.assertIn(key, d)
+
+    def _multi_branch_state(self, n):
+        dag = {}
+        for i in range(n):
+            dag[f"Task {i}"] = {"status": "Pending", "depends_on": [],
+                                 "branches": {f"Br {i}": {"subtasks": {f"S{i}": {"status": "Pending"}}}}}
+        return {"step": 0, "dag": dag}
+
+    def test_limit_restricts_branches(self):
+        self._write_state(self._multi_branch_state(5))
+        d = self.client.get("/branches?limit=2").get_json()
+        self.assertEqual(len(d["branches"]), 2)
+        self.assertEqual(d["total"], 5)
+        self.assertEqual(d["pages"], 3)
+
+    def test_pages_disjoint(self):
+        self._write_state(self._multi_branch_state(4))
+        d1 = self.client.get("/branches?limit=2&page=1").get_json()
+        d2 = self.client.get("/branches?limit=2&page=2").get_json()
+        names1 = {b["branch"] for b in d1["branches"]}
+        names2 = {b["branch"] for b in d2["branches"]}
+        self.assertTrue(names1.isdisjoint(names2))
+
 
 # POST /branches/<task>/reset
 # ---------------------------------------------------------------------------

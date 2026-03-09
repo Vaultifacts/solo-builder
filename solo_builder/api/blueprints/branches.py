@@ -28,19 +28,30 @@ def branches_all():
         for br_name, br_data in task_data.get("branches", {}).items():
             subs = br_data.get("subtasks", {})
             total = len(subs)
-            v = sum(1 for s in subs.values() if s.get("status") == "Verified")
-            r = sum(1 for s in subs.values() if s.get("status") == "Running")
-            p = total - v - r
+            v  = sum(1 for s in subs.values() if s.get("status") == "Verified")
+            r  = sum(1 for s in subs.values() if s.get("status") == "Running")
+            rv = sum(1 for s in subs.values() if s.get("status") == "Review")
+            p  = total - v - r - rv
             result.append({
                 "task": task_id,
                 "branch": br_name,
                 "total": total,
                 "verified": v,
                 "running": r,
+                "review": rv,
                 "pending": p,
                 "pct": round(v / total * 100, 1) if total else 0.0,
             })
-    return jsonify({"branches": result, "count": len(result)})
+    all_count = len(result)
+    limit = max(0, request.args.get("limit", 0, type=int))
+    page  = max(1, request.args.get("page",  1, type=int))
+    if limit > 0:
+        pages = max(1, -(-all_count // limit))
+        start = (page - 1) * limit
+        result = result[start: start + limit]
+    else:
+        pages = 1
+    return jsonify({"branches": result, "count": len(result), "total": all_count, "page": page, "pages": pages})
 
 
 @branches_bp.get("/branches/<path:task_id>")
