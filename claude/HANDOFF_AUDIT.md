@@ -1,19 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-216
+TASK-217
 
 ## Verdict: PASS
 
 ## Verification Results
+- unittest-discover (api): PASS (478 tests, 0 failures; +3 new)
+- unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `CHANGELOG.md` — v4.3.5 entry added at top
+Two files modified:
+- `solo_builder/api/blueprints/history.py` — review count added to GET /history response
+- `solo_builder/api/test_app.py` — 3 tests added to TestHistory
 
 ## Implementation Detail
-Added v4.3.5 milestone entry documenting TASK-213 (history hash persistence + inline handler fixes),
-TASK-214 (hdr-pending review badge), TASK-215 (/history/count by_status). Test counts updated to
-475 API / 454 Discord.
+GET /history previously returned {events, total, page, pages}. Added review = count of filtered
+events with status == "Review" (counted before pagination, like total). Three tests: has key,
+correct count with 2 Review + 1 Verified events, zero when no Review events.
