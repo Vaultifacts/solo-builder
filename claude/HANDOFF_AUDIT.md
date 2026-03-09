@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-119
+TASK-120
 
 ## Verdict: PASS
 
@@ -9,15 +9,17 @@ TASK-119
 - unittest-discover: PASS (393 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 93.4/100 (unchanged)
+- architecture-audit: 93.3/100 (within noise of 93.4)
 
 ## Scope Check
-One file modified:
-- `solo_builder/commands/auto_cmds.py` — added inline progress bar to _cmd_auto() loop
+Two files modified:
+- `solo_builder/discord_bot/bot_formatters.py` — _format_status() rewritten to match /dag/summary format
+- `solo_builder/discord_bot/test_bot.py` — updated 3 test assertions to match new output format
 
-## Feature Description
-After each step in the auto-run loop, the CLI now prints an overwriting single line:
-  Step  42  [===========----------]  35/70  (50.0%)  3 running
-- Uses `make_bar()` and ANSI colors from injected host globals
-- `\r` + `end=""` keeps it on one line; `flush=True` for immediate rendering
-- `print()` on complete/remote-stop/Ctrl-C to end the line cleanly
+## Change Description
+_format_status() now returns the same markdown as GET /dag/summary's `summary` field:
+`## Pipeline Summary / - Step N / - V/T subtasks verified (pct%) / - R running, P pending /
+### Tasks / - **id** [bar] V/T (pct%) Status`
+Three tests updated: test_all_verified (checked old emoji bar), test_mixed_statuses
+(checked old emoji bar), test_format_status_includes_branch_rows (branch rows removed —
+renamed to test_format_status_includes_task_row).
