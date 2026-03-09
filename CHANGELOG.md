@@ -1,5 +1,21 @@
 # Changelog
 
+## v4.6.0 — 2026-03-09  Status filters + CI lint + review regressions (TASK-236 through TASK-245)
+
+- **245 tasks** merged to master (TASK-001 through TASK-245); **498 API tests**, **454 Discord tests**
+- Subtasks quick-filter (Pending/Running/Review/Verified) re-fetches with `?status=X` server-side; composes with pagination — TASK-236
+- Branches all-tasks view: `review` count badge rendered per row (field added TASK-229, previously not displayed) — TASK-237
+- Search inputs reset page to 1 on change (`_applyTaskSearch`, `renderSubtasks` non-status branch) — TASK-238
+- `tools/lint_dashboard_handlers.js` — Node.js CI script cross-checks HTML inline handlers vs `window.*`; exits 1 on gaps — TASK-239
+- Lint script wired into `.githooks/pre-commit`; runs automatically on every commit — TASK-241
+- Subtasks CSV/JSON export links updated with `?status=X` when status filter active — TASK-242
+- Branches all-tasks view: Pending/Running/Review/Verified quick-filter buttons (client-side, cached data) — TASK-243
+- Subtask detail modal shows `Review ⏸` (yellow) when status is Review — TASK-240
+- `review_subtasks` regression tests: multi-branch sum, not-in-pct, separate-from-running (+3) — TASK-244
+- CHANGELOG v4.5.0 documented — TASK-235 (prior batch entry)
+
+---
+
 ## v4.5.0 — 2026-03-09  Pager UIs + window-exposure audit + CI invariant (TASK-226 through TASK-235)
 
 - **235 tasks** merged to master (TASK-001 through TASK-235); **495 API tests**, **454 Discord tests**

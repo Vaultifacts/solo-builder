@@ -1,23 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-244
+TASK-245
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (498 tests, 0 failures; +3 new)
+- unittest-discover (api): PASS (498 tests, 0 failures)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
 - node tools/lint_dashboard_handlers.js: PASS (0 gaps)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/test_app.py` — 3 tests added to TestGetTasks
+- `CHANGELOG.md` — v4.6.0 entry added covering TASK-236 through TASK-245
 
 ## Implementation Detail
-Existing tests covered: review_subtasks present (1), review_subtasks zero when none.
-New regression tests:
-1. test_review_subtasks_summed_across_branches — 2 branches each with 1 Review → total 2
-2. test_review_subtasks_not_counted_in_pct — Review subtasks don't raise pct (only Verified does)
-3. test_review_subtasks_separate_from_running — Review and Running are distinct counters
+Prepended v4.6.0 changelog entry: status filters, CI lint hook, review badge,
+export link sync, branches filter buttons, review regression tests. 498 API tests
+/ 454 Discord tests confirmed.
