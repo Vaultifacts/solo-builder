@@ -1,20 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-275
+TASK-276
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (568 tests, 0 failures; +5 new)
+- lint_dashboard_handlers.js: PASS (46 handler calls, 0 gaps)
+- unittest-discover (api): PASS (568 tests, 0 failures; +0 new, UI-only)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/blueprints/subtasks.py` — `?min_age=N` added to both `subtasks_all()` and `subtasks_export()`: skips non-Running subtasks and Running subtasks with age < N; changed `_load_dag()` → `_load_state()` to access `step`; docstrings updated
-- `solo_builder/api/test_app.py` — 5 new tests in `TestSubtasksAll`: stalled running returned, fresh running excluded, non-running excluded, min_age=0 returns all, at-boundary included
+- `solo_builder/api/static/dashboard_branches.js` — `_updateBranchesExportLinks()` added: builds ?status= and ?task= query params from active filter state, updates #branches-export-csv and #branches-export-json hrefs; called from `_renderBranchesAll()`
+- `solo_builder/api/dashboard.html` — CSV/JSON buttons in Branches status filter bar replaced with `<a>` anchor links (#branches-export-csv / #branches-export-json) pointing to /branches/export; download attributes set
 
 ## Implementation Detail
-`min_age=0` (default) is a no-op — the `if min_age > 0` guard prevents any filtering.
-Filter applied after status/name/task/branch filters, so `?status=running&min_age=5` composes correctly.
-`age = step - st_data.get("last_update", 0)` matches the stall computation in core.py and subtasks.py stalled().
+Pattern mirrors subtasks export links (TASK-252/255) — server-side export with filter params in href, no JS blob generation.
+Old `_downloadBranchesCSV/JSON` client-side functions kept for backward compat (per-task detail view uses cached data path).
+Handler count drops from 48 → 46 (two onclick handlers removed from HTML as buttons replaced by anchors).
