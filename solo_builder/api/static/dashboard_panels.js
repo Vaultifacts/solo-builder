@@ -414,6 +414,33 @@ function _renderStalled(d) {
     p.style.color = "var(--green)";
     nodes.push(p);
   } else {
+    // ── Per-branch summary ────────────────────────────────
+    const byBranch = {};
+    d.stalled.forEach(s => {
+      const key = s.task + " / " + s.branch;
+      byBranch[key] = (byBranch[key] || 0) + 1;
+    });
+    if (Object.keys(byBranch).length > 1) {
+      const summaryDiv = document.createElement("div");
+      summaryDiv.style.cssText = "margin-bottom:6px;padding:4px 6px;background:var(--bg2);border-radius:3px;border:1px solid var(--border)";
+      const summaryTitle = document.createElement("div");
+      summaryTitle.style.cssText = "font-size:9px;color:var(--dim);margin-bottom:3px";
+      summaryTitle.textContent = "by branch";
+      summaryDiv.appendChild(summaryTitle);
+      Object.entries(byBranch).sort((a, b) => b[1] - a[1]).forEach(([key, cnt]) => {
+        const brRow = document.createElement("div");
+        brRow.style.cssText = "display:flex;justify-content:space-between;font-size:9px";
+        const keyEl = document.createElement("span");
+        keyEl.style.color = "var(--dim)";
+        keyEl.textContent = key;
+        const cntEl = document.createElement("span");
+        cntEl.style.color = "var(--yellow)";
+        cntEl.textContent = cnt + " stalled";
+        brRow.append(keyEl, cntEl);
+        summaryDiv.appendChild(brRow);
+      });
+      nodes.push(summaryDiv);
+    }
     d.stalled.forEach(s => {
       const pct = Math.min(100, Math.round(s.age / (d.threshold * 3) * 100));
       const row = document.createElement("div");
