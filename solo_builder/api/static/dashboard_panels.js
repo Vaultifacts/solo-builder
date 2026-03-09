@@ -439,6 +439,12 @@ window.subtasksClearSel = function () {
   _renderSubtasks();
 };
 
+function _fbSet(fb, msg) {
+  if (!fb) return;
+  fb.textContent = msg;
+  setTimeout(() => { if (fb) fb.textContent = ""; }, 3000);
+}
+
 window.subtasksBulkReset = async function () {
   if (!_subtasksSel.size) return;
   const fb = document.getElementById("fb-subtasks-bulk");
@@ -448,10 +454,10 @@ window.subtasksBulkReset = async function () {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({subtasks: [..._subtasksSel]}),
     }).then(r => r.json());
-    if (fb) fb.textContent = d.ok ? `↺ ${d.reset_count} reset` : (d.reason || "Error");
+    _fbSet(fb, d.ok ? `↺ ${d.reset_count} reset` : (d.reason || "Error"));
     _subtasksSel.clear();
     await pollSubtasks();
-  } catch (_) { if (fb) fb.textContent = "Network error"; }
+  } catch (_) { _fbSet(fb, "Network error"); }
 };
 
 window.subtasksBulkVerify = async function () {
@@ -463,10 +469,10 @@ window.subtasksBulkVerify = async function () {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({subtasks: [..._subtasksSel]}),
     }).then(r => r.json());
-    if (fb) fb.textContent = d.ok ? `✔ ${d.verified_count} verified` : (d.reason || "Error");
+    _fbSet(fb, d.ok ? `✔ ${d.verified_count} verified` : (d.reason || "Error"));
     _subtasksSel.clear();
     await pollSubtasks();
-  } catch (_) { if (fb) fb.textContent = "Network error"; }
+  } catch (_) { _fbSet(fb, "Network error"); }
 };
 
 function _renderSubtasks() {
