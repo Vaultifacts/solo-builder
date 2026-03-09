@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-182
+TASK-183
 
 ## Verdict: PASS
 
@@ -12,12 +12,12 @@ TASK-182
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/test_app.py` — 3 new tests in TestGetTaskProgress
+- `solo_builder/api/static/dashboard.js` — 1 line added inside runAuto step-wait loop
 
 ## Implementation Detail
-pollTaskProgress() is a browser-side DOM patcher — not directly testable in Python.
-Added 3 integration tests for the /tasks/<id>/progress endpoint's branches[] field:
-1. Multi-branch aggregation (total/verified summed across 2 branches)
-2. Review status counted in both top-level review field and per-branch review field
-3. No branches returns empty branches[] list with total=0
-One assertion fix: _make_state({"A1":"Verified"}) creates 1 subtask, not 2.
+Inside the 700ms heartbeat poll loop in window.runAuto, added:
+  `if (state.selectedTask) pollTaskProgress(state.selectedTask);`
+This fires a lightweight /tasks/<id>/progress fetch on each 700ms iteration,
+keeping the detail panel progress bar current during auto-run without waiting
+for the full tick() that fires at step boundary.
+Fire-and-forget (not awaited) so it doesn't block the heartbeat loop.

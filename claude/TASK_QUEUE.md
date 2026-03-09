@@ -918,3 +918,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-183
+Goal: Call pollTaskProgress inside window.runAuto step loop for real-time progress bar updates during auto-run
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
