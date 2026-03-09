@@ -1,54 +1,25 @@
 # Changelog
 
-## v4.2.2 — 2026-03-09  Milestone: 200 Tasks + Full Review Visibility (TASK-196 through TASK-202)
+## v4.2.9 — 2026-03-09  Review status in all endpoints + URL hash filter (TASK-203 through TASK-209)
 
-### Summary
-- **202 tasks** merged to master (TASK-001 through TASK-202)
-- **464 API tests**, **447 Discord tests** — 0 failures
-- Review status now visible at every UI layer: card badge, card counts, detail bar, per-branch rows, Discord, History/Subtasks quick-filters
-
-### Changes
-
-#### API
-- `GET /tasks` response now includes `review_subtasks` count per task — TASK-196
-- `GET /tasks/<id>/progress` top-level `review` field confirmed present (TASK-175, no-op) — TASK-198
-
-#### Dashboard
-- Task cards show yellow `⏸N` badge in `cardTop` when `review_subtasks > 0` — TASK-202
-- Card counts line shows `N▶ · N⏸` (zero-suppressed) — TASK-197
-- Subtasks tab: 4 quick-filter toggle buttons (⏳ Pending / ▶ Running / ⏸ Review / ✅ Verified) — TASK-199
-- History tab: same 4 quick-filter buttons (also resets page + updates export links) — TASK-201
-
-#### Discord Bot
-- 2 tests: Review/Pending excluded from `stalled` output (mirrors API TASK-194) — TASK-200
+- **210 tasks** merged to master (TASK-001 through TASK-210); **471 API tests**, **451 Discord tests**
+- `GET /status` now returns `review` count; `pending` excludes review — TASK-206
+- `GET /dag/summary` per-task rows and top-level include `review`; summary text updated — TASK-208
+- Header step counter (`hdr-step`) appends `· N⏸` when review > 0 — TASK-207
+- Subtasks filter persisted to `location.hash` as `st-filter=<value>` (deep-linkable) — TASK-209
+- CHANGELOG v4.2.2 200-task milestone documented — TASK-203
 
 ---
 
-## v4.1.4 — 2026-03-09  Review Status Propagation Complete (TASK-186 through TASK-195)
+## v4.1.4 – v4.2.2 — 2026-03-09  Review Status Propagation (TASK-181 through TASK-202)
 
-### Summary
-- **195 tasks** merged to master (TASK-001 through TASK-195)
-- **462 API tests**, **445 Discord tests** — 0 failures
-- Review status now visible everywhere: dashboard progress bars, Discord formatter, stalled exclusion
-
-### Changes
-
-#### API
-- `GET /tasks` response now includes `pct` (precomputed verified %) per task — TASK-188
-- `GET /tasks/<id>/progress` `branches[]` includes `review` field — confirmed TASK-187
-- `GET /stalled` confirmed to exclude Review (and Pending) subtasks — TASK-194
-- 4 new edge-case tests for `/subtasks/bulk-reset` and `/subtasks/bulk-verify` — TASK-189
-
-#### Dashboard
-- `renderDetail()` progress bar now shows `N⏸` (Review count) alongside `N▶` (Running) — TASK-186
-- Per-branch mini rows show `running▶` and `review⏸` separately — TASK-186
-- `renderGrid()` card mini-bars use server-supplied `pct` from `GET /tasks` — TASK-191
-- `pollTaskProgress()` now updates per-branch mini rows in-place (fill width + count text) — TASK-192
-- `pollTaskProgress()` runSpan shows `review⏸` alongside `running▶` — TASK-192
-
-#### Discord Bot
-- 5 tests added: Review in `_format_filter` output, ⏸ icon, count, exclusion — TASK-190
-- `/bulk_verify` slash command confirmed present with 5 tests — TASK-193 (no-op)
+- **202 tasks** total; **464 API + 447 Discord tests**
+- Review visible everywhere: card badge (⏸N yellow), card counts, detail bar, per-branch rows, header counter, Discord formatter, History/Subtasks quick-filters (TASK-186–202)
+- `GET /tasks` includes `pct` and `review_subtasks`; `/tasks/<id>/progress` branches[] includes `review` (TASK-188, 196)
+- `pollTaskProgress()` updates per-branch mini rows in-place; uses branches[] from /progress (TASK-192)
+- Subtasks + History tabs: 4 toggle quick-filter buttons (Pending/Running/Review/Verified) (TASK-199, 201)
+- `GET /stalled` and Discord `stalled` confirmed to exclude Review/Pending; tests added (TASK-194, 200)
+- CHANGELOG v4.0.0 milestone entry created (TASK-181)
 
 ---
 
