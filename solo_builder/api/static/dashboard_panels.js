@@ -432,6 +432,29 @@ export async function pollSubtasks() {
   } catch (_) {}
 }
 
+window.renderHistory = function () {
+  _historyPage = 1;
+  _renderHistory(_historyRows);
+  _updateHistoryExportLinks();
+  const q = (document.getElementById("history-filter")?.value || "").trim();
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (q) { params.set("ht-filter", q); } else { params.delete("ht-filter"); }
+  const next = params.toString();
+  history.replaceState(null, "", next ? "#" + next : location.pathname + location.search);
+};
+
+// Restore history filter from URL hash on load
+(function _restoreHtFilter() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const saved = params.get("ht-filter");
+  if (!saved) return;
+  const restoreWhenReady = () => {
+    const f = document.getElementById("history-filter");
+    if (f) { f.value = saved; } else { setTimeout(restoreWhenReady, 100); }
+  };
+  restoreWhenReady();
+}());
+
 window.renderSubtasks = function () {
   _renderSubtasks();
   const q = (document.getElementById("subtasks-filter")?.value || "").trim();
