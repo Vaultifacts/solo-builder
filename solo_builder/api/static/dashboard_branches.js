@@ -91,6 +91,16 @@ function _triggerDownload(blob, filename) {
   a.click();
 }
 
+function _updateBranchesExportLinks() {
+  const csv  = document.getElementById("branches-export-csv");
+  const json = document.getElementById("branches-export-json");
+  if (!csv || !json) return;
+  let qs = _branchesStatusFilter ? `?status=${encodeURIComponent(_branchesStatusFilter)}` : "";
+  if (_branchesTaskFilter) qs += (qs ? "&" : "?") + `task=${encodeURIComponent(_branchesTaskFilter)}`;
+  csv.href  = `/branches/export${qs}`;
+  json.href = `/branches/export${qs ? qs + "&format=json" : "?format=json"}`;
+}
+
 window._downloadBranchesCSV = function () {
   const rows = _getBranchesFiltered();
   const header = "task,branch,total,verified,running,review,pending,pct";
@@ -180,6 +190,7 @@ function _renderBranchesAll(d, summary) {
   // bulk bar only applies to detail view; hide it in all-tasks view
   _branchesSel.clear();
   _updateBranchesBulkBar();
+  _updateBranchesExportLinks();
 
   // Show quick-filter buttons only when no task selected
   const filterBar    = document.getElementById("branches-status-filters");
