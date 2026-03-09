@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-131
+TASK-132
 
 ## Verdict: PASS
 
@@ -12,12 +12,13 @@ TASK-131
 - architecture-audit: 96.6/100 (unchanged)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — added ↺ Reset task button in renderDetail() header; added window.resetTask() handler
+Two files modified:
+- `solo_builder/api/blueprints/branches.py` — new POST /branches/<task_id>/reset endpoint
+- `solo_builder/api/test_app.py` — new TestBranchReset class with 7 tests
 
 ## Feature Description
-The task detail panel now has a small "↺ Reset task" toolbar button next to the status badge.
-Clicking it calls POST /tasks/<id>/reset (added in TASK-129), toasts the result
-("↺ Task0 reset (3 subtasks)"), then reloads the detail via selectTask(). Verified subtasks
-are preserved by the endpoint. The button uses JSON.stringify for safe onclick attribute
-injection of the task ID.
+POST /branches/<task_id>/reset accepts JSON body {"branch": "<branch_name>"} and bulk-resets all
+non-Verified subtasks in that branch to Pending by updating STATE.json directly.
+Returns {ok, task, branch, reset_count, skipped_count}.
+Errors: 400 if branch field missing, 404 if task or branch not found, 500 on write failure.
+Completes the three-tier reset hierarchy: subtask (TASK-099) → branch (TASK-132) → task (TASK-129).
