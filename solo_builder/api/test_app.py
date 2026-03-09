@@ -273,6 +273,16 @@ class TestGetTasks(_Base):
         d = self.client.get("/tasks").get_json()
         self.assertEqual(d["tasks"], [])
 
+    def test_task_filter_substring_match(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/tasks?task=task+0").get_json()
+        self.assertEqual(len(d["tasks"]), 1)
+
+    def test_task_filter_no_match_returns_empty(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/tasks?task=xyzzy").get_json()
+        self.assertEqual(d["tasks"], [])
+
     def test_summary_includes_pct(self):
         self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
         d = self.client.get("/tasks").get_json()

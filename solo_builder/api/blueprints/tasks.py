@@ -16,7 +16,9 @@ tasks_bp = Blueprint("tasks", __name__)
 @tasks_bp.get("/tasks")
 def list_tasks():
     dag = _load_dag()
-    all_tasks = [_task_summary(tid, t) for tid, t in dag.items()]
+    task_q = (request.args.get("task") or "").strip().lower()
+    all_tasks = [_task_summary(tid, t) for tid, t in dag.items()
+                 if not task_q or task_q in tid.lower()]
     total = len(all_tasks)
     limit = request.args.get("limit", 0, type=int)
     page  = max(1, request.args.get("page",  1, type=int))

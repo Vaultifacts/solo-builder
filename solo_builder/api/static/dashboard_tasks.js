@@ -2,8 +2,9 @@ import { state } from "./dashboard_state.js";
 import { api, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
 export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 
-const _TASKS_LIMIT = 50;
-let _tasksPage = 1;
+const _TASKS_LIMIT    = 50;
+let _tasksPage        = 1;
+let _tasksSearchFilter = "";
 
 function _updateTasksPager() {
   const pager = document.getElementById("tasks-pager");
@@ -98,7 +99,9 @@ function _updateFavicon(d) {
 /* ── Task grid ───────────────────────────────────────────── */
 export async function pollTasks() {
   try {
-    const d = await api(`/tasks?limit=${_TASKS_LIMIT}&page=${_tasksPage}`);
+    let url = `/tasks?limit=${_TASKS_LIMIT}&page=${_tasksPage}`;
+    if (_tasksSearchFilter) url += `&task=${encodeURIComponent(_tasksSearchFilter)}`;
+    const d = await api(url);
     state.allTasks = d.tasks || [];
     state.taskTotal = d.total ?? state.allTasks.length;
     state.taskPages = d.pages ?? 1;
@@ -501,8 +504,9 @@ window.toggleTaskTimeline = async function toggleTaskTimeline(taskId) {
 };
 
 window._applyTaskSearch = function () {
+  _tasksSearchFilter = (document.getElementById("task-search")?.value || "").trim().toLowerCase();
   _tasksPage = 1;
-  applyTaskSearch();
+  pollTasks();
 };
 
 window.filterSubtasks = function filterSubtasks() {
