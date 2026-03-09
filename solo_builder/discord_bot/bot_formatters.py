@@ -313,19 +313,28 @@ def _format_stalled(state: dict) -> str:
     except Exception:
         pass
     stuck = []
+    branch_counts: dict = {}
     for task_name, task in dag.items():
-        for branch in task.get("branches", {}).values():
+        for branch_name, branch in task.get("branches", {}).items():
             for st_name, st_data in branch.get("subtasks", {}).items():
                 if st_data.get("status") == "Running":
                     age = step - st_data.get("last_update", 0)
                     if age >= threshold:
                         desc = (st_data.get("description") or "")[:40]
-                        stuck.append((st_name, task_name, age, desc))
-    stuck.sort(key=lambda x: x[2], reverse=True)
+                        stuck.append((st_name, task_name, branch_name, age, desc))
+                        key = f"{task_name} / {branch_name}"
+                        branch_counts[key] = branch_counts.get(key, 0) + 1
+    stuck.sort(key=lambda x: x[3], reverse=True)
     if not stuck:
         return f"✅ **Stalled Subtasks** — none (threshold: {threshold} steps)"
-    lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps)", "```"]
-    for st_name, task_name, age, desc in stuck:
+    lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps)"]
+    if len(branch_counts) > 1:
+        lines.append("```")
+        for key, cnt in sorted(branch_counts.items(), key=lambda x: -x[1]):
+            lines.append(f"  {key:<30} {cnt} stalled")
+        lines.append("```")
+    lines.append("```")
+    for st_name, task_name, branch_name, age, desc in stuck:
         lines.append(f"  {st_name:<5} stalled {age} steps  {task_name} — {desc}")
     lines.append("```")
     lines.append("_SelfHealer auto-resets after threshold_")

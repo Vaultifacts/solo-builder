@@ -1,20 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-268
+TASK-269
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (558 tests, 0 failures; +5 new)
+- unittest-discover (discord_bot): PASS (274 tests, 0 failures; +5 new in TestFormatStalled)
+- unittest-discover (api): PASS (558 tests, 0 failures)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/blueprints/subtasks.py` — `GET /stalled` now includes `by_branch: [{task, branch, count}]` sorted by count desc; computed from the existing `stuck` list before returning
-- `solo_builder/api/test_app.py` — 5 new tests in `TestStalled`: key present, empty when no stall, populated from multi-task state (fields check), sum equals total count, sorted desc
+- `solo_builder/discord_bot/bot_formatters.py` — `_format_stalled()`: tracks `branch_name` alongside subtask name/age/desc; when multiple branches stalling, emits a "by branch" summary block (sorted desc by count) before the subtask list
+- `solo_builder/discord_bot/test_bot.py` — `TestFormatStalled` (5 tests): clean no-stall message, single branch suppresses summary, multi-branch shows summary, header count correct, sorted desc
 
 ## Implementation Detail
-`by_branch` mirrors the shape of `stalled_by_branch` in `GET /status` (task/branch/count) for API parity.
-Sort: highest stall count first (same as `GET /status` after TASK-270).
-Backward-compatible: existing `stalled`, `count`, `step`, `threshold` keys unchanged.
+Summary block suppressed when only one unique branch stalling (not useful in single-branch case).
+Grouping key: "task / branch" string for readability in Discord message.
+Subtask tuple extended from 4-tuple to 5-tuple (added branch_name at index 2); sort still on age (index 3).

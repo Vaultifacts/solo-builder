@@ -142,6 +142,58 @@ class TestBranchesToCsv(unittest.TestCase):
         self.assertEqual(fields[5], "1")   # review
 
 
+class TestFormatStalled(unittest.TestCase):
+    """Unit tests for _format_stalled per-branch grouping."""
+
+    def _multi_branch_state(self, step=10, last_update=0):
+        """Two tasks × two branches, all Running and stalled."""
+        def _sub(name):
+            return {"status": "Running", "output": "", "description": "", "last_update": last_update}
+        return {
+            "step": step,
+            "dag": {
+                "Task A": {"status": "Running", "branches": {
+                    "Br A1": {"subtasks": {"SA1": _sub("SA1"), "SA2": _sub("SA2")}},
+                    "Br A2": {"subtasks": {"SA3": _sub("SA3")}},
+                }},
+                "Task B": {"status": "Running", "branches": {
+                    "Br B1": {"subtasks": {"SB1": _sub("SB1")}},
+                }},
+            },
+        }
+
+    def test_no_stall_clean_message(self):
+        state = _make_state({"A1": "Verified"})
+        result = bot_module._format_stalled(state)
+        self.assertIn("none", result)
+
+    def test_single_branch_no_summary_card(self):
+        # Default _make_state puts everything in one branch → no summary block
+        state = _make_state({"A1": "Running"}, step=100)
+        result = bot_module._format_stalled(state)
+        # Should NOT contain "/ " separator (branch summary keys)
+        self.assertNotIn(" / ", result)
+
+    def test_multi_branch_summary_present(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state)
+        # Branch grouping summary line should be present
+        self.assertIn(" / ", result)
+
+    def test_multi_branch_header_count(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state)
+        self.assertIn("4", result)  # 4 stalled subtasks total
+
+    def test_multi_branch_sorted_desc(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state)
+        # Br A1 has 2 stalled, Br A2 and Br B1 have 1 each
+        idx_a1 = result.find("Br A1")
+        idx_a2 = result.find("Br A2")
+        self.assertLess(idx_a1, idx_a2)  # higher count appears first
+
+
 class TestFormatStatus(unittest.TestCase):
     def test_all_verified(self):
         state = _make_state({"A1": "Verified", "A2": "Verified"}, step=5)
