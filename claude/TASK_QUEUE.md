@@ -102,3 +102,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-114
+Goal: Add Flask API integration tests targeting endpoints with insufficient coverage — pollMetrics, pollForecast, pollPriority, pollStalled, GET /branches, GET /subtasks, GET /timeline/<id>, GET /shortcuts, POST /config/reset — to raise coverage score in architecture audit
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
