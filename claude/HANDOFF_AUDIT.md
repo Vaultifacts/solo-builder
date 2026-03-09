@@ -1,24 +1,26 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-152
+TASK-153
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (bot + api): PASS (405 tests, 0 failures — +5 TestBulkVerifyCommand)
+- unittest-discover (api): PASS (400 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: N/A (bot/slash only)
+- architecture-audit: PASS (97.7/100)
 
 ## Scope Check
-Three files modified:
-- `solo_builder/discord_bot/bot.py` — added _format_bulk_verify(state, names, skip_non_running) helper; plain-text handler for `bulk_verify <A1> [A2 ...]`
-- `solo_builder/discord_bot/bot_slash.py` — added /bulk_verify slash command
-- `solo_builder/discord_bot/test_bot.py` — added TestBulkVerifyCommand (5 tests)
+Four files modified/created:
+- `solo_builder/api/static/dashboard_svg.js` — NEW; exports svgEl, svgBar, sparklineSvg
+- `solo_builder/api/static/dashboard_panels.js` — import added; local _svgBar/_sparklineSvg removed; call sites renamed
+- `solo_builder/api/static/dashboard.js` — import { svgEl } added; local _svgEl removed from renderGraph; renamed local const svgEl → tlSvg in subtask modal to avoid naming conflict
+- `claude/allowed_files.txt` — dashboard_svg.js added
 
 ## Implementation Detail
-- Same pattern as _format_bulk_reset; reads/writes STATE.json directly
-- Already-Verified always skipped; optional skip_non_running kwarg (default False)
-- Returns verified count, skipped count, not-found list
-- Usage: `bulk_verify <A1> [A2 ...]` (no-args returns usage hint)
+- All three SVG utilities now live in a single shared ES module (dashboard_svg.js)
+- svgEl: createElementNS helper; svgBar: horizontal progress bar SVG; sparklineSvg: polyline sparkline
+- dashboard_panels.js and dashboard.js both import from dashboard_svg.js
+- No new API endpoints; no test changes required (JS-only extraction)
+- Architecture score: 97.7/100 (unchanged from TASK-152; deduplication does not affect score formula)
