@@ -350,5 +350,15 @@ def stalled():
                             "branch": branch_name, "age": age,
                         })
     stuck.sort(key=lambda x: x["age"], reverse=True)
+    # Build per-branch grouping: [{task, branch, count}] sorted by count desc
+    _branch_counts: dict = {}
+    for s in stuck:
+        key = (s["task"], s["branch"])
+        _branch_counts[key] = _branch_counts.get(key, 0) + 1
+    by_branch = sorted(
+        [{"task": t, "branch": b, "count": c} for (t, b), c in _branch_counts.items()],
+        key=lambda x: x["count"], reverse=True,
+    )
     return jsonify({"step": step, "threshold": threshold,
-                    "count": len(stuck), "stalled": stuck})
+                    "count": len(stuck), "stalled": stuck,
+                    "by_branch": by_branch})
