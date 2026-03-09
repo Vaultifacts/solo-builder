@@ -156,6 +156,7 @@ export function renderDetail(t) {
   if (t.depends_on && t.depends_on.length) {
     html += ` <span style="color:#ff9800;font-size:10px">← ${esc(t.depends_on.join(", "))}</span>`;
   }
+  html += ` <button class="toolbar-btn" style="font-size:9px;padding:2px 6px;margin-left:8px" onclick="resetTask(${JSON.stringify(t.id)})" title="Reset all non-Verified subtasks to Pending">↺ Reset task</button>`;
   html += `</div>`;
 
   const branches = t.branches || {};
@@ -220,6 +221,19 @@ window.toggleExpand = function toggleExpand(btn, event) {
   if (!panel) return;
   const open = panel.classList.toggle("open");
   btn.textContent = open ? "▼" : "▶";
+};
+
+window.resetTask = async function (taskId) {
+  try {
+    const r = await fetch(state.base + "/tasks/" + encodeURIComponent(taskId) + "/reset", { method: "POST" });
+    const d = await r.json();
+    if (d.ok) {
+      toast("↺ " + taskId + " reset (" + d.reset_count + " subtasks)");
+      selectTask(taskId);
+    } else {
+      toast(d.reason || "Reset failed");
+    }
+  } catch (_) { toast("Network error"); }
 };
 
 window.filterSubtasks = function filterSubtasks() {
