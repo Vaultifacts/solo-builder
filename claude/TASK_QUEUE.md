@@ -1734,3 +1734,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-297
+Goal: Stalled tab: show active filter label (e.g. 'task: X · branch: Y') below the filter inputs when either is set; updates after each poll
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
