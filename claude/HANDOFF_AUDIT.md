@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-112
+TASK-113
 
 ## Verdict: PASS
 
@@ -9,19 +9,20 @@ TASK-112
 - unittest-discover: PASS (333 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 100.0/100 (0 critical, 19 major)
+- architecture-audit: 100.0/100 (0 critical, 0 major)
 
 ## Scope Check
-No tracked files modified. Untracked local artifacts removed:
-- `claude/snapshots/` — 9 old verify-fail snapshot directories deleted
-- `solo_builder/discord_bot/chat.log` — truncated (7122 lines → 0)
-
-Both paths are already in `.gitignore` (`claude/snapshots/` and `*.log`).
+Only the four dashboard ES modules were modified:
+- `solo_builder/api/static/dashboard_utils.js` — added `esc()` export (already done in prior session)
+- `solo_builder/api/static/dashboard_tasks.js` — applied esc() throughout; renamed `const esc` shadow to `snameJson`
+- `solo_builder/api/static/dashboard_panels.js` — added esc import; applied esc() throughout
+- `solo_builder/api/static/dashboard.js` — added esc import; applied esc() throughout
 
 ## Architecture Improvement
-Score: 96.6 → 100.0 (+3.4 pts). Two "Very large file" major findings eliminated:
-- `claude/snapshots/20260308-.../verify_last.json` — GONE
-- `solo_builder/discord_bot/chat.log` — GONE
+Score: 100.0/100 (0 critical, 0 major). All four "Potential XSS" major findings eliminated:
+- `dashboard.js` — XSS in _renderModal (status, h.status), openKeysModal (s.key, s.description), renderGraph (id)
+- `dashboard_tasks.js` — XSS in renderGrid (t.id, t.status), renderDetail (t.id, bname, sname, preview from description), _renderJournal (e.subtask, e.task, e.branch), _renderStats (k, v)
+- `dashboard_panels.js` — XSS in _renderHistory, _renderBranchesAll/Detail, _renderSettings, _renderPriority, _renderStalled (incl. onclick), _renderSubtasks, pollCache (dir), _renderCacheHistory (ended)
+- Inline JS onclick handlers now use `JSON.stringify()` for values to prevent code injection
 
-Remaining top findings: XSS patterns in dashboard modules (pre-existing) and
-insufficient test coverage (ongoing).
+Architecture score remains 100.0/100 (same as TASK-112 baseline).

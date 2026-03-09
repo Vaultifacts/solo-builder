@@ -1,5 +1,5 @@
 import { state } from "./dashboard_state.js";
-import { api, statusClass, toast, flash, updateNotifBadge } from "./dashboard_utils.js";
+import { api, esc, statusClass, toast, flash, updateNotifBadge } from "./dashboard_utils.js";
 import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats } from "./dashboard_tasks.js";
 import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory } from "./dashboard_panels.js";
 
@@ -194,7 +194,7 @@ function _renderModal(stName, d) {
   const status = d.status || "Pending";
   document.getElementById("modal-title").textContent = stName;
   document.getElementById("modal-status-wrap").innerHTML =
-    `<span class="modal-status ${statusClass(status)}">${status}</span>`;
+    `<span class="modal-status ${statusClass(status)}">${esc(status)}</span>`;
   document.getElementById("modal-desc").textContent = d.description || "(no description)";
   document.getElementById("modal-output").textContent = d.output || "(no output yet)";
   const tlWrap = document.getElementById("modal-timeline-wrap");
@@ -204,7 +204,7 @@ function _renderModal(stName, d) {
     let tlHtml = '<span class="timeline-entry"><span class="timeline-dot" style="background:var(--dim)"></span> Pending</span>';
     for (const h of history) {
       const c = colorMap[h.status] || "var(--dim)";
-      tlHtml += `<span class="timeline-arrow">\u2192</span><span class="timeline-entry"><span class="timeline-dot" style="background:${c}"></span> ${h.status} <span style="color:var(--dim)">(step ${h.step})</span></span>`;
+      tlHtml += `<span class="timeline-arrow">\u2192</span><span class="timeline-entry"><span class="timeline-dot" style="background:${c}"></span> ${esc(h.status)} <span style="color:var(--dim)">(step ${h.step})</span></span>`;
     }
     document.getElementById("modal-timeline").innerHTML = tlHtml;
     tlWrap.style.display = "";
@@ -240,7 +240,7 @@ window.openKeysModal = function () {
     const tbl = document.getElementById("shortcuts-table");
     if (!tbl) return;
     tbl.innerHTML = (d.shortcuts || []).map(function (s) {
-      return `<tr><td style="color:var(--cyan);width:120px"><kbd>${s.key}</kbd></td><td style="color:var(--dim)">${s.description}</td></tr>`;
+      return `<tr><td style="color:var(--cyan);width:120px"><kbd>${esc(s.key)}</kbd></td><td style="color:var(--dim)">${esc(s.description)}</td></tr>`;
     }).join("");
   }).catch(function () {});
 };
@@ -542,8 +542,8 @@ function renderGraph() {
     const nV  = Object.values(branches).reduce((a, b) => a + Object.values(b.subtasks || {}).filter(s => s.status === "Verified").length, 0);
     const pct = nSt ? Math.round(nV / nSt * 100) : 0;
     const barW = NW - 16, barH = 5, barX = p.x + 8, barY = p.y + 10;
-    html += `<rect x="${p.x}" y="${p.y - NH/2}" width="${NW}" height="${NH + 8}" rx="4" fill="${bg}" stroke="${col}" stroke-width="1.5" style="cursor:pointer" onclick="selectTask('${id}')"/>`;
-    html += `<text x="${p.x + NW/2}" y="${p.y - 6}" fill="${col}" text-anchor="middle" font-size="11" font-family="var(--font)" font-weight="bold">${id}</text>`;
+    html += `<rect x="${p.x}" y="${p.y - NH/2}" width="${NW}" height="${NH + 8}" rx="4" fill="${bg}" stroke="${col}" stroke-width="1.5" style="cursor:pointer" onclick="selectTask(${JSON.stringify(id)})"/>`;
+    html += `<text x="${p.x + NW/2}" y="${p.y - 6}" fill="${col}" text-anchor="middle" font-size="11" font-family="var(--font)" font-weight="bold">${esc(id)}</text>`;
     html += `<text x="${p.x + NW/2}" y="${p.y + 6}" fill="var(--dim)" text-anchor="middle" font-size="9" font-family="var(--font)">${nV}/${nSt} (${pct}%)</text>`;
     html += `<rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="2" fill="var(--surface)"/>`;
     html += `<rect x="${barX}" y="${barY}" width="${Math.round(barW * pct / 100)}" height="${barH}" rx="2" fill="${col}"/>`;
