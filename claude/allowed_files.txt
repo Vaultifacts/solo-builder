@@ -74,3 +74,4 @@ solo_builder/commands/step_runner.py
 solo_builder/cli_utils.py
 solo_builder/config/settings.json
 solo_builder/tests/test_cli_utils.py
+docs/dev_notes.md
