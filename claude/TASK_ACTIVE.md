@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-186
+TASK-214
 
-Add Review count to renderDetail() progress bar in dashboard_tasks.js; show as N⏸ alongside running▶
+hdr-pending stat box shows review count separately when review > 0
