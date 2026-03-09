@@ -1,23 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-151
+TASK-152
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (400 tests, 0 failures — +7 TestGetTaskProgress)
+- unittest-discover (bot + api): PASS (405 tests, 0 failures — +5 TestBulkVerifyCommand)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: N/A (Python-only; no JS changes)
+- architecture-audit: N/A (bot/slash only)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/tasks.py` — added GET /tasks/<path:task_id>/progress; uses _load_dag (read-only); returns {task,status,verified,total,pct,running,pending,review}
-- `solo_builder/api/test_app.py` — added TestGetTaskProgress (7 tests)
+Three files modified:
+- `solo_builder/discord_bot/bot.py` — added _format_bulk_verify(state, names, skip_non_running) helper; plain-text handler for `bulk_verify <A1> [A2 ...]`
+- `solo_builder/discord_bot/bot_slash.py` — added /bulk_verify slash command
+- `solo_builder/discord_bot/test_bot.py` — added TestBulkVerifyCommand (5 tests)
 
 ## Implementation Detail
-- Registered before /bulk-verify to avoid route ambiguity
-- pct = round(verified/total*100, 1); 0.0 when total=0
-- Counts all 4 statuses (Verified, Running, Pending, Review) using dict.get with default 0
-- 404 if task not found
+- Same pattern as _format_bulk_reset; reads/writes STATE.json directly
+- Already-Verified always skipped; optional skip_non_running kwarg (default False)
+- Returns verified count, skipped count, not-found list
+- Usage: `bulk_verify <A1> [A2 ...]` (no-args returns usage hint)

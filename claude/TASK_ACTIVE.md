@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-151
+TASK-152
 
-Add GET /tasks/<id>/progress endpoint — lightweight single-task progress {task,verified,total,pct,status}
+Add bulk_verify command to Discord bot (plain-text + slash) counterpart to bulk_reset

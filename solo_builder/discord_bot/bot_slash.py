@@ -224,6 +224,15 @@ def register_slash_commands(bot: discord.Client) -> None:
         names = subtasks.strip().split()
         await interaction.response.send_message(_b._format_bulk_reset(_b._load_state(), names))
 
+    @bot.tree.command(name="bulk_verify", description="Advance multiple named subtasks to Verified in one command")
+    @app_commands.describe(subtasks="Space-separated subtask names (e.g. A1 A2 B3)")
+    async def bulk_verify_cmd(interaction: discord.Interaction, subtasks: str) -> None:
+        if not _b._allowed(interaction):
+            await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+            return
+        names = subtasks.strip().split()
+        await interaction.response.send_message(_b._format_bulk_verify(_b._load_state(), names))
+
     @bot.tree.command(name="agents", description="Show all agent statistics")
     async def agents_cmd(interaction: discord.Interaction) -> None:
         if not _b._allowed(interaction):
