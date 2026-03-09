@@ -43,6 +43,12 @@ def _write_trigger(path: Path, fields: dict,
 
 
 def _task_summary(task_id: str, task: dict) -> dict:
+    """Lightweight per-task summary for GET /tasks grid rendering.
+
+    Intentionally excludes the branches dict to keep GET /tasks O(tasks)
+    rather than O(tasks × branches × subtasks).  The dashboard detail panel
+    uses the separate GET /tasks/<id> endpoint which returns full branch data.
+    """
     branches      = task.get("branches", {})
     subtask_count = sum(len(b.get("subtasks", {})) for b in branches.values())
     verified      = sum(

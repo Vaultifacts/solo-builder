@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-183
+TASK-184
 
-Call pollTaskProgress inside window.runAuto step loop for real-time progress bar updates during auto-run
+Audit GET /tasks endpoint response: verify it includes all fields dashboard_tasks.js needs to avoid the double-fetch per-task in tick()
