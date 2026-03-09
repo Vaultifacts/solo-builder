@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-117
+TASK-118
 
-Add standalone pytest-style def test_* functions to improve architecture auditor function ratio metric
+Add GET /dag/summary endpoint returning markdown pipeline summary with task/branch/subtask counts and completion pct
