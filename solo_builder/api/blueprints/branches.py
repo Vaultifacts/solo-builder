@@ -50,6 +50,7 @@ def branches_all():
                 "review": rv,
                 "pending": p,
                 "pct": round(v / total * 100, 1) if total else 0.0,
+                "review_pct": round(rv / total * 100, 1) if total else 0.0,
             })
     if status_q == "verified":
         result = [b for b in result if b["verified"] == b["total"] and b["total"] > 0]
