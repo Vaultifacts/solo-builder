@@ -1,19 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-254
+TASK-255
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (534 tests, 0 failures; +6 new)
+- unittest-discover (api): PASS (534 tests, 0 failures)
+- node tools/lint_dashboard_handlers.js: PASS (0 gaps; 45 handler calls, 58 window.* exposed)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/test_app.py` — 6 new tests in TestStalled: multi-task count, subtask names across tasks, task field correctness, branch field correctness, /status stalled matches /stalled count for multi-task state, partial stall within a branch
+Two files modified:
+- `solo_builder/api/static/dashboard_panels.js` — _subtasksTaskFilter state, pollSubtasks() includes ?task=X, _updateSubtasksExportLinks builds qs with task filter, window._applySubtasksTaskFilter handler
+- `solo_builder/api/dashboard.html` — #subtasks-task-filter input (width:60px) added beside #subtasks-filter; oninput="_applySubtasksTaskFilter()"
 
 ## Implementation Detail
-Previous stall tests only used single-task/single-branch _make_state().
-New _make_multi_task_state() helper creates 2 tasks × 2 branches (3 Running, 1 Verified).
-Tests verify: correct count across multiple tasks, task/branch metadata on each stalled entry, /status.stalled == /stalled.count parity, and that fresh Running (age < threshold) in same branch are excluded.
+The server (GET /subtasks, /subtasks/export) already supports ?task= filter (TASK-251).
+This task wires the UI: a small "Task…" text input in the Subtasks tab filter row.
+On input, _applySubtasksTaskFilter() sets _subtasksTaskFilter, resets page to 1, and calls pollSubtasks() for server-side re-fetch.
+Export links automatically include &task=X via _updateSubtasksExportLinks() parity.

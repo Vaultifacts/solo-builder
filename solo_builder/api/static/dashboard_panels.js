@@ -465,6 +465,7 @@ let _subtasksPages        = 1;
 let _subtasksTotal        = 0;
 let _subtasksStatusFilter = "";   // "" = all; "Pending"|"Running"|"Review"|"Verified"
 let _subtasksNameFilter   = "";   // "" = all; substring matched against subtask name
+let _subtasksTaskFilter   = "";   // "" = all; substring matched against task name
 const _SUBTASKS_LIMIT     = 50;
 const _SUBTASKS_STATUS_VALS = new Set(["pending", "running", "review", "verified"]);
 
@@ -496,6 +497,7 @@ export async function pollSubtasks() {
     let url = `/subtasks?limit=${_SUBTASKS_LIMIT}&page=${_subtasksPage}`;
     if (_subtasksStatusFilter) url += `&status=${encodeURIComponent(_subtasksStatusFilter)}`;
     if (_subtasksNameFilter)   url += `&name=${encodeURIComponent(_subtasksNameFilter)}`;
+    if (_subtasksTaskFilter)   url += `&task=${encodeURIComponent(_subtasksTaskFilter)}`;
     const d = await api(url);
     _subtasksAll   = d.subtasks || [];
     _subtasksTotal = d.total    ?? _subtasksAll.length;
@@ -511,6 +513,7 @@ function _updateSubtasksExportLinks() {
   if (!csv || !json) return;
   let qs = _subtasksStatusFilter ? `?status=${encodeURIComponent(_subtasksStatusFilter)}` : "";
   if (_subtasksNameFilter) qs += (qs ? "&" : "?") + `name=${encodeURIComponent(_subtasksNameFilter)}`;
+  if (_subtasksTaskFilter) qs += (qs ? "&" : "?") + `task=${encodeURIComponent(_subtasksTaskFilter)}`;
   csv.href  = `/subtasks/export${qs}`;
   json.href = `/subtasks/export${qs ? qs + "&format=json" : "?format=json"}`;
 }
@@ -519,6 +522,15 @@ window._subtasksPageStep = function (delta) {
   const next = _subtasksPage + delta;
   if (next < 1 || next > _subtasksPages) return;
   _subtasksPage = next;
+  pollSubtasks();
+};
+
+window._applySubtasksTaskFilter = function () {
+  const v = (document.getElementById("subtasks-task-filter")?.value || "").trim().toLowerCase();
+  if (v === _subtasksTaskFilter) return;
+  _subtasksTaskFilter = v;
+  _subtasksPage = 1;
+  _updateSubtasksExportLinks();
   pollSubtasks();
 };
 

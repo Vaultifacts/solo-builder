@@ -220,9 +220,12 @@
     </div>
     <div class="sidebar-tab-content" id="tab-subtasks">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <input id="subtasks-filter" type="text" placeholder="Filter subtask/status/branch…"
+        <input id="subtasks-filter" type="text" placeholder="Filter subtask/status…"
                oninput="renderSubtasks()"
                style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+        <input id="subtasks-task-filter" type="text" placeholder="Task…"
+               oninput="_applySubtasksTaskFilter()"
+               style="width:60px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
         <a id="subtasks-export-csv"  class="toolbar-btn" href="/subtasks/export" download="subtasks.csv" style="font-size:9px;padding:2px 5px">CSV</a>
         <a id="subtasks-export-json" class="toolbar-btn" href="/subtasks/export?format=json" download="subtasks.json" style="font-size:9px;padding:2px 5px">JSON</a>
       </div>
