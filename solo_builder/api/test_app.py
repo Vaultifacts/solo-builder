@@ -2950,6 +2950,55 @@ class TestGetSubtaskOutput(_Base):
 # POST /tasks/<task_id>/bulk-verify  (TASK-149)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# GET /tasks/<task_id>/progress  (TASK-151)
+# ---------------------------------------------------------------------------
+
+class TestGetTaskProgress(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        r = self.client.get("/tasks/Task 0/progress")
+        self.assertEqual(r.status_code, 200)
+
+    def test_required_fields(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        for key in ("task", "status", "verified", "total", "pct", "running", "pending", "review"):
+            self.assertIn(key, d)
+
+    def test_task_field(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertEqual(d["task"], "Task 0")
+
+    def test_counts_correct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertEqual(d["verified"], 1)
+        self.assertEqual(d["running"], 1)
+        self.assertEqual(d["pending"], 1)
+        self.assertEqual(d["total"], 3)
+
+    def test_pct_correct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertAlmostEqual(d["pct"], 50.0)
+
+    def test_pct_zero_when_no_subtasks(self):
+        state = self._make_state()
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"] = {}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertEqual(d["pct"], 0.0)
+        self.assertEqual(d["total"], 0)
+
+    def test_404_unknown_task(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/tasks/No Such Task/progress")
+        self.assertEqual(r.status_code, 404)
+
+
 class TestPostTaskBulkVerify(_Base):
 
     def test_returns_200(self):
