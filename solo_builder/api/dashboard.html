@@ -191,6 +191,13 @@
         <a class="toolbar-btn" href="/subtasks/export" download="subtasks.csv" style="font-size:9px;padding:2px 5px">CSV</a>
         <a class="toolbar-btn" href="/subtasks/export?format=json" download="subtasks.json" style="font-size:9px;padding:2px 5px">JSON</a>
       </div>
+      <div id="subtasks-bulk-bar" style="display:none;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <span id="subtasks-sel-count" style="font-size:9px;color:var(--dim)">0 selected</span>
+        <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="subtasksBulkReset()">↺ Reset</button>
+        <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="subtasksBulkVerify()">✔ Verify</button>
+        <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="subtasksClearSel()">✕ Clear</button>
+        <span id="fb-subtasks-bulk" class="feedback"></span>
+      </div>
       <div id="subtasks-content">
         <div class="detail-placeholder">Loading subtasks…</div>
       </div>
