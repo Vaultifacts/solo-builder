@@ -123,6 +123,38 @@ def reset_task(task_id: str):
     })
 
 
+@tasks_bp.get("/tasks/<path:task_id>/timeline")
+def task_timeline(task_id: str):
+    """Aggregate timeline for all subtasks in a task.
+
+    Returns {task, step, subtasks: [{subtask, branch, status, history, last_update}]}
+    sorted by last_update ascending (chronological order of last activity).
+    history entries: [{step, status}] from subtask history array.
+    """
+    state = _load_state()
+    dag = state.get("dag", {})
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    entries = []
+    for br_name, br_data in task.get("branches", {}).items():
+        for st_name, st_data in br_data.get("subtasks", {}).items():
+            entries.append({
+                "subtask": st_name,
+                "branch": br_name,
+                "status": st_data.get("status", "Pending"),
+                "history": st_data.get("history", []),
+                "last_update": st_data.get("last_update", 0),
+            })
+    entries.sort(key=lambda x: x["last_update"])
+    return jsonify({
+        "task": task_id,
+        "step": state.get("step", 0),
+        "count": len(entries),
+        "subtasks": entries,
+    })
+
+
 @tasks_bp.get("/graph")
 def graph():
     """Return ASCII dependency graph as JSON."""

@@ -2804,6 +2804,55 @@ class TestPostTaskReset(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /tasks/<id>/timeline  (TASK-139)
+# ---------------------------------------------------------------------------
+
+class TestGetTaskTimeline(_Base):
+
+    def test_timeline_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        r = self.client.get("/tasks/Task 0/timeline")
+        self.assertEqual(r.status_code, 200)
+
+    def test_timeline_unknown_task_returns_404(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/tasks/Task 999/timeline")
+        self.assertEqual(r.status_code, 404)
+
+    def test_timeline_has_task_field(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        self.assertEqual(d["task"], "Task 0")
+
+    def test_timeline_has_subtasks_list(self):
+        self._write_state(self._make_state({"A1": "Pending", "A2": "Verified"}))
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        self.assertIsInstance(d["subtasks"], list)
+        self.assertEqual(d["count"], 2)
+
+    def test_timeline_subtask_fields(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        st = d["subtasks"][0]
+        for key in ("subtask", "branch", "status", "history", "last_update"):
+            self.assertIn(key, st)
+
+    def test_timeline_has_step_field(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        self.assertIn("step", d)
+
+    def test_timeline_sorted_by_last_update(self):
+        state = self._make_state({"A1": "Pending", "A2": "Pending"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = 10
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A2"]["last_update"] = 5
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        updates = [st["last_update"] for st in d["subtasks"]]
+        self.assertEqual(updates, sorted(updates))
+
+
+# ---------------------------------------------------------------------------
 # GET /tasks/<id>/export
 # ---------------------------------------------------------------------------
 

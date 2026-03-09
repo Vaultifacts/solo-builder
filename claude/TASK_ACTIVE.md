@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-138
+TASK-139
 
-Add pagination to GET /subtasks (?page=, ?limit= with total in response)
+Add GET /tasks/<id>/timeline endpoint aggregating all subtask status transitions
