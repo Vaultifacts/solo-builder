@@ -1,22 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-172
+TASK-173
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (444 tests, 0 failures)
+- unittest-discover (all): PASS (432 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-Three files modified:
-- `solo_builder/api/static/dashboard.js` — added `h` key handler → switchTab("history")
-- `solo_builder/api/constants.py` — added h shortcut entry to _SHORTCUTS
-- `solo_builder/api/test_app.py` — 2 new tests in TestShortcuts
+Two files modified:
+- `solo_builder/discord_bot/bot_formatters.py` — moved _format_task_progress here (after _format_tasks)
+- `solo_builder/discord_bot/bot.py` — removed inline definition, updated import, added entry to _HELP_TEXT
 
 ## Implementation Detail
-Follows exact same pattern as b (Branches) and s (Subtasks) shortcuts added in TASK-162/164.
-`if (e.key === "h") { window.switchTab("history"); return; }` inserted after the s handler.
-_SHORTCUTS entry: {"key": "h", "description": "Switch to History tab"}.
+Pure refactor + help text update — no behavior change.
+_format_task_progress now lives in bot_formatters.py following all other _format_* functions.
+bot.py imports it alongside _format_tasks in the existing from .bot_formatters import block.
+Plain-text help text now includes `task_progress <task_id>` entry for discoverability.
