@@ -1,21 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-224
+TASK-225
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (all): PASS (454 tests, 0 failures)
-- unittest-discover (api): PASS (483 tests, 0 failures)
+- unittest-discover (api): PASS (489 tests, 0 failures; +6 new)
+- unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_panels.js` — _historyPageStep exposed + review suffix in count label
+Two files modified:
+- `solo_builder/api/blueprints/tasks.py` — list_tasks() adds limit/page params + total/page/pages fields
+- `solo_builder/api/test_app.py` — 6 tests added to TestGetTasks
 
 ## Implementation Detail
-Two fixes in one commit: (1) history pager ◀/▶ buttons called `_historyPageStep` from HTML inline
-handlers, but historyPageStep was only imported in dashboard.js — never window-exposed. Added
-`window._historyPageStep = function(delta) { historyPageStep(delta); }` before the export.
-(2) history-count-label now appends ' · N⏸' when the filtered event set includes Review events.
+GET /tasks previously returned only {tasks:[]}. Added ?limit=N&page=P query params; response now
+includes total, page, pages (backward-compatible — tasks key always present). limit=0 returns all
+(default, pages=1). Six tests cover: key presence, limit, total count, page calculation, page 2
+disjoint from page 1, limit=0 returns all.
