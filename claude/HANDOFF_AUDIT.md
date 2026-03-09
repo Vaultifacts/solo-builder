@@ -1,18 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-257
+TASK-258
 
 ## Verdict: PASS
 
 ## Verification Results
+- unittest-discover (api): PASS (548 tests, 0 failures; +14 new)
 - git-status: PASS (clean working tree)
-- CHANGELOG.md: v4.8.0 entry present, accurate test counts (534 API)
 
 ## Scope Check
-One file modified:
-- `CHANGELOG.md` — v4.8.0 entry added (TASK-251 through TASK-257); 257-task count
+Two files modified:
+- `solo_builder/api/blueprints/branches.py` — GET /branches/export endpoint added; supports ?task=, ?status=, ?format=json; CSV columns: task,branch,total,verified,running,review,pending,pct; Content-Disposition attachment
+- `solo_builder/api/test_app.py` — 14 new tests in TestBranchesExport: CSV/JSON status, content-type, disposition, header, row count, fields, ?status= filter (verified/running), ?task= filter, no-match, empty state
 
 ## Implementation Detail
-Added v4.8.0 CHANGELOG block above v4.7.0.
-Documents: ?name= subtask filter (251-252), branches server-side status filter (253), stall cross-task tests (254), subtasks task filter UI (255), branches task filter UI (256).
+Parity with /subtasks/export and /history/export: same filter parameters (?task=, ?status=), same response patterns (CSV default, JSON via ?format=json, Content-Disposition attachment).
+No pagination (exports all matching branches).
+Status filter logic mirrors GET /branches: verified==total>0, running>0, review>0, pending>0.
+Note: /branches/<path:task_id> route still takes priority over /branches/export in Flask because "export" is matched as a literal path before the catch-all path:task_id.
