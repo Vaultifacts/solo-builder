@@ -192,12 +192,18 @@
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-subtasks">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <input id="subtasks-filter" type="text" placeholder="Filter subtask/status/branch…"
                oninput="renderSubtasks()"
                style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
         <a class="toolbar-btn" href="/subtasks/export" download="subtasks.csv" style="font-size:9px;padding:2px 5px">CSV</a>
         <a class="toolbar-btn" href="/subtasks/export?format=json" download="subtasks.json" style="font-size:9px;padding:2px 5px">JSON</a>
+      </div>
+      <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+        <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Pending'?'':'Pending';renderSubtasks();})()">⏳ Pending</button>
+        <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Running'?'':'Running';renderSubtasks();})()">▶ Running</button>
+        <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Review'?'':'Review';renderSubtasks();})()">⏸ Review</button>
+        <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Verified'?'':'Verified';renderSubtasks();})()">✅ Verified</button>
       </div>
       <div id="subtasks-bulk-bar" style="display:none;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
         <span id="subtasks-sel-count" style="font-size:9px;color:var(--dim)">0 selected</span>
