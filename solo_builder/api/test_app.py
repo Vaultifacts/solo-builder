@@ -2033,6 +2033,102 @@ class TestStalled(_Base):
         self.assertNotIn("A1", names)
         self.assertNotIn("A2", names)
 
+    # -- Boundary tests ---------------------------------------------------
+
+    def _make_state_lu(self, subtasks_lu: dict, step: int = 5) -> dict:
+        """Build a DAG state with explicit last_update per subtask.
+
+        subtasks_lu: {name: (status, last_update)}
+        """
+        sts = {
+            name: {"status": st, "output": "", "description": "", "last_update": lu}
+            for name, (st, lu) in subtasks_lu.items()
+        }
+        return {"step": step, "dag": {"Task 0": {"status": "Running", "depends_on": [],
+                "branches": {"Branch A": {"subtasks": sts}}}}}
+
+    def _set_threshold(self, n: int) -> None:
+        cfg = json.loads(self._settings_path.read_text(encoding="utf-8"))
+        cfg["STALL_THRESHOLD"] = n
+        self._settings_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    def test_stall_boundary_exactly_at_threshold(self):
+        # age == threshold → must appear as stalled
+        self._set_threshold(5)
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=5)
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["threshold"], 5)
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertIn("S1", names)
+
+    def test_stall_boundary_one_below_threshold(self):
+        # age == threshold - 1 → must NOT be stalled
+        self._set_threshold(5)
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=4)
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["count"], 0)
+
+    def test_custom_threshold_via_settings(self):
+        # STALL_THRESHOLD=3 in settings; step=3, last_update=0 → age=3 → stalled
+        cfg = json.loads(self._settings_path.read_text(encoding="utf-8"))
+        cfg["STALL_THRESHOLD"] = 3
+        self._settings_path.write_text(json.dumps(cfg), encoding="utf-8")
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=3)
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["threshold"], 3)
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertIn("S1", names)
+
+    def test_high_threshold_fresh_running_not_stalled(self):
+        # STALL_THRESHOLD=10; age=5 → NOT stalled
+        cfg = json.loads(self._settings_path.read_text(encoding="utf-8"))
+        cfg["STALL_THRESHOLD"] = 10
+        self._settings_path.write_text(json.dumps(cfg), encoding="utf-8")
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=5)
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["count"], 0)
+
+    def test_multiple_stalled_sorted_descending_by_age(self):
+        # S1 age=10, S2 age=5, S3 age=7 — all above threshold=5 → order: S1, S3, S2
+        self._set_threshold(5)
+        state = self._make_state_lu(
+            {"S1": ("Running", 0), "S2": ("Running", 5), "S3": ("Running", 3)}, step=10)
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        ages = [s["age"] for s in d["stalled"]]
+        self.assertEqual(ages, sorted(ages, reverse=True))
+        self.assertEqual(d["count"], 3)
+
+    def test_status_stalled_count_matches_stalled_endpoint(self):
+        # /status stalled and /stalled count must agree
+        self._set_threshold(5)
+        state = self._make_state_lu(
+            {"S1": ("Running", 0), "S2": ("Pending", 0), "S3": ("Verified", 0)}, step=5)
+        self._write_state(state)
+        status_d  = self.client.get("/status").get_json()
+        stalled_d = self.client.get("/stalled").get_json()
+        self.assertEqual(status_d["stalled"], stalled_d["count"])
+
+    def test_mixed_statuses_only_stalled_running_returned(self):
+        # Running (stalled), Running (fresh), Verified, Pending, Review — only stalled Running
+        self._set_threshold(5)
+        state = self._make_state_lu(
+            {"S1": ("Running", 0), "S2": ("Running", 4),
+             "S3": ("Verified", 0), "S4": ("Pending", 0), "S5": ("Review", 0)},
+            step=5)
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertIn("S1", names)     # age=5, stalled
+        self.assertNotIn("S2", names)  # age=1, fresh
+        self.assertNotIn("S3", names)
+        self.assertNotIn("S4", names)
+        self.assertNotIn("S5", names)
+
 
 # Heal
 # ---------------------------------------------------------------------------
