@@ -33,8 +33,10 @@ def status():
     except Exception:
         pass
     total = verified = running = review = stalled = 0
-    for t in dag.values():
-        for b in t["branches"].values():
+    stalled_by_branch = []
+    for task_name, t in dag.items():
+        for branch_name, b in t["branches"].items():
+            branch_stalled = 0
             for s in b["subtasks"].values():
                 total += 1
                 st = s.get("status", "Pending")
@@ -45,18 +47,26 @@ def status():
                     age = step - s.get("last_update", 0)
                     if age >= threshold:
                         stalled += 1
+                        branch_stalled += 1
                 elif st == "Review":
                     review += 1
+            if branch_stalled:
+                stalled_by_branch.append({
+                    "task": task_name,
+                    "branch": branch_name,
+                    "count": branch_stalled,
+                })
     return jsonify({
-        "step":      step,
-        "total":     total,
-        "verified":  verified,
-        "running":   running,
-        "review":    review,
-        "stalled":   stalled,
-        "pending":   total - verified - running - review,
-        "pct":       round(verified / total * 100, 1) if total else 0,
-        "complete":  verified == total,
+        "step":             step,
+        "total":            total,
+        "verified":         verified,
+        "running":          running,
+        "review":           review,
+        "stalled":          stalled,
+        "pending":          total - verified - running - review,
+        "pct":              round(verified / total * 100, 1) if total else 0,
+        "complete":         verified == total,
+        "stalled_by_branch": stalled_by_branch,
     })
 
 
