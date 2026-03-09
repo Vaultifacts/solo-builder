@@ -165,6 +165,47 @@ def reset_task(task_id: str):
     })
 
 
+@tasks_bp.post("/tasks/<path:task_id>/bulk-reset")
+def bulk_reset_task(task_id: str):
+    """Bulk-reset subtasks in a task to Pending.
+
+    Body (optional JSON): {"include_verified": false}
+    - include_verified: if true, also resets already-Verified subtasks (default false)
+    Returns {ok, task, reset_count, skipped_count}.
+    404 if task not found.
+    """
+    from .. import app as _app_mod
+    state = _load_state()
+    dag = state.get("dag", {})
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    body = request.get_json(silent=True) or {}
+    include_verified = body.get("include_verified", False)
+    reset_count = 0
+    skipped_count = 0
+    for branch_data in task.get("branches", {}).values():
+        for st_data in branch_data.get("subtasks", {}).values():
+            current = st_data.get("status", "Pending")
+            if current == "Verified" and not include_verified:
+                skipped_count += 1
+            else:
+                st_data["status"] = "Pending"
+                reset_count += 1
+    if reset_count > 0:
+        task["status"] = "Pending"
+    try:
+        _app_mod.STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+    return jsonify({
+        "ok": True,
+        "task": task_id,
+        "reset_count": reset_count,
+        "skipped_count": skipped_count,
+    })
+
+
 @tasks_bp.get("/tasks/<path:task_id>/progress")
 def task_progress(task_id: str):
     """Lightweight progress summary for a single task.
