@@ -232,6 +232,43 @@ def _format_bulk_reset(state: dict, names: list[str], skip_verified: bool = True
     return "  ".join(parts) + "."
 
 
+def _format_bulk_verify(state: dict, names: list[str], skip_non_running: bool = False) -> str:
+    """Bulk-advance named subtasks to Verified (writes STATE.json directly)."""
+    if not names:
+        return "Usage: `bulk_verify <A1> [A2 ...]`"
+    dag = state.get("dag", {})
+    remaining = set(names)
+    verified_names: list[str] = []
+    skipped_count = 0
+    for task_data in dag.values():
+        for branch_data in task_data.get("branches", {}).values():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                if st_name not in remaining:
+                    continue
+                current = st_data.get("status", "Pending")
+                if current == "Verified":
+                    skipped_count += 1
+                    remaining.discard(st_name)
+                    continue
+                if skip_non_running and current not in ("Running", "Review"):
+                    skipped_count += 1
+                    remaining.discard(st_name)
+                    continue
+                st_data["status"] = "Verified"
+                verified_names.append(st_name)
+                remaining.discard(st_name)
+    try:
+        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return f"❌ Failed to write state: {exc}"
+    parts = [f"✔ bulk-verify: **{len(verified_names)}** → Verified"]
+    if skipped_count:
+        parts.append(f"{skipped_count} skipped")
+    if remaining:
+        parts.append(f"not found: {', '.join(sorted(remaining))}")
+    return "  ".join(parts) + "."
+
+
 def _allowed(interaction: discord.Interaction) -> bool:
     return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
 
@@ -754,6 +791,11 @@ async def _handle_text_command(message: discord.Message) -> None:
         names = text[11:].strip().split() if low.startswith("bulk_reset ") else []
         state = _load_state()
         await _send(message, _format_bulk_reset(state, names))
+
+    elif low.startswith("bulk_verify ") or low == "bulk_verify":
+        names = text[12:].strip().split() if low.startswith("bulk_verify ") else []
+        state = _load_state()
+        await _send(message, _format_bulk_verify(state, names))
 
     elif low == "agents":
         state = _load_state()
