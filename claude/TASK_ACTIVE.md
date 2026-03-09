@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-294
+TASK-295
 
-GET /branches/export ?format=json: verify JSON response wraps rows in {total, branches:[...]} object instead of bare array; fix if needed and add tests
+CHANGELOG v5.6.0: document TASK-291 through TASK-294 (stalled branch filter, Stalled tab UX, Discord /history filters, branches export tests)
