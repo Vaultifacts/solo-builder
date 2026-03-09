@@ -1,23 +1,25 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-238
+TASK-239
 
 ## Verdict: PASS
 
 ## Verification Results
 - unittest-discover (api): PASS (495 tests, 0 failures)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
+- node tools/lint_dashboard_handlers.js: PASS (0 gaps, 41 handler calls, 54 window.* exposed)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_tasks.js` — window._applyTaskSearch now resets _tasksPage=1
-- `solo_builder/api/static/dashboard_panels.js` — renderSubtasks non-status else-branch resets _subtasksPage=1
+Two files created/modified:
+- `tools/lint_dashboard_handlers.js` — new Node.js lint script
+- `claude/ALLOWED_FILES.txt` — registered new file
 
 ## Implementation Detail
-Previously typing in task-search or subtasks-filter could show stale paginated results
-from a non-first page. Now _applyTaskSearch resets _tasksPage=1 before filtering
-(so next poll fetches page 1). renderSubtasks non-status text branch resets
-_subtasksPage=1 (so next poll re-fetches from page 1 without a status filter).
-No test changes needed.
+Node.js script (87 lines) that:
+1. Reads dashboard.html, extracts all function names called from on* inline handlers
+2. Reads all dashboard*.js files in static/, extracts all window.* assignments
+3. Reports FAIL+exit(1) with MISSING list if any gap found, PASS+exit(0) if clean
+Filters out DOM built-ins (getElementById etc.) appearing in IIFE bodies.
+Run: node tools/lint_dashboard_handlers.js
