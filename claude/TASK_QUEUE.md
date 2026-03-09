@@ -1530,3 +1530,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-280
+Goal: Dashboard header stalled badge: show worst-offending branch name in title tooltip when stalled > 0 (e.g. 'N stalled — worst: task/branch (count)')
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
