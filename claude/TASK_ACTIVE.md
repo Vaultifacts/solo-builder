@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-128
+TASK-129
 
-Raise architecture score above 94/100 by eliminating major findings
+Add POST /tasks/<id>/reset endpoint to bulk-reset all subtasks in a task to Pending via HEAL_TRIGGER

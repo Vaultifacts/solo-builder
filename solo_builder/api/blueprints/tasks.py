@@ -1,4 +1,6 @@
-"""Tasks blueprint — GET /tasks, /tasks/<id>, POST /tasks/<id>/trigger, GET /graph, /priority."""
+"""Tasks blueprint — GET /tasks, /tasks/<id>, POST /tasks/<id>/trigger, POST /tasks/<id>/reset, GET /graph, /priority."""
+import json
+
 from flask import Blueprint, jsonify, abort
 
 from ..helpers import _load_state, _load_dag, _task_summary
@@ -38,6 +40,44 @@ def trigger_task(task_id: str):
         "status": task.get("status"),
         "pending_subtasks": pending, "pending_count": len(pending),
     }), 202
+
+
+@tasks_bp.post("/tasks/<path:task_id>/reset")
+def reset_task(task_id: str):
+    """Bulk-reset all subtasks in a task to Pending.
+
+    Directly updates STATE.json; equivalent to running subtask reset for every
+    subtask in the task.  Returns {ok, task, reset_count, skipped_count}.
+    404 if task not found.
+    """
+    from .. import app as _app_mod
+    state = _load_state()
+    dag = state.get("dag", {})
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    reset_count = 0
+    skipped_count = 0
+    for branch_data in task.get("branches", {}).values():
+        for st_data in branch_data.get("subtasks", {}).values():
+            if st_data.get("status") == "Verified":
+                skipped_count += 1
+            else:
+                st_data["status"] = "Pending"
+                st_data["output"] = ""
+                st_data.pop("shadow", None)
+                reset_count += 1
+    task["status"] = "Pending"
+    try:
+        _app_mod.STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+    return jsonify({
+        "ok": True,
+        "task": task_id,
+        "reset_count": reset_count,
+        "skipped_count": skipped_count,
+    })
 
 
 @tasks_bp.get("/graph")
