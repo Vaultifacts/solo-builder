@@ -172,16 +172,32 @@ function _renderBranchesDetail(d) {
   d.branches.forEach(br => {
     const block = _div("margin-bottom:8px");
 
+    const brHdr = _div("display:flex;align-items:center;gap:4px;flex-wrap:wrap");
     const nameSpan = _span("color:var(--cyan);font-weight:bold", br.branch);
     const stCount  = _span("color:var(--dim);font-size:10px", " " + br.subtask_count + " STs");
     const vSpan    = _span("font-size:10px;color:var(--green)", " " + br.verified + "✓");
     const rSpan    = _span("font-size:10px;color:var(--cyan)", " " + br.running + "▶");
     const pSpan    = _span("font-size:10px;color:var(--yellow)", " " + br.pending + "●");
-    block.appendChild(nameSpan);
-    block.appendChild(stCount);
-    block.appendChild(vSpan);
-    block.appendChild(rSpan);
-    block.appendChild(pSpan);
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "toolbar-btn";
+    resetBtn.style.cssText = "font-size:8px;padding:1px 4px;margin-left:4px";
+    resetBtn.textContent = "↺ Reset";
+    resetBtn.title = "Reset all non-Verified subtasks in this branch to Pending";
+    const branchName = br.branch;
+    const taskName = d.task;
+    resetBtn.addEventListener("click", async () => {
+      const names = (br.subtasks || []).filter(s => s.status !== "Verified").map(s => s.name);
+      if (!names.length) return;
+      try {
+        await fetch(state.base + "/subtasks/bulk-reset", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({subtasks: names}),
+        });
+      } catch (_) {}
+      await pollBranches();
+    });
+    brHdr.append(nameSpan, stCount, vSpan, rSpan, pSpan, resetBtn);
+    block.appendChild(brHdr);
 
     br.subtasks.forEach(st => {
       const stRow = _div("padding-left:12px;display:flex;align-items:center;gap:4px", "diff-entry");

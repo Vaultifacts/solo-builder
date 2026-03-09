@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-160
+TASK-161
 
-Poll GET /tasks/<id>/progress and display per-task progress bar in task detail sidebar
+Add per-branch Reset button in Branches tab detail view using POST /tasks/<id>/reset
