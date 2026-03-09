@@ -1,22 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-173
+TASK-174
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (all): PASS (432 tests, 0 failures)
+- unittest-discover (api): PASS (447 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/discord_bot/bot_formatters.py` — moved _format_task_progress here (after _format_tasks)
-- `solo_builder/discord_bot/bot.py` — removed inline definition, updated import, added entry to _HELP_TEXT
+One file modified:
+- `solo_builder/api/test_app.py` — 3 new edge-case tests in TestGetTaskTimeline
 
 ## Implementation Detail
-Pure refactor + help text update — no behavior change.
-_format_task_progress now lives in bot_formatters.py following all other _format_* functions.
-bot.py imports it alongside _format_tasks in the existing from .bot_formatters import block.
-Plain-text help text now includes `task_progress <task_id>` entry for discoverability.
+GET /tasks/<id>/timeline endpoint already existed (added in a prior task).
+Added 3 edge-case tests for uncovered scenarios:
+1. Task with no branches returns empty subtasks list, count=0
+2. Subtask history array is included in each timeline entry
+3. Multi-branch task aggregates subtasks from all branches in count
