@@ -324,6 +324,13 @@
           </div>
         </div>
         <div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Stalled Subtasks <span id="export-stalled-threshold" style="color:var(--dim);font-size:9px"></span></div>
+          <div style="display:flex;gap:6px">
+            <a id="export-stalled-csv"  class="toolbar-btn" href="/subtasks/export?status=running&min_age=5" download="stalled_subtasks.csv">CSV</a>
+            <a id="export-stalled-json" class="toolbar-btn" href="/subtasks/export?status=running&min_age=5&format=json" download="stalled_subtasks.json">JSON</a>
+          </div>
+        </div>
+        <div>
           <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Metrics</div>
           <div style="display:flex;gap:6px">
             <a class="toolbar-btn" href="/metrics/export" download="metrics.csv">CSV</a>
