@@ -69,6 +69,7 @@ window.runAuto = async function () {
           }
           document.getElementById("hdr-step").textContent = "Step " + hb.step;
           btn.textContent = `⏳ ${i+1}/${n} · ${hb.verified}✓`;
+          if (state.selectedTask) pollTaskProgress(state.selectedTask);
           if (hb.verified === hb.total && hb.total > 0) { await tick(); i = n; break; }
           if (hb.step > prevStep) { prevStep = hb.step; break; }
         } catch (_) {}
