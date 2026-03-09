@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-244
+TASK-245
 
-Add regression test: task card review_subtasks badge verified present and correct in GET /tasks response
+Document TASK-236 through TASK-245 in CHANGELOG.md as v4.6.0
