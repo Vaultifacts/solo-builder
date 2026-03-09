@@ -1,19 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-207
+TASK-208
+
+## Verdict: PASS
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (466 tests, 0 failures)
+- unittest-discover (api): PASS (471 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — pollStatus hdr-step update
+Two files modified:
+- `solo_builder/api/blueprints/dag.py` — review added to dag_summary()
+- `solo_builder/api/test_app.py` — 5 tests in new TestDagSummary class
 
 ## Implementation Detail
-hdr-step textContent now appends " · N⏸" when d.review > 0 (zero-suppressed).
-Uses d.review from GET /status, added in TASK-206. JS-only; no new tests needed.
+GET /dag/summary previously absorbed Review into pending. Now: t_review counted per-task,
+review total at top level, pending = total - verified - running - review. Summary text updated.
+Per-task rows include "review" field. Five tests cover all changes.
