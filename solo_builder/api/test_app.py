@@ -1334,6 +1334,57 @@ class TestSubtasksExport(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /subtasks/export pagination  (TASK-142)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksExportPagination(_Base):
+
+    def _state_with_n(self, n):
+        subtasks = {f"A{i}": {"status": "Pending", "output": "", "last_update": 0}
+                    for i in range(1, n + 1)}
+        state = {"dag": {"Task 0": {"status": "Pending", "branches": {
+            "Branch A": {"status": "Pending", "subtasks": subtasks}
+        }}}, "step": 0}
+        return state
+
+    def test_csv_no_pagination_returns_all(self):
+        self._write_state(self._state_with_n(5))
+        r = self.client.get("/subtasks/export")
+        lines = r.data.decode().strip().split("\n")
+        self.assertEqual(len(lines), 6)  # header + 5 rows
+
+    def test_csv_limit_returns_slice(self):
+        self._write_state(self._state_with_n(10))
+        r = self.client.get("/subtasks/export?limit=3&page=1")
+        lines = r.data.decode().strip().split("\n")
+        self.assertEqual(len(lines), 4)  # header + 3 rows
+
+    def test_json_no_pagination_has_subtasks_list(self):
+        self._write_state(self._state_with_n(5))
+        d = self.client.get("/subtasks/export?format=json").get_json()
+        self.assertIn("subtasks", d)
+        self.assertEqual(len(d["subtasks"]), 5)
+
+    def test_json_pagination_total_and_pages(self):
+        self._write_state(self._state_with_n(10))
+        d = self.client.get("/subtasks/export?format=json&limit=3&page=1").get_json()
+        self.assertEqual(d["total"], 10)
+        self.assertEqual(d["pages"], 4)
+        self.assertEqual(len(d["subtasks"]), 3)
+
+    def test_json_page_2(self):
+        self._write_state(self._state_with_n(10))
+        d = self.client.get("/subtasks/export?format=json&limit=3&page=2").get_json()
+        self.assertEqual(len(d["subtasks"]), 3)
+        self.assertEqual(d["page"], 2)
+
+    def test_invalid_limit_falls_back_to_all(self):
+        self._write_state(self._state_with_n(5))
+        d = self.client.get("/subtasks/export?format=json&limit=abc").get_json()
+        self.assertEqual(len(d["subtasks"]), 5)
+
+
+# ---------------------------------------------------------------------------
 # GET /timeline enhanced  (TASK-090)
 # ---------------------------------------------------------------------------
 
