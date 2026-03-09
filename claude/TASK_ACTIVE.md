@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-302
+TASK-303
 
-Dashboard Stalled tab: add '✕ Clear' button shown when _stalledTaskFilter or _stalledBranchFilter is active; clicking clears both filters and re-polls; parity with Branches/Subtasks tabs
+Discord /branches slash command: add export:bool=False param; when True sends _branches_to_csv() as CSV file attachment (parity with /subtasks export:True); 4 new tests in TestHandleBranchesSlash or similar
