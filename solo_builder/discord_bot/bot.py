@@ -79,7 +79,7 @@ CHANNEL_ID = int(os.environ.get("DISCORD_CHANNEL_ID", "0") or "0")
 
 from .bot_formatters import (
     _has_work, _find_subtask_output,
-    _format_log, _format_search, _format_branches, _branches_to_csv, _format_subtasks, _format_history,
+    _format_log, _format_search, _format_branches, _branches_to_csv, _format_subtasks, _subtasks_to_csv, _format_history,
     _format_stats, _format_cache, _format_tasks, _format_task_progress,
     _format_priority, _format_stalled, _format_agents, _format_forecast,
     _format_filter, _format_timeline, _format_diff, _format_status, _format_graph,

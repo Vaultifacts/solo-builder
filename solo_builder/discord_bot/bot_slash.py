@@ -290,15 +290,23 @@ def register_slash_commands(bot: discord.Client) -> None:
     @app_commands.describe(
         task="Filter by task name substring (case-insensitive). Omit for all tasks.",
         status="Filter by status: Pending, Running, Review, Verified",
+        export="Send as CSV file attachment instead of text",
     )
     async def subtasks_cmd(
-        interaction: discord.Interaction, task: str = "", status: str = ""
+        interaction: discord.Interaction, task: str = "", status: str = "", export: bool = False
     ) -> None:
         if not _b._allowed(interaction):
             await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
             return
         state = _b._load_state()
-        await interaction.response.send_message(_b._format_subtasks(state, task, status))
+        if export:
+            csv_bytes = _b._subtasks_to_csv(state, task, status)
+            await interaction.response.send_message(
+                "📊 Subtasks export",
+                file=discord.File(io.BytesIO(csv_bytes), filename="subtasks.csv"),
+            )
+        else:
+            await interaction.response.send_message(_b._format_subtasks(state, task, status))
 
     @bot.tree.command(name="rename", description="Update a subtask's description")
     @app_commands.describe(subtask="Subtask name (e.g. A1)", description="New description text")

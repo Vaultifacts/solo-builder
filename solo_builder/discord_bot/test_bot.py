@@ -142,6 +142,45 @@ class TestBranchesToCsv(unittest.TestCase):
         self.assertEqual(fields[5], "1")   # review
 
 
+class TestSubtasksToCsv(unittest.TestCase):
+    """Unit tests for _subtasks_to_csv in bot_formatters."""
+
+    def test_returns_bytes(self):
+        state = _make_state({"A1": "Verified"})
+        self.assertIsInstance(bot_module._subtasks_to_csv(state), bytes)
+
+    def test_header_row(self):
+        state = _make_state({"A1": "Verified"})
+        lines = bot_module._subtasks_to_csv(state).decode().splitlines()
+        self.assertEqual(lines[0], "subtask,task,branch,status,output_length")
+
+    def test_data_row_present(self):
+        state = _make_state({"A1": "Verified", "A2": "Running"})
+        lines = bot_module._subtasks_to_csv(state).decode().splitlines()
+        self.assertEqual(len(lines), 3)  # header + 2 subtasks
+
+    def test_task_filter(self):
+        def _sub(status):
+            return {"status": status, "output": "", "description": "", "history": []}
+        state = {"step": 1, "dag": {
+            "Task Alpha": {"branches": {"main": {"subtasks": {"A1": _sub("Running")}}}},
+            "Task Beta":  {"branches": {"main": {"subtasks": {"B1": _sub("Pending")}}}},
+        }}
+        lines = bot_module._subtasks_to_csv(state, task_filter="Alpha").decode().splitlines()
+        self.assertEqual(len(lines), 2)  # header + A1 only
+        self.assertIn("A1", lines[1])
+
+    def test_status_filter(self):
+        state = _make_state({"A1": "Running", "A2": "Verified", "A3": "Pending"})
+        lines = bot_module._subtasks_to_csv(state, status_filter="Running").decode().splitlines()
+        self.assertEqual(len(lines), 2)  # header + A1 only
+
+    def test_empty_dag_header_only(self):
+        state = {"dag": {}, "step": 1}
+        lines = bot_module._subtasks_to_csv(state).decode().splitlines()
+        self.assertEqual(len(lines), 1)
+
+
 class TestFormatStalled(unittest.TestCase):
     """Unit tests for _format_stalled per-branch grouping."""
 
