@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-300
+TASK-301
 
-CHANGELOG v5.7.0: 300-task milestone entry covering TASK-295..299; include task count, API test count (591), Discord test count (298), and architecture highlights
+GET /branches: add review_pct field (percentage of subtasks in Review state per branch, parity with pct/verified%); 3+ new tests in TestBranches
