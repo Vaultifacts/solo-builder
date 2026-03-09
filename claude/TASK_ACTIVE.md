@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-165
+TASK-166
 
-Add GET /tasks/<id>/branches endpoint: paginated branch list with optional status filter
+Improve bulk-verify feedback in Subtasks tab: show verified count in feedback span with auto-clear after 3s
