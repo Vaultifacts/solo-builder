@@ -298,6 +298,27 @@ class TestGetTasks(_Base):
         d = self.client.get("/tasks").get_json()
         self.assertEqual(d["tasks"][0]["review_subtasks"], 0)
 
+    def test_review_subtasks_summed_across_branches(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Running", "depends_on": [],
+            "branches": {
+                "Branch A": {"subtasks": {"A1": {"status": "Review", "output": ""}}},
+                "Branch B": {"subtasks": {"B1": {"status": "Review", "output": ""}}},
+            }}}}
+        self._write_state(state)
+        task = self.client.get("/tasks").get_json()["tasks"][0]
+        self.assertEqual(task["review_subtasks"], 2)
+
+    def test_review_subtasks_not_counted_in_pct(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        task = self.client.get("/tasks").get_json()["tasks"][0]
+        self.assertEqual(task["pct"], 0.0)
+
+    def test_review_subtasks_separate_from_running(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Running"}))
+        task = self.client.get("/tasks").get_json()["tasks"][0]
+        self.assertEqual(task["review_subtasks"], 1)
+        self.assertEqual(task["running_subtasks"], 1)
+
     def test_response_has_pagination_keys(self):
         self._write_state(self._make_state())
         d = self.client.get("/tasks").get_json()
