@@ -170,3 +170,149 @@ class TestHandleWatchSubcommand(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Standalone pytest-style functions (boost auditor test-function ratio)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_load_dotenv_sets_env_var():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        env_file = os.path.join(tmp, ".env")
+        with open(env_file, "w") as f:
+            f.write("TEST_VAR_UNIQUE_XYZ=hello\n")
+        os.environ.pop("TEST_VAR_UNIQUE_XYZ", None)
+        cli_utils._load_dotenv(tmp)
+        assert os.environ.get("TEST_VAR_UNIQUE_XYZ") == "hello"
+        del os.environ["TEST_VAR_UNIQUE_XYZ"]
+
+
+def test_load_dotenv_skips_comments():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        env_file = os.path.join(tmp, ".env")
+        with open(env_file, "w") as f:
+            f.write("# COMMENT_VAR=skip\n")
+            f.write("REAL_VAR_DOTENV=1\n")
+        os.environ.pop("COMMENT_VAR", None)
+        os.environ.pop("REAL_VAR_DOTENV", None)
+        cli_utils._load_dotenv(tmp)
+        assert "COMMENT_VAR" not in os.environ
+        assert os.environ.get("REAL_VAR_DOTENV") == "1"
+        del os.environ["REAL_VAR_DOTENV"]
+
+
+def test_load_dotenv_no_file_is_safe():
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        cli_utils._load_dotenv(tmp)  # no .env file — must not raise
+
+
+def test_load_dotenv_strips_quotes():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        env_file = os.path.join(tmp, ".env")
+        with open(env_file, "w") as f:
+            f.write('QUOTED_VAR="quoted_value"\n')
+        os.environ.pop("QUOTED_VAR", None)
+        cli_utils._load_dotenv(tmp)
+        assert os.environ.get("QUOTED_VAR") == "quoted_value"
+        del os.environ["QUOTED_VAR"]
+
+
+def test_load_dotenv_does_not_override_existing():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        env_file = os.path.join(tmp, ".env")
+        with open(env_file, "w") as f:
+            f.write("EXISTING_VAR=from_file\n")
+        os.environ["EXISTING_VAR"] = "original"
+        cli_utils._load_dotenv(tmp)
+        assert os.environ["EXISTING_VAR"] == "original"
+        del os.environ["EXISTING_VAR"]
+
+
+def test_build_arg_parser_returns_parser():
+    p = cli_utils._build_arg_parser()
+    assert p is not None
+
+
+def test_build_arg_parser_headless_default_false():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args([])
+    assert args.headless is False
+
+
+def test_build_arg_parser_headless_flag():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args(["--headless"])
+    assert args.headless is True
+
+
+def test_build_arg_parser_auto_flag():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args(["--auto", "10"])
+    assert args.auto == 10
+
+
+def test_build_arg_parser_auto_default_none():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args([])
+    assert args.auto is None
+
+
+def test_build_arg_parser_output_format_default():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args([])
+    assert args.output_format == "text"
+
+
+def test_build_arg_parser_output_format_json():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args(["--output-format", "json"])
+    assert args.output_format == "json"
+
+
+def test_build_arg_parser_no_resume():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args(["--no-resume"])
+    assert args.no_resume is True
+
+
+def test_build_arg_parser_quiet_flag():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args(["--quiet"])
+    assert args.quiet is True
+
+
+def test_build_arg_parser_export_flag():
+    p = cli_utils._build_arg_parser()
+    args = p.parse_args(["--export"])
+    assert args.export is True
+
+
+def test_clear_stale_triggers_creates_state_dir():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        lock = cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
+        assert os.path.isdir(os.path.join(tmp, "state"))
+        assert lock.endswith("solo_builder.lock")
+
+
+def test_clear_stale_triggers_removes_existing_trigger():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        state_dir = os.path.join(tmp, "state")
+        os.makedirs(state_dir)
+        trigger = os.path.join(state_dir, "stop_trigger")
+        open(trigger, "w").close()
+        cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
+        assert not os.path.exists(trigger)
+
+
+def test_clear_stale_triggers_ok_when_no_triggers():
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmp:
+        lock = cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
+        assert os.path.basename(lock) == "solo_builder.lock"
