@@ -182,6 +182,12 @@
       <div id="branches-content">
         <div class="detail-placeholder">No branches yet.</div>
       </div>
+      <div id="branches-pager" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px">
+        <button class="toolbar-btn" style="padding:1px 6px" onclick="_branchesPageStep(-1)">◀</button>
+        <span id="branches-page-label" style="color:var(--dim)"></span>
+        <button class="toolbar-btn" style="padding:1px 6px" onclick="_branchesPageStep(1)">▶</button>
+        <span id="branches-count-label" style="color:var(--dim);margin-left:4px"></span>
+      </div>
     </div>
     <div class="sidebar-tab-content" id="tab-settings">
       <div id="settings-content">

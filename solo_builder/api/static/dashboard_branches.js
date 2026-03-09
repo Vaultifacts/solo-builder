@@ -23,6 +23,34 @@ function _bar(widthPx, totalPx, height, bg, fill) {
   return track;
 }
 
+/* ── Branches pagination state (all-tasks view) ─────────── */
+let _branchesPage  = 1;
+let _branchesPages = 1;
+let _branchesTotal = 0;
+const _BRANCHES_LIMIT = 50;
+
+function _updateBranchesPager() {
+  const pager = document.getElementById("branches-pager");
+  const lbl   = document.getElementById("branches-page-label");
+  const cnt   = document.getElementById("branches-count-label");
+  if (!pager) return;
+  if (_branchesPages > 1) {
+    pager.style.display = "flex";
+    if (lbl) lbl.textContent = `${_branchesPage} / ${_branchesPages}`;
+    if (cnt) cnt.textContent = `${_branchesTotal} branches`;
+  } else {
+    pager.style.display = "none";
+  }
+}
+
+window._branchesPageStep = function (delta) {
+  if (state.selectedTask) return; // pager only in all-tasks view
+  const next = _branchesPage + delta;
+  if (next < 1 || next > _branchesPages) return;
+  _branchesPage = next;
+  pollBranches();
+};
+
 /* ── Branches bulk-select state ─────────────────────────── */
 const _branchesSel = new Set();
 
@@ -73,9 +101,16 @@ export async function pollBranches() {
   try {
     if (state.selectedTask) {
       const d = await api("/branches/" + encodeURIComponent(state.selectedTask));
+      _updateBranchesPager(); // hide pager in detail view
       _renderBranchesDetail(d);
     } else {
-      const [d, summary] = await Promise.all([api("/branches"), api("/dag/summary").catch(() => null)]);
+      const [d, summary] = await Promise.all([
+        api(`/branches?limit=${_BRANCHES_LIMIT}&page=${_branchesPage}`),
+        api("/dag/summary").catch(() => null),
+      ]);
+      _branchesTotal = d.total  ?? (d.branches || []).length;
+      _branchesPages = d.pages  ?? 1;
+      _branchesPage  = d.page   ?? 1;
       _renderBranchesAll(d, summary);
     }
   } catch (_) {}
@@ -131,7 +166,7 @@ function _renderBranchesAll(d, summary) {
   }
 
   const countHdr = _div("color:var(--dim);font-size:10px;margin-bottom:6px");
-  countHdr.textContent = d.count + " branches across all tasks";
+  countHdr.textContent = (_branchesTotal || d.count) + " branches across all tasks";
   children.push(countHdr);
 
   const barW = 60;
@@ -151,6 +186,7 @@ function _renderBranchesAll(d, summary) {
   });
 
   el.replaceChildren(...children);
+  _updateBranchesPager();
 }
 
 function _renderBranchesDetail(d) {
@@ -231,4 +267,7 @@ function _renderBranchesDetail(d) {
 
   el.replaceChildren(...children);
   _updateBranchesBulkBar();
+  // pager only shown in all-tasks view
+  const pager = document.getElementById("branches-pager");
+  if (pager) pager.style.display = "none";
 }
