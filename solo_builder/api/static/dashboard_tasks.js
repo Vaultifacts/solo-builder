@@ -343,7 +343,7 @@ window.toggleExpand = function toggleExpand(btn, event) {
 
 window.resetTask = async function (taskId) {
   try {
-    const r = await fetch(state.base + "/tasks/" + encodeURIComponent(taskId) + "/reset", { method: "POST" });
+    const r = await fetch(state.base + "/tasks/" + encodeURIComponent(taskId) + "/bulk-reset", { method: "POST" });
     const d = await r.json();
     if (d.ok) {
       toast("↺ " + taskId + " reset (" + d.reset_count + " subtasks)");
