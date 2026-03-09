@@ -61,6 +61,7 @@ def _task_summary(task_id: str, task: dict) -> dict:
         for s in b.get("subtasks", {}).values()
         if s.get("status") == "Running"
     )
+    pct = round(verified / subtask_count * 100, 1) if subtask_count else 0.0
     return {
         "id":               task_id,
         "status":           task.get("status"),
@@ -69,6 +70,7 @@ def _task_summary(task_id: str, task: dict) -> dict:
         "subtask_count":    subtask_count,
         "verified_subtasks": verified,
         "running_subtasks": running,
+        "pct":              pct,
     }
 
 
