@@ -551,9 +551,9 @@ function renderGraph() {
   }
   function nodeColorBg(t) {
     const s = (t.status || "").toLowerCase();
-    if (s === "verified") return "#1b3d1e";
-    if (s === "running") return "#0d2d33";
-    return "#2a2200";
+    if (s === "verified") return "var(--node-bg-verified)";
+    if (s === "running")  return "var(--node-bg-running)";
+    return "var(--node-bg-pending)";
   }
 
   const NS = "http://www.w3.org/2000/svg";
