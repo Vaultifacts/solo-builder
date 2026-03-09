@@ -1,20 +1,19 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-135
+TASK-136
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (397 tests, 0 failures)
+- unittest-discover: PASS (404 tests, 0 failures — +7 from TestGetTaskExport)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 96.6/100 (+0.5 from 96.1)
+- architecture-audit: 96.6/100 (unchanged)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — converted `renderGrid` card creation and all of `renderDetail` from `innerHTML` string-building to DOM API (createElement/textContent/appendChild/replaceChildren). Removed `esc` import (no longer needed). `onclick=` inline handlers replaced with addEventListener closures.
-
-## Architecture Note
-Score improved 96.1→96.6 by eliminating 2 XSS findings (renderGrid card.innerHTML + renderDetail el.innerHTML).
-`showModal(sname, s)` now receives live JS objects via closure instead of JSON-serialized inline onclick strings — functionally equivalent, cleaner.
+Four files modified:
+- `solo_builder/api/blueprints/tasks.py` — added `GET /tasks/<path:task_id>/export`; CSV (default) or JSON (?format=json); Content-Disposition attachment
+- `solo_builder/api/test_app.py` — added `TestGetTaskExport` (7 tests)
+- `solo_builder/api/dashboard.html` — added "Selected Task" export section in Export tab (hidden until task selected)
+- `solo_builder/api/static/dashboard_tasks.js` — added `_updateTaskExportLinks(id)` called from `selectTask()`; wires CSV/JSON hrefs + shows section
