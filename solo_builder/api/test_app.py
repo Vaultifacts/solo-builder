@@ -2645,6 +2645,53 @@ class TestGetSubtaskOutput(_Base):
 
 
 # ---------------------------------------------------------------------------
+# POST /tasks/<id>/reset
+# ---------------------------------------------------------------------------
+
+class TestPostTaskReset(_Base):
+
+    def test_reset_valid_task_returns_ok(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        r = self.client.post("/tasks/Task 0/reset")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["task"], "Task 0")
+
+    def test_reset_invalid_task_returns_404(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/tasks/Task 999/reset")
+        self.assertEqual(r.status_code, 404)
+
+    def test_reset_counts_reset_subtasks(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/tasks/Task 0/reset").get_json()
+        self.assertEqual(d["reset_count"], 2)
+
+    def test_reset_skips_verified_subtasks(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Verified"}))
+        d = self.client.post("/tasks/Task 0/reset").get_json()
+        self.assertEqual(d["reset_count"], 1)
+        self.assertEqual(d["skipped_count"], 1)
+
+    def test_reset_sets_subtasks_to_pending(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/tasks/Task 0/reset")
+        state = json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Pending")
+
+    def test_reset_clears_output(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "old output"
+        self._write_state(state)
+        self.client.post("/tasks/Task 0/reset")
+        new_state = json.loads(self._state_path.read_text())
+        st = new_state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st.get("output", ""), "")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
