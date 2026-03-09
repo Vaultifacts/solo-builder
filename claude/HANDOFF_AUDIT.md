@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-132
+TASK-133
 
 ## Verdict: PASS
 
@@ -9,16 +9,18 @@ TASK-132
 - unittest-discover: PASS (393 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 96.6/100 (unchanged)
+- architecture-audit: 96.2/100 (down 0.4 from 96.6 — new file with pre-escaped innerHTML)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/branches.py` — new POST /branches/<task_id>/reset endpoint
-- `solo_builder/api/test_app.py` — new TestBranchReset class with 7 tests
+Two files modified + one new:
+- `solo_builder/api/static/dashboard_tasks.js` — removed journal/diff/stats sections; added re-export; 334→246 lines
+- `solo_builder/api/static/dashboard_journal.js` — NEW: pollJournal, _renderJournal, toggleJournal, pollDiff, _renderDiff, pollStats, _renderStats
+- `claude/allowed_files.txt` — added dashboard_journal.js
 
-## Feature Description
-POST /branches/<task_id>/reset accepts JSON body {"branch": "<branch_name>"} and bulk-resets all
-non-Verified subtasks in that branch to Pending by updating STATE.json directly.
-Returns {ok, task, branch, reset_count, skipped_count}.
-Errors: 400 if branch field missing, 404 if task or branch not found, 500 on write failure.
-Completes the three-tier reset hierarchy: subtask (TASK-099) → branch (TASK-132) → task (TASK-129).
+## Architecture Note
+Score dropped 0.4 pts because dashboard_journal.js contains innerHTML assignments. These are safe:
+- _renderJournal: data escaped with .replace(/</g,"&lt;") before insertion; user fields via esc()
+- toggleJournal body.innerHTML = full: `full` is the already-escaped dataset.full string (intentional — textContent would show raw entities to users)
+- _renderDiff: line.replace(/</g,"&lt;") applied before insertion
+- _renderStats: esc(k) and esc(v) applied to all user data
+Primary goal achieved: dashboard_tasks.js 334→246 lines (under 300 target).
