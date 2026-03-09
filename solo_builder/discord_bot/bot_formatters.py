@@ -352,10 +352,15 @@ def _format_priority(state: dict) -> str:
     return "\n".join(lines)
 
 
-def _format_stalled(state: dict) -> str:
-    """Show subtasks stuck in Running longer than STALL_THRESHOLD."""
+def _format_stalled(state: dict, task_filter: str = "", branch_filter: str = "") -> str:
+    """Show subtasks stuck in Running longer than STALL_THRESHOLD.
+
+    Optional task_filter and branch_filter apply case-insensitive substring matching.
+    """
     dag = state.get("dag", {})
     step = state.get("step", 0)
+    task_q   = task_filter.strip().lower()
+    branch_q = branch_filter.strip().lower()
     threshold = 5
     try:
         cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
@@ -365,7 +370,11 @@ def _format_stalled(state: dict) -> str:
     stuck = []
     branch_counts: dict = {}
     for task_name, task in dag.items():
+        if task_q and task_q not in task_name.lower():
+            continue
         for branch_name, branch in task.get("branches", {}).items():
+            if branch_q and branch_q not in branch_name.lower():
+                continue
             for st_name, st_data in branch.get("subtasks", {}).items():
                 if st_data.get("status") == "Running":
                     age = step - st_data.get("last_update", 0)

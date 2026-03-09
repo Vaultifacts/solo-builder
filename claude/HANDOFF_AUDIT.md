@@ -1,19 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-289
+TASK-290
 
 ## Verdict: PASS
 
 ## Verification Results
 - lint_dashboard_handlers.js: PASS (48 handler calls, 0 gaps)
-- unittest-discover (api): PASS (579 tests, 0 failures; +0 new, UI-only)
+- unittest-discover (api): PASS (579 tests, 0 failures; +0 new)
+- unittest-discover (discord_bot): PASS (290 tests, 0 failures; +4 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — `_stalledTaskFilter` state var added; `pollStalled()` includes `?task=<filter>` when set; `window._applyStalledTaskFilter` exposed for oninput handler
-- `solo_builder/api/dashboard.html` — task filter input `#stalled-task-filter` added in Stalled tab toolbar row above `#stalled-content`; calls `_applyStalledTaskFilter()` on input
+Three files modified:
+- `solo_builder/discord_bot/bot_formatters.py` — `_format_stalled(state, task_filter, branch_filter)`: added two optional params; applies case-insensitive substring filtering before the branch/subtask loop
+- `solo_builder/discord_bot/bot_slash.py` — `/stalled` command gains `task: str` + `branch: str` optional params; forwards both to `_format_stalled`
+- `solo_builder/discord_bot/test_bot.py` — 4 new tests in `TestFormatStalled`: task filter restricts, no-match returns none, branch filter restricts, task+branch compose
 
 ## Implementation Detail
-Mirrors subtasks task-filter pattern. Filter re-fetches `/stalled?task=X` on every keystroke (same as subtasks/branches patterns). No new tests needed — UI-only; `GET /stalled ?task=` is already tested (TASK-286).
+Same substring-lower pattern as all other filters. Existing 5 tests unchanged (all pass since filters default to ""). 290 Discord tests total.
