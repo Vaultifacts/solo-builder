@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-159
+TASK-160
 
-Add edge-case tests for POST /tasks/<id>/bulk-verify: empty task, all-verified, non-existent task
+Poll GET /tasks/<id>/progress and display per-task progress bar in task detail sidebar
