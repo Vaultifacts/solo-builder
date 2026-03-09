@@ -1,18 +1,19 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-296
+TASK-297
 
 ## Verdict: PASS
 
 ## Verification Results
 - lint_dashboard_handlers.js: PASS (49 handler calls, 0 gaps)
-- unittest-discover (api): PASS (587 tests, 0 failures; +4 new)
+- unittest-discover (api): PASS (587 tests, 0 failures; +0 new, UI-only)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/test_app.py` — 4 new tests in `TestSubtasksExport`: JSON wrapper has all 5 pagination keys, total==subtasks length, ?status=Review returns only review rows, ?status=Pending returns only pending rows
+Two files modified:
+- `solo_builder/api/static/dashboard_panels.js` — `_updateStalledFilterLabel()` added; called at start of `_renderStalled()`; reads `_stalledTaskFilter` and `_stalledBranchFilter`, builds `"· task: X · branch: Y"` string, sets `#stalled-filter-label` textContent (empty when no filters)
+- `solo_builder/api/dashboard.html` — `#stalled-filter-label` span in a min-height div below filter inputs
 
 ## Implementation Detail
-`GET /subtasks/export ?format=json` already correctly wraps in `{subtasks, total, page, limit, pages}` (subtasks.py lines 153-159). Review and Pending status filters use case-insensitive substring so `?status=Review` and `?status=Pending` already work. 587 API tests total.
+UI-only. Label updates on every poll result (inside `_renderStalled`), so it stays in sync with active filter state. No new tests needed.

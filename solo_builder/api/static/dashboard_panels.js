@@ -434,7 +434,17 @@ window._applyStalledBranchFilter = function () {
   pollStalled();
 };
 
+function _updateStalledFilterLabel() {
+  const lbl = document.getElementById("stalled-filter-label");
+  if (!lbl) return;
+  const parts = [];
+  if (_stalledTaskFilter)   parts.push(`task: ${_stalledTaskFilter}`);
+  if (_stalledBranchFilter) parts.push(`branch: ${_stalledBranchFilter}`);
+  lbl.textContent = parts.length ? `· ${parts.join(" · ")}` : "";
+}
+
 function _renderStalled(d) {
+  _updateStalledFilterLabel();
   const el = document.getElementById("stalled-content");
   if (!d) { el.replaceChildren(_placeholder("No data.")); return; }
   const header = document.createElement("div");

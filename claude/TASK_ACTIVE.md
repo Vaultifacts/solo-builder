@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-296
+TASK-297
 
-GET /subtasks/export ?format=json: verify wrapper shape {total,page,limit,pages,subtasks:[...]}; add ?status=review and ?status=pending filter tests; 4+ new tests
+Stalled tab: show active filter label (e.g. 'task: X · branch: Y') below the filter inputs when either is set; updates after each poll
