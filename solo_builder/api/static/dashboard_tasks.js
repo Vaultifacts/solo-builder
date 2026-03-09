@@ -21,6 +21,8 @@ export async function pollStatus() {
     document.getElementById("hdr-verified").textContent = d.verified;
     document.getElementById("hdr-running").textContent  = d.running;
     document.getElementById("hdr-pending").textContent  = d.pending;
+    const reviewEl = document.getElementById("hdr-review");
+    if (reviewEl) { reviewEl.textContent = d.review > 0 ? `⏸${d.review}` : ""; reviewEl.style.display = d.review > 0 ? "" : "none"; }
     document.getElementById("hdr-total").textContent    = d.total;
     document.getElementById("hdr-bar").style.width      = d.pct + "%";
     document.getElementById("hdr-pct").textContent      = d.pct + "%";
