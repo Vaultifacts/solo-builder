@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-262
+TASK-263
 
 ## Verdict: PASS
 
@@ -11,11 +11,9 @@ TASK-262
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — `window._resetSubtasksFilters` exposed: clears all four subtask filter state vars, resets page to 1, clears input values, calls `_updateSubtasksExportLinks()`
-- `solo_builder/api/static/dashboard_tasks.js` — `selectTask()` calls `window._resetSubtasksFilters?.()` before updating task selection, so Subtasks tab always opens clean when switching tasks
+One file modified:
+- `solo_builder/api/dashboard.html` — Export tab now includes "Branches" (CSV+JSON via /branches/export) and "Subtasks" (CSV+JSON via /subtasks/export) rows; ordered Tasks → Branches → Subtasks → Metrics → Activity History → Cache Stats → DAG Definition → Selected Task → Webhook
 
 ## Implementation Detail
-`_resetSubtasksFilters` is exposed on `window` (not imported) to avoid adding a new import edge between dashboard_tasks.js and dashboard_panels.js.
-The `?.()` optional-call guard in `selectTask` ensures no error if the modules load in an unexpected order.
-All four filter inputs are cleared in the DOM as well as in state variables.
+Simple static links — no JS state needed since these export endpoints return full data regardless of active tab filters.
+The filter-aware export links (with ?status=, ?name=, etc.) remain in the Subtasks tab toolbar row (#subtasks-export-csv/json); these Export tab links are always unfiltered full exports.
