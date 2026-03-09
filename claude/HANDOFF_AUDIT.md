@@ -1,26 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-133
+TASK-134
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (393 tests, 0 failures)
+- unittest-discover: PASS (397 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 96.2/100 (down 0.4 from 96.6 — new file with pre-escaped innerHTML)
+- architecture-audit: 96.1/100
 
 ## Scope Check
-Two files modified + one new:
-- `solo_builder/api/static/dashboard_tasks.js` — removed journal/diff/stats sections; added re-export; 334→246 lines
-- `solo_builder/api/static/dashboard_journal.js` — NEW: pollJournal, _renderJournal, toggleJournal, pollDiff, _renderDiff, pollStats, _renderStats
-- `claude/allowed_files.txt` — added dashboard_journal.js
+Three files modified:
+- `solo_builder/discord_bot/bot.py` — added `_format_reset_task()` helper + plain-text handler for `reset_task`
+- `solo_builder/discord_bot/bot_slash.py` — added `/reset_task` slash command
+- `solo_builder/discord_bot/test_bot.py` — added `TestResetTaskCommand` (4 tests)
 
-## Architecture Note
-Score dropped 0.4 pts because dashboard_journal.js contains innerHTML assignments. These are safe:
-- _renderJournal: data escaped with .replace(/</g,"&lt;") before insertion; user fields via esc()
-- toggleJournal body.innerHTML = full: `full` is the already-escaped dataset.full string (intentional — textContent would show raw entities to users)
-- _renderDiff: line.replace(/</g,"&lt;") applied before insertion
-- _renderStats: esc(k) and esc(v) applied to all user data
-Primary goal achieved: dashboard_tasks.js 334→246 lines (under 300 target).
+## Implementation Detail
+- `_format_reset_task(state, task_arg)` writes STATE.json directly (same pattern as SelfHealer heal); no trigger file needed
+- Skips Verified subtasks; resets all others to Pending; clears output and shadow fields
+- Returns structured message with reset_count and skipped_count
+- 4 tests: valid reset writes state, skips Verified, unknown task returns usage hint, no-arg returns usage
