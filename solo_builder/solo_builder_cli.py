@@ -428,9 +428,21 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
 # ═══════════════════════════════════════════════════════════════════════════════
 # ── Inject host module globals into mixin modules ────────────────────────────
 # Mixin methods look up names in their defining module's globals. Inject all
+# ── Global injection ─────────────────────────────────────────────────────────
+# Mixin methods look up names in their defining module's globals. Inject all
 # uppercase names from this module into each mixin module so that references
-# to STATE_PATH, MAX_BRANCHES_PER_TASK, etc. resolve correctly -- including
+# to STATE_PATH, MAX_BRANCHES_PER_TASK, etc. resolve correctly — including
 # after runtime mutations from _cmd_set (both point to the same dict object).
+#
+# ⚠ TEST-PATCH CONSTRAINT — see docs/dev_notes.md for the full explanation:
+#   setdefault() copies values ONCE at load time. Test patches on
+#   `solo_builder_cli.FOO` do NOT propagate into mixin modules.
+#   Functions reading any of these 5 globals MUST stay in this file:
+#     _PDF_OK       → _take_snapshot
+#     _CFG_PATH     → _persist_setting
+#     STATE_PATH    → load_state / save_state  (in step_runner but re-injected)
+#     JOURNAL_PATH  → _append_journal / _append_cache_session_stats
+#     WEBHOOK_URL   → _fire_completion / main()
 def _inject_host_globals_into_mixins():
     """Inject host module globals into mixin modules so their methods resolve names correctly."""
     import sys as _s
