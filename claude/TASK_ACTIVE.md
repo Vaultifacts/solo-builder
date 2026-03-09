@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-123
+TASK-124
 
-Replace innerHTML assignments in dashboard JS with textContent/DOM API calls to remove XSS false-positive findings from arch auditor
+Add GET /config/export endpoint that downloads settings.json as attachment, complementing existing /config GET
