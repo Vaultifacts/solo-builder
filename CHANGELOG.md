@@ -1,5 +1,29 @@
 # Changelog
 
+## v4.2.2 — 2026-03-09  Milestone: 200 Tasks + Full Review Visibility (TASK-196 through TASK-202)
+
+### Summary
+- **202 tasks** merged to master (TASK-001 through TASK-202)
+- **464 API tests**, **447 Discord tests** — 0 failures
+- Review status now visible at every UI layer: card badge, card counts, detail bar, per-branch rows, Discord, History/Subtasks quick-filters
+
+### Changes
+
+#### API
+- `GET /tasks` response now includes `review_subtasks` count per task — TASK-196
+- `GET /tasks/<id>/progress` top-level `review` field confirmed present (TASK-175, no-op) — TASK-198
+
+#### Dashboard
+- Task cards show yellow `⏸N` badge in `cardTop` when `review_subtasks > 0` — TASK-202
+- Card counts line shows `N▶ · N⏸` (zero-suppressed) — TASK-197
+- Subtasks tab: 4 quick-filter toggle buttons (⏳ Pending / ▶ Running / ⏸ Review / ✅ Verified) — TASK-199
+- History tab: same 4 quick-filter buttons (also resets page + updates export links) — TASK-201
+
+#### Discord Bot
+- 2 tests: Review/Pending excluded from `stalled` output (mirrors API TASK-194) — TASK-200
+
+---
+
 ## v4.1.4 — 2026-03-09  Review Status Propagation Complete (TASK-186 through TASK-195)
 
 ### Summary

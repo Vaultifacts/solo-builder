@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-202
+TASK-203
 
 ## Verdict: PASS
 
@@ -12,9 +12,10 @@ TASK-202
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — card review badge added
+- `CHANGELOG.md` — v4.2.2 section added above v4.1.4
 
 ## Implementation Detail
-renderGrid() card creation now adds a `card-review-badge` span in cardTop after the status badge.
-Each tick: if t.review_subtasks > 0 the span shows "⏸N" in yellow (var(--yellow)); otherwise hidden.
-Uses t.review_subtasks from TASK-196. JS-only; no new tests needed.
+Added v4.2.2 milestone entry covering 202 tasks (TASK-196 through TASK-202):
+API: review_subtasks in GET /tasks, /progress top-level confirmed.
+Dashboard: card review badge, card counts N⏸, Subtasks/History quick-filter buttons.
+Discord: stalled exclusion tests.
