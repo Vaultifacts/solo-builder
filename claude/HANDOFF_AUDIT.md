@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-194
+TASK-195
 
 ## Verdict: PASS
 
@@ -12,11 +12,10 @@ TASK-194
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/test_app.py` — 2 tests added to TestStalled
+- `CHANGELOG.md` — v4.1.4 entry added above v4.0.0
 
 ## Implementation Detail
-GET /stalled (blueprints/subtasks.py line 339) checks `status == "Running"` only — Review and
-Pending are already excluded by the existing implementation. Tests added to lock in this contract:
-- `test_review_not_stalled` — Review subtask not in stalled list even past threshold age
-- `test_pending_not_stalled` — Pending subtask not in stalled list
-No production code change required.
+Added v4.1.4 section covering TASK-186 through TASK-195:
+- API: pct in _task_summary, review in /progress branches[], /stalled exclusion, edge-case tests
+- Dashboard: Review⏸ in renderDetail/pollTaskProgress, server-side pct in card bars, per-branch mini row updates
+- Discord: _format_filter Review tests, /bulk_verify slash confirmed
