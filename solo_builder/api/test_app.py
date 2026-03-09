@@ -1447,6 +1447,15 @@ class TestSubtasksPagination(_Base):
         self.assertIn("page", d)
         self.assertIn("limit", d)
 
+    def test_pages_disjoint(self):
+        self._write_state(self._state_with_n(6))
+        d1 = self.client.get("/subtasks?limit=3&page=1").get_json()
+        d2 = self.client.get("/subtasks?limit=3&page=2").get_json()
+        names1 = {s["subtask"] for s in d1["subtasks"]}
+        names2 = {s["subtask"] for s in d2["subtasks"]}
+        self.assertTrue(names1.isdisjoint(names2))
+        self.assertEqual(len(names1) + len(names2), 6)
+
 
 # ---------------------------------------------------------------------------
 # GET /subtasks/export  (TASK-088)
