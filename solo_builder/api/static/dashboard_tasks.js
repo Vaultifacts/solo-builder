@@ -500,7 +500,10 @@ window.toggleTaskTimeline = async function toggleTaskTimeline(taskId) {
   el.appendChild(panel);
 };
 
-window._applyTaskSearch = applyTaskSearch;
+window._applyTaskSearch = function () {
+  _tasksPage = 1;
+  applyTaskSearch();
+};
 
 window.filterSubtasks = function filterSubtasks() {
   const q = (document.getElementById("st-search").value || "").toLowerCase();

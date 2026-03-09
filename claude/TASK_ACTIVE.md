@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-237
+TASK-238
 
-Render review count in Branches all-tasks rows (field added in TASK-229 but not displayed)
+Reset page to 1 when task-search, subtasks-filter (non-status), or branch task-search input changes
