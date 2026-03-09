@@ -136,7 +136,7 @@ export function renderGrid(tasks) {
     card.classList.toggle("active",  t.id === state.selectedTask);
     card.classList.toggle("blocked", isBlocked);
 
-    const pct = t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0;
+    const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
     card.querySelector(".card-bar-fg").style.width = pct + "%";
     card.querySelector(".card-counts").textContent =
       `${t.verified_subtasks}/${t.subtask_count} verified` +
