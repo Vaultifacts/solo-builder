@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-281
+TASK-282
 
-GET /history/export: add ?task= substring filter (parity with GET /history); 3+ new tests
+Discord /subtasks slash command: mirrors /branches structure — lists all subtasks with optional ?task= and ?status= filters; 5+ new tests
