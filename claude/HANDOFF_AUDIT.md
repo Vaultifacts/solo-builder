@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-128
+TASK-129
 
 ## Verdict: PASS
 
@@ -9,21 +9,19 @@ TASK-128
 - unittest-discover: PASS (393 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 95.6/100 (improved from 92.5 — 4 major findings removed)
+- architecture-audit: 95.6/100 (unchanged)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/blueprints/webhook.py` — urlopen: added `# nosec B310` alongside existing `# noqa: S310`
-- `solo_builder/solo_builder_cli.py` — urlopen: same nosec comment
+- `solo_builder/api/blueprints/tasks.py` — new POST /tasks/<id>/reset endpoint + `import json`
+- `solo_builder/api/test_app.py` — new TestPostTaskReset class with 6 tests
 
-Two untracked artefacts cleaned (not committed, no git status impact):
-- `solo_builder/build/` directory deleted (stale setuptools build artifact with old cli copy — contained its own B310 urlopen finding)
-- `solo_builder/discord_bot/chat.log` truncated to 0 bytes (was 1047 lines — flagged as "Very large file")
+## Feature Description
+POST /tasks/<id>/reset bulk-resets all non-Verified subtasks in a task to Pending by directly
+updating STATE.json. Returns {ok, task, reset_count, skipped_count}. Verified subtasks are
+preserved (skipped_count). 404 if task not found. The task's own status field is also reset to
+"Pending". Previous output is cleared for each reset subtask; shadow field removed.
 
-## Architecture Improvement
-Score: 92.5 → 95.6 (+3.1 pts). 4 major findings removed:
-1. "Very large file: chat.log" (maintainability) — truncated to 0 bytes
-2. B310 urlopen in solo_builder/build/lib/solo_builder_cli.py — build artifact deleted
-3. B310 urlopen in webhook.py — suppressed with # nosec B310
-4. B310 urlopen in solo_builder_cli.py — suppressed with # nosec B310
-Both urlopen callers have scheme validation (startswith http/https) applied before the call in TASK-116.
+Tests: valid task returns ok, 404 for unknown task, correct reset_count (2 subtasks),
+skipped_count for Verified subtasks, subtask status is Pending after reset,
+output cleared after reset.
