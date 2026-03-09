@@ -464,6 +464,7 @@ let _subtasksPage         = 1;
 let _subtasksPages        = 1;
 let _subtasksTotal        = 0;
 let _subtasksStatusFilter = "";   // "" = all; "Pending"|"Running"|"Review"|"Verified"
+let _subtasksNameFilter   = "";   // "" = all; substring matched against subtask name
 const _SUBTASKS_LIMIT     = 50;
 const _SUBTASKS_STATUS_VALS = new Set(["pending", "running", "review", "verified"]);
 
@@ -494,6 +495,7 @@ export async function pollSubtasks() {
   try {
     let url = `/subtasks?limit=${_SUBTASKS_LIMIT}&page=${_subtasksPage}`;
     if (_subtasksStatusFilter) url += `&status=${encodeURIComponent(_subtasksStatusFilter)}`;
+    if (_subtasksNameFilter)   url += `&name=${encodeURIComponent(_subtasksNameFilter)}`;
     const d = await api(url);
     _subtasksAll   = d.subtasks || [];
     _subtasksTotal = d.total    ?? _subtasksAll.length;
@@ -507,7 +509,8 @@ function _updateSubtasksExportLinks() {
   const csv  = document.getElementById("subtasks-export-csv");
   const json = document.getElementById("subtasks-export-json");
   if (!csv || !json) return;
-  const qs = _subtasksStatusFilter ? `?status=${encodeURIComponent(_subtasksStatusFilter)}` : "";
+  let qs = _subtasksStatusFilter ? `?status=${encodeURIComponent(_subtasksStatusFilter)}` : "";
+  if (_subtasksNameFilter) qs += (qs ? "&" : "?") + `name=${encodeURIComponent(_subtasksNameFilter)}`;
   csv.href  = `/subtasks/export${qs}`;
   json.href = `/subtasks/export${qs ? qs + "&format=json" : "?format=json"}`;
 }
@@ -551,22 +554,27 @@ window.renderSubtasks = function () {
   history.replaceState(null, "", next ? "#" + next : location.pathname + location.search);
 
   if (_SUBTASKS_STATUS_VALS.has(ql)) {
-    // Known status value → server-side filter, reset to page 1
+    // Known status value → server-side status filter
     _subtasksStatusFilter = ql;
+    _subtasksNameFilter   = "";
     _subtasksPage = 1;
     _updateSubtasksExportLinks();
     pollSubtasks();
-  } else if (_subtasksStatusFilter) {
-    // Filter cleared or changed to non-status text → drop server filter, re-fetch
+  } else if (q) {
+    // Non-empty non-status text → server-side name filter
+    _subtasksNameFilter   = ql;
     _subtasksStatusFilter = "";
     _subtasksPage = 1;
     _updateSubtasksExportLinks();
     pollSubtasks();
   } else {
-    // Non-status text, no server filter change → reset to page 1, client-side re-render
+    // Empty input → clear all server filters and re-fetch
+    const hadFilter = _subtasksStatusFilter || _subtasksNameFilter;
+    _subtasksStatusFilter = "";
+    _subtasksNameFilter   = "";
     _subtasksPage = 1;
     _updateSubtasksExportLinks();
-    _renderSubtasks();
+    if (hadFilter) { pollSubtasks(); } else { _renderSubtasks(); }
   }
 };
 
@@ -626,16 +634,10 @@ window.subtasksBulkVerify = async function () {
 function _renderSubtasks() {
   const el = document.getElementById("subtasks-content");
   if (!el) return;
-  const q = (document.getElementById("subtasks-filter")?.value || "").trim().toLowerCase();
-  const rows = q
-    ? _subtasksAll.filter(s =>
-        s.subtask.toLowerCase().includes(q) ||
-        s.status.toLowerCase().includes(q) ||
-        s.branch.toLowerCase().includes(q) ||
-        s.task.toLowerCase().includes(q))
-    : _subtasksAll;
+  const rows = _subtasksAll;  // server-side filters (status, name) already applied
+  const hasFilter = _subtasksStatusFilter || _subtasksNameFilter;
   if (rows.length === 0) {
-    el.replaceChildren(_placeholder(q ? "No matching subtasks." : "No subtasks yet."));
+    el.replaceChildren(_placeholder(hasFilter ? "No matching subtasks." : "No subtasks yet."));
     return;
   }
   const counter = document.createElement("div");

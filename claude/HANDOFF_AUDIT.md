@@ -1,21 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-251
+TASK-252
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (522 tests, 0 failures; +10 new)
+- unittest-discover (api): PASS (522 tests, 0 failures)
+- node tools/lint_dashboard_handlers.js: PASS (0 gaps)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/subtasks.py` — ?name= filter added to subtasks_all() and subtasks_export()
-- `solo_builder/api/test_app.py` — 5 tests in TestSubtasksAll + 5 in TestSubtasksExport for ?name= filter
+One file modified:
+- `solo_builder/api/static/dashboard_panels.js` — _subtasksNameFilter state, pollSubtasks() includes ?name=X, _updateSubtasksExportLinks builds qs from both filters, renderSubtasks() routes non-status text to server ?name= re-fetch, _renderSubtasks() removes client-side text filter
 
 ## Implementation Detail
-GET /subtasks and GET /subtasks/export accepted ?task=, ?branch=, ?status= but had no filter for subtask name.
-Added ?name= (case-insensitive substring on st_name) to both endpoints.
-The dashboard #subtasks-filter placeholder already says "Filter subtask/status/branch…" implying name filtering is expected.
-Tests cover: exact match, substring, no-match, case-insensitive, compose with status.
+Previously, typing non-status text in #subtasks-filter did client-side-only filtering (missed subtasks on other pages).
+Now: non-status text sets _subtasksNameFilter and triggers pollSubtasks() with ?name=X (server-side, paginates correctly).
+Status values still route to ?status=X (unchanged).
+Empty input clears both filters and re-fetches.
+Export links now include &name=X when _subtasksNameFilter is set (parity with status filter).
+_renderSubtasks() simplified: no client-side filter loop; server already filtered _subtasksAll.

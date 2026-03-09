@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-251
+TASK-252
 
-Add ?task= filter parity to GET /subtasks/export: currently GET /subtasks supports ?task= but GET /subtasks/export ignores it; wire filter + add tests
+Wire ?name= server-side filter into renderSubtasks(): route non-status text from #subtasks-filter to server ?name= and include it in _updateSubtasksExportLinks hrefs
