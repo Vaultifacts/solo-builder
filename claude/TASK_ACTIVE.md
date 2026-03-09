@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-180
+TASK-181
 
-Add pollTaskProgress() in dashboard_tasks.js that fetches GET /tasks/<id>/progress and updates the detail progress bar without a full task reload
+Tag v4.0.0 milestone: add CHANGELOG entry summarising 180 tasks, 451 API tests, arch score 97.7/100
