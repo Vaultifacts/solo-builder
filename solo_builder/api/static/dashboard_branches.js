@@ -280,7 +280,7 @@ function _renderBranchesAll(d, summary) {
       row.appendChild(_span("font-size:10px;color:var(--cyan)", br.running + "▶"));
     }
     if (br.review > 0) {
-      row.appendChild(_span("font-size:10px;color:var(--yellow)", br.review + "⏸"));
+      row.appendChild(_span("font-size:10px;color:var(--yellow)", br.review + "⏸ (" + (br.review_pct ?? 0) + "%)"));
     }
     children.push(row);
   });
