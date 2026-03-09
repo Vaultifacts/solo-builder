@@ -232,6 +232,31 @@ class TestGetStatus(_Base):
         d = self.client.get("/status").get_json()
         self.assertEqual(d["stalled_by_branch"], [])
 
+    def test_stalled_by_branch_sorted_desc(self):
+        # Two tasks: Task A has 2 stalled, Task B has 1 — Task A must come first
+        self._set_threshold_in_settings(5)
+        state = {
+            "step": 10,
+            "dag": {
+                "Task A": {"status": "Running", "depends_on": [], "branches": {
+                    "Br A": {"subtasks": {
+                        "SA1": {"status": "Running", "output": "", "last_update": 0},
+                        "SA2": {"status": "Running", "output": "", "last_update": 0},
+                    }},
+                }},
+                "Task B": {"status": "Running", "depends_on": [], "branches": {
+                    "Br B": {"subtasks": {
+                        "SB1": {"status": "Running", "output": "", "last_update": 0},
+                    }},
+                }},
+            },
+        }
+        self._write_state(state)
+        d = self.client.get("/status").get_json()
+        counts = [e["count"] for e in d["stalled_by_branch"]]
+        self.assertEqual(counts, sorted(counts, reverse=True))
+        self.assertEqual(d["stalled_by_branch"][0]["count"], 2)
+
 
 # ---------------------------------------------------------------------------
 # GET /history/count
