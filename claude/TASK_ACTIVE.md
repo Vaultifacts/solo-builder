@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-130
+TASK-131
 
-Replace innerHTML with DOM API in dashboard_branches.js and dashboard_cache.js to eliminate XSS major findings
+Add task-level reset button to the dashboard task detail panel (calls POST /tasks/<id>/reset)
