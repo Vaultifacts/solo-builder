@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-132
+TASK-133
 
-Add POST /branches/<task>/<branch>/reset endpoint for branch-level bulk subtask reset
+Extract journal, diff, and stats rendering from dashboard_tasks.js into dashboard_journal.js to reduce all modules under 300 lines
