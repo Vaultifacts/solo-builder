@@ -1,19 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-221
+TASK-222
 
 ## Verdict: PASS
 
 ## Verification Results
+- unittest-discover (all): PASS (454 tests, 0 failures)
+- unittest-discover (api): PASS (481 tests, 0 failures)
 - git-status: PASS (clean working tree)
-- git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `CHANGELOG.md` — v4.4.0 entry added at top
+Two files modified:
+- `solo_builder/api/dashboard.html` — export-history-by-status div added
+- `solo_builder/api/static/dashboard_panels.js` — _refreshExportHistoryByStatus() + switchTab hook
 
 ## Implementation Detail
-Added v4.4.0 milestone documenting TASK-216..220: history review metadata (TASK-217),
-by_status chips (TASK-218), stalled regression (TASK-219), MEMORY.md restructure (TASK-220),
-changelog entry (TASK-216). Test counts 481 API / 454 Discord.
+Added a chip row (#export-history-by-status) below Activity History links in the Export tab.
+Populated on switchTab("export") by fetching /history/count and rendering by_status entries.
+Reuses _STATUS_CHIP_COLORS constant already present in dashboard_panels.js. No API change; no tests needed.
