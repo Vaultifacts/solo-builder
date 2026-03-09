@@ -17,10 +17,17 @@ branches_bp = Blueprint("branches", __name__)
 def branches_all():
     """Flat list of all branches across all tasks.
 
-    Query params: task — filter by task name (case-insensitive substring)
+    Query params:
+      task   — filter by task name (case-insensitive substring)
+      status — filter by branch activity: pending|running|review|verified
+               pending  = has pending subtasks  (pending > 0)
+               running  = has running subtasks  (running > 0)
+               review   = has review subtasks   (review  > 0)
+               verified = all subtasks verified (verified == total > 0)
     """
     dag = _load_dag()
-    task_q = (request.args.get("task") or "").strip().lower()
+    task_q   = (request.args.get("task")   or "").strip().lower()
+    status_q = (request.args.get("status") or "").strip().lower()
     result = []
     for task_id, task_data in dag.items():
         if task_q and task_q not in task_id.lower():
@@ -42,6 +49,14 @@ def branches_all():
                 "pending": p,
                 "pct": round(v / total * 100, 1) if total else 0.0,
             })
+    if status_q == "verified":
+        result = [b for b in result if b["verified"] == b["total"] and b["total"] > 0]
+    elif status_q == "running":
+        result = [b for b in result if b["running"] > 0]
+    elif status_q == "review":
+        result = [b for b in result if b["review"] > 0]
+    elif status_q == "pending":
+        result = [b for b in result if b["pending"] > 0]
     all_count = len(result)
     limit = max(0, request.args.get("limit", 0, type=int))
     page  = max(1, request.args.get("page",  1, type=int))

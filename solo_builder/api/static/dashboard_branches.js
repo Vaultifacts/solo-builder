@@ -57,7 +57,8 @@ window._branchesPageStep = function (delta) {
 window._branchesFilterStatus = function (status) {
   if (state.selectedTask) return; // filter only in all-tasks view
   _branchesStatusFilter = _branchesStatusFilter === status ? "" : status;
-  if (_branchesLastData) _renderBranchesAll(_branchesLastData, _branchesLastSummary);
+  _branchesPage = 1;
+  pollBranches();
 };
 
 function _getBranchesFiltered() {
@@ -147,8 +148,10 @@ export async function pollBranches() {
       _updateBranchesPager(); // hide pager in detail view
       _renderBranchesDetail(d);
     } else {
+      let branchUrl = `/branches?limit=${_BRANCHES_LIMIT}&page=${_branchesPage}`;
+      if (_branchesStatusFilter) branchUrl += `&status=${encodeURIComponent(_branchesStatusFilter)}`;
       const [d, summary] = await Promise.all([
-        api(`/branches?limit=${_BRANCHES_LIMIT}&page=${_branchesPage}`),
+        api(branchUrl),
         api("/dag/summary").catch(() => null),
       ]);
       _branchesTotal      = d.total  ?? (d.branches || []).length;
@@ -172,21 +175,10 @@ function _renderBranchesAll(d, summary) {
   const filterLbl = document.getElementById("branches-filter-label");
   if (filterBar) filterBar.style.display = "flex";
 
-  // Apply client-side status filter
+  // Server already applied status filter; just render what came back
   const f = _branchesStatusFilter;
-  let branches = d.branches || [];
-  if (f) {
-    branches = branches.filter(br => {
-      if (f === "verified") return br.verified === br.total && br.total > 0;
-      if (f === "running")  return br.running > 0;
-      if (f === "review")   return br.review  > 0;
-      if (f === "pending")  return br.pending  > 0;
-      return true;
-    });
-    if (filterLbl) filterLbl.textContent = `· ${f} filter (${branches.length})`;
-  } else {
-    if (filterLbl) filterLbl.textContent = "";
-  }
+  const branches = d.branches || [];
+  if (filterLbl) filterLbl.textContent = f ? `· ${f} filter (${branches.length})` : "";
 
   if (branches.length === 0) {
     const ph = _div(null, "detail-placeholder");
