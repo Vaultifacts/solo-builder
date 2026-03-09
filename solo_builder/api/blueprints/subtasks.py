@@ -20,15 +20,22 @@ def subtasks_all():
     """Flat list of all subtasks across all tasks.
 
     Query params: task, branch, status, name (case-insensitive substring); output=1 includes full output.
+    min_age=N: only Running subtasks with age (step - last_update) >= N.
     Pagination: page=<n> (1-based) and limit=<n> (default 0 = all).
     Response includes total (pre-pagination count), page, limit, pages.
     """
-    dag = _load_dag()
+    state = _load_state()
+    dag  = state.get("dag", {})
+    step = state.get("step", 0)
     task_q   = (request.args.get("task")   or "").strip().lower()
     branch_q = (request.args.get("branch") or "").strip().lower()
     status_q = (request.args.get("status") or "").strip().lower()
     name_q   = (request.args.get("name")   or "").strip().lower()
     include_output = request.args.get("output", "0") == "1"
+    try:
+        min_age = max(0, int(request.args.get("min_age", 0)))
+    except (ValueError, TypeError):
+        min_age = 0
     try:
         limit = max(0, int(request.args.get("limit", 0)))
     except (ValueError, TypeError):
@@ -50,6 +57,11 @@ def subtasks_all():
                     continue
                 if name_q and name_q not in st_name.lower():
                     continue
+                if min_age > 0:
+                    if st_status != "Running":
+                        continue
+                    if step - st_data.get("last_update", 0) < min_age:
+                        continue
                 entry = {
                     "subtask": st_name,
                     "task": task_id,
@@ -81,17 +93,23 @@ def subtasks_all():
 def subtasks_export():
     """Export all subtasks as CSV (default) or JSON (?format=json).
 
-    Supports same ?task=, ?branch=, ?status=, ?name= filters as GET /subtasks.
+    Supports same ?task=, ?branch=, ?status=, ?name=, ?min_age=N filters as GET /subtasks.
     Pagination: ?page=<n>&limit=<n> (limit=0 exports all).
     CSV columns: subtask,task,branch,status,output_length
     JSON wraps rows in {total, page, limit, pages, subtasks: [...]} when paginated.
     """
-    dag = _load_dag()
+    state = _load_state()
+    dag  = state.get("dag", {})
+    step = state.get("step", 0)
     task_q   = (request.args.get("task")   or "").strip().lower()
     branch_q = (request.args.get("branch") or "").strip().lower()
     status_q = (request.args.get("status") or "").strip().lower()
     name_q   = (request.args.get("name")   or "").strip().lower()
     fmt = (request.args.get("format") or "csv").strip().lower()
+    try:
+        min_age = max(0, int(request.args.get("min_age", 0)))
+    except (ValueError, TypeError):
+        min_age = 0
     try:
         limit = max(0, int(request.args.get("limit", 0)))
     except (ValueError, TypeError):
@@ -113,6 +131,11 @@ def subtasks_export():
                     continue
                 if name_q and name_q not in st_name.lower():
                     continue
+                if min_age > 0:
+                    if st_status != "Running":
+                        continue
+                    if step - st_data.get("last_update", 0) < min_age:
+                        continue
                 rows.append({
                     "subtask": st_name,
                     "task": task_id,
