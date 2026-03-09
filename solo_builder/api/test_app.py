@@ -2732,6 +2732,76 @@ class TestSubtaskReset(_Base):
 # POST /subtasks/bulk-reset  (TASK-141)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# POST /subtasks/bulk-verify  (TASK-146)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksBulkVerify(_Base):
+
+    def test_valid_verify_returns_ok(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        r = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1", "A2"]},
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+
+    def test_verified_count_correct(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1", "A2"]},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["verified_count"], 2)
+
+    def test_already_verified_skipped(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1", "A2"]},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["skipped_count"], 1)
+        self.assertEqual(d["verified_count"], 1)
+
+    def test_skip_non_running_flag(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1", "A2"], "skip_non_running": True},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["verified_count"], 1)  # only A1 (Running)
+        self.assertEqual(d["skipped_count"], 1)   # A2 (Pending) skipped
+
+    def test_not_found_reported(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1", "Z9"]},
+                             content_type="application/json").get_json()
+        self.assertIn("Z9", d["not_found"])
+
+    def test_missing_body_returns_400(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": []},
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_state_persisted(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/subtasks/bulk-verify",
+                         json={"subtasks": ["A1"]},
+                         content_type="application/json")
+        import json
+        state = json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Verified")
+
+    def test_verified_list_returned(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1"]},
+                             content_type="application/json").get_json()
+        self.assertIn("A1", d["verified"])
+
+
 class TestSubtasksBulkReset(_Base):
 
     def test_valid_reset_returns_ok(self):

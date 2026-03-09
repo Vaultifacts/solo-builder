@@ -185,6 +185,56 @@ def subtasks_bulk_reset():
     })
 
 
+@subtasks_bp.post("/subtasks/bulk-verify")
+def subtasks_bulk_verify():
+    """Advance multiple subtasks to Verified in a single request.
+
+    Body: {"subtasks": ["A1", "B2", ...], "skip_non_running": false}
+    - subtasks: list of subtask names to verify (case-sensitive)
+    - skip_non_running: if true, only Running/Review subtasks are advanced (default false)
+    Returns {ok, verified_count, skipped_count, not_found: [names], verified: [names]}
+    """
+    from .. import app as _app_mod
+    body = request.get_json(silent=True) or {}
+    names = body.get("subtasks")
+    if not isinstance(names, list) or not names:
+        return jsonify({"ok": False, "reason": "Field 'subtasks' must be a non-empty list."}), 400
+    skip_non_running = body.get("skip_non_running", False)
+    state = _load_state()
+    dag = state.get("dag", {})
+    remaining = set(names)
+    verified_names: list = []
+    skipped_count = 0
+    for task_data in dag.values():
+        for branch_data in task_data.get("branches", {}).values():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                if st_name not in remaining:
+                    continue
+                current = st_data.get("status", "Pending")
+                if skip_non_running and current not in ("Running", "Review"):
+                    skipped_count += 1
+                    remaining.discard(st_name)
+                    continue
+                if current == "Verified":
+                    skipped_count += 1
+                    remaining.discard(st_name)
+                    continue
+                st_data["status"] = "Verified"
+                verified_names.append(st_name)
+                remaining.discard(st_name)
+    try:
+        _app_mod.STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+    return jsonify({
+        "ok": True,
+        "verified_count": len(verified_names),
+        "skipped_count": skipped_count,
+        "not_found": sorted(remaining),
+        "verified": verified_names,
+    })
+
+
 @subtasks_bp.get("/subtask/<subtask_id>")
 def get_subtask(subtask_id: str):
     """Return current state of a named subtask (e.g. 'A1') across the DAG."""
