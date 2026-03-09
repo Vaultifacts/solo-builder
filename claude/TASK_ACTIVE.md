@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-240
+TASK-241
 
-Add yellow Review badge in subtask detail modal when status is Review
+Wire lint_dashboard_handlers.js into pre-commit hook chain

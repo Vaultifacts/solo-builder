@@ -1,22 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-240
+TASK-241
 
 ## Verdict: PASS
 
 ## Verification Results
 - unittest-discover (api): PASS (495 tests, 0 failures)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
-- node tools/lint_dashboard_handlers.js: PASS (0 gaps)
+- pre-commit hook: PASS (lint ran live, 0 gaps reported)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard.js` — 1 line changed in openSubtaskModal()
+Two files modified:
+- `.githooks/pre-commit` — node lint call added after dev_gate.ps1
+- `claude/ALLOWED_FILES.txt` — .githooks/pre-commit registered
 
 ## Implementation Detail
-Subtask detail modal showed status in yellow for Review but had no glyph indicator.
-Added ⏸ suffix: status text is now "Review ⏸" (yellow) vs plain text for other statuses.
-Consistent with ⏸ usage in header, card badges, branches rows.
-No test changes needed.
+Added node tools/lint_dashboard_handlers.js call to .githooks/pre-commit after
+the existing dev_gate.ps1 step. Skipped gracefully if node is absent (CI/minimal
+environments). Exits 1 on any gap, blocking the commit. Verified live: lint ran
+and reported PASS during this commit.
