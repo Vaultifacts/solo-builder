@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-239
+TASK-240
 
-Add Node.js CI lint script that parses dashboard.html inline handlers and cross-checks window.* assignments
+Add yellow Review badge in subtask detail modal when status is Review
