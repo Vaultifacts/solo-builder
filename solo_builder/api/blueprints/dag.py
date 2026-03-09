@@ -21,10 +21,10 @@ def dag_summary():
     dag   = state.get("dag", {})
     step  = state.get("step", 0)
 
-    total = verified = running = pending = 0
+    total = verified = running = review = pending = 0
     task_rows = []
     for task_id, task_data in dag.items():
-        t_total = t_verified = t_running = 0
+        t_total = t_verified = t_running = t_review = 0
         branches = task_data.get("branches", {})
         for br in branches.values():
             for st in br.get("subtasks", {}).values():
@@ -34,6 +34,8 @@ def dag_summary():
                     t_verified += 1
                 elif s == "Running":
                     t_running += 1
+                elif s == "Review":
+                    t_review += 1
         t_pct = round(t_verified / t_total * 100, 1) if t_total else 0.0
         t_status = task_data.get("status", "Pending")
         task_rows.append({
@@ -43,12 +45,14 @@ def dag_summary():
             "subtasks": t_total,
             "verified": t_verified,
             "running":  t_running,
+            "review":   t_review,
             "pct":      t_pct,
         })
         total    += t_total
         verified += t_verified
         running  += t_running
-        pending  += t_total - t_verified - t_running
+        review   += t_review
+        pending  += t_total - t_verified - t_running - t_review
 
     pct = round(verified / total * 100, 1) if total else 0.0
 
@@ -56,7 +60,7 @@ def dag_summary():
         "## Pipeline Summary",
         f"- Step {step}",
         f"- {verified}/{total} subtasks verified ({pct}%)",
-        f"- {running} running, {pending} pending",
+        f"- {running} running, {review} review, {pending} pending",
         "",
         "### Tasks",
     ]
@@ -72,6 +76,7 @@ def dag_summary():
         "total":    total,
         "verified": verified,
         "running":  running,
+        "review":   review,
         "pending":  pending,
         "pct":      pct,
         "complete": verified == total and total > 0,

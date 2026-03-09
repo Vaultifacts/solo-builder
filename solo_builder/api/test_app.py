@@ -289,6 +289,42 @@ class TestGetTaskDetail(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /dag/summary
+# ---------------------------------------------------------------------------
+
+class TestDagSummary(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/dag/summary")
+        self.assertEqual(r.status_code, 200)
+
+    def test_review_in_top_level(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertIn("review", d)
+        self.assertEqual(d["review"], 1)
+
+    def test_review_in_task_row(self):
+        self._write_state(self._make_state({"A1": "Review"}))
+        d = self.client.get("/dag/summary").get_json()
+        task_row = d["tasks"][0]
+        self.assertIn("review", task_row)
+        self.assertEqual(task_row["review"], 1)
+
+    def test_review_not_counted_in_pending(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertEqual(d["pending"], 1)
+        self.assertEqual(d["review"], 1)
+
+    def test_summary_text_includes_review(self):
+        self._write_state(self._make_state({"A1": "Review"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertIn("review", d["summary"])
+
+
+# ---------------------------------------------------------------------------
 # POST /run
 # ---------------------------------------------------------------------------
 
