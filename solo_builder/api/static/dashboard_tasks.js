@@ -1,5 +1,5 @@
 import { state } from "./dashboard_state.js";
-import { api, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
+import { api, esc, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
 
 const _journalExpanded = new Set();
 
@@ -106,8 +106,8 @@ export function renderGrid(tasks) {
       card.dataset.id = t.id;
       card.innerHTML = `
         <div class="card-top">
-          <span class="card-id">${t.id}</span>
-          <span class="card-mini-badge ${statusClass(t.status)}">${t.status || "Pending"}</span>
+          <span class="card-id">${esc(t.id)}</span>
+          <span class="card-mini-badge ${statusClass(t.status)}">${esc(t.status || "Pending")}</span>
         </div>
         <div class="card-deps"></div>
         <div class="card-bar-bg"><div class="card-bar-fg" style="width:0%"></div></div>
@@ -151,24 +151,24 @@ window.selectTask = selectTask;
 
 export function renderDetail(t) {
   const el = document.getElementById("detail-content");
-  let html = `<div class="detail-task-id">${t.id}</div>`;
-  html += `<div class="detail-status"><span class="card-mini-badge ${statusClass(t.status)}">${t.status || "Pending"}</span>`;
+  let html = `<div class="detail-task-id">${esc(t.id)}</div>`;
+  html += `<div class="detail-status"><span class="card-mini-badge ${statusClass(t.status)}">${esc(t.status || "Pending")}</span>`;
   if (t.depends_on && t.depends_on.length) {
-    html += ` <span style="color:#ff9800;font-size:10px">← ${t.depends_on.join(", ")}</span>`;
+    html += ` <span style="color:#ff9800;font-size:10px">← ${esc(t.depends_on.join(", "))}</span>`;
   }
   html += `</div>`;
 
   const branches = t.branches || {};
   Object.entries(branches).forEach(([bname, bdata]) => {
-    html += `<div class="branch-block"><div class="branch-name">${bname}</div>`;
+    html += `<div class="branch-block"><div class="branch-name">${esc(bname)}</div>`;
     const subtasks = bdata.subtasks || {};
     Object.entries(subtasks).forEach(([sname, s]) => {
       const output = (s.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const preview = output ? output.replace(/\n/g, " ").substring(0, 80) : (s.description || "");
+      const preview = output ? output.replace(/\n/g, " ").substring(0, 80) : esc(s.description || "");
       const previewHtml = preview
-        ? `<span class="st-output" title="${output.substring(0, 400)}">${preview}</span>`
+        ? `<span class="st-output" title="${output.substring(0, 400).replace(/"/g, "&quot;")}">${preview}</span>`
         : "";
-      const esc = JSON.stringify(sname);
+      const snameJson = JSON.stringify(sname);
       const expandBtn = output
         ? `<button class="st-expand-btn" title="Expand output" onclick="toggleExpand(this,event)">&#9654;</button>`
         : "";
@@ -176,9 +176,9 @@ export function renderDetail(t) {
         ? `<div class="st-expand-content">${output}</div>`
         : "";
       html += `
-        <div class="subtask-row" onclick='showModal(${esc}, ${JSON.stringify(s).replace(/'/g, "&#39;")})'>
+        <div class="subtask-row" onclick='showModal(${snameJson}, ${JSON.stringify(s).replace(/'/g, "&#39;")})'>
           <div class="st-dot ${dotClass(s.status)}"></div>
-          <span class="st-name">${sname}</span>
+          <span class="st-name">${esc(sname)}</span>
           ${previewHtml}
           ${expandBtn}
           ${expandContent}
@@ -257,7 +257,7 @@ function _renderJournal(entries) {
       ? `<button class="journal-toggle" onclick="toggleJournal(this)" data-full="${safe.replace(/"/g, "&quot;")}" data-trunc="${TRUNC}" data-key="${key}">${expanded ? "▲ less" : "▼ more"}</button>`
       : "";
     return `<div class="journal-entry">
-      <div class="journal-meta">${e.subtask} · ${e.task} / ${e.branch} · Step ${e.step}</div>
+      <div class="journal-meta">${esc(e.subtask)} · ${esc(e.task)} / ${esc(e.branch)} · Step ${e.step}</div>
       <div class="journal-body">${body}</div>${btn}
     </div>`;
   }).join("");
@@ -314,7 +314,7 @@ function _renderStats(d) {
   if (!d || !el) return;
   let html = "";
   Object.entries(d).forEach(([k, v]) => {
-    html += `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:120px;display:inline-block">${k}</span> <span>${v}</span></div>`;
+    html += `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:120px;display:inline-block">${esc(k)}</span> <span>${esc(v)}</span></div>`;
   });
   el.innerHTML = html || `<div class="detail-placeholder">No stats yet.</div>`;
 }

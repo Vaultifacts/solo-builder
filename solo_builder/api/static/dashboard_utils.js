@@ -3,6 +3,16 @@ import { state } from "./dashboard_state.js";
 const NOTIF_MAX = 20;
 const STALE_MS  = 10_000;
 
+/** Escape a value for safe insertion into HTML attribute or text content. */
+export function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function statusClass(s) {
   if (!s) return "s-pending";
   const l = s.toLowerCase();
@@ -37,8 +47,8 @@ function _renderNotifPanel() {
     list.innerHTML = state.notifHistory.slice().reverse().map(function (n) {
       const c = n.type === "error" ? "var(--red)" : n.type === "warn" ? "var(--yellow)" : "var(--text)";
       return `<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px">` +
-        `<span style="color:var(--dim);margin-right:6px">${n.ts}</span>` +
-        `<span style="color:${c}">${n.msg}</span></div>`;
+        `<span style="color:var(--dim);margin-right:6px">${esc(n.ts)}</span>` +
+        `<span style="color:${c}">${esc(n.msg)}</span></div>`;
     }).join("");
   }
   if (badge) {

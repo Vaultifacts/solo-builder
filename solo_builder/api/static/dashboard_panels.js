@@ -1,5 +1,5 @@
 import { state } from "./dashboard_state.js";
-import { api, toast, flash } from "./dashboard_utils.js";
+import { api, esc, toast, flash } from "./dashboard_utils.js";
 
 /* ── History panel (incremental + paged) ─────────────────── */
 let _historyLastStep   = 0;
@@ -111,7 +111,7 @@ function _renderHistory(events) {
   let html = "";
   page.forEach(e => {
     const safeEv = JSON.stringify(e).replace(/'/g, "&#39;");
-    html += `<div class="diff-entry" style="cursor:pointer" onclick='openSubtaskModal(${safeEv})' title="Click to view subtask detail"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
+    html += `<div class="diff-entry" style="cursor:pointer" onclick='openSubtaskModal(${safeEv})' title="Click to view subtask detail"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${esc(e.subtask)}</span> <span style="color:${statusColor(e.status)}">${esc(e.status)}</span> <span style="color:var(--dim);font-size:10px">(${esc(e.task)})</span></div>`;
   });
   el.innerHTML = html;
   const pager = document.getElementById("history-pager");
@@ -169,8 +169,8 @@ function _renderBranchesAll(d) {
   d.branches.forEach(br => {
     const w = Math.round(br.pct * barW / 100);
     html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="selectTask(${JSON.stringify(br.task)})" title="Click to select task">`;
-    html += `<span style="color:var(--dim);font-size:10px;min-width:60px;flex-shrink:0">${br.task}</span>`;
-    html += `<span style="color:var(--cyan);min-width:80px;flex-shrink:0">${br.branch}</span>`;
+    html += `<span style="color:var(--dim);font-size:10px;min-width:60px;flex-shrink:0">${esc(br.task)}</span>`;
+    html += `<span style="color:var(--cyan);min-width:80px;flex-shrink:0">${esc(br.branch)}</span>`;
     html += `<div style="width:${barW}px;height:6px;background:var(--bg2);border-radius:3px;flex-shrink:0"><div style="width:${w}px;height:6px;background:var(--green);border-radius:3px"></div></div>`;
     html += `<span style="color:var(--dim);font-size:10px">${br.verified}/${br.total}</span>`;
     if (br.running > 0) html += `<span style="font-size:10px;color:var(--cyan)">${br.running}▶</span>`;
@@ -186,12 +186,12 @@ function _renderBranchesDetail(d) {
     return;
   }
   const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.task} — ${d.branch_count} branches</div>`;
+  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${esc(d.task)} — ${d.branch_count} branches</div>`;
   d.branches.forEach(br => {
-    html += `<div style="margin-bottom:8px"><span style="color:var(--cyan);font-weight:bold">${br.branch}</span> <span style="color:var(--dim);font-size:10px">${br.subtask_count} STs</span>`;
+    html += `<div style="margin-bottom:8px"><span style="color:var(--cyan);font-weight:bold">${esc(br.branch)}</span> <span style="color:var(--dim);font-size:10px">${br.subtask_count} STs</span>`;
     html += ` <span style="font-size:10px;color:var(--green)">${br.verified}✓</span> <span style="font-size:10px;color:var(--cyan)">${br.running}▶</span> <span style="font-size:10px;color:var(--yellow)">${br.pending}●</span>`;
     br.subtasks.forEach(st => {
-      html += `<div class="diff-entry" style="padding-left:12px"><span class="diff-st">${st.name}</span> <span style="color:${statusColor(st.status)}">${st.status}</span></div>`;
+      html += `<div class="diff-entry" style="padding-left:12px"><span class="diff-st">${esc(st.name)}</span> <span style="color:${statusColor(st.status)}">${esc(st.status)}</span></div>`;
     });
     html += `</div>`;
   });
@@ -220,12 +220,12 @@ function _renderSettings(d) {
     const vStr = typeof v === "string" ? v : JSON.stringify(v);
     const inputId = "cfg-" + k;
     html += `<div class="diff-entry" style="display:flex;align-items:center;gap:6px">`;
-    html += `<span style="color:var(--cyan);font-size:10px;min-width:120px;flex-shrink:0">${k}</span>`;
+    html += `<span style="color:var(--cyan);font-size:10px;min-width:120px;flex-shrink:0">${esc(k)}</span>`;
     if (typeof v === "boolean") {
       const chk = v ? "checked" : "";
-      html += `<input type="checkbox" id="${inputId}" ${chk} onchange="saveSetting('${k}',this.checked)" style="accent-color:var(--cyan)">`;
+      html += `<input type="checkbox" id="${inputId}" ${chk} onchange="saveSetting(${JSON.stringify(k)},this.checked)" style="accent-color:var(--cyan)">`;
     } else {
-      html += `<input id="${inputId}" value="${vStr.replace(/"/g,'&quot;')}" style="flex:1;min-width:0;padding:1px 4px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)" onchange="saveSetting('${k}',this.value)">`;
+      html += `<input id="${inputId}" value="${vStr.replace(/"/g,'&quot;')}" style="flex:1;min-width:0;padding:1px 4px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)" onchange="saveSetting(${JSON.stringify(k)},this.value)">`;
     }
     html += `</div>`;
   });
@@ -297,12 +297,12 @@ function _renderPriority(d) {
       const fill = Math.round(barW * c.risk / maxRisk);
       html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
       html += `<span style="color:var(--yellow);min-width:14px">${marker}</span>`;
-      html += `<span style="color:var(--cyan);min-width:32px">${c.subtask}</span>`;
-      html += `<span style="color:${col};min-width:52px">${c.status}</span>`;
+      html += `<span style="color:var(--cyan);min-width:32px">${esc(c.subtask)}</span>`;
+      html += `<span style="color:${col};min-width:52px">${esc(c.status)}</span>`;
       html += `<span style="min-width:40px;color:var(--yellow)">r=${c.risk}</span>`;
       html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
       html += `<span style="position:absolute;left:0;top:0;height:4px;width:${fill}%;border-radius:2px;background:${c.status==="Running"?"var(--cyan)":"var(--yellow)"}"></span></span>`;
-      html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${c.task}</span>`;
+      html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${esc(c.task)}</span>`;
       html += `</div>`;
     });
   }
@@ -327,12 +327,12 @@ function _renderStalled(d) {
     d.stalled.forEach(s => {
       const pct = Math.min(100, Math.round(s.age / (d.threshold * 3) * 100));
       html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
-      html += `<span style="color:var(--yellow);min-width:32px">${s.subtask}</span>`;
+      html += `<span style="color:var(--yellow);min-width:32px">${esc(s.subtask)}</span>`;
       html += `<span style="color:var(--red);min-width:50px">${s.age} steps</span>`;
       html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
       html += `<span style="position:absolute;left:0;top:0;height:4px;width:${pct}%;border-radius:2px;background:var(--red)"></span></span>`;
-      html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${s.task}</span>`;
-      html += `<button onclick="healSubtask('${s.subtask}')" style="background:var(--surface);color:var(--cyan);border:1px solid var(--border);border-radius:3px;font-size:9px;padding:0 4px;cursor:pointer" title="Reset to Pending">↻</button>`;
+      html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${esc(s.task)}</span>`;
+      html += `<button onclick="healSubtask(${JSON.stringify(s.subtask)})" style="background:var(--surface);color:var(--cyan);border:1px solid var(--border);border-radius:3px;font-size:9px;padding:0 4px;cursor:pointer" title="Reset to Pending">↻</button>`;
       html += `</div>`;
     });
   }
@@ -381,9 +381,9 @@ function _renderSubtasks() {
   rows.forEach(s => {
     const ev = {subtask:s.subtask,task:s.task,branch:s.branch,status:s.status,step:"—",output:""};
     html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:6px" onclick='openSubtaskModal(${JSON.stringify(ev)})' title="Click for detail">`;
-    html += `<span class="diff-st" style="min-width:30px">${s.subtask}</span>`;
-    html += `<span style="color:${statusColor(s.status)};min-width:60px;font-size:10px">${s.status}</span>`;
-    html += `<span style="color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.branch}</span>`;
+    html += `<span class="diff-st" style="min-width:30px">${esc(s.subtask)}</span>`;
+    html += `<span style="color:${statusColor(s.status)};min-width:60px;font-size:10px">${esc(s.status)}</span>`;
+    html += `<span style="color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.branch)}</span>`;
     html += `<span style="color:var(--dim);font-size:9px">${s.output_length}b</span>`;
     html += `</div>`;
   });
@@ -507,7 +507,7 @@ export async function pollCache() {
       `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cumulative hits</span> ${cumHits.toLocaleString()}</div>` +
       `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cumulative misses</span> ${cumMisses.toLocaleString()}</div>` +
       `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Hit rate</span> ${hitRate}</div>` +
-      `<div class="diff-entry" style="font-size:10px;word-break:break-all"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cache dir</span> <span style="color:var(--dim)">${dir}</span></div>` +
+      `<div class="diff-entry" style="font-size:10px;word-break:break-all"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cache dir</span> <span style="color:var(--dim)">${esc(dir)}</span></div>` +
       `<div style="margin-top:8px"><button class="toolbar-btn" onclick="clearCache()">Clear Cache</button></div>`;
   } catch (_) {}
 }
@@ -566,7 +566,7 @@ function _renderCacheHistory() {
       `<span style="color:var(--cyan);min-width:24px;display:inline-block">#${s.session}</span>` +
       `<span style="min-width:48px;display:inline-block">${s.hits}H ${s.misses}M</span>` +
       `<span style="min-width:48px;display:inline-block">${rate}</span>` +
-      `<span style="color:var(--dim);font-size:9px">${ended}</span>` +
+      `<span style="color:var(--dim);font-size:9px">${esc(ended)}</span>` +
       `</div>`;
   }).join("");
   el.innerHTML =
