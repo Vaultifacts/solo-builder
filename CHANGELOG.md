@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.3.0 — 2026-03-09  Clear buttons + stalled UX + export rows + Discord /subtasks (TASK-278 through TASK-282)
+
+- **282 tasks** merged to master (TASK-001 through TASK-282); **573 API tests**, **280 Discord tests**
+- Branches tab: "✕ Clear" button shown when status/task filters active; calls `_clearBranchesFilters()` — TASK-278
+- Export tab: "Stalled Subtasks" row links to `/subtasks/export?status=running&min_age=<threshold>`; threshold fetched from `GET /stalled` on tab open — TASK-279
+- Dashboard `hdr-badge` tooltip shows worst-offending branch on hover when stalled > 0: `"N stalled — worst: task/branch (count)"` — TASK-280
+- `GET /history/export` `?task=` filter: 5 new tests (match, no-match, case-insensitive, compose, CSV) — TASK-281
+- Discord `/subtasks` slash command: `task=` + `status=` optional filters; `_format_subtasks()` formatter; 6 new tests — TASK-282
+
+---
+
 ## v5.2.0 — 2026-03-09  Cross-endpoint tests + filter UX + min_age + server-side exports (TASK-273 through TASK-277)
 
 - **277 tasks** merged to master (TASK-001 through TASK-277); **568 API tests**, **274 Discord tests**

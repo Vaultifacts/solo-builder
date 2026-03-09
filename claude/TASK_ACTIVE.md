@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-282
+TASK-283
 
-Discord /subtasks slash command: mirrors /branches structure — lists all subtasks with optional ?task= and ?status= filters; 5+ new tests
+CHANGELOG v5.3.0: document TASK-278 through TASK-282 (branches clear button, export stalled row, stalled badge tooltip, history/export task filter tests, Discord /subtasks command)
