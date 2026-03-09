@@ -219,7 +219,7 @@ window.toggleExpand = function toggleExpand(btn, event) {
   const panel = row.querySelector(".st-expand-content");
   if (!panel) return;
   const open = panel.classList.toggle("open");
-  btn.innerHTML = open ? "&#9660;" : "&#9654;";
+  btn.textContent = open ? "▼" : "▶";
 };
 
 window.filterSubtasks = function filterSubtasks() {
