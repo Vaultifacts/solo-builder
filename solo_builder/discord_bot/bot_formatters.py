@@ -366,10 +366,12 @@ def _format_priority(state: dict) -> str:
     return "\n".join(lines)
 
 
-def _format_stalled(state: dict, task_filter: str = "", branch_filter: str = "") -> str:
+def _format_stalled(state: dict, task_filter: str = "", branch_filter: str = "",
+                    min_age: int = 0) -> str:
     """Show subtasks stuck in Running longer than STALL_THRESHOLD.
 
     Optional task_filter and branch_filter apply case-insensitive substring matching.
+    When min_age > 0, it overrides STALL_THRESHOLD for this call.
     """
     dag = state.get("dag", {})
     step = state.get("step", 0)
@@ -381,6 +383,8 @@ def _format_stalled(state: dict, task_filter: str = "", branch_filter: str = "")
         threshold = int(cfg.get("STALL_THRESHOLD", 5))
     except Exception:
         pass
+    if min_age > 0:
+        threshold = min_age
     stuck = []
     branch_counts: dict = {}
     for task_name, task in dag.items():
@@ -398,9 +402,10 @@ def _format_stalled(state: dict, task_filter: str = "", branch_filter: str = "")
                         key = f"{task_name} / {branch_name}"
                         branch_counts[key] = branch_counts.get(key, 0) + 1
     stuck.sort(key=lambda x: x[3], reverse=True)
+    override_note = f" _(min_age override)_" if min_age > 0 else ""
     if not stuck:
-        return f"✅ **Stalled Subtasks** — none (threshold: {threshold} steps)"
-    lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps)"]
+        return f"✅ **Stalled Subtasks** — none (threshold: {threshold} steps{override_note})"
+    lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps{override_note})"]
     if len(branch_counts) > 1:
         lines.append("```")
         for key, cnt in sorted(branch_counts.items(), key=lambda x: -x[1]):
