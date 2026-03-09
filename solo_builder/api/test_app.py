@@ -298,6 +298,49 @@ class TestGetTasks(_Base):
         d = self.client.get("/tasks").get_json()
         self.assertEqual(d["tasks"][0]["review_subtasks"], 0)
 
+    def test_response_has_pagination_keys(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/tasks").get_json()
+        for key in ("tasks", "total", "page", "pages"):
+            self.assertIn(key, d)
+
+    def _multi_task_state(self, n=5):
+        dag = {}
+        for i in range(n):
+            dag[f"Task {i}"] = {"status": "Pending", "depends_on": [],
+                                 "branches": {"B": {"subtasks": {f"S{i}": {"status": "Pending"}}}}}
+        return {"step": 0, "dag": dag}
+
+    def test_limit_restricts_tasks(self):
+        self._write_state(self._multi_task_state(5))
+        d = self.client.get("/tasks?limit=2").get_json()
+        self.assertEqual(len(d["tasks"]), 2)
+
+    def test_total_is_all_tasks(self):
+        self._write_state(self._multi_task_state(5))
+        d = self.client.get("/tasks?limit=2").get_json()
+        self.assertEqual(d["total"], 5)
+
+    def test_pages_calculated_correctly(self):
+        self._write_state(self._multi_task_state(5))
+        d = self.client.get("/tasks?limit=2").get_json()
+        self.assertEqual(d["pages"], 3)  # ceil(5/2)
+
+    def test_page_two_returns_next_tasks(self):
+        self._write_state(self._multi_task_state(5))
+        d1 = self.client.get("/tasks?limit=2&page=1").get_json()
+        d2 = self.client.get("/tasks?limit=2&page=2").get_json()
+        ids1 = {t["id"] for t in d1["tasks"]}
+        ids2 = {t["id"] for t in d2["tasks"]}
+        self.assertEqual(len(ids2), 2)
+        self.assertTrue(ids1.isdisjoint(ids2))
+
+    def test_limit_zero_returns_all(self):
+        self._write_state(self._multi_task_state(5))
+        d = self.client.get("/tasks?limit=0").get_json()
+        self.assertEqual(len(d["tasks"]), 5)
+        self.assertEqual(d["pages"], 1)
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks/<id>
