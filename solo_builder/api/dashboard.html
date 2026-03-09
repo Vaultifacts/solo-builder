@@ -222,6 +222,12 @@
       <div id="subtasks-content">
         <div class="detail-placeholder">Loading subtasks…</div>
       </div>
+      <div id="subtasks-pager" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px">
+        <button class="toolbar-btn" style="padding:1px 6px" onclick="_subtasksPageStep(-1)">◀</button>
+        <span id="subtasks-page-label" style="color:var(--dim)"></span>
+        <button class="toolbar-btn" style="padding:1px 6px" onclick="_subtasksPageStep(1)">▶</button>
+        <span id="subtasks-count-label" style="color:var(--dim);margin-left:4px"></span>
+      </div>
     </div>
     <div class="sidebar-tab-content" id="tab-agents">
       <div id="agents-content">
