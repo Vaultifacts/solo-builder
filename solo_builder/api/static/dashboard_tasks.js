@@ -155,6 +155,7 @@ export function renderGrid(tasks) {
 export async function selectTask(id) {
   state.selectedTask = id;
   document.querySelectorAll(".task-card").forEach(c => c.classList.toggle("active", c.dataset.id === id));
+  _updateTaskExportLinks(id);
   try {
     const t = await api("/tasks/" + encodeURIComponent(id));
     state.tasksCache[id] = t;
@@ -162,6 +163,19 @@ export async function selectTask(id) {
   } catch (e) {
     toast("Could not load task detail: " + e.message);
   }
+}
+
+function _updateTaskExportLinks(id) {
+  const section = document.getElementById("export-task-section");
+  const csvLink  = document.getElementById("export-task-csv");
+  const jsonLink = document.getElementById("export-task-json");
+  if (!section || !csvLink || !jsonLink) return;
+  const base = "/tasks/" + encodeURIComponent(id) + "/export";
+  csvLink.href  = base;
+  csvLink.download = "task_" + id.replace(/\s+/g, "_") + ".csv";
+  jsonLink.href = base + "?format=json";
+  jsonLink.download = "task_" + id.replace(/\s+/g, "_") + ".json";
+  section.style.display = "";
 }
 window.selectTask = selectTask;
 

@@ -2745,6 +2745,59 @@ class TestPostTaskReset(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /tasks/<id>/export
+# ---------------------------------------------------------------------------
+
+class TestGetTaskExport(_Base):
+
+    def test_export_csv_default_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        r = self.client.get("/tasks/Task 0/export")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/csv", r.content_type)
+
+    def test_export_csv_contains_header(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/tasks/Task 0/export")
+        text = r.data.decode()
+        self.assertIn("subtask,branch,status", text)
+
+    def test_export_csv_contains_subtask_row(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/tasks/Task 0/export")
+        text = r.data.decode()
+        self.assertIn("A1", text)
+        self.assertIn("Verified", text)
+
+    def test_export_json_format(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        r = self.client.get("/tasks/Task 0/export?format=json")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["task"], "Task 0")
+        self.assertIsInstance(d["subtasks"], list)
+
+    def test_export_json_subtask_fields(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        r = self.client.get("/tasks/Task 0/export?format=json")
+        row = r.get_json()["subtasks"][0]
+        self.assertIn("subtask", row)
+        self.assertIn("branch", row)
+        self.assertIn("status", row)
+        self.assertIn("output_length", row)
+
+    def test_export_unknown_task_returns_404(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/tasks/Task 999/export")
+        self.assertEqual(r.status_code, 404)
+
+    def test_export_csv_attachment_header(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        r = self.client.get("/tasks/Task 0/export")
+        self.assertIn("attachment", r.headers.get("Content-Disposition", ""))
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
