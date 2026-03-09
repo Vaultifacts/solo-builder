@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.6.0 — 2026-03-09  Stalled tab UX + Discord filters + test coverage (TASK-291 through TASK-294)
+
+- **294 tasks** merged to master (TASK-001 through TASK-294); **583 API tests**, **294 Discord tests**
+- CHANGELOG v5.5.0 documented — TASK-291
+- Stalled tab: `#stalled-branch-filter` input added (parity with task filter); composes `?task=` and `?branch=` in `pollStalled()` — TASK-292
+- Discord `/history`: optional `task=`, `branch=`, `status=` filter params; `_format_history()` updated; 4 new tests — TASK-293
+- `GET /branches/export`: `?status=review` and `?status=pending` filter tests added; JSON `total` invariant verified; 4 new tests — TASK-294
+
+---
+
 ## v5.5.0 — 2026-03-09  Stalled filters + Stalled tab UX + Discord /stalled filters (TASK-287 through TASK-290)
 
 - **290 tasks** merged to master (TASK-001 through TASK-290); **579 API tests**, **290 Discord tests**

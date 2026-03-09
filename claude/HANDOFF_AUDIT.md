@@ -1,18 +1,18 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-294
+TASK-295
 
 ## Verdict: PASS
 
 ## Verification Results
 - lint_dashboard_handlers.js: PASS (49 handler calls, 0 gaps)
-- unittest-discover (api): PASS (583 tests, 0 failures; +4 new)
+- unittest-discover (api): PASS (583 tests, 0 failures; +0 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/test_app.py` — 4 new tests in `TestBranchesExport` using `_four_branch_state()` helper (4 branches, one per status): `?status=review`, `?status=pending`, JSON `total == len(branches)` invariant, `?status=` + `?task=` compose
+- `CHANGELOG.md` — v5.6.0 entry added at top: 294 tasks, 583 API tests, 294 Discord tests; documents TASK-291 through TASK-294
 
 ## Implementation Detail
-Investigation found `GET /branches/export ?format=json` already correctly wraps response in `{"branches": [...], "total": N}` (lines 108-112 of branches.py). The `?status=review` and `?status=pending` filter cases were not previously tested. 583 API tests total.
+Changelog-only task. All counts verified against test runner output.
