@@ -474,3 +474,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-145
+Goal: Add GET /tasks/<task_id>/subtasks endpoint — flat list of subtasks for a specific task with same filter params as GET /subtasks
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
