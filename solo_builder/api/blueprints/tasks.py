@@ -1,7 +1,9 @@
-"""Tasks blueprint — GET /tasks, /tasks/<id>, POST /tasks/<id>/trigger, POST /tasks/<id>/reset, GET /graph, /priority."""
+"""Tasks blueprint — GET /tasks, /tasks/<id>, /tasks/<id>/export, POST /tasks/<id>/trigger, POST /tasks/<id>/reset, GET /graph, /priority."""
+import csv
+import io
 import json
 
-from flask import Blueprint, jsonify, abort
+from flask import Blueprint, jsonify, abort, request, Response
 
 from ..helpers import _load_state, _load_dag, _task_summary
 
@@ -21,6 +23,47 @@ def get_task(task_id: str):
     if task is None:
         abort(404, description=f"Task '{task_id}' not found.")
     return jsonify({"id": task_id, **task})
+
+
+@tasks_bp.get("/tasks/<path:task_id>/export")
+def export_task(task_id: str):
+    """Download a single task's subtasks as CSV (default) or JSON (?format=json).
+
+    CSV columns: subtask, branch, status, output_length, description
+    JSON: {task, subtasks: [...]}
+    """
+    dag  = _load_dag()
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    fmt = (request.args.get("format") or "csv").strip().lower()
+    rows = []
+    for br_name, br_data in task.get("branches", {}).items():
+        for st_name, st_data in br_data.get("subtasks", {}).items():
+            rows.append({
+                "subtask": st_name,
+                "branch": br_name,
+                "status": st_data.get("status", "Pending"),
+                "output_length": len(st_data.get("output", "")),
+                "description": st_data.get("description", ""),
+            })
+    safe_id = task_id.replace("/", "_").replace(" ", "_")
+    if fmt == "json":
+        body = json.dumps({"task": task_id, "subtasks": rows}, indent=2)
+        return Response(
+            body,
+            mimetype="application/json",
+            headers={"Content-Disposition": f'attachment; filename="task_{safe_id}.json"'},
+        )
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["subtask", "branch", "status", "output_length", "description"])
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="task_{safe_id}.csv"'},
+    )
 
 
 @tasks_bp.post("/tasks/<path:task_id>/trigger")
