@@ -549,6 +549,21 @@ window._applySubtasksBranchFilter = function () {
   pollSubtasks();
 };
 
+window._resetSubtasksFilters = function () {
+  _subtasksStatusFilter = "";
+  _subtasksNameFilter   = "";
+  _subtasksTaskFilter   = "";
+  _subtasksBranchFilter = "";
+  _subtasksPage = 1;
+  const f = document.getElementById("subtasks-filter");
+  const tf = document.getElementById("subtasks-task-filter");
+  const bf = document.getElementById("subtasks-branch-filter");
+  if (f)  f.value  = "";
+  if (tf) tf.value = "";
+  if (bf) bf.value = "";
+  _updateSubtasksExportLinks();
+};
+
 window.renderHistory = function () {
   _historyPage = 1;
   _renderHistory(_historyRows);
