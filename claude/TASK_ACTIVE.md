@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-283
+TASK-284
 
-CHANGELOG v5.3.0: document TASK-278 through TASK-282 (branches clear button, export stalled row, stalled badge tooltip, history/export task filter tests, Discord /subtasks command)
+History tab export links sync with active task/branch/status filters: update export-tab-history-csv/json hrefs on switchTab('export') to include ?task=, ?branch=, ?status= when set in the History tab

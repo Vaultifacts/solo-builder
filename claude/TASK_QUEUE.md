@@ -1578,3 +1578,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-284
+Goal: History tab export links sync with active task/branch/status filters: update export-tab-history-csv/json hrefs on switchTab('export') to include ?task=, ?branch=, ?status= when set in the History tab
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
