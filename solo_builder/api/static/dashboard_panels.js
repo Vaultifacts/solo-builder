@@ -258,6 +258,7 @@ function _renderSettings(d) {
     html += `</div>`;
   });
   html += `<span class="feedback" id="fb-settings"></span>`;
+  html += `<div style="margin-top:8px"><a class="toolbar-btn" href="/config/export" download="settings.json">&#8659; Export settings.json</a></div>`;
   html += `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">` +
     `<div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tool override</div>` +
     `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">` +
