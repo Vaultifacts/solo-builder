@@ -235,6 +235,13 @@
       <div style="font-size:10px;color:var(--dim);margin-bottom:8px">Download data exports</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <div>
+          <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Tasks</div>
+          <div style="display:flex;gap:6px">
+            <a class="toolbar-btn" href="/tasks/export" download="tasks.csv">CSV</a>
+            <a class="toolbar-btn" href="/tasks/export?format=json" download="tasks.json">JSON</a>
+          </div>
+        </div>
+        <div>
           <div style="font-size:10px;color:var(--cyan);margin-bottom:4px">Metrics</div>
           <div style="display:flex;gap:6px">
             <a class="toolbar-btn" href="/metrics/export" download="metrics.csv">CSV</a>
