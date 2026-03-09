@@ -21,6 +21,13 @@ def list_tasks():
 
 @tasks_bp.get("/tasks/<path:task_id>")
 def get_task(task_id: str):
+    """Full task data including branches and subtasks.
+
+    Used by the dashboard detail panel (tick loop fetches this for the
+    selected task after GET /tasks grid poll completes).  Heavier than
+    the summary from GET /tasks but only called for one task at a time.
+    For lightweight progress counts only, use GET /tasks/<id>/progress.
+    """
     dag  = _load_dag()
     task = dag.get(task_id)
     if task is None:
