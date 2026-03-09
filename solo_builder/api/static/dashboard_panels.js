@@ -82,10 +82,64 @@ function _updateHistoryExportLinks() {
   if (hint) hint.textContent = parts.length ? `(filtered: ${parts.join(", ")})` : "";
 }
 
+const _STATUS_COL = {Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"};
+
+function _placeholder(text) {
+  const d = document.createElement("div");
+  d.className = "detail-placeholder";
+  d.textContent = text;
+  return d;
+}
+
+function _svgBar(barW, fillW, label, fillColor) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", barW + 4); svg.setAttribute("height", "14");
+  const bg = document.createElementNS(NS, "rect");
+  bg.setAttribute("x","1"); bg.setAttribute("y","1"); bg.setAttribute("width", barW);
+  bg.setAttribute("height","12"); bg.setAttribute("rx","3"); bg.setAttribute("fill","var(--surface)");
+  const fg = document.createElementNS(NS, "rect");
+  fg.setAttribute("x","1"); fg.setAttribute("y","1"); fg.setAttribute("width", fillW);
+  fg.setAttribute("height","12"); fg.setAttribute("rx","3"); fg.setAttribute("fill", fillColor);
+  const txt = document.createElementNS(NS, "text");
+  txt.setAttribute("x", barW / 2); txt.setAttribute("y","10");
+  txt.setAttribute("text-anchor","middle"); txt.setAttribute("font-size","8"); txt.setAttribute("fill","var(--text)");
+  txt.textContent = label;
+  svg.append(bg, fg, txt);
+  return svg;
+}
+
+function _sparklineSvg(hist, W, H, pad) {
+  if (hist.length <= 1) return _placeholder("Not enough data yet (run more steps).");
+  const NS = "http://www.w3.org/2000/svg";
+  const maxV = Math.max(1, ...hist.map(r => r.verified));
+  const pts = hist.map((r, i) => {
+    const x = pad + (i / (hist.length - 1)) * (W - 2 * pad);
+    const y = H - pad - (r.verified / maxV) * (H - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", W); svg.setAttribute("height", H);
+  svg.style.cssText = "display:block;margin:6px 0";
+  const poly = document.createElementNS(NS, "polyline");
+  poly.setAttribute("points", pts); poly.setAttribute("fill","none");
+  poly.setAttribute("stroke","var(--cyan)"); poly.setAttribute("stroke-width","1.5");
+  const t1 = document.createElementNS(NS, "text");
+  t1.setAttribute("x","2"); t1.setAttribute("y", H - 1);
+  t1.setAttribute("font-size","8"); t1.setAttribute("fill","var(--dim)");
+  t1.textContent = hist[0].step_index;
+  const t2 = document.createElementNS(NS, "text");
+  t2.setAttribute("x", W - 2); t2.setAttribute("y", H - 1);
+  t2.setAttribute("font-size","8"); t2.setAttribute("fill","var(--dim)"); t2.setAttribute("text-anchor","end");
+  t2.textContent = hist[hist.length - 1].step_index;
+  svg.append(poly, t1, t2);
+  return svg;
+}
+
 function _renderHistory(events) {
   const el = document.getElementById("history-content");
   if (!events || events.length === 0) {
-    el.innerHTML = `<div class="detail-placeholder">No history yet.</div>`;
+    el.replaceChildren(_placeholder("No history yet."));
     const pager = document.getElementById("history-pager");
     if (pager) pager.style.display = "none";
     return;
@@ -104,18 +158,38 @@ function _renderHistory(events) {
   const start = (_historyPage - 1) * _PAGE_SIZE;
   const page  = filtered.slice(start, start + _PAGE_SIZE);
   if (page.length === 0) {
-    el.innerHTML = `<div class="detail-placeholder">No matching events.</div>`;
+    el.replaceChildren(_placeholder("No matching events."));
     const pager = document.getElementById("history-pager");
     if (pager) pager.style.display = "none";
     return;
   }
-  const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
-  let html = "";
-  page.forEach(e => {
-    const safeEv = JSON.stringify(e).replace(/'/g, "&#39;");
-    html += `<div class="diff-entry" style="cursor:pointer" onclick='openSubtaskModal(${safeEv})' title="Click to view subtask detail"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${esc(e.subtask)}</span> <span style="color:${statusColor(e.status)}">${esc(e.status)}</span> <span style="color:var(--dim);font-size:10px">(${esc(e.task)})</span></div>`;
+  const rows = page.map(e => {
+    const row = document.createElement("div");
+    row.className = "diff-entry";
+    row.style.cursor = "pointer";
+    row.title = "Click to view subtask detail";
+    row.addEventListener("click", () => window.openSubtaskModal(e));
+
+    const step = document.createElement("span");
+    step.style.cssText = "color:var(--dim);font-size:10px";
+    step.textContent = "Step " + e.step;
+
+    const st = document.createElement("span");
+    st.className = "diff-st";
+    st.textContent = e.subtask;
+
+    const status = document.createElement("span");
+    status.style.color = _STATUS_COL[e.status] || "var(--text)";
+    status.textContent = e.status;
+
+    const task = document.createElement("span");
+    task.style.cssText = "color:var(--dim);font-size:10px";
+    task.textContent = "(" + e.task + ")";
+
+    row.append(step, " ", st, " ", status, " ", task);
+    return row;
   });
-  el.innerHTML = html;
+  el.replaceChildren(...rows);
   const pager = document.getElementById("history-pager");
   const label = document.getElementById("history-page-label");
   const count = document.getElementById("history-count-label");
@@ -160,36 +234,67 @@ export async function pollSettings() {
 function _renderSettings(d) {
   const el = document.getElementById("settings-content");
   if (!d || typeof d !== "object") {
-    el.innerHTML = `<div class="detail-placeholder">Could not load settings.</div>`;
+    el.replaceChildren(_placeholder("Could not load settings."));
     return;
   }
   _settingsCache = d;
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${Object.keys(d).length} settings</div>`;
-  Object.entries(d).forEach(([k, v]) => {
+  const counter = document.createElement("div");
+  counter.style.cssText = "color:var(--dim);font-size:10px;margin-bottom:6px";
+  counter.textContent = `${Object.keys(d).length} settings`;
+  const rows = Object.entries(d).map(([k, v]) => {
     const vStr = typeof v === "string" ? v : JSON.stringify(v);
     const inputId = "cfg-" + k;
-    html += `<div class="diff-entry" style="display:flex;align-items:center;gap:6px">`;
-    html += `<span style="color:var(--cyan);font-size:10px;min-width:120px;flex-shrink:0">${esc(k)}</span>`;
+    const row = document.createElement("div");
+    row.className = "diff-entry";
+    row.style.cssText = "display:flex;align-items:center;gap:6px";
+    const lbl = document.createElement("span");
+    lbl.style.cssText = "color:var(--cyan);font-size:10px;min-width:120px;flex-shrink:0";
+    lbl.textContent = k;
+    row.appendChild(lbl);
     if (typeof v === "boolean") {
-      const chk = v ? "checked" : "";
-      html += `<input type="checkbox" id="${inputId}" ${chk} onchange="saveSetting(${JSON.stringify(k)},this.checked)" style="accent-color:var(--cyan)">`;
+      const chk = document.createElement("input");
+      chk.type = "checkbox"; chk.id = inputId; chk.checked = v;
+      chk.style.accentColor = "var(--cyan)";
+      chk.addEventListener("change", () => window.saveSetting(k, chk.checked));
+      row.appendChild(chk);
     } else {
-      html += `<input id="${inputId}" value="${vStr.replace(/"/g,'&quot;')}" style="flex:1;min-width:0;padding:1px 4px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)" onchange="saveSetting(${JSON.stringify(k)},this.value)">`;
+      const inp = document.createElement("input");
+      inp.id = inputId; inp.value = vStr;
+      inp.style.cssText = "flex:1;min-width:0;padding:1px 4px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)";
+      inp.addEventListener("change", () => window.saveSetting(k, inp.value));
+      row.appendChild(inp);
     }
-    html += `</div>`;
+    return row;
   });
-  html += `<span class="feedback" id="fb-settings"></span>`;
-  html += `<div style="margin-top:8px"><a class="toolbar-btn" href="/config/export" download="settings.json">&#8659; Export settings.json</a></div>`;
-  html += `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">` +
-    `<div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tool override</div>` +
-    `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">` +
-    `<input id="tool-override-st" class="cmd-input" placeholder="A1" title="Subtask name" style="width:50px">` +
-    `<input id="tool-override-tools" class="cmd-input-wide" placeholder="Read,Glob,Grep" title="Comma-separated tool names">` +
-    `<button class="cmd-btn btn-tools" onclick="submitToolOverride()">⚙ Set</button>` +
-    `</div>` +
-    `<span class="feedback" id="fb-tool-override"></span>` +
-    `</div>`;
-  el.innerHTML = html;
+  const fb = document.createElement("span");
+  fb.className = "feedback"; fb.id = "fb-settings";
+  const exportDiv = document.createElement("div");
+  exportDiv.style.marginTop = "8px";
+  const exportA = document.createElement("a");
+  exportA.className = "toolbar-btn"; exportA.href = "/config/export"; exportA.download = "settings.json";
+  exportA.textContent = "⬇ Export settings.json";
+  exportDiv.appendChild(exportA);
+  const toolSection = document.createElement("div");
+  toolSection.style.cssText = "margin-top:10px;border-top:1px solid var(--border);padding-top:8px";
+  const toolHdr = document.createElement("div");
+  toolHdr.style.cssText = "font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px";
+  toolHdr.textContent = "Tool override";
+  const toolRow = document.createElement("div");
+  toolRow.style.cssText = "display:flex;gap:4px;align-items:center;flex-wrap:wrap";
+  const stInput = document.createElement("input");
+  stInput.id = "tool-override-st"; stInput.className = "cmd-input";
+  stInput.placeholder = "A1"; stInput.title = "Subtask name"; stInput.style.width = "50px";
+  const toolsInput = document.createElement("input");
+  toolsInput.id = "tool-override-tools"; toolsInput.className = "cmd-input-wide";
+  toolsInput.placeholder = "Read,Glob,Grep"; toolsInput.title = "Comma-separated tool names";
+  const toolBtn = document.createElement("button");
+  toolBtn.className = "cmd-btn btn-tools"; toolBtn.textContent = "⚙ Set";
+  toolBtn.addEventListener("click", () => window.submitToolOverride());
+  toolRow.append(stInput, toolsInput, toolBtn);
+  const toolFb = document.createElement("span");
+  toolFb.className = "feedback"; toolFb.id = "fb-tool-override";
+  toolSection.append(toolHdr, toolRow, toolFb);
+  el.replaceChildren(counter, ...rows, fb, exportDiv, toolSection);
 }
 
 window.submitToolOverride = async function () {
@@ -232,31 +337,55 @@ export async function pollPriority() {
 function _renderPriority(d) {
   const el = document.getElementById("priority-content");
   if (!d || !d.queue) {
-    el.innerHTML = `<div class="detail-placeholder">No priority data.</div>`;
+    el.replaceChildren(_placeholder("No priority data."));
     return;
   }
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} candidates · step ${d.step}</div>`;
+  const header = document.createElement("div");
+  header.style.cssText = "color:var(--dim);font-size:10px;margin-bottom:6px";
+  header.textContent = d.count + " candidates · step " + d.step;
+  const nodes = [header];
   if (d.queue.length === 0) {
-    html += `<div class="detail-placeholder">All subtasks Verified or blocked.</div>`;
+    nodes.push(_placeholder("All subtasks Verified or blocked."));
   } else {
+    const maxRisk = d.queue[0].risk || 1;
     d.queue.forEach((c, i) => {
       const col = c.status === "Running" ? "var(--cyan)" : "var(--dim)";
-      const marker = i < 6 ? "▶ " : "  ";
-      const barW = 80;
-      const maxRisk = d.queue[0].risk || 1;
-      const fill = Math.round(barW * c.risk / maxRisk);
-      html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
-      html += `<span style="color:var(--yellow);min-width:14px">${marker}</span>`;
-      html += `<span style="color:var(--cyan);min-width:32px">${esc(c.subtask)}</span>`;
-      html += `<span style="color:${col};min-width:52px">${esc(c.status)}</span>`;
-      html += `<span style="min-width:40px;color:var(--yellow)">r=${c.risk}</span>`;
-      html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
-      html += `<span style="position:absolute;left:0;top:0;height:4px;width:${fill}%;border-radius:2px;background:${c.status==="Running"?"var(--cyan)":"var(--yellow)"}"></span></span>`;
-      html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${esc(c.task)}</span>`;
-      html += `</div>`;
+      const fill = Math.round(80 * c.risk / maxRisk);
+      const row = document.createElement("div");
+      row.className = "diff-entry";
+      row.style.cssText = "font-size:10px;display:flex;align-items:center;gap:4px";
+
+      const marker = document.createElement("span");
+      marker.style.cssText = "color:var(--yellow);min-width:14px";
+      marker.textContent = i < 6 ? "▶ " : "  ";
+
+      const stEl = document.createElement("span");
+      stEl.style.cssText = "color:var(--cyan);min-width:32px";
+      stEl.textContent = c.subtask;
+
+      const statusEl = document.createElement("span");
+      statusEl.style.cssText = `color:${col};min-width:52px`;
+      statusEl.textContent = c.status;
+
+      const riskEl = document.createElement("span");
+      riskEl.style.cssText = "min-width:40px;color:var(--yellow)";
+      riskEl.textContent = "r=" + c.risk;
+
+      const barBg = document.createElement("span");
+      barBg.style.cssText = "flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative";
+      const barFg = document.createElement("span");
+      barFg.style.cssText = `position:absolute;left:0;top:0;height:4px;width:${fill}%;border-radius:2px;background:${c.status === "Running" ? "var(--cyan)" : "var(--yellow)"}`;
+      barBg.appendChild(barFg);
+
+      const taskEl = document.createElement("span");
+      taskEl.style.cssText = "color:var(--dim);font-size:9px;min-width:60px;text-align:right";
+      taskEl.textContent = c.task;
+
+      row.append(marker, stEl, statusEl, riskEl, barBg, taskEl);
+      nodes.push(row);
     });
   }
-  el.innerHTML = html;
+  el.replaceChildren(...nodes);
 }
 
 /* ── Stalled panel ──────────────────────────────────────── */
@@ -269,24 +398,51 @@ export async function pollStalled() {
 
 function _renderStalled(d) {
   const el = document.getElementById("stalled-content");
-  if (!d) { el.innerHTML = `<div class="detail-placeholder">No data.</div>`; return; }
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">threshold: ${d.threshold} steps · step ${d.step}</div>`;
+  if (!d) { el.replaceChildren(_placeholder("No data.")); return; }
+  const header = document.createElement("div");
+  header.style.cssText = "color:var(--dim);font-size:10px;margin-bottom:6px";
+  header.textContent = "threshold: " + d.threshold + " steps · step " + d.step;
+  const nodes = [header];
   if (!d.stalled || d.stalled.length === 0) {
-    html += `<div class="detail-placeholder" style="color:var(--green)">No stalled subtasks.</div>`;
+    const p = _placeholder("No stalled subtasks.");
+    p.style.color = "var(--green)";
+    nodes.push(p);
   } else {
     d.stalled.forEach(s => {
       const pct = Math.min(100, Math.round(s.age / (d.threshold * 3) * 100));
-      html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
-      html += `<span style="color:var(--yellow);min-width:32px">${esc(s.subtask)}</span>`;
-      html += `<span style="color:var(--red);min-width:50px">${s.age} steps</span>`;
-      html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
-      html += `<span style="position:absolute;left:0;top:0;height:4px;width:${pct}%;border-radius:2px;background:var(--red)"></span></span>`;
-      html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${esc(s.task)}</span>`;
-      html += `<button onclick="healSubtask(${JSON.stringify(s.subtask)})" style="background:var(--surface);color:var(--cyan);border:1px solid var(--border);border-radius:3px;font-size:9px;padding:0 4px;cursor:pointer" title="Reset to Pending">↻</button>`;
-      html += `</div>`;
+      const row = document.createElement("div");
+      row.className = "diff-entry";
+      row.style.cssText = "font-size:10px;display:flex;align-items:center;gap:4px";
+
+      const stEl = document.createElement("span");
+      stEl.style.cssText = "color:var(--yellow);min-width:32px";
+      stEl.textContent = s.subtask;
+
+      const ageEl = document.createElement("span");
+      ageEl.style.cssText = "color:var(--red);min-width:50px";
+      ageEl.textContent = s.age + " steps";
+
+      const barBg = document.createElement("span");
+      barBg.style.cssText = "flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative";
+      const barFg = document.createElement("span");
+      barFg.style.cssText = `position:absolute;left:0;top:0;height:4px;width:${pct}%;border-radius:2px;background:var(--red)`;
+      barBg.appendChild(barFg);
+
+      const taskEl = document.createElement("span");
+      taskEl.style.cssText = "color:var(--dim);font-size:9px;min-width:60px;text-align:right";
+      taskEl.textContent = s.task;
+
+      const healBtn = document.createElement("button");
+      healBtn.style.cssText = "background:var(--surface);color:var(--cyan);border:1px solid var(--border);border-radius:3px;font-size:9px;padding:0 4px;cursor:pointer";
+      healBtn.title = "Reset to Pending";
+      healBtn.textContent = "↻";
+      healBtn.addEventListener("click", () => window.healSubtask(s.subtask));
+
+      row.append(stEl, ageEl, barBg, taskEl, healBtn);
+      nodes.push(row);
     });
   }
-  el.innerHTML = html;
+  el.replaceChildren(...nodes);
 }
 
 window.healSubtask = async function (st) {
@@ -323,21 +479,36 @@ function _renderSubtasks() {
         s.task.toLowerCase().includes(q))
     : _subtasksAll;
   if (rows.length === 0) {
-    el.innerHTML = `<div class="detail-placeholder">${q ? "No matching subtasks." : "No subtasks yet."}</div>`;
+    el.replaceChildren(_placeholder(q ? "No matching subtasks." : "No subtasks yet."));
     return;
   }
-  const statusColor = s => ({Verified:"var(--green)",Running:"var(--cyan)",Review:"var(--yellow)",Pending:"var(--dim)"})[s]||"var(--text)";
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:4px">${rows.length} subtask${rows.length!==1?"s":""}</div>`;
+  const counter = document.createElement("div");
+  counter.style.cssText = "color:var(--dim);font-size:10px;margin-bottom:4px";
+  counter.textContent = `${rows.length} subtask${rows.length !== 1 ? "s" : ""}`;
+  const nodes = [counter];
   rows.forEach(s => {
-    const ev = {subtask:s.subtask,task:s.task,branch:s.branch,status:s.status,step:"—",output:""};
-    html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:6px" onclick='openSubtaskModal(${JSON.stringify(ev)})' title="Click for detail">`;
-    html += `<span class="diff-st" style="min-width:30px">${esc(s.subtask)}</span>`;
-    html += `<span style="color:${statusColor(s.status)};min-width:60px;font-size:10px">${esc(s.status)}</span>`;
-    html += `<span style="color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.branch)}</span>`;
-    html += `<span style="color:var(--dim);font-size:9px">${s.output_length}b</span>`;
-    html += `</div>`;
+    const ev = {subtask: s.subtask, task: s.task, branch: s.branch, status: s.status, step: "—", output: ""};
+    const row = document.createElement("div");
+    row.className = "diff-entry";
+    row.style.cssText = "cursor:pointer;display:flex;align-items:center;gap:6px";
+    row.title = "Click for detail";
+    row.addEventListener("click", () => window.openSubtaskModal(ev));
+    const stEl = document.createElement("span");
+    stEl.className = "diff-st"; stEl.style.minWidth = "30px";
+    stEl.textContent = s.subtask;
+    const statusEl = document.createElement("span");
+    statusEl.style.cssText = `color:${_STATUS_COL[s.status] || "var(--text)"};min-width:60px;font-size:10px`;
+    statusEl.textContent = s.status;
+    const branchEl = document.createElement("span");
+    branchEl.style.cssText = "color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+    branchEl.textContent = s.branch;
+    const lenEl = document.createElement("span");
+    lenEl.style.cssText = "color:var(--dim);font-size:9px";
+    lenEl.textContent = `${s.output_length}b`;
+    row.append(stEl, statusEl, branchEl, lenEl);
+    nodes.push(row);
   });
-  el.innerHTML = html;
+  el.replaceChildren(...nodes);
 }
 
 /* ── Agents panel ───────────────────────────────────────── */
@@ -350,23 +521,35 @@ export async function pollAgents() {
 
 function _renderAgents(d) {
   const el = document.getElementById("agents-content");
-  if (!d) { el.innerHTML = `<div class="detail-placeholder">No data.</div>`; return; }
+  if (!d) { el.replaceChildren(_placeholder("No data.")); return; }
   const f = d.forecast || {};
   const pct = f.pct || 0;
   const barW = 120, fillW = Math.round(barW * pct / 100);
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:8px">step ${d.step}</div>`;
-  html += `<div style="margin-bottom:8px"><svg width="${barW+4}" height="14"><rect x="1" y="1" width="${barW}" height="12" rx="3" fill="var(--surface)"/><rect x="1" y="1" width="${fillW}" height="12" rx="3" fill="var(--cyan)"/><text x="${barW/2}" y="10" text-anchor="middle" font-size="8" fill="var(--text)">${pct}% (${f.verified}/${f.total})</text></svg></div>`;
+  const stepEl = document.createElement("div");
+  stepEl.style.cssText = "color:var(--dim);font-size:10px;margin-bottom:8px";
+  stepEl.textContent = `step ${d.step}`;
+  const barDiv = document.createElement("div");
+  barDiv.style.marginBottom = "8px";
+  barDiv.appendChild(_svgBar(barW, fillW, `${pct}% (${f.verified}/${f.total})`, "var(--cyan)"));
   const cards = [
-    {label:"Planner",      val:`cache interval: ${d.planner?.cache_interval || 5} steps`},
-    {label:"Executor",     val:`max/step: ${d.executor?.max_per_step || 6}`},
-    {label:"SelfHealer",   val:`healed: ${d.healer?.healed_total || 0}  stalled: ${d.healer?.currently_stalled || 0}  threshold: ${d.healer?.threshold || 5}`},
-    {label:"MetaOptimizer",val:`history: ${d.meta?.history_len || 0}  heal: ${d.meta?.heal_rate?.toFixed(2) || "0.00"}/step  verify: ${d.meta?.verify_rate?.toFixed(2) || "0.00"}/step`},
-    {label:"Forecast",     val:`${f.remaining || 0} remaining` + (f.eta_steps ? `  ETA: ~${f.eta_steps} steps` : "")},
+    {label: "Planner",       val: `cache interval: ${d.planner?.cache_interval || 5} steps`},
+    {label: "Executor",      val: `max/step: ${d.executor?.max_per_step || 6}`},
+    {label: "SelfHealer",    val: `healed: ${d.healer?.healed_total || 0}  stalled: ${d.healer?.currently_stalled || 0}  threshold: ${d.healer?.threshold || 5}`},
+    {label: "MetaOptimizer", val: `history: ${d.meta?.history_len || 0}  heal: ${d.meta?.heal_rate?.toFixed(2) || "0.00"}/step  verify: ${d.meta?.verify_rate?.toFixed(2) || "0.00"}/step`},
+    {label: "Forecast",      val: `${f.remaining || 0} remaining` + (f.eta_steps ? `  ETA: ~${f.eta_steps} steps` : "")},
   ];
-  cards.forEach(c => {
-    html += `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">${c.label}</span> <span style="color:var(--dim)">${c.val}</span></div>`;
+  const cardEls = cards.map(c => {
+    const row = document.createElement("div");
+    row.className = "diff-entry"; row.style.fontSize = "10px";
+    const lbl = document.createElement("span");
+    lbl.style.cssText = "color:var(--cyan);min-width:80px;display:inline-block";
+    lbl.textContent = c.label;
+    const val = document.createElement("span");
+    val.style.color = "var(--dim)"; val.textContent = " " + c.val;
+    row.append(lbl, val);
+    return row;
   });
-  el.innerHTML = html;
+  el.replaceChildren(stepEl, barDiv, ...cardEls);
 }
 
 /* ── Forecast panel ─────────────────────────────────────── */
@@ -379,13 +562,33 @@ export async function pollForecast() {
     const rate = d.verified_per_step != null ? d.verified_per_step.toFixed(2) : "—";
     const pct  = d.percent_complete != null ? d.percent_complete.toFixed(1) : "—";
     const barW = 120, fillW = Math.round(barW * (d.percent_complete || 0) / 100);
-    el.innerHTML =
-      `<div style="margin-bottom:8px"><svg width="${barW+4}" height="14"><rect x="1" y="1" width="${barW}" height="12" rx="3" fill="var(--surface)"/><rect x="1" y="1" width="${fillW}" height="12" rx="3" fill="var(--green)"/><text x="${barW/2}" y="10" text-anchor="middle" font-size="8" fill="var(--text)">${pct}%</text></svg></div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Completion</span> <strong>${pct}%</strong></div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Rate</span> ${rate} verified/step</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">ETA</span> ${eta}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Verified</span> ${d.verified ?? "—"} / ${d.total ?? "—"}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Stalled</span> ${d.stalled_count ?? 0}</div>`;
+    const barWrap = document.createElement("div");
+    barWrap.style.marginBottom = "8px";
+    barWrap.appendChild(_svgBar(barW, fillW, `${pct}%`, "var(--green)"));
+    const mkRow = (label, content) => {
+      const row = document.createElement("div");
+      row.className = "diff-entry"; row.style.fontSize = "10px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = "color:var(--cyan);min-width:80px;display:inline-block";
+      lbl.textContent = label;
+      row.appendChild(lbl);
+      if (typeof content === "string") {
+        row.appendChild(document.createTextNode(content));
+      } else {
+        row.appendChild(content);
+      }
+      return row;
+    };
+    const pctStrong = document.createElement("strong");
+    pctStrong.textContent = `${pct}%`;
+    el.replaceChildren(
+      barWrap,
+      mkRow("Completion", pctStrong),
+      mkRow("Rate", `${rate} verified/step`),
+      mkRow("ETA", eta),
+      mkRow("Verified", `${d.verified ?? "—"} / ${d.total ?? "—"}`),
+      mkRow("Stalled", `${d.stalled_count ?? 0}`),
+    );
   } catch (_) {}
 }
 
@@ -398,42 +601,56 @@ export async function pollMetrics() {
     const s = d.summary || {};
     const hist = d.history || [];
     const W = 200, H = 48, pad = 4;
-    let sparkline = "";
-    if (hist.length > 1) {
-      const maxV = Math.max(1, ...hist.map(r => r.verified));
-      const pts = hist.map((r, i) => {
-        const x = pad + (i / (hist.length - 1)) * (W - 2 * pad);
-        const y = H - pad - (r.verified / maxV) * (H - 2 * pad);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      }).join(" ");
-      sparkline = `<svg width="${W}" height="${H}" style="display:block;margin:6px 0">` +
-        `<polyline points="${pts}" fill="none" stroke="var(--cyan)" stroke-width="1.5"/>` +
-        `<text x="2" y="${H-1}" font-size="8" fill="var(--dim)">${hist[0].step_index}</text>` +
-        `<text x="${W-2}" y="${H-1}" font-size="8" fill="var(--dim)" text-anchor="end">${hist[hist.length-1].step_index}</text>` +
-        `</svg>`;
-    } else {
-      sparkline = `<div class="detail-placeholder" style="font-size:10px">Not enough data yet (run more steps).</div>`;
-    }
+    const sparkline = _sparklineSvg(hist, W, H, pad);
     const elapsedStr = d.elapsed_s != null ? `${d.elapsed_s}s` : "—";
     const rateStr    = d.steps_per_min != null ? `${d.steps_per_min}/min` : "—";
-    el.innerHTML =
-      `<div style="font-size:10px;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Run health</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Verified</span> ${d.verified ?? "—"} / ${d.total ?? "—"} (${d.pct ?? 0}%)</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Pending</span> ${d.pending ?? "—"}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Running</span> ${d.running ?? "—"}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Review</span> ${d.review ?? 0}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:${(d.stalled??0)>0?"var(--yellow)":"var(--cyan)"};min-width:110px;display:inline-block">Stalled</span> ${d.stalled ?? 0}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Elapsed</span> ${elapsedStr}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Step rate</span> ${rateStr}</div>` +
-      `<div style="font-size:10px;color:var(--dim);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px">Analytics</div>` +
-      `<div style="font-size:10px;color:var(--dim);margin-bottom:2px">Verified/step over time:</div>${sparkline}` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total steps</span> ${s.total_steps ?? "—"}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total verifies</span> ${s.total_verifies ?? "—"}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Avg rate</span> ${s.avg_verified_per_step ?? "—"} v/step</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Peak rate</span> ${s.peak_verified_per_step ?? "—"} v/step</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Steps w/ heals</span> ${s.steps_with_heals ?? 0}</div>` +
-      `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total healed</span> ${d.total_healed ?? 0}</div>` +
-      `<div style="margin-top:8px;display:flex;gap:6px"><a class="toolbar-btn" href="/metrics/export" download="metrics.csv">Download CSV</a><a class="toolbar-btn" href="/metrics/export?format=json" download="metrics.json">Download JSON</a></div>`;
+    const mkSect = (label, marginTop) => {
+      const h = document.createElement("div");
+      h.style.cssText = `font-size:10px;color:var(--dim);${marginTop ? "margin:8px 0 4px;" : "margin-bottom:4px;"}text-transform:uppercase;letter-spacing:1px`;
+      h.textContent = label;
+      return h;
+    };
+    const mkRow = (label, text, labelColor) => {
+      const row = document.createElement("div");
+      row.className = "diff-entry"; row.style.fontSize = "10px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = `color:${labelColor || "var(--cyan)"};min-width:110px;display:inline-block`;
+      lbl.textContent = label;
+      row.append(lbl, document.createTextNode(text));
+      return row;
+    };
+    const chartLabel = document.createElement("div");
+    chartLabel.style.cssText = "font-size:10px;color:var(--dim);margin-bottom:2px";
+    chartLabel.textContent = "Verified/step over time:";
+    const dlBar = document.createElement("div");
+    dlBar.style.cssText = "margin-top:8px;display:flex;gap:6px";
+    const csvA = document.createElement("a");
+    csvA.className = "toolbar-btn"; csvA.href = "/metrics/export"; csvA.download = "metrics.csv";
+    csvA.textContent = "Download CSV";
+    const jsonA = document.createElement("a");
+    jsonA.className = "toolbar-btn"; jsonA.href = "/metrics/export?format=json"; jsonA.download = "metrics.json";
+    jsonA.textContent = "Download JSON";
+    dlBar.append(csvA, jsonA);
+    el.replaceChildren(
+      mkSect("Run health", false),
+      mkRow("Verified", `${d.verified ?? "—"} / ${d.total ?? "—"} (${d.pct ?? 0}%)`),
+      mkRow("Pending",  `${d.pending ?? "—"}`),
+      mkRow("Running",  `${d.running ?? "—"}`),
+      mkRow("Review",   `${d.review ?? 0}`),
+      mkRow("Stalled",  `${d.stalled ?? 0}`, (d.stalled ?? 0) > 0 ? "var(--yellow)" : "var(--cyan)"),
+      mkRow("Elapsed",  elapsedStr),
+      mkRow("Step rate", rateStr),
+      mkSect("Analytics", true),
+      chartLabel,
+      sparkline,
+      mkRow("Total steps",   `${s.total_steps ?? "—"}`),
+      mkRow("Total verifies",`${s.total_verifies ?? "—"}`),
+      mkRow("Avg rate",      `${s.avg_verified_per_step ?? "—"} v/step`),
+      mkRow("Peak rate",     `${s.peak_verified_per_step ?? "—"} v/step`),
+      mkRow("Steps w/ heals",`${s.steps_with_heals ?? 0}`),
+      mkRow("Total healed",  `${d.total_healed ?? 0}`),
+      dlBar,
+    );
   } catch (_) {}
 }
 

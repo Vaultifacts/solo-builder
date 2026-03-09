@@ -1297,11 +1297,12 @@ class TestSubtasksExport(_Base):
         r = self.client.get("/subtasks/export?format=json")
         self.assertIn("application/json", r.content_type)
         d = r.get_json()
-        self.assertIsInstance(d, list)
+        self.assertIn("subtasks", d)
+        self.assertIsInstance(d["subtasks"], list)
 
     def test_json_has_required_fields(self):
         self._write_state(self._make_state({"A1": "Verified"}))
-        d = self.client.get("/subtasks/export?format=json").get_json()
+        d = self.client.get("/subtasks/export?format=json").get_json()["subtasks"]
         self.assertGreater(len(d), 0)
         row = d[0]
         for key in ("subtask", "task", "branch", "status", "output_length"):
@@ -1309,17 +1310,17 @@ class TestSubtasksExport(_Base):
 
     def test_status_filter(self):
         self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
-        d = self.client.get("/subtasks/export?format=json&status=Verified").get_json()
+        d = self.client.get("/subtasks/export?format=json&status=Verified").get_json()["subtasks"]
         self.assertTrue(all(r["status"] == "Verified" for r in d))
 
     def test_task_filter(self):
         self._write_state(self._make_state({"A1": "Verified"}))
-        d = self.client.get("/subtasks/export?format=json&task=Task+0").get_json()
+        d = self.client.get("/subtasks/export?format=json&task=Task+0").get_json()["subtasks"]
         self.assertTrue(all(r["task"] == "Task 0" for r in d))
 
     def test_branch_filter(self):
         self._write_state(self._make_state({"A1": "Verified"}))
-        d = self.client.get("/subtasks/export?format=json&branch=Branch+A").get_json()
+        d = self.client.get("/subtasks/export?format=json&branch=Branch+A").get_json()["subtasks"]
         self.assertTrue(all(r["branch"] == "Branch A" for r in d))
 
     def test_attachment_header_csv(self):
@@ -2029,11 +2030,13 @@ class TestDagExport(_Base):
         r = self.client.get("/tasks/export")
         self.assertEqual(r.status_code, 200)
 
-    def test_tasks_export_alias_returns_same_dag(self):
+    def test_tasks_export_returns_summary_not_dag(self):
+        # /tasks/export (TASK-143) is a task-summary endpoint, not an alias for /dag/export
         self._write_state(self._make_state())
-        d1 = self.client.get("/dag/export").get_json()
-        d2 = self.client.get("/tasks/export").get_json()
-        self.assertEqual(d1, d2)
+        d = self.client.get("/tasks/export?format=json").get_json()
+        self.assertIn("tasks", d)
+        self.assertIn("count", d)
+        self.assertIsInstance(d["tasks"], list)
 
 
 

@@ -193,20 +193,36 @@ let _modalSt = null;
 function _renderModal(stName, d) {
   const status = d.status || "Pending";
   document.getElementById("modal-title").textContent = stName;
-  document.getElementById("modal-status-wrap").innerHTML =
-    `<span class="modal-status ${statusClass(status)}">${esc(status)}</span>`;
+  const statusWrap = document.getElementById("modal-status-wrap");
+  const statusSpan = document.createElement("span");
+  statusSpan.className = `modal-status ${statusClass(status)}`;
+  statusSpan.textContent = status;
+  statusWrap.replaceChildren(statusSpan);
   document.getElementById("modal-desc").textContent = d.description || "(no description)";
   document.getElementById("modal-output").textContent = d.output || "(no output yet)";
   const tlWrap = document.getElementById("modal-timeline-wrap");
   const history = d.history || [];
   if (history.length > 0) {
     const colorMap = {Running: "var(--cyan)", Verified: "var(--green)", Review: "var(--yellow)", Pending: "var(--dim)"};
-    let tlHtml = '<span class="timeline-entry"><span class="timeline-dot" style="background:var(--dim)"></span> Pending</span>';
+    const _mkTlEntry = (status, step) => {
+      const entry = document.createElement("span"); entry.className = "timeline-entry";
+      const dot = document.createElement("span"); dot.className = "timeline-dot";
+      dot.style.background = colorMap[status] || "var(--dim)";
+      entry.appendChild(dot);
+      entry.appendChild(document.createTextNode(" " + status));
+      if (step !== undefined) {
+        const stepSpan = document.createElement("span");
+        stepSpan.style.color = "var(--dim)"; stepSpan.textContent = ` (step ${step})`;
+        entry.appendChild(stepSpan);
+      }
+      return entry;
+    };
+    const tlNodes = [_mkTlEntry("Pending", undefined)];
     for (const h of history) {
-      const c = colorMap[h.status] || "var(--dim)";
-      tlHtml += `<span class="timeline-arrow">\u2192</span><span class="timeline-entry"><span class="timeline-dot" style="background:${c}"></span> ${esc(h.status)} <span style="color:var(--dim)">(step ${h.step})</span></span>`;
+      const arrow = document.createElement("span"); arrow.className = "timeline-arrow"; arrow.textContent = "→";
+      tlNodes.push(arrow, _mkTlEntry(h.status, h.step));
     }
-    document.getElementById("modal-timeline").innerHTML = tlHtml;
+    document.getElementById("modal-timeline").replaceChildren(...tlNodes);
     tlWrap.style.display = "";
   } else {
     tlWrap.style.display = "none";
@@ -239,9 +255,14 @@ window.openKeysModal = function () {
   api("/shortcuts").then(function (d) {
     const tbl = document.getElementById("shortcuts-table");
     if (!tbl) return;
-    tbl.innerHTML = (d.shortcuts || []).map(function (s) {
-      return `<tr><td style="color:var(--cyan);width:120px"><kbd>${esc(s.key)}</kbd></td><td style="color:var(--dim)">${esc(s.description)}</td></tr>`;
-    }).join("");
+    const tblRows = (d.shortcuts || []).map(function (s) {
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td"); td1.style.cssText = "color:var(--cyan);width:120px";
+      const kbd = document.createElement("kbd"); kbd.textContent = s.key; td1.appendChild(kbd);
+      const td2 = document.createElement("td"); td2.style.color = "var(--dim)"; td2.textContent = s.description;
+      tr.append(td1, td2); return tr;
+    });
+    tbl.replaceChildren(...tblRows);
   }).catch(function () {});
 };
 
@@ -292,37 +313,50 @@ window.openSubtaskModal = function (ev) {
   sdStatus.textContent = ev.status;
   sdStatus.style.color = statusColor(ev.status);
   document.getElementById("sd-output").textContent = ev.output || "(no output)";
-  document.getElementById("sd-sparkline").innerHTML = "";
+  document.getElementById("sd-sparkline").replaceChildren();
   document.getElementById("st-modal-overlay").style.display = "flex";
   api("/timeline/" + encodeURIComponent(ev.subtask)).then(function (td) {
     const hist = td.history || [];
     const sparkEl = document.getElementById("sd-sparkline");
     if (!sparkEl) return;
-    if (hist.length === 0) { sparkEl.innerHTML = ""; return; }
+    if (hist.length === 0) { sparkEl.replaceChildren(); return; }
     const W = 300, H = 36, pad = 4;
+    const NS = "http://www.w3.org/2000/svg";
     const statusVal = {Pending:1, Running:2, Review:3, Verified:4};
     const statusClr = {Pending:"var(--dim)", Running:"var(--cyan)", Review:"var(--yellow)", Verified:"var(--green)"};
+    const header = document.createElement("div");
+    header.style.cssText = "font-size:10px;color:var(--dim);margin-bottom:3px";
+    header.textContent = `Timeline (${hist.length} transition${hist.length !== 1 ? "s" : ""})`;
+    const svgEl = document.createElementNS(NS, "svg");
+    svgEl.setAttribute("width", W); svgEl.setAttribute("height", H);
+    svgEl.style.cssText = "display:block;overflow:visible";
     const pts = hist.map((h, i) => {
       const v = statusVal[h.status] || 1;
       const x = pad + (hist.length < 2 ? (W - 2*pad)/2 : i / (hist.length - 1) * (W - 2*pad));
       const y = H - pad - ((v - 1) / 3) * (H - 2*pad);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(" ");
-    const dots = hist.map((h, i) => {
+    const poly = document.createElementNS(NS, "polyline");
+    poly.setAttribute("points", pts); poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke", "var(--border)"); poly.setAttribute("stroke-width", "1");
+    svgEl.appendChild(poly);
+    hist.forEach((h, i) => {
       const v = statusVal[h.status] || 1;
       const x = pad + (hist.length < 2 ? (W - 2*pad)/2 : i / (hist.length - 1) * (W - 2*pad));
       const y = H - pad - ((v - 1) / 3) * (H - 2*pad);
-      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${statusClr[h.status]||"var(--dim)"}" title="${h.status} @ step ${h.step}"/>`;
-    }).join("");
-    sparkEl.innerHTML =
-      `<div style="font-size:10px;color:var(--dim);margin-bottom:3px">Timeline (${hist.length} transition${hist.length!==1?"s":""})</div>` +
-      `<svg width="${W}" height="${H}" style="display:block;overflow:visible">` +
-      `<polyline points="${pts}" fill="none" stroke="var(--border)" stroke-width="1"/>` +
-      dots +
-      `</svg>` +
-      `<div style="display:flex;gap:10px;font-size:9px;margin-top:2px;color:var(--dim)">` +
-      `<span style="color:var(--dim)">▪ Pending</span><span style="color:var(--cyan)">▪ Running</span>` +
-      `<span style="color:var(--yellow)">▪ Review</span><span style="color:var(--green)">▪ Verified</span></div>`;
+      const circle = document.createElementNS(NS, "circle");
+      circle.setAttribute("cx", x.toFixed(1)); circle.setAttribute("cy", y.toFixed(1));
+      circle.setAttribute("r", "3"); circle.setAttribute("fill", statusClr[h.status] || "var(--dim)");
+      const titleEl = document.createElementNS(NS, "title"); titleEl.textContent = `${h.status} @ step ${h.step}`;
+      circle.appendChild(titleEl);
+      svgEl.appendChild(circle);
+    });
+    const legend = document.createElement("div");
+    legend.style.cssText = "display:flex;gap:10px;font-size:9px;margin-top:2px;color:var(--dim)";
+    [["var(--dim)","▪ Pending"],["var(--cyan)","▪ Running"],["var(--yellow)","▪ Review"],["var(--green)","▪ Verified"]].forEach(([c, t]) => {
+      const s = document.createElement("span"); s.style.color = c; s.textContent = t; legend.appendChild(s);
+    });
+    sparkEl.replaceChildren(header, svgEl, legend);
   }).catch(function () {});
 };
 
@@ -467,7 +501,7 @@ window.toggleView = function () {
 
 function renderGraph() {
   const svg = document.getElementById("dag-svg");
-  if (!state.taskIds.length) { svg.innerHTML = ""; return; }
+  if (!state.taskIds.length) { svg.replaceChildren(); return; }
 
   const taskMap = {};
   state.taskIds.forEach(id => { taskMap[id] = state.tasksCache[id] || {}; });
@@ -522,13 +556,25 @@ function renderGraph() {
     return "#2a2200";
   }
 
-  let html = '<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="var(--dim)"/></marker></defs>';
+  const NS = "http://www.w3.org/2000/svg";
+  const _svgEl = (tag, attrs) => {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  };
+
+  const defs = _svgEl("defs", {});
+  const marker = _svgEl("marker", {id:"arrow",markerWidth:"8",markerHeight:"6",refX:"8",refY:"3",orient:"auto"});
+  const markerPath = _svgEl("path", {d:"M0,0 L8,3 L0,6",fill:"var(--dim)"});
+  marker.appendChild(markerPath); defs.appendChild(marker);
+
+  const nodes = [defs];
 
   state.taskIds.forEach(id => {
     const deps = (taskMap[id].depends_on || []).filter(d => pos[d]);
     deps.forEach(dep => {
       const from = pos[dep], to = pos[id];
-      html += `<line x1="${from.x + NW}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="var(--dim)" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>`;
+      nodes.push(_svgEl("line", {x1:from.x + NW,y1:from.y,x2:to.x,y2:to.y,stroke:"var(--dim)","stroke-width":"1.5","marker-end":"url(#arrow)",opacity:"0.5"}));
     });
   });
 
@@ -542,14 +588,19 @@ function renderGraph() {
     const nV  = Object.values(branches).reduce((a, b) => a + Object.values(b.subtasks || {}).filter(s => s.status === "Verified").length, 0);
     const pct = nSt ? Math.round(nV / nSt * 100) : 0;
     const barW = NW - 16, barH = 5, barX = p.x + 8, barY = p.y + 10;
-    html += `<rect x="${p.x}" y="${p.y - NH/2}" width="${NW}" height="${NH + 8}" rx="4" fill="${bg}" stroke="${col}" stroke-width="1.5" style="cursor:pointer" onclick="selectTask(${JSON.stringify(id)})"/>`;
-    html += `<text x="${p.x + NW/2}" y="${p.y - 6}" fill="${col}" text-anchor="middle" font-size="11" font-family="var(--font)" font-weight="bold">${esc(id)}</text>`;
-    html += `<text x="${p.x + NW/2}" y="${p.y + 6}" fill="var(--dim)" text-anchor="middle" font-size="9" font-family="var(--font)">${nV}/${nSt} (${pct}%)</text>`;
-    html += `<rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="2" fill="var(--surface)"/>`;
-    html += `<rect x="${barX}" y="${barY}" width="${Math.round(barW * pct / 100)}" height="${barH}" rx="2" fill="${col}"/>`;
+    const rect = _svgEl("rect", {x:p.x,y:p.y - NH/2,width:NW,height:NH + 8,rx:"4",fill:bg,stroke:col,"stroke-width":"1.5"});
+    rect.style.cursor = "pointer";
+    rect.addEventListener("click", () => window.selectTask(id));
+    const txt1 = _svgEl("text", {x:p.x + NW/2,y:p.y - 6,fill:col,"text-anchor":"middle","font-size":"11","font-family":"var(--font)","font-weight":"bold"});
+    txt1.textContent = id;
+    const txt2 = _svgEl("text", {x:p.x + NW/2,y:p.y + 6,fill:"var(--dim)","text-anchor":"middle","font-size":"9","font-family":"var(--font)"});
+    txt2.textContent = `${nV}/${nSt} (${pct}%)`;
+    const barBg = _svgEl("rect", {x:barX,y:barY,width:barW,height:barH,rx:"2",fill:"var(--surface)"});
+    const barFg = _svgEl("rect", {x:barX,y:barY,width:Math.round(barW * pct / 100),height:barH,rx:"2",fill:col});
+    nodes.push(rect, txt1, txt2, barBg, barFg);
   });
 
-  svg.innerHTML = html;
+  svg.replaceChildren(...nodes);
 }
 
 /* ── Theme toggle ─────────────────────────────────────────── */
