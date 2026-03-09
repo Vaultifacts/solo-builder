@@ -413,6 +413,18 @@ class TestHealth(_Base):
         d = self.client.get("/health").get_json()
         self.assertTrue(d["state_file_exists"])
 
+    def test_state_file_exists_false_when_missing(self):
+        if self._state_path.exists():
+            self._state_path.unlink()
+        d = self.client.get("/health").get_json()
+        self.assertFalse(d["state_file_exists"])
+
+    def test_ok_true_even_when_state_missing(self):
+        if self._state_path.exists():
+            self._state_path.unlink()
+        d = self.client.get("/health").get_json()
+        self.assertTrue(d["ok"])
+
 
 # ---------------------------------------------------------------------------
 # POST /export + GET /export
@@ -3054,6 +3066,49 @@ class TestPostTaskBulkVerify(_Base):
         self._write_state(self._make_state({"A1": "Running"}))
         d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
         self.assertEqual(d["task"], "Task 0")
+
+    def test_all_already_verified_returns_zero_verified(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Verified"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["verified_count"], 0)
+        self.assertEqual(d["skipped_count"], 2)
+
+    def test_all_verified_does_not_change_task_status(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["status"] = "Running"
+        self._write_state(state)
+        self.client.post("/tasks/Task 0/bulk-verify")
+        import json as _json
+        s = _json.loads(self._state_path.read_text())
+        self.assertEqual(s["dag"]["Task 0"]["status"], "Running")
+
+    def test_empty_subtasks_returns_zero_counts(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [],
+                 "branches": {"Branch A": {"subtasks": {}}}}}}
+        self._write_state(state)
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["verified_count"], 0)
+        self.assertEqual(d["skipped_count"], 0)
+
+    def test_no_branches_returns_zero_counts(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [], "branches": {}}}}
+        self._write_state(state)
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["verified_count"], 0)
+        self.assertEqual(d["skipped_count"], 0)
+
+    def test_review_subtask_verified_by_default(self):
+        self._write_state(self._make_state({"A1": "Review"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["verified_count"], 1)
+
+    def test_pending_skipped_with_skip_non_running_flag(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify",
+                             json={"skip_non_running": True},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["verified_count"], 0)
+        self.assertEqual(d["skipped_count"], 1)
 
 
 class TestPostTaskReset(_Base):
