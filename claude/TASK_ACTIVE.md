@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-235
+TASK-236
 
-Document TASK-226 through TASK-235 in CHANGELOG.md as v4.5.0
+Subtasks tab status quick-filter passes ?status=X to server so filter composes with pagination across all pages
