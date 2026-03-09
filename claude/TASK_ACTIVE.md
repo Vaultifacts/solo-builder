@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-153
+TASK-154
 
-Extract _svgBar and _sparklineSvg SVG helpers into shared dashboard_svg.js module
+Run detailed architecture audit to surface remaining innerHTML/XSS majors and push score above 98/100
