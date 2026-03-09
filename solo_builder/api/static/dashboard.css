@@ -10,6 +10,9 @@
     --red:      #f44336;
     --blue:     #2196f3;
     --font:     'Courier New', Courier, monospace;
+    --node-bg-verified: #1b3d1e;
+    --node-bg-running:  #0d2d33;
+    --node-bg-pending:  #2a2200;
   }
   [data-theme="light"] {
     --bg:       #f5f5f5;
@@ -17,6 +20,9 @@
     --border:   #ddd;
     --text:     #1a1a1a;
     --dim:      #888;
+    --node-bg-verified: #e0f5e0;
+    --node-bg-running:  #e0f2f5;
+    --node-bg-pending:  #fff8e0;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {

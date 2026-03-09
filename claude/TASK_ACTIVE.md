@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-147
+TASK-148
 
-Add bulk_reset command to Discord bot (plain-text + slash) that calls POST /subtasks/bulk-reset
+Fix renderGraph SVG nodeColorBg hardcoded hex colors to use CSS variables for light/dark theme compatibility

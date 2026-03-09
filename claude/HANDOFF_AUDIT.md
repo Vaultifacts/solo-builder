@@ -1,24 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-147
+TASK-148
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (bot + api): PASS (600 tests, 0 failures — +5 TestBulkResetCommand)
+- unittest-discover (api): PASS (384 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: N/A (bot/slash only; no JS changes)
+- architecture-audit: 97.7/100 (no regression)
 
 ## Scope Check
-Three files modified:
-- `solo_builder/discord_bot/bot.py` — added _format_bulk_reset(state, names, skip_verified) helper; added plain-text handler for `bulk_reset <A1> [A2 ...]`
-- `solo_builder/discord_bot/bot_slash.py` — added /bulk_reset slash command with subtasks string param
-- `solo_builder/discord_bot/test_bot.py` — added TestBulkResetCommand (5 tests)
+Two files modified:
+- `solo_builder/api/static/dashboard.css` — added --node-bg-verified/running/pending to :root (dark theme hex) and [data-theme="light"] (light theme hex)
+- `solo_builder/api/static/dashboard.js` — nodeColorBg now returns CSS variable strings instead of hardcoded hex
 
 ## Implementation Detail
-- Reads STATE.json directly (same pattern as _format_reset_branch)
-- skip_verified=True by default; Verified subtasks always preserved
-- Returns count of reset, skipped, not_found; same result format as reset_branch
-- Usage: `bulk_reset <A1> [A2 ...]` (no-args returns usage hint)
+- Dark: --node-bg-verified:#1b3d1e, --node-bg-running:#0d2d33, --node-bg-pending:#2a2200 (original values preserved)
+- Light: --node-bg-verified:#e0f5e0, --node-bg-running:#e0f2f5, --node-bg-pending:#fff8e0 (match existing badge light colors)
+- renderGraph nodeColorBg was the only caller of these hex values; no other code changed
