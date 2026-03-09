@@ -2393,6 +2393,19 @@ class TestMetricsHealth(_Base):
         self.assertIn("history", d)
         self.assertIn("total_healed", d)
 
+    def test_review_count_correct(self):
+        state = self._make_state({"A1": "Review", "A2": "Review", "A3": "Pending"})
+        self._write_state(state)
+        d = self.client.get("/metrics").get_json()
+        self.assertEqual(d["review"], 2)
+
+    def test_review_not_counted_in_pending(self):
+        state = self._make_state({"A1": "Review", "A2": "Pending"})
+        self._write_state(state)
+        d = self.client.get("/metrics").get_json()
+        self.assertEqual(d["review"], 1)
+        self.assertEqual(d["pending"], 1)
+
 
 class TestErrorHandlers(_Base):
 
