@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-150
+TASK-151
 
-Wire bulk_reset and bulk-verify into dashboard Subtasks tab with multi-select checkboxes and action buttons
+Add GET /tasks/<id>/progress endpoint — lightweight single-task progress {task,verified,total,pct,status}

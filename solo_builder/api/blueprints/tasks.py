@@ -165,6 +165,37 @@ def reset_task(task_id: str):
     })
 
 
+@tasks_bp.get("/tasks/<path:task_id>/progress")
+def task_progress(task_id: str):
+    """Lightweight progress summary for a single task.
+
+    Returns {task, status, verified, total, pct, running, pending, review}.
+    404 if task not found.
+    """
+    dag = _load_dag()
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    counts = {"Verified": 0, "Running": 0, "Pending": 0, "Review": 0}
+    for br_data in task.get("branches", {}).values():
+        for st_data in br_data.get("subtasks", {}).values():
+            s = st_data.get("status", "Pending")
+            counts[s] = counts.get(s, 0) + 1
+    total = sum(counts.values())
+    verified = counts["Verified"]
+    pct = round(verified / total * 100, 1) if total else 0.0
+    return jsonify({
+        "task": task_id,
+        "status": task.get("status", "Pending"),
+        "verified": verified,
+        "total": total,
+        "pct": pct,
+        "running": counts["Running"],
+        "pending": counts["Pending"],
+        "review": counts["Review"],
+    })
+
+
 @tasks_bp.post("/tasks/<path:task_id>/bulk-verify")
 def bulk_verify_task(task_id: str):
     """Advance subtasks in a task to Verified.
