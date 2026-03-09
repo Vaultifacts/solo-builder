@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-180
+TASK-181
 
 ## Verdict: PASS
 
@@ -12,14 +12,11 @@ TASK-180
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard_tasks.js` — stable IDs on progress elements + pollTaskProgress export
-- `solo_builder/api/static/dashboard.js` — import pollTaskProgress; add to tick() Promise.all
+- `CHANGELOG.md` — created; v4.0.0 milestone entry + v3.x.x placeholder
+- `claude/allowed_files.txt` — added CHANGELOG.md
 
 ## Implementation Detail
-Added IDs (detail-prog-fill, detail-prog-pct, detail-prog-run) to the progress bar elements
-in renderDetail() so they can be patched in-place without a full re-render.
-pollTaskProgress(taskId) fetches GET /tasks/<id>/progress and updates those elements.
-In tick(), it runs in parallel with all other polls via Promise.all; the full
-detail re-render still happens afterward to keep subtask status current.
-Net effect: progress bar counts update slightly faster (parallel fetch) and
-pollTaskProgress is independently callable (e.g. from window.runAuto).
+CHANGELOG.md documents the v4.0.0 milestone: 180 tasks, 451 API tests,
+key features across API/dashboard/Discord bot/CLI, and architecture notes
+for the two "dual-endpoint" patterns (/reset vs /bulk-reset; /branches/<task>
+vs /tasks/<id>/branches). v4.0.0 tag will be applied on master after merge.
