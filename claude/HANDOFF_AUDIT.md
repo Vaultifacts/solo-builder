@@ -1,24 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-185
+TASK-186
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (all): PASS (440 tests, 0 failures)
 - unittest-discover (api): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/discord_bot/bot_formatters.py` — enhanced _format_task_progress
-- `solo_builder/discord_bot/test_bot.py` — added test_review_status_shown_in_output
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — renderDetail progress bar shows Review count
 
 ## Implementation Detail
-The formatter already showed per-branch block-bar rows. Enhancement:
-- Review status now shown as N⏸ separately instead of being lumped into pending●
-- Zero counts suppressed (no "0▶" or "0●" clutter when status absent)
-- Same logic applied to TOTAL row
-Added 1 test verifying ⏸ appears when a subtask is in Review status.
+The renderDetail() progress bar previously showed only running▶ in runSpan.
+Enhancement:
+- `_review` counter tracked alongside `_verified`, `_running`, `_pending` in main subtask loop
+- runSpan now shows `N▶ M⏸` (zero counts suppressed — no clutter when status absent)
+- Per-branch mini rows also show `running▶` and `review⏸` separately
+- `_branchStats` push now includes `review` field for per-branch display
+No new tests needed: JS-only change; API test suite fully passes (454/454).
