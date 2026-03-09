@@ -432,7 +432,26 @@ export async function pollSubtasks() {
   } catch (_) {}
 }
 
-window.renderSubtasks = function () { _renderSubtasks(); };
+window.renderSubtasks = function () {
+  _renderSubtasks();
+  const q = (document.getElementById("subtasks-filter")?.value || "").trim();
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (q) { params.set("st-filter", q); } else { params.delete("st-filter"); }
+  const next = params.toString();
+  history.replaceState(null, "", next ? "#" + next : location.pathname + location.search);
+};
+
+// Restore subtasks filter from URL hash on load
+(function _restoreStFilter() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const saved = params.get("st-filter");
+  if (!saved) return;
+  const restoreWhenReady = () => {
+    const f = document.getElementById("subtasks-filter");
+    if (f) { f.value = saved; } else { setTimeout(restoreWhenReady, 100); }
+  };
+  restoreWhenReady();
+}());
 
 window.subtasksClearSel = function () {
   _subtasksSel.clear();
