@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-174
+TASK-175
 
-Add GET /tasks/<id>/timeline endpoint aggregating all subtask timeline events for a task
+Add GET /tasks/<id>/progress endpoint with per-branch subtask counts (verified/running/pending/total/pct)

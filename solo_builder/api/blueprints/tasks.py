@@ -218,10 +218,24 @@ def task_progress(task_id: str):
     if task is None:
         abort(404, description=f"Task '{task_id}' not found.")
     counts = {"Verified": 0, "Running": 0, "Pending": 0, "Review": 0}
-    for br_data in task.get("branches", {}).values():
+    branch_rows = []
+    for br_name, br_data in task.get("branches", {}).items():
+        bc = {"Verified": 0, "Running": 0, "Pending": 0, "Review": 0}
         for st_data in br_data.get("subtasks", {}).values():
             s = st_data.get("status", "Pending")
+            bc[s] = bc.get(s, 0) + 1
             counts[s] = counts.get(s, 0) + 1
+        br_total = sum(bc.values())
+        br_pct = round(bc["Verified"] / br_total * 100, 1) if br_total else 0.0
+        branch_rows.append({
+            "branch": br_name,
+            "verified": bc["Verified"],
+            "running": bc["Running"],
+            "pending": bc["Pending"],
+            "review": bc["Review"],
+            "total": br_total,
+            "pct": br_pct,
+        })
     total = sum(counts.values())
     verified = counts["Verified"]
     pct = round(verified / total * 100, 1) if total else 0.0
@@ -234,6 +248,7 @@ def task_progress(task_id: str):
         "running": counts["Running"],
         "pending": counts["Pending"],
         "review": counts["Review"],
+        "branches": branch_rows,
     })
 
 
