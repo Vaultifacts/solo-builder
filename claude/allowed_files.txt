@@ -60,6 +60,10 @@ solo_builder/api/test_app.py
 solo_builder/api/dashboard.html
 solo_builder/api/static/dashboard.css
 solo_builder/api/static/dashboard.js
+solo_builder/api/static/dashboard_state.js
+solo_builder/api/static/dashboard_utils.js
+solo_builder/api/static/dashboard_tasks.js
+solo_builder/api/static/dashboard_panels.js
 .gitignore
 solo_builder/dag_definition.py
 solo_builder/display.py

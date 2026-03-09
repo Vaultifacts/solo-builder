@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-110
+TASK-111
 
-Document the test-patch constraint pattern for solo_builder_cli.py mixin architecture
+Split dashboard.js into focused feature modules to reduce large-file architecture finding
