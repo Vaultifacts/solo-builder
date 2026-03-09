@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.4.0 — 2026-03-09  History review metadata + by_status chips + stalled regression (TASK-216 through TASK-220)
+
+- **220 tasks** merged to master (TASK-001 through TASK-220); **481 API tests**, **454 Discord tests**
+- `GET /history` response includes `review` count at top level (pre-pagination, like `total`) — TASK-217
+- `GET /history/count` `by_status` dict consumed by dashboard: History tab status chips — TASK-218
+- `GET /stalled` Review-exclusion regression tests (3 new assertions) — TASK-219
+- MEMORY.md pruned 384→75 lines; archived to 4 topic files (architecture, test_patterns, discord_bot, design_decisions) — TASK-220
+- CHANGELOG v4.3.5 documented — TASK-216
+
+---
+
 ## v4.3.5 — 2026-03-09  History hash persistence + review stat box + /history/count distribution (TASK-213 through TASK-215)
 
 - **215 tasks** merged to master (TASK-001 through TASK-215); **475 API tests**, **454 Discord tests**
