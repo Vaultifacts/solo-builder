@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.4.0 — 2026-03-09  Export fixes + Discord CSV + stalled filters (TASK-283 through TASK-286)
+
+- **286 tasks** merged to master (TASK-001 through TASK-286); **576 API tests**, **286 Discord tests**
+- CHANGELOG v5.3.0 documented — TASK-283
+- History export link bug fixed: quick-filter status values (Pending/Running/Review/Verified) now route to `?status=` instead of `?subtask=`; hint text updated — TASK-284
+- Discord `/subtasks export:True` sends CSV file attachment; `_subtasks_to_csv()` formatter + 6 tests — TASK-285
+- `GET /stalled` accepts `?task=` substring filter; 3 new tests — TASK-286
+
+---
+
 ## v5.3.0 — 2026-03-09  Clear buttons + stalled UX + export rows + Discord /subtasks (TASK-278 through TASK-282)
 
 - **282 tasks** merged to master (TASK-001 through TASK-282); **573 API tests**, **280 Discord tests**
