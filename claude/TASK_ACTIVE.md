@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-140
+TASK-141
 
-Wire GET /tasks/<id>/timeline into dashboard task detail panel as event log
+Add POST /subtasks/bulk-reset endpoint to reset multiple subtasks by ID in one request

@@ -2675,6 +2675,68 @@ class TestSubtaskReset(_Base):
 
 
 # ---------------------------------------------------------------------------
+# POST /subtasks/bulk-reset  (TASK-141)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksBulkReset(_Base):
+
+    def test_valid_reset_returns_ok(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        r = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1", "A2"]})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.get_json()["ok"])
+
+    def test_reset_count_correct(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1", "A2"]}).get_json()
+        self.assertEqual(d["reset_count"], 2)
+
+    def test_skips_verified_by_default(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Verified"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1", "A2"]}).get_json()
+        self.assertEqual(d["reset_count"], 1)
+        self.assertEqual(d["skipped_count"], 1)
+
+    def test_skip_verified_false_resets_verified(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1"], "skip_verified": False}).get_json()
+        self.assertEqual(d["reset_count"], 1)
+
+    def test_not_found_names_returned(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1", "ZZZ"]}).get_json()
+        self.assertIn("ZZZ", d["not_found"])
+
+    def test_reset_names_in_response(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1"]}).get_json()
+        self.assertIn("A1", d["reset"])
+
+    def test_missing_subtasks_field_returns_400(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/subtasks/bulk-reset", json={})
+        self.assertEqual(r.status_code, 400)
+
+    def test_empty_list_returns_400(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/subtasks/bulk-reset", json={"subtasks": []})
+        self.assertEqual(r.status_code, 400)
+
+    def test_subtask_set_to_pending_in_state(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/subtasks/bulk-reset", json={"subtasks": ["A1"]})
+        state = json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Pending")
+
+
+# ---------------------------------------------------------------------------
 # POST /webhook  (TASK-078)
 # ---------------------------------------------------------------------------
 
