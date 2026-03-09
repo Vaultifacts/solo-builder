@@ -3068,6 +3068,35 @@ class TestGetTaskProgress(_Base):
         br = d["branches"][0]
         self.assertAlmostEqual(br["pct"], 50.0)
 
+    def test_multi_branch_aggregation(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["branches"]["Branch B"] = {
+            "subtasks": {
+                "B1": {"status": "Verified", "output": "", "description": ""},
+                "B2": {"status": "Pending", "output": "", "description": ""},
+            }
+        }
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        # Branch A: 1 verified/1 total; Branch B: 1 verified/2 total
+        self.assertEqual(d["total"], 3)
+        self.assertEqual(d["verified"], 2)
+        self.assertEqual(len(d["branches"]), 2)
+
+    def test_review_status_counted_in_response(self):
+        state = self._make_state({"A1": "Review", "A2": "Pending"})
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertEqual(d["review"], 1)
+        self.assertEqual(d["branches"][0]["review"], 1)
+
+    def test_no_branches_returns_empty_branches_list(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [], "branches": {}}}}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertEqual(d["branches"], [])
+        self.assertEqual(d["total"], 0)
+
 
 class TestPostTaskBulkVerify(_Base):
 
