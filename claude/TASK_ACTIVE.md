@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-176
+TASK-177
 
-Wire GET /tasks/<id>/progress branches[] into dashboard task detail progress bar; remove inline per-branch computation
+Audit GET/POST /tasks/<id>/reset endpoint: verify it is still needed or can be removed; update tests if deprecated
