@@ -1,4 +1,9 @@
-"""Branches blueprint — GET /branches, /branches/<task_id>, POST /branches/<task_id>/reset."""
+"""Branches blueprint — GET /branches, /branches/<task_id>, POST /branches/<task_id>/reset.
+
+Note on /branches/<task_id> vs /tasks/<task_id>/branches:
+- /branches/<task_id>        includes subtasks[] array (name+status) — used by dashboard detail view
+- /tasks/<task_id>/branches  paginated, branch-level counts only, no subtask list
+"""
 import json
 
 from flask import Blueprint, jsonify, abort, request
@@ -40,7 +45,13 @@ def branches_all():
 
 @branches_bp.get("/branches/<path:task_id>")
 def branches(task_id: str):
-    """Per-task branch listing with subtask counts and status breakdown."""
+    """Per-task branch listing with full subtask name/status array.
+
+    Note: GET /tasks/<task_id>/branches is the newer paginated endpoint for
+    branch-level counts and status filtering.  This endpoint is kept because
+    it returns the subtasks[] array (name+status per subtask) which the
+    dashboard Branches detail view requires for row rendering.
+    """
     dag = _load_dag()
     task = dag.get(task_id)
     if task is None:
