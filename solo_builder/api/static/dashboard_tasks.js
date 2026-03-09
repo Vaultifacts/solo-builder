@@ -283,6 +283,7 @@ export function renderDetail(t) {
       const bfill = Math.round(bpct * miniW / 100);
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:4px";
+      row.dataset.branch = bs.name;
       const lbl = document.createElement("span");
       lbl.style.cssText = "font-size:9px;color:var(--dim);min-width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
       lbl.textContent = bs.name;
@@ -290,9 +291,11 @@ export function renderDetail(t) {
       const trk = document.createElement("div");
       trk.style.cssText = `width:${miniW}px;height:4px;background:var(--bg3);border-radius:2px;flex-shrink:0`;
       const fll = document.createElement("div");
+      fll.className = "branch-mini-fill";
       fll.style.cssText = `width:${bfill}px;height:4px;background:var(--green);border-radius:2px`;
       trk.appendChild(fll);
       const cnt = document.createElement("span");
+      cnt.className = "branch-mini-cnt";
       cnt.style.cssText = "font-size:9px;color:var(--dim)";
       let bExtra = `${bs.verified}/${bs.total}`;
       if (bs.running > 0) bExtra += ` ${bs.running}▶`;
@@ -477,6 +480,25 @@ export async function pollTaskProgress(taskId) {
     const pctVal = d.total > 0 ? Math.round(d.verified / d.total * 100) : 0;
     fill.style.width = fillW + "px";
     pct.textContent = `${d.verified}/${d.total} (${pctVal}%)`;
-    if (run) run.textContent = d.running > 0 ? `${d.running}▶` : "";
+    if (run) {
+      let runText = "";
+      if (d.running > 0) runText += `${d.running}▶`;
+      if (d.review  > 0) runText += (runText ? " " : "") + `${d.review}⏸`;
+      run.textContent = runText;
+    }
+    const miniW = 60;
+    (d.branches || []).forEach(b => {
+      const row = document.querySelector(`[data-branch="${CSS.escape(b.branch)}"]`);
+      if (!row) return;
+      const fll = row.querySelector(".branch-mini-fill");
+      const cnt = row.querySelector(".branch-mini-cnt");
+      if (fll) fll.style.width = Math.round((b.pct || 0) * miniW / 100) + "px";
+      if (cnt) {
+        let t = `${b.verified}/${b.total}`;
+        if (b.running > 0) t += ` ${b.running}▶`;
+        if (b.review  > 0) t += ` ${b.review}⏸`;
+        cnt.textContent = t;
+      }
+    });
   } catch (_) {}
 }
