@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-226
+TASK-227
 
-CHANGELOG v4.4.5 entry documenting TASK-221 through TASK-225
+Dashboard task grid uses GET /tasks pagination — total and pages fields shown in grid header
