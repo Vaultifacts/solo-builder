@@ -220,6 +220,11 @@
       </div>
     </div>
     <div class="sidebar-tab-content" id="tab-stalled">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <input id="stalled-task-filter" type="text" placeholder="Filter by task…"
+               oninput="_applyStalledTaskFilter()"
+               style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+      </div>
       <div id="stalled-content">
         <div class="detail-placeholder">Loading stalled subtasks…</div>
       </div>

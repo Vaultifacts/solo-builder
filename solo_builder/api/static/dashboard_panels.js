@@ -410,12 +410,21 @@ function _renderPriority(d) {
 }
 
 /* ── Stalled panel ──────────────────────────────────────── */
+let _stalledTaskFilter = "";
+
 export async function pollStalled() {
   try {
-    const d = await api("/stalled");
+    const qs = _stalledTaskFilter ? `?task=${encodeURIComponent(_stalledTaskFilter)}` : "";
+    const d = await api("/stalled" + qs);
     _renderStalled(d);
   } catch (_) {}
 }
+
+window._applyStalledTaskFilter = function () {
+  const el = document.getElementById("stalled-task-filter");
+  _stalledTaskFilter = el ? el.value.trim() : "";
+  pollStalled();
+};
 
 function _renderStalled(d) {
   const el = document.getElementById("stalled-content");
