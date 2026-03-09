@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-120
+TASK-121
 
-Wire GET /dag/summary into Discord bot status command replacing current text output with markdown summary field
+Add Pipeline Overview panel to dashboard Branches tab using GET /dag/summary data

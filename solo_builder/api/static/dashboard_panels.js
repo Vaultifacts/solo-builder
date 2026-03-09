@@ -152,20 +152,48 @@ export async function pollBranches() {
       const d = await api("/branches/" + encodeURIComponent(state.selectedTask));
       _renderBranchesDetail(d);
     } else {
-      const d = await api("/branches");
-      _renderBranchesAll(d);
+      const [d, summary] = await Promise.all([api("/branches"), api("/dag/summary").catch(() => null)]);
+      _renderBranchesAll(d, summary);
     }
   } catch (_) {}
 }
 
-function _renderBranchesAll(d) {
+function _renderBranchesAll(d, summary) {
   const el = document.getElementById("branches-content");
   if (!d.branches || d.branches.length === 0) {
     el.innerHTML = `<div class="detail-placeholder">No branches yet.</div>`;
     return;
   }
   const barW = 60;
-  let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} branches across all tasks</div>`;
+  let html = "";
+
+  // ── Pipeline Overview (from /dag/summary) ───────────────
+  if (summary && summary.total > 0) {
+    const ovW = 120;
+    const ovFill = Math.round(summary.pct * ovW / 100);
+    html += `<div style="margin-bottom:10px;padding:6px 8px;background:var(--bg2);border-radius:4px;border:1px solid var(--border)">`;
+    html += `<div style="font-size:10px;color:var(--cyan);font-weight:bold;margin-bottom:4px">Pipeline Overview — Step ${summary.step}</div>`;
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">`;
+    html += `<div style="width:${ovW}px;height:8px;background:var(--bg3);border-radius:4px;flex-shrink:0"><div style="width:${ovFill}px;height:8px;background:var(--green);border-radius:4px"></div></div>`;
+    html += `<span style="font-size:11px;color:var(--text)">${summary.verified}/${summary.total} (${summary.pct}%)</span>`;
+    html += `</div>`;
+    html += `<div style="font-size:10px;color:var(--dim)">${summary.running} running · ${summary.pending} pending</div>`;
+    if (summary.tasks && summary.tasks.length > 0) {
+      html += `<div style="margin-top:6px">`;
+      summary.tasks.forEach(t => {
+        const tw = Math.round(t.pct * 60 / 100);
+        html += `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">`;
+        html += `<span style="color:var(--dim);font-size:10px;min-width:48px;flex-shrink:0">${esc(t.id)}</span>`;
+        html += `<div style="width:60px;height:4px;background:var(--bg3);border-radius:2px;flex-shrink:0"><div style="width:${tw}px;height:4px;background:var(--green);border-radius:2px"></div></div>`;
+        html += `<span style="font-size:10px;color:var(--dim)">${t.verified}/${t.subtasks} (${t.pct}%)</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} branches across all tasks</div>`;
   d.branches.forEach(br => {
     const w = Math.round(br.pct * barW / 100);
     html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="selectTask(${JSON.stringify(br.task)})" title="Click to select task">`;
