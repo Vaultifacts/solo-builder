@@ -456,6 +456,16 @@ window.healSubtask = async function (st) {
 
 /* ── Subtasks tab ───────────────────────────────────────── */
 let _subtasksAll = [];
+const _subtasksSel = new Set();
+
+function _updateBulkBar() {
+  const bar = document.getElementById("subtasks-bulk-bar");
+  const cnt = document.getElementById("subtasks-sel-count");
+  if (!bar) return;
+  const n = _subtasksSel.size;
+  bar.style.display = n > 0 ? "flex" : "none";
+  if (cnt) cnt.textContent = `${n} selected`;
+}
 
 export async function pollSubtasks() {
   try {
@@ -466,6 +476,41 @@ export async function pollSubtasks() {
 }
 
 window.renderSubtasks = function () { _renderSubtasks(); };
+
+window.subtasksClearSel = function () {
+  _subtasksSel.clear();
+  _renderSubtasks();
+};
+
+window.subtasksBulkReset = async function () {
+  if (!_subtasksSel.size) return;
+  const fb = document.getElementById("fb-subtasks-bulk");
+  try {
+    const d = await fetch(state.base + "/subtasks/bulk-reset", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({subtasks: [..._subtasksSel]}),
+    }).then(r => r.json());
+    if (fb) fb.textContent = d.ok ? `↺ ${d.reset_count} reset` : (d.reason || "Error");
+    _subtasksSel.clear();
+    await pollSubtasks();
+  } catch (_) { if (fb) fb.textContent = "Network error"; }
+};
+
+window.subtasksBulkVerify = async function () {
+  if (!_subtasksSel.size) return;
+  const fb = document.getElementById("fb-subtasks-bulk");
+  try {
+    const d = await fetch(state.base + "/subtasks/bulk-verify", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({subtasks: [..._subtasksSel]}),
+    }).then(r => r.json());
+    if (fb) fb.textContent = d.ok ? `✔ ${d.verified_count} verified` : (d.reason || "Error");
+    _subtasksSel.clear();
+    await pollSubtasks();
+  } catch (_) { if (fb) fb.textContent = "Network error"; }
+};
 
 function _renderSubtasks() {
   const el = document.getElementById("subtasks-content");
@@ -490,12 +535,22 @@ function _renderSubtasks() {
     const ev = {subtask: s.subtask, task: s.task, branch: s.branch, status: s.status, step: "—", output: ""};
     const row = document.createElement("div");
     row.className = "diff-entry";
-    row.style.cssText = "cursor:pointer;display:flex;align-items:center;gap:6px";
-    row.title = "Click for detail";
-    row.addEventListener("click", () => window.openSubtaskModal(ev));
+    row.style.cssText = "display:flex;align-items:center;gap:6px";
+
+    const chk = document.createElement("input");
+    chk.type = "checkbox"; chk.style.accentColor = "var(--cyan)";
+    chk.checked = _subtasksSel.has(s.subtask);
+    chk.addEventListener("change", () => {
+      if (chk.checked) _subtasksSel.add(s.subtask);
+      else _subtasksSel.delete(s.subtask);
+      _updateBulkBar();
+    });
+
     const stEl = document.createElement("span");
-    stEl.className = "diff-st"; stEl.style.minWidth = "30px";
+    stEl.className = "diff-st"; stEl.style.cssText = "min-width:30px;cursor:pointer";
     stEl.textContent = s.subtask;
+    stEl.addEventListener("click", () => window.openSubtaskModal(ev));
+
     const statusEl = document.createElement("span");
     statusEl.style.cssText = `color:${_STATUS_COL[s.status] || "var(--text)"};min-width:60px;font-size:10px`;
     statusEl.textContent = s.status;
@@ -505,10 +560,11 @@ function _renderSubtasks() {
     const lenEl = document.createElement("span");
     lenEl.style.cssText = "color:var(--dim);font-size:9px";
     lenEl.textContent = `${s.output_length}b`;
-    row.append(stEl, statusEl, branchEl, lenEl);
+    row.append(chk, stEl, statusEl, branchEl, lenEl);
     nodes.push(row);
   });
   el.replaceChildren(...nodes);
+  _updateBulkBar();
 }
 
 /* ── Agents panel ───────────────────────────────────────── */
