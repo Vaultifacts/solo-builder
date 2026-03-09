@@ -2155,6 +2155,28 @@ class TestStalledCommand(unittest.IsolatedAsyncioTestCase):
         text = mock_send.call_args[0][1]
         self.assertIn("none", text)
 
+    async def test_stalled_excludes_review(self):
+        """'stalled' does not report Review subtasks even past threshold age."""
+        state = _make_state({"A1": "Review", "A2": "Running"}, step=10)
+        mock_cfg = json.dumps({"STALL_THRESHOLD": 5})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.read_text", return_value=mock_cfg):
+            await bot_module._handle_text_command(_make_msg("stalled"))
+        text = mock_send.call_args[0][1]
+        self.assertNotIn("A1", text)
+
+    async def test_stalled_excludes_pending(self):
+        """'stalled' does not report Pending subtasks even past threshold age."""
+        state = _make_state({"A1": "Pending", "A2": "Running"}, step=10)
+        mock_cfg = json.dumps({"STALL_THRESHOLD": 5})
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.read_text", return_value=mock_cfg):
+            await bot_module._handle_text_command(_make_msg("stalled"))
+        text = mock_send.call_args[0][1]
+        self.assertNotIn("A1", text)
+
 
 class TestHealCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot heal command."""
