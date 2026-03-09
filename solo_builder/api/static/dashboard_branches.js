@@ -178,13 +178,19 @@ function _renderBranchesDetail(d) {
     const vSpan    = _span("font-size:10px;color:var(--green)", " " + br.verified + "✓");
     const rSpan    = _span("font-size:10px;color:var(--cyan)", " " + br.running + "▶");
     const pSpan    = _span("font-size:10px;color:var(--yellow)", " " + br.pending + "●");
+
+    // Inline pct mini-bar (data already available from /branches/<task>)
+    const pct = br.subtask_count > 0 ? Math.round(br.verified / br.subtask_count * 100) : 0;
+    const miniTrack = _div("width:40px;height:4px;background:var(--bg3);border-radius:2px;flex-shrink:0");
+    const miniFill  = _div(`width:${Math.round(pct * 40 / 100)}px;height:4px;background:var(--green);border-radius:2px`);
+    miniTrack.appendChild(miniFill);
+    const pctSpan = _span("font-size:9px;color:var(--dim)", pct + "%");
+
     const resetBtn = document.createElement("button");
     resetBtn.className = "toolbar-btn";
     resetBtn.style.cssText = "font-size:8px;padding:1px 4px;margin-left:4px";
     resetBtn.textContent = "↺ Reset";
     resetBtn.title = "Reset all non-Verified subtasks in this branch to Pending";
-    const branchName = br.branch;
-    const taskName = d.task;
     resetBtn.addEventListener("click", async () => {
       const names = (br.subtasks || []).filter(s => s.status !== "Verified").map(s => s.name);
       if (!names.length) return;
@@ -196,7 +202,7 @@ function _renderBranchesDetail(d) {
       } catch (_) {}
       await pollBranches();
     });
-    brHdr.append(nameSpan, stCount, vSpan, rSpan, pSpan, resetBtn);
+    brHdr.append(nameSpan, stCount, vSpan, rSpan, pSpan, miniTrack, pctSpan, resetBtn);
     block.appendChild(brHdr);
 
     br.subtasks.forEach(st => {
