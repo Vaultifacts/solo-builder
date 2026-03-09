@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-106
+TASK-107
 
-Refactor solo_builder/discord_bot/bot.py: split the 2086-line monolithic Discord bot into focused command-group modules to address architecture auditor large-file findings
+Refactor solo_builder_cli.py (1393 lines) into focused modules. Target: cli.py < 700 lines. All 325 tests must pass.
