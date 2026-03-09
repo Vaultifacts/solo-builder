@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-107
+TASK-108
 
-Refactor solo_builder_cli.py (1393 lines) into focused modules. Target: cli.py < 700 lines. All 325 tests must pass.
+Reduce solo_builder_cli.py below 600 lines by extracting journal helpers and main() subcommands to cli_utils.py
