@@ -80,6 +80,12 @@ export async function pollStatus() {
       badge.textContent  = "Idle";
       badge.className    = "status-badge badge-pending";
     }
+    if (d.stalled > 0 && d.stalled_by_branch && d.stalled_by_branch.length > 0) {
+      const w = d.stalled_by_branch[0];
+      badge.title = `${d.stalled} stalled — worst: ${w.task}/${w.branch} (${w.count})`;
+    } else {
+      badge.title = "";
+    }
     _updateFavicon(d);
   } catch (e) {
     checkStaleBanner();

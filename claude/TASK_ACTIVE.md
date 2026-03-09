@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-279
+TASK-280
 
-Export tab: add Stalled Subtasks row linking to /subtasks/export?min_age=X&status=running where X = configured STALL_THRESHOLD from GET /stalled response
+Dashboard header stalled badge: show worst-offending branch name in title tooltip when stalled > 0 (e.g. 'N stalled — worst: task/branch (count)')

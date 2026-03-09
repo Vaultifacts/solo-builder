@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-279
+TASK-280
 
 ## Verdict: PASS
 
@@ -11,9 +11,8 @@ TASK-279
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — `_refreshExportHistoryByStatus()` extended: after updating history by-status chips, fetches `GET /stalled` to get `threshold`, then sets `#export-stalled-csv` and `#export-stalled-json` hrefs to `/subtasks/export?status=running&min_age=<threshold>` (+ `&format=json`); updates `#export-stalled-threshold` label text to `≥ N steps stalled`
-- `solo_builder/api/dashboard.html` — "Stalled Subtasks" row added to Export tab after Subtasks row; anchors have IDs `export-stalled-csv/json` with default `min_age=5` fallback hrefs; threshold label `#export-stalled-threshold` shown beside heading
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — after badge text/class update in `pollStatus()`, when `d.stalled > 0` and `stalled_by_branch` is non-empty, sets `badge.title = "N stalled — worst: task/branch (count)"` using `stalled_by_branch[0]` (already sorted desc by count); clears title when no stalls
 
 ## Implementation Detail
-Threshold is fetched live from `GET /stalled` on every Export tab open (same call as the Stalled tab); links default to `min_age=5` on first render and update once the fetch resolves. No new tests needed — pure dashboard UI addition.
+Tooltip uses existing `stalled_by_branch` from `GET /status` response — no extra fetch. No HTML changes. Pure JS enhancement.
