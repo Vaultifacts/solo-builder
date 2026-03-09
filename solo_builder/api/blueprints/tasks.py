@@ -165,6 +165,50 @@ def reset_task(task_id: str):
     })
 
 
+@tasks_bp.post("/tasks/<path:task_id>/bulk-verify")
+def bulk_verify_task(task_id: str):
+    """Advance subtasks in a task to Verified.
+
+    Body (optional JSON): {"skip_non_running": false}
+    - skip_non_running: if true, only Running/Review subtasks are advanced (default false)
+    Already-Verified subtasks are always skipped.
+    Returns {ok, task, verified_count, skipped_count}.
+    404 if task not found.
+    """
+    from .. import app as _app_mod
+    state = _load_state()
+    dag = state.get("dag", {})
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    body = request.get_json(silent=True) or {}
+    skip_non_running = body.get("skip_non_running", False)
+    verified_count = 0
+    skipped_count = 0
+    for branch_data in task.get("branches", {}).values():
+        for st_data in branch_data.get("subtasks", {}).values():
+            current = st_data.get("status", "Pending")
+            if current == "Verified":
+                skipped_count += 1
+            elif skip_non_running and current not in ("Running", "Review"):
+                skipped_count += 1
+            else:
+                st_data["status"] = "Verified"
+                verified_count += 1
+    if verified_count > 0:
+        task["status"] = "Verified"
+    try:
+        _app_mod.STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+    return jsonify({
+        "ok": True,
+        "task": task_id,
+        "verified_count": verified_count,
+        "skipped_count": skipped_count,
+    })
+
+
 @tasks_bp.get("/tasks/<path:task_id>/subtasks")
 def task_subtasks(task_id: str):
     """Flat list of subtasks for a single task.

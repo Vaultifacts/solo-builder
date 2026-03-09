@@ -2946,6 +2946,67 @@ class TestGetSubtaskOutput(_Base):
 # POST /tasks/<id>/reset
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# POST /tasks/<task_id>/bulk-verify  (TASK-149)
+# ---------------------------------------------------------------------------
+
+class TestPostTaskBulkVerify(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        r = self.client.post("/tasks/Task 0/bulk-verify")
+        self.assertEqual(r.status_code, 200)
+
+    def test_returns_ok(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertTrue(d["ok"])
+
+    def test_verified_count_correct(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["verified_count"], 2)
+
+    def test_already_verified_skipped(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["skipped_count"], 1)
+        self.assertEqual(d["verified_count"], 1)
+
+    def test_skip_non_running_flag(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify",
+                             json={"skip_non_running": True},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["verified_count"], 1)
+        self.assertEqual(d["skipped_count"], 1)
+
+    def test_state_persisted(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/tasks/Task 0/bulk-verify")
+        import json as _json
+        state = _json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Verified")
+
+    def test_task_status_set_verified(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/tasks/Task 0/bulk-verify")
+        import json as _json
+        state = _json.loads(self._state_path.read_text())
+        self.assertEqual(state["dag"]["Task 0"]["status"], "Verified")
+
+    def test_404_for_unknown_task(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/tasks/No Such Task/bulk-verify")
+        self.assertEqual(r.status_code, 404)
+
+    def test_task_field_in_response(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.post("/tasks/Task 0/bulk-verify").get_json()
+        self.assertEqual(d["task"], "Task 0")
+
+
 class TestPostTaskReset(_Base):
 
     def test_reset_valid_task_returns_ok(self):
