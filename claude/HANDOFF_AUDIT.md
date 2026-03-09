@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-157
+TASK-158
 
 ## Verdict: PASS
 
@@ -12,11 +12,12 @@ TASK-157
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard_branches.js` — added _branchesSel Set, _updateBranchesBulkBar(), branchesClearSel, branchesBulkReset, branchesBulkVerify; checkboxes in _renderBranchesDetail subtask rows
-- `solo_builder/api/dashboard.html` — added #branches-bulk-bar div with Reset/Verify/Clear buttons + feedback span
+- `solo_builder/api/dashboard.html` — added #hdr-uptime span after #hdr-step
+- `solo_builder/api/static/dashboard.js` — added pollHealth() async function; wired into tick() Promise.all
 
 ## Implementation Detail
-- Selection only active in task-detail view (_renderBranchesDetail); bulk bar hidden on all-tasks overview
-- Calls existing /subtasks/bulk-reset and /subtasks/bulk-verify endpoints
-- After bulk action: clears selection, refreshes via pollBranches()
-- Pattern mirrors the Subtasks tab bulk bar (TASK-150)
+- pollHealth() fetches GET /health each poll cycle (already exists in core.py)
+- Formats uptime_s as "up Xh00m", "up Xm00s", or "up Xs"
+- Tooltip shows "Server uptime: Xs · step N"
+- Element shown in header between notif-badge and search input
+- No new API endpoints; no test changes required (JS-only)
