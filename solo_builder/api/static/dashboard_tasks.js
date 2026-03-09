@@ -233,15 +233,18 @@ export function renderDetail(t) {
   timelineBtn.addEventListener("click", () => window.toggleTaskTimeline(t.id));
   statusDiv.append(" ", timelineBtn);
 
-  // ── Per-task progress bar ─────────────────────────────────
+  // ── Per-task progress bar + per-branch breakdown ──────────
   let _total = 0, _verified = 0, _running = 0, _pending = 0;
-  Object.values(branches).forEach(bdata => {
+  const _branchStats = [];
+  Object.entries(branches).forEach(([bname, bdata]) => {
+    let bv = 0, br = 0, bt = 0;
     Object.values(bdata.subtasks || {}).forEach(st => {
-      _total++;
-      if (st.status === "Verified") _verified++;
-      else if (st.status === "Running") _running++;
-      else _pending++;
+      bt++;
+      if (st.status === "Verified") bv++;
+      else if (st.status === "Running") br++;
     });
+    _branchStats.push({ name: bname, verified: bv, running: br, total: bt });
+    _total += bt; _verified += bv; _running += br; _pending += bt - bv - br;
   });
   const progressRow = document.createElement("div");
   progressRow.style.cssText = "display:flex;align-items:center;gap:6px;margin:4px 0 2px";
@@ -261,7 +264,34 @@ export function renderDetail(t) {
   if (_running > 0) runSpan.textContent = `${_running}▶`;
   progressRow.append(trackEl, pctSpan, runSpan);
 
-  const nodes = [taskIdDiv, progressRow, statusDiv];
+  // per-branch mini rows (only when >1 branch)
+  const branchProgressDiv = document.createElement("div");
+  branchProgressDiv.style.cssText = "margin:2px 0 4px;display:flex;flex-direction:column;gap:2px";
+  if (_branchStats.length > 1) {
+    const miniW = 60;
+    _branchStats.forEach(bs => {
+      const bpct = bs.total > 0 ? Math.round(bs.verified / bs.total * 100) : 0;
+      const bfill = Math.round(bpct * miniW / 100);
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:4px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = "font-size:9px;color:var(--dim);min-width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      lbl.textContent = bs.name;
+      lbl.title = bs.name;
+      const trk = document.createElement("div");
+      trk.style.cssText = `width:${miniW}px;height:4px;background:var(--bg3);border-radius:2px;flex-shrink:0`;
+      const fll = document.createElement("div");
+      fll.style.cssText = `width:${bfill}px;height:4px;background:var(--green);border-radius:2px`;
+      trk.appendChild(fll);
+      const cnt = document.createElement("span");
+      cnt.style.cssText = "font-size:9px;color:var(--dim)";
+      cnt.textContent = `${bs.verified}/${bs.total}`;
+      row.append(lbl, trk, cnt);
+      branchProgressDiv.appendChild(row);
+    });
+  }
+
+  const nodes = [taskIdDiv, progressRow, branchProgressDiv, statusDiv];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
