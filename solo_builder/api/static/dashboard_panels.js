@@ -441,7 +441,21 @@ function _updateStalledFilterLabel() {
   if (_stalledTaskFilter)   parts.push(`task: ${_stalledTaskFilter}`);
   if (_stalledBranchFilter) parts.push(`branch: ${_stalledBranchFilter}`);
   lbl.textContent = parts.length ? `· ${parts.join(" · ")}` : "";
+  const clearBtn = document.getElementById("stalled-clear-filters");
+  if (clearBtn) clearBtn.style.display = (_stalledTaskFilter || _stalledBranchFilter) ? "" : "none";
 }
+
+window._clearStalledFilters = function () {
+  const hadFilter = _stalledTaskFilter || _stalledBranchFilter;
+  _stalledTaskFilter   = "";
+  _stalledBranchFilter = "";
+  const tf = document.getElementById("stalled-task-filter");
+  const bf = document.getElementById("stalled-branch-filter");
+  if (tf) tf.value = "";
+  if (bf) bf.value = "";
+  _updateStalledFilterLabel();
+  if (hadFilter) pollStalled();
+};
 
 function _renderStalled(d) {
   _updateStalledFilterLabel();
