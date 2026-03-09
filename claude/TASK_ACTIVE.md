@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-297
+TASK-298
 
-Stalled tab: show active filter label (e.g. 'task: X · branch: Y') below the filter inputs when either is set; updates after each poll
+GET /branches: verify ?status=review and ?status=pending filter work correctly; add 3+ tests (parity with GET /branches/export filter tests)
