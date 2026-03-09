@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-139
+TASK-140
 
-Add GET /tasks/<id>/timeline endpoint aggregating all subtask status transitions
+Wire GET /tasks/<id>/timeline into dashboard task detail panel as event log
