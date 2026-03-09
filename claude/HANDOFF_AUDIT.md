@@ -1,22 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-161
+TASK-162
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (414 tests, 0 failures)
+- unittest-discover (api): PASS (416 tests, 0 failures — +2 TestShortcuts)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_branches.js` — added Reset button to each branch header in _renderBranchesDetail
+Three files modified:
+- `solo_builder/api/static/dashboard.js` — added `if (e.key === "b") { window.switchTab("branches"); return; }` in keydown handler
+- `solo_builder/api/constants.py` — added {"key": "b", "description": "Switch to Branches tab"} to _SHORTCUTS
+- `solo_builder/api/test_app.py` — 2 new tests in TestShortcuts: b key present, description mentions "ranch"
 
 ## Implementation Detail
-- Branch header wrapped in flex div for alignment
-- "↺ Reset" button collects non-Verified subtask names from br.subtasks
-- POSTs to /subtasks/bulk-reset, then calls pollBranches() to refresh
-- No-op if all subtasks in the branch are already Verified
-- Uses existing /subtasks/bulk-reset endpoint (TASK-146)
+- 'b' follows same pattern as 'r' (run), 'g' (graph), 'p' (pause)
+- switchTab() already exists as a window function
+- Guard: skipped when focus is in input/textarea/select (standard pattern)
