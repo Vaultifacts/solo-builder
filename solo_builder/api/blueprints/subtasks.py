@@ -79,13 +79,23 @@ def subtasks_export():
     """Export all subtasks as CSV (default) or JSON (?format=json).
 
     Supports same ?task=, ?branch=, ?status= filters as GET /subtasks.
+    Pagination: ?page=<n>&limit=<n> (limit=0 exports all).
     CSV columns: subtask,task,branch,status,output_length
+    JSON wraps rows in {total, page, limit, pages, subtasks: [...]} when paginated.
     """
     dag = _load_dag()
     task_q   = (request.args.get("task")   or "").strip().lower()
     branch_q = (request.args.get("branch") or "").strip().lower()
     status_q = (request.args.get("status") or "").strip().lower()
     fmt = (request.args.get("format") or "csv").strip().lower()
+    try:
+        limit = max(0, int(request.args.get("limit", 0)))
+    except (ValueError, TypeError):
+        limit = 0
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
     rows = []
     for task_id, task_data in dag.items():
         if task_q and task_q not in task_id.lower():
@@ -104,8 +114,16 @@ def subtasks_export():
                     "status": st_status,
                     "output_length": len(st_data.get("output", "")),
                 })
+    total = len(rows)
+    if limit > 0:
+        pages = max(1, -(-total // limit))
+        start = (page - 1) * limit
+        rows = rows[start:start + limit]
+    else:
+        pages = 1
     if fmt == "json":
-        data = json.dumps(rows, indent=2).encode("utf-8")
+        payload = {"total": total, "page": page, "limit": limit, "pages": pages, "subtasks": rows}
+        data = json.dumps(payload, indent=2).encode("utf-8")
         return Response(
             data, mimetype="application/json",
             headers={"Content-Disposition": "attachment; filename=subtasks.json"},
