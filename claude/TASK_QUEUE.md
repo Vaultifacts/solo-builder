@@ -198,3 +198,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-122
+Goal: Add standalone def test_* functions for cli_utils helpers (_load_dotenv, _build_arg_parser, _clear_stale_triggers, _emit_json_result) to push function ratio above 20%
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
