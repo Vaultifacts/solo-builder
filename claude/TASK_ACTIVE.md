@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-221
+TASK-222
 
-CHANGELOG v4.4.0 entry documenting TASK-216 through TASK-220
+Dashboard Export tab shows /history/count by_status summary alongside history export links
