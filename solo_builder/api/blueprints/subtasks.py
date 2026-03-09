@@ -352,13 +352,14 @@ def timeline(subtask: str):
 def stalled():
     """Return subtasks stuck in Running longer than STALL_THRESHOLD.
 
-    Query params: task — substring filter on task name (case-insensitive).
+    Query params: task, branch — substring filters (case-insensitive).
     """
     _app = _get_app()
     state = _load_state()
     dag = state.get("dag", {})
     step = state.get("step", 0)
-    task_q = (request.args.get("task") or "").strip().lower()
+    task_q   = (request.args.get("task")   or "").strip().lower()
+    branch_q = (request.args.get("branch") or "").strip().lower()
     threshold = 5
     try:
         cfg = json.loads(_app.SETTINGS_PATH.read_text(encoding="utf-8"))
@@ -370,6 +371,8 @@ def stalled():
         if task_q and task_q not in task_name.lower():
             continue
         for branch_name, branch in task.get("branches", {}).items():
+            if branch_q and branch_q not in branch_name.lower():
+                continue
             for st_name, st_data in branch.get("subtasks", {}).items():
                 if st_data.get("status") == "Running":
                     age = step - st_data.get("last_update", 0)

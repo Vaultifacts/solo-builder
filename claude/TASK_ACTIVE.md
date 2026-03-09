@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-287
+TASK-288
 
-CHANGELOG v5.4.0: document TASK-283 through TASK-286 (changelog, history export fix, subtasks CSV export, stalled task filter)
+GET /stalled: add ?branch= substring filter (parity with ?task=); 3+ new tests
