@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-142
+TASK-143
 
-Add ?page= and ?limit= pagination to GET /subtasks/export
+Add GET /tasks/export endpoint — task-level summary CSV/JSON download
