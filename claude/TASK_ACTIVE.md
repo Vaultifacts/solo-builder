@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-241
+TASK-242
 
-Wire lint_dashboard_handlers.js into pre-commit hook chain
+Subtasks CSV/JSON export links include ?status=X when status filter is active

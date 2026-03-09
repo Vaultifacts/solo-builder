@@ -1,23 +1,25 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-241
+TASK-242
 
 ## Verdict: PASS
 
 ## Verification Results
 - unittest-discover (api): PASS (495 tests, 0 failures)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
-- pre-commit hook: PASS (lint ran live, 0 gaps reported)
+- node tools/lint_dashboard_handlers.js: PASS (0 gaps)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 Two files modified:
-- `.githooks/pre-commit` — node lint call added after dev_gate.ps1
-- `claude/ALLOWED_FILES.txt` — .githooks/pre-commit registered
+- `solo_builder/api/dashboard.html` — IDs added to subtasks CSV/JSON export anchors
+- `solo_builder/api/static/dashboard_panels.js` — _updateSubtasksExportLinks() added, called on every renderSubtasks branch
 
 ## Implementation Detail
-Added node tools/lint_dashboard_handlers.js call to .githooks/pre-commit after
-the existing dev_gate.ps1 step. Skipped gracefully if node is absent (CI/minimal
-environments). Exits 1 on any gap, blocking the commit. Verified live: lint ran
-and reported PASS during this commit.
+Export anchors had no IDs; hrefs were static /subtasks/export.
+Added subtasks-export-csv and subtasks-export-json IDs.
+_updateSubtasksExportLinks() sets ?status=X on both hrefs when
+_subtasksStatusFilter is active, otherwise restores bare URLs.
+Called on all three renderSubtasks branches (status filter set,
+status filter cleared, non-status text). No test changes.

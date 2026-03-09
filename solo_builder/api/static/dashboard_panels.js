@@ -503,6 +503,15 @@ export async function pollSubtasks() {
   } catch (_) {}
 }
 
+function _updateSubtasksExportLinks() {
+  const csv  = document.getElementById("subtasks-export-csv");
+  const json = document.getElementById("subtasks-export-json");
+  if (!csv || !json) return;
+  const qs = _subtasksStatusFilter ? `?status=${encodeURIComponent(_subtasksStatusFilter)}` : "";
+  csv.href  = `/subtasks/export${qs}`;
+  json.href = `/subtasks/export${qs ? qs + "&format=json" : "?format=json"}`;
+}
+
 window._subtasksPageStep = function (delta) {
   const next = _subtasksPage + delta;
   if (next < 1 || next > _subtasksPages) return;
@@ -545,15 +554,18 @@ window.renderSubtasks = function () {
     // Known status value → server-side filter, reset to page 1
     _subtasksStatusFilter = ql;
     _subtasksPage = 1;
+    _updateSubtasksExportLinks();
     pollSubtasks();
   } else if (_subtasksStatusFilter) {
     // Filter cleared or changed to non-status text → drop server filter, re-fetch
     _subtasksStatusFilter = "";
     _subtasksPage = 1;
+    _updateSubtasksExportLinks();
     pollSubtasks();
   } else {
     // Non-status text, no server filter change → reset to page 1, client-side re-render
     _subtasksPage = 1;
+    _updateSubtasksExportLinks();
     _renderSubtasks();
   }
 };
