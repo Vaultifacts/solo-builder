@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-182
+TASK-183
 
-Add integration tests for GET /tasks/<id>/progress verifying branches[] field and in-place DOM update logic
+Call pollTaskProgress inside window.runAuto step loop for real-time progress bar updates during auto-run
