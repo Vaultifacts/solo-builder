@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-149
+TASK-150
 
-Add POST /tasks/<id>/bulk-verify endpoint — advance all Running/Review subtasks in a task to Verified
+Wire bulk_reset and bulk-verify into dashboard Subtasks tab with multi-select checkboxes and action buttons
