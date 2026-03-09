@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.2.0 — 2026-03-09  Cross-endpoint tests + filter UX + min_age + server-side exports (TASK-273 through TASK-277)
+
+- **277 tasks** merged to master (TASK-001 through TASK-277); **568 API tests**, **274 Discord tests**
+- Cross-endpoint stall invariant tests: `/status.stalled_by_branch` == `/stalled.by_branch` (count, sum, entries, zero-stall) — TASK-273
+- Subtasks tab: "✕ Clear" button shown when any filter active; calls `_clearSubtasksFilters()` — TASK-274
+- `GET /subtasks` + `GET /subtasks/export` accept `?min_age=N` to return only Running subtasks stalled ≥ N steps; 5 new tests — TASK-275
+- Branches tab: CSV/JSON downloads switched to server-side `/branches/export` with active ?status= and ?task= filter params — TASK-276
+- CHANGELOG v5.1.0 documented — TASK-277 (this entry)
+
+---
+
 ## v5.1.0 — 2026-03-09  Stall breakdown + filter UX + sort parity (TASK-267 through TASK-272)
 
 - **272 tasks** merged to master (TASK-001 through TASK-272); **559 API tests**, **274 Discord tests**
