@@ -225,6 +225,14 @@ export function renderDetail(t) {
   resetBtn.addEventListener("click", () => window.resetTask(t.id));
   statusDiv.append(" ", resetBtn);
 
+  const timelineBtn = document.createElement("button");
+  timelineBtn.className = "toolbar-btn";
+  timelineBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  timelineBtn.title = "Show task-level timeline (subtasks sorted by last activity)";
+  timelineBtn.textContent = "⏱ Timeline";
+  timelineBtn.addEventListener("click", () => window.toggleTaskTimeline(t.id));
+  statusDiv.append(" ", timelineBtn);
+
   const nodes = [taskIdDiv, statusDiv];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
@@ -316,6 +324,64 @@ window.resetTask = async function (taskId) {
       toast(d.reason || "Reset failed");
     }
   } catch (_) { toast("Network error"); }
+};
+
+const _STATUS_COLOR = {
+  Verified: "#22c55e", Running: "#06b6d4", Review: "#f59e0b",
+  Pending: "#555", Blocked: "#ef4444",
+};
+
+window.toggleTaskTimeline = async function toggleTaskTimeline(taskId) {
+  const el = document.getElementById("detail-content");
+  const existing = el.querySelector(".detail-tl-panel");
+  if (existing) { existing.remove(); return; }
+  let data;
+  try {
+    const r = await fetch(state.base + "/tasks/" + encodeURIComponent(taskId) + "/timeline");
+    data = await r.json();
+  } catch (_) { toast("Timeline fetch failed"); return; }
+
+  const panel = document.createElement("div");
+  panel.className = "detail-tl-panel";
+  panel.style.cssText = "margin-top:8px;border-top:1px solid var(--border);padding-top:6px";
+
+  const header = document.createElement("div");
+  header.style.cssText = "font-size:10px;color:var(--cyan);margin-bottom:4px";
+  header.textContent = `Timeline — ${data.count} subtasks (step ${data.step})`;
+  panel.appendChild(header);
+
+  (data.subtasks || []).forEach(st => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:6px;padding:1px 0;font-size:10px";
+
+    const dot = document.createElement("span");
+    dot.style.cssText = `width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${_STATUS_COLOR[st.status] || "#555"}`;
+    row.appendChild(dot);
+
+    const name = document.createElement("span");
+    name.style.cssText = "font-weight:bold;min-width:28px";
+    name.textContent = st.subtask;
+    row.appendChild(name);
+
+    const branch = document.createElement("span");
+    branch.style.cssText = "color:var(--dim);min-width:60px";
+    branch.textContent = st.branch;
+    row.appendChild(branch);
+
+    const status = document.createElement("span");
+    status.style.color = _STATUS_COLOR[st.status] || "var(--text)";
+    status.textContent = st.status;
+    row.appendChild(status);
+
+    const step = document.createElement("span");
+    step.style.cssText = "margin-left:auto;color:var(--dim)";
+    step.textContent = "s" + st.last_update;
+    row.appendChild(step);
+
+    panel.appendChild(row);
+  });
+
+  el.appendChild(panel);
 };
 
 window.filterSubtasks = function filterSubtasks() {
