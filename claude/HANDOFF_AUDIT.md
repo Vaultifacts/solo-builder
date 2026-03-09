@@ -1,22 +1,20 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-285
+TASK-286
 
 ## Verdict: PASS
 
 ## Verification Results
 - lint_dashboard_handlers.js: PASS (47 handler calls, 0 gaps)
-- unittest-discover (api): PASS (573 tests, 0 failures; +0 new)
-- unittest-discover (discord_bot): PASS (286 tests, 0 failures; +6 new)
+- unittest-discover (api): PASS (576 tests, 0 failures; +3 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Four files modified:
-- `solo_builder/discord_bot/bot_formatters.py` — `_subtasks_to_csv(state, task_filter, status_filter)` added: iterates DAG with same filter logic as `_format_subtasks`; columns: subtask, task, branch, status, output_length
-- `solo_builder/discord_bot/bot.py` — `_subtasks_to_csv` added to import
-- `solo_builder/discord_bot/bot_slash.py` — `/subtasks` command gains `export: bool = False` param; when True sends `discord.File(io.BytesIO(csv_bytes), filename="subtasks.csv")` attachment
-- `solo_builder/discord_bot/test_bot.py` — `TestSubtasksToCsv` (6 tests): returns bytes, header row, data rows, task filter, status filter, empty dag
+Two files modified:
+- `solo_builder/api/blueprints/subtasks.py` — `GET /stalled`: added `?task=` substring filter (case-insensitive); checked before the branch/subtask loop; docstring updated
+- `solo_builder/api/test_app.py` — 3 new tests in `TestStalled` under `?task= filter (TASK-286)`: match restricts results, no-match returns empty, case-insensitive parity; reuses `_make_multi_task_state(threshold=5)`
 
 ## Implementation Detail
-Mirrors `/branches export:True` pattern exactly. Filters compose (task_filter + status_filter both forwarded to csv formatter). 286 Discord tests total.
+Same substring-lower pattern as all other `?task=` filters in the codebase.
+576 API tests total.

@@ -2734,6 +2734,29 @@ class TestStalled(_Base):
         self.assertEqual(status_d["stalled_by_branch"], [])
         self.assertEqual(stalled_d["by_branch"], [])
 
+    # -- ?task= filter (TASK-286) ------------------------------------------
+
+    def test_task_filter_restricts_to_matching_task(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled?task=Task+A").get_json()
+        self.assertGreater(d["count"], 0)
+        self.assertTrue(all(s["task"] == "Task A" for s in d["stalled"]))
+
+    def test_task_filter_no_match_returns_empty(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled?task=ZZZ").get_json()
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["stalled"], [])
+
+    def test_task_filter_case_insensitive(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d_upper = self.client.get("/stalled?task=Task+A").get_json()
+        d_lower = self.client.get("/stalled?task=task+a").get_json()
+        self.assertEqual(d_upper["count"], d_lower["count"])
+
 
 # Heal
 # ---------------------------------------------------------------------------
