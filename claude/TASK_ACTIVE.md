@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-223
+TASK-224
 
-GET /metrics health summary includes review count field
+History tab pager shows review count alongside page/total info
