@@ -1,22 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-181
+TASK-182
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (451 tests, 0 failures)
+- unittest-discover (api): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `CHANGELOG.md` — created; v4.0.0 milestone entry + v3.x.x placeholder
-- `claude/allowed_files.txt` — added CHANGELOG.md
+One file modified:
+- `solo_builder/api/test_app.py` — 3 new tests in TestGetTaskProgress
 
 ## Implementation Detail
-CHANGELOG.md documents the v4.0.0 milestone: 180 tasks, 451 API tests,
-key features across API/dashboard/Discord bot/CLI, and architecture notes
-for the two "dual-endpoint" patterns (/reset vs /bulk-reset; /branches/<task>
-vs /tasks/<id>/branches). v4.0.0 tag will be applied on master after merge.
+pollTaskProgress() is a browser-side DOM patcher — not directly testable in Python.
+Added 3 integration tests for the /tasks/<id>/progress endpoint's branches[] field:
+1. Multi-branch aggregation (total/verified summed across 2 branches)
+2. Review status counted in both top-level review field and per-branch review field
+3. No branches returns empty branches[] list with total=0
+One assertion fix: _make_state({"A1":"Verified"}) creates 1 subtask, not 2.
