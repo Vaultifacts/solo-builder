@@ -1,67 +1,51 @@
 # HANDOFF: RESEARCH -> ARCHITECT
-Task: TASK-105
-Goal: Refactor solo_builder/api/dashboard.html: extract inline JavaScript and CSS into separate static files
+Task: TASK-106
+Goal: Refactor solo_builder/discord_bot/bot.py (2086 lines) into focused modules
 
 ---
 
 ## File Analysis
 
-`solo_builder/api/dashboard.html` — 2587 lines (monolithic SPA):
-- Lines 1-7: HTML `<head>` (meta, title, favicon)
-- Lines 8-581: `<style>` block (574 lines CSS)
-- Lines 582-919: HTML `<body>` (338 lines markup)
-- Lines 920-2585: `<script>` block (1666 lines JavaScript)
-- Lines 2586-2587: Closing tags
+`solo_builder/discord_bot/bot.py` — 2086 lines:
+- Lines 33–46: Imports
+- Lines 48–74: Module-level path constants (20+ triggers) + TOKEN/CHANNEL_ID
+- Lines 81–653: 22 helper/formatter functions (`_load_state`, `_has_work`, `_find_subtask_output`, `_format_*`)
+- Lines 659–701: `SoloBuilderBot(discord.Client)` class + `bot = SoloBuilderBot()`
+- Lines 704–789: Error handler, `_auto_task`, `_HELP_TEXT`
+- Lines 791–820: `_send()`, `_auto_running()`
+- Lines 822–1246: `_handle_text_command()` — giant if/elif dispatcher (~425 lines)
+- Lines 1252–1897: 39 slash command functions (`@bot.tree.command`) (~645 lines)
+- Lines 1903–2086: Background tasks (`_read_heartbeat`, `_format_step_line`, `_run_auto`, `_poll_completion`, `main`)
 
-## How Flask Serves the Dashboard
+## Critical Test Constraint
 
-- `GET /` handled in `solo_builder/api/blueprints/core.py` line 20:
-  ```python
-  return send_from_directory(Path(__file__).resolve().parent.parent, "dashboard.html")
-  ```
-  This serves from `solo_builder/api/`.
-- `Flask(__name__)` defaults `static_folder="static"` relative to `solo_builder/api/app.py`.
-  Flask auto-serves `solo_builder/api/static/**` at `/static/**` with no extra routes needed.
+`test_bot.py` (2488 lines) imports `discord_bot.bot as bot_module` and patches via `patch.object(bot_module, ...)`.
 
-## Test Coverage
+**Must remain importable as `bot_module.<name>`:**
+- All 20+ path constants (`STATE_PATH`, `VERIFY_TRIGGER`, etc.) — patched in nearly every test
+- `_load_state`, `_send`, `_auto_running`, `_find_subtask_output`, `_read_heartbeat`, `_format_diff`, `_format_step_line` — patched directly
+- `_auto_task` — mutated directly (lines 132, 297, 319 of test_bot.py)
+- `_HELP_TEXT` — read directly (test_bot.py line 348)
+- `_handle_text_command`, `_run_auto`, `_has_work` — called directly
 
-- `GET /` is tested in `TestGetRoot` (2 tests): status 200 and `html` content-type only.
-  Neither test inspects HTML content. Extracting JS/CSS to external files will not break them.
-- No JavaScript unit tests exist. Functional regression can only be caught visually.
-- Existing CI (`smoke-test.yml`) runs `python -m unittest discover` — no browser tests.
+**Safe to move (untested):** all 39 slash command functions at lines 1252–1897.
 
 ## Evidence-Backed Hypotheses
 
-1. **Extracting CSS and JS to `solo_builder/api/static/` will preserve all 305 API tests.**
-   Basis: tests only check HTTP status and content-type for `GET /`; no test inspects HTML body.
+1. **Extracting the 39 slash commands to `bot_slash.py` is zero-risk**: slash commands are entirely untested — only `_handle_text_command` (plain-text path) is tested. Moving them reduces `bot.py` by ~645 lines.
 
-2. **Flask will serve the static files at `/static/dashboard.css` and `/static/dashboard.js`
-   with zero additional routes**, because `Flask(__name__)` already configures the default
-   static folder at `solo_builder/api/static/` and registers the `/static/<path>` route
-   automatically.
+2. **Extracting the 22 `_format_*` / helper functions to `bot_formatters.py` is safe with re-export**: if `bot.py` does `from .bot_formatters import _format_status, ...`, then `bot_module._format_status` still refers to the re-exported name in `bot.py`'s namespace — test patches work correctly.
 
-3. **`dashboard.html` can be reduced from 2587 → ~350 lines** (HTML shell only), with:
-   - `<link rel="stylesheet" href="/static/dashboard.css">` replacing the 574-line `<style>` block
-   - `<script src="/static/dashboard.js" defer></script>` replacing the 1666-line `<script>` block
+3. **Circular import is avoidable**: `bot_formatters.py` functions that need path constants (`_format_diff`, `_format_cache`, `_format_log`, `_format_heal`) must use lazy imports (`import discord_bot.bot as _b`) inside function bodies — identical to the TASK-104 Flask Blueprint pattern that proved safe.
 
 ## Explicit Unknowns
 
-1. **No browser-level verification**: Functional correctness of the extracted JS/CSS cannot
-   be confirmed by the automated test suite. Manual visual inspection is required after the change.
+1. `_format_cache`, `_format_log`, `_format_heal`, `_format_diff` — must verify exactly which path constants they reference before extracting to `bot_formatters.py`. Lazy imports handle this but need confirmation.
 
-2. **`defer` attribute safety**: The JS block must be inspected to confirm it does not rely on
-   synchronous execution relative to inline HTML elements parsed after it; if it does, `defer`
-   is safe (defers to DOMContentLoaded). Must verify no `document.write` calls exist.
-
-3. **Favicon `data:` URI in `<link>` tag**: The dashboard sets the favicon via JS at runtime
-   (`document.getElementById('favicon')`). The static `<link>` tag in `<head>` with
-   `id="favicon"` must remain in the HTML shell for the JS to update it correctly.
+2. `_KEY_MAP` duplication — appears at lines 1073–1087 (text handler) and 1810–1824 (slash handler). Safe to deduplicate into module-level constant, no test dependency on location.
 
 ## Scope Boundary
 
-- In scope: `solo_builder/api/dashboard.html` (reduced to HTML shell)
-- In scope: `solo_builder/api/static/dashboard.css` (NEW — extracted CSS)
-- In scope: `solo_builder/api/static/dashboard.js` (NEW — extracted JS)
-- In scope: `claude/allowed_files.txt` (add two new static files)
-- Out of scope: All Python source files, Flask blueprints, CLI, bot, test suite
-- Architecture auditor score should improve (2587-line file drops off the large-file list)
+- In scope: `bot.py`, `bot_formatters.py` (NEW), `bot_slash.py` (NEW), `claude/allowed_files.txt`
+- Out of scope: `test_bot.py`, all other files
+- Architecture score improvement: `bot.py` drops off the large-file list
