@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.4.5 — 2026-03-09  Pagination + pager fixes + Export chips + metrics tests (TASK-221 through TASK-225)
+
+- **225 tasks** merged to master (TASK-001 through TASK-225); **489 API tests**, **454 Discord tests**
+- `GET /tasks` supports `?limit=N&page=P`; response adds `total`, `page`, `pages` (backward-compatible) — TASK-225
+- History pager `◀/▶` buttons fixed (exposed `window._historyPageStep`); count label shows `· N⏸` — TASK-224
+- `GET /metrics` review regression tests (exact count + pending exclusion) — TASK-223
+- Export tab shows `/history/count` by_status chips on open — TASK-222
+- CHANGELOG v4.4.0 documented — TASK-221
+
+---
+
 ## v4.4.0 — 2026-03-09  History review metadata + by_status chips + stalled regression (TASK-216 through TASK-220)
 
 - **220 tasks** merged to master (TASK-001 through TASK-220); **481 API tests**, **454 Discord tests**

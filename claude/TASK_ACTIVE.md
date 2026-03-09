@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-225
+TASK-226
 
-GET /tasks supports server-side pagination via limit and page query params
+CHANGELOG v4.4.5 entry documenting TASK-221 through TASK-225
