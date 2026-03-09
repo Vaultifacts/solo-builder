@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-111
+TASK-112
 
-Split dashboard.js into focused feature modules to reduce large-file architecture finding
+Prune tracked snapshot artifacts and untrack chat.log to clear large-file architecture findings
