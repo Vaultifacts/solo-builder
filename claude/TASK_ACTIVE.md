@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-168
+TASK-169
 
-Wire POST /tasks/<id>/bulk-reset into dashboard detail panel Reset button
+Use GET /tasks/<id>/branches in Branches tab detail view instead of /branches/<task>
