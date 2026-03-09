@@ -1,7 +1,7 @@
-"""Config blueprint — GET/POST /config, POST /config/reset, GET /shortcuts, POST /set."""
+"""Config blueprint — GET/POST /config, POST /config/reset, GET /config/export, GET /shortcuts, POST /set."""
 import json
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 
 from ..helpers import _write_trigger
 
@@ -45,6 +45,23 @@ def update_config():
         return jsonify({"ok": True, **data})
     except Exception:
         return jsonify({"error": "Could not update settings."}), 500
+
+
+@config_bp.get("/config/export")
+def export_config():
+    """Return settings.json as a downloadable JSON attachment."""
+    _app = _get_app()
+    if not _app.SETTINGS_PATH.exists():
+        return jsonify({"error": "Settings file not found."}), 404
+    try:
+        data = _app.SETTINGS_PATH.read_bytes()
+        return Response(
+            data,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=settings.json"},
+        )
+    except Exception:
+        return jsonify({"error": "Could not read settings."}), 500
 
 
 @config_bp.post("/config/reset")

@@ -1374,6 +1374,39 @@ class TestConfigReset(_Base):
             self._settings_path.write_bytes(backup)
 
 
+class TestConfigExport(_Base):
+    """TASK-124: GET /config/export downloads settings.json as attachment."""
+
+    def test_returns_200(self):
+        r = self.client.get("/config/export")
+        self.assertEqual(r.status_code, 200)
+
+    def test_content_disposition_attachment(self):
+        r = self.client.get("/config/export")
+        cd = r.headers.get("Content-Disposition", "")
+        self.assertIn("attachment", cd)
+        self.assertIn("settings.json", cd)
+
+    def test_content_type_json(self):
+        r = self.client.get("/config/export")
+        self.assertIn("application/json", r.content_type)
+
+    def test_body_is_valid_json(self):
+        import json as _json
+        r = self.client.get("/config/export")
+        d = _json.loads(r.data)
+        self.assertIsInstance(d, dict)
+
+    def test_missing_settings_returns_404(self):
+        backup = self._settings_path.read_bytes()
+        self._settings_path.unlink()
+        try:
+            r = self.client.get("/config/export")
+            self.assertEqual(r.status_code, 404)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+
 class TestShortcuts(_Base):
     """TASK-096: GET /shortcuts returns keyboard shortcut list."""
 
