@@ -1051,6 +1051,59 @@ class TestHistoryExport(_Base):
         lines = r.data.decode().strip().splitlines()
         self.assertEqual(len(lines), 2)  # header + 1 row
 
+    # ?branch= filter (TASK-249)
+
+    def _state_two_branches(self):
+        """State with two branches, each with one subtask with history."""
+        return {
+            "step": 5,
+            "dag": {
+                "Task 0": {
+                    "status": "Running", "depends_on": [],
+                    "branches": {
+                        "Branch A": {"subtasks": {"A1": {
+                            "status": "Verified", "output": "", "description": "",
+                            "history": [{"status": "Running", "step": 1},
+                                        {"status": "Verified", "step": 2}],
+                        }}},
+                        "Branch B": {"subtasks": {"B1": {
+                            "status": "Pending", "output": "", "description": "",
+                            "history": [{"status": "Pending", "step": 3}],
+                        }}},
+                    },
+                }
+            },
+        }
+
+    def test_export_filter_branch_match(self):
+        self._write_state(self._state_two_branches())
+        rows = self.client.get("/history/export?format=json&branch=Branch+A").get_json()
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(r["branch"] == "Branch A" for r in rows))
+
+    def test_export_filter_branch_no_match(self):
+        self._write_state(self._state_two_branches())
+        rows = self.client.get("/history/export?format=json&branch=ZZZ").get_json()
+        self.assertEqual(rows, [])
+
+    def test_export_filter_branch_case_insensitive(self):
+        self._write_state(self._state_two_branches())
+        rows = self.client.get("/history/export?format=json&branch=branch+a").get_json()
+        self.assertEqual(len(rows), 2)
+
+    def test_export_filter_branch_and_status_compose(self):
+        self._write_state(self._state_two_branches())
+        rows = self.client.get(
+            "/history/export?format=json&branch=Branch+A&status=Running").get_json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status"], "Running")
+
+    def test_export_csv_branch_filter(self):
+        self._write_state(self._state_two_branches())
+        r = self.client.get("/history/export?branch=Branch+B")
+        lines = r.data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 2)  # header + 1 row
+
 
 # ---------------------------------------------------------------------------
 # GET /cache/export

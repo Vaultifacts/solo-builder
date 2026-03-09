@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-248
+TASK-249
 
-Add stalled-subtask regression tests: boundary and multi-stall scenarios for GET /status stalled count and stall detection logic
+History export hrefs include active branch filter: when branch filter is set, ?branch=X must be included in CSV and JSON export anchor hrefs

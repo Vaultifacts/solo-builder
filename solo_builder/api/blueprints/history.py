@@ -112,6 +112,7 @@ def history_export():
     subtask  substring filter applied to subtask name (case-insensitive)
     status   substring filter applied to status field (case-insensitive)
     task     substring filter applied to task name (case-insensitive)
+    branch   substring filter applied to branch name (case-insensitive)
     """
     dag = _load_dag()
     events = []
@@ -134,12 +135,15 @@ def history_export():
     subtask_q = (request.args.get("subtask") or "").strip().lower()
     status_q  = (request.args.get("status")  or "").strip().lower()
     task_q    = (request.args.get("task")    or "").strip().lower()
+    branch_q  = (request.args.get("branch")  or "").strip().lower()
     if subtask_q:
         events = [e for e in events if subtask_q in e["subtask"].lower()]
     if status_q:
         events = [e for e in events if status_q in e["status"].lower()]
     if task_q:
         events = [e for e in events if task_q in e["task"].lower()]
+    if branch_q:
+        events = [e for e in events if branch_q in e["branch"].lower()]
 
     events.sort(key=lambda e: e["step"])
 

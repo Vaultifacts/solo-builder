@@ -1,20 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-248
+TASK-249
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (507 tests, 0 failures; +7 new)
+- unittest-discover (api): PASS (512 tests, 0 failures; +5 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/test_app.py` — 7 new tests in TestStalled: boundary (at/below threshold), custom threshold via settings, high threshold keeps fresh running, multi-stall age sort, /status stalled matches /stalled count, mixed statuses isolation
+Two files modified:
+- `solo_builder/api/blueprints/history.py` — added ?branch= filter to history_export(); updated docstring
+- `solo_builder/api/test_app.py` — 5 new tests in TestHistoryExport: branch match, no match, case-insensitive, compose with status, CSV branch filter
 
 ## Implementation Detail
-Added boundary and regression tests for stall detection in GET /stalled and GET /status.
-New _make_state_lu helper builds states with explicit last_update per subtask.
-New _set_threshold helper writes STALL_THRESHOLD to temp settings, ensuring tests are independent of real settings.json (which has STALL_THRESHOLD=10 in production).
-Tests verify: age==threshold is stalled, age<threshold is not, custom threshold respected, /status.stalled == /stalled.count.
+GET /history/export accepted ?subtask=, ?status=, ?task= but NOT ?branch=.
+The JS (_updateHistoryExportLinks) already appended &branch=X to export hrefs when branch filter active — the server silently ignored it.
+Fix: added branch_q = request.args.get("branch") and filter step alongside the other filters.
+Parity with GET /history/count which already supported ?branch=.
