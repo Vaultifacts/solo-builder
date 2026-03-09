@@ -1,23 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-145
+TASK-146
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (376 tests, 0 failures — +9 TestGetTaskSubtasks)
+- unittest-discover: PASS (384 tests, 0 failures — +8 TestSubtasksBulkVerify)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: N/A (no scoring regression expected; JS unchanged)
+- architecture-audit: N/A (Python-only change; no JS modifications)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/blueprints/tasks.py` — added GET /tasks/<path:task_id>/subtasks; ?branch=, ?status= filters; ?output=1; ?page=/?limit= pagination; registered before /timeline to avoid route ambiguity
-- `solo_builder/api/test_app.py` — added TestGetTaskSubtasks (9 tests)
+- `solo_builder/api/blueprints/subtasks.py` — added POST /subtasks/bulk-verify; same pattern as bulk-reset; already-Verified subtasks always skipped; optional skip_non_running flag; writes STATE.json directly
+- `solo_builder/api/test_app.py` — added TestSubtasksBulkVerify (8 tests)
 
 ## Implementation Detail
-- Response envelope: {task, subtasks, count, total, page, limit, pages} — consistent with GET /subtasks
-- output_length always included; full output only when ?output=1
-- Ceiling division -(-total // limit) for page count
-- 404 if task not found
+- Body: {subtasks: [names], skip_non_running: false}
+- Already-Verified always skipped (skipped_count)
+- skip_non_running=true: only Running/Review subtasks advanced; Pending/Verified skipped
+- Returns {ok, verified_count, skipped_count, not_found: [sorted], verified: [names]}
+- 400 if subtasks missing or empty list

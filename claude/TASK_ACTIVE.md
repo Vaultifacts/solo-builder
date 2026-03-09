@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-145
+TASK-146
 
-Add GET /tasks/<task_id>/subtasks endpoint — flat list of subtasks for a specific task with same filter params as GET /subtasks
+Add POST /subtasks/bulk-verify endpoint — advance multiple subtasks to Verified in one request
