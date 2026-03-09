@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-154
+TASK-155
 
-Run detailed architecture audit to surface remaining innerHTML/XSS majors and push score above 98/100
+Add edge-case tests for GET /tasks/<id>/subtasks: empty task, zero subtasks, 404, pagination edge cases

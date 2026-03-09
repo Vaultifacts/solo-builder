@@ -1,28 +1,27 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-154
+TASK-155
 
 ## Verdict: PASS
 
 ## Verification Results
-- architecture-audit: PASS (97.7/100)
-- unittest-discover: N/A (no code changes)
+- unittest-discover (api): PASS (406 tests, 0 failures — +6 TestGetTaskSubtasks)
 - git-status: PASS (clean working tree)
+- git-diff-stat: PASS
 
 ## Scope Check
-No code changes. Research-only task.
+One file modified:
+- `solo_builder/api/test_app.py` — 6 new tests in TestGetTaskSubtasks
 
-## Findings
-Full codebase audit: 12 majors, 69 minors, 0 critical.
-All 12 majors are intentional autonomy patterns:
-- Daemon threads in solo_builder_cli.py (completion webhooks, auto-loop IPC)
-- Infinite loops in cli_utils.py + commands/auto_cmds.py (the agent auto-run loop)
-- Autonomous processes in dashboard.js (setInterval polling), bot.py (Discord event loop), smoke-test.yml (CI)
-- Large file: bot.py (925 lines — already extracted from 2086)
+## Implementation Detail
+Edge cases covered:
+1. Empty subtasks dict in branch → total=0, count=0, subtasks=[]
+2. Task with no branches at all → total=0, subtasks=[]
+3. Pagination page beyond last page → count=0, total correct, subtasks=[]
+4. Pagination with total=0 → pages=1 (not 0)
+5. Status filter with no matches → count=0, subtasks=[]
+6. No limit (default) → pages always 1, count==total
 
-No innerHTML / XSS majors remain — all eliminated in TASK-144 and TASK-153.
-
-## Conclusion
-97.7/100 is the practical ceiling for this codebase given its intentional autonomous agent architecture.
-No actionable improvements found. Score is stable.
+Note: `_make_state({})` is falsy — empty dicts trigger the default subtask set.
+Fixed by writing state dicts directly for empty-subtask scenarios.

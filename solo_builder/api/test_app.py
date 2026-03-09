@@ -3160,6 +3160,49 @@ class TestGetTaskSubtasks(_Base):
         self.assertEqual(d["limit"], 1)
         self.assertGreaterEqual(d["pages"], 1)
 
+    def test_empty_subtasks_returns_zero_count(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [],
+                 "branches": {"Branch A": {"subtasks": {}}}}}}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/subtasks").get_json()
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["subtasks"], [])
+
+    def test_task_with_no_branches_returns_zero(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [], "branches": {}}}}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/subtasks").get_json()
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["subtasks"], [])
+
+    def test_pagination_page_beyond_last_returns_empty(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/tasks/Task 0/subtasks?limit=1&page=99").get_json()
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["total"], 2)
+        self.assertEqual(d["subtasks"], [])
+
+    def test_pagination_zero_total_pages_is_one(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [],
+                 "branches": {"Branch A": {"subtasks": {}}}}}}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/subtasks?limit=5&page=1").get_json()
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["pages"], 1)
+
+    def test_status_filter_no_match_returns_empty(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks?status=Running").get_json()
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["subtasks"], [])
+
+    def test_no_limit_pages_always_one(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending", "A3": "Running"}))
+        d = self.client.get("/tasks/Task 0/subtasks").get_json()
+        self.assertEqual(d["pages"], 1)
+        self.assertEqual(d["count"], d["total"])
+
 
 class TestGetTaskTimeline(_Base):
 
