@@ -1434,3 +1434,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-253
+Goal: Add server-side ?status= filter to GET /branches (all-tasks view): currently client-only so pagination + filter don't compose; add ?status= parameter to backend + wire dashboard to use it + tests
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

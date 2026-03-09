@@ -1397,6 +1397,65 @@ class TestBranchesAll(_Base):
         names2 = {b["branch"] for b in d2["branches"]}
         self.assertTrue(names1.isdisjoint(names2))
 
+    # ?status= server-side filter (TASK-253)
+
+    def _multi_status_state(self):
+        """State with 4 branches: one fully-verified, one running, one review, one pending."""
+        return {
+            "step": 0,
+            "dag": {
+                "Task 0": {"status": "Running", "depends_on": [], "branches": {
+                    "BrV": {"subtasks": {"S1": {"status": "Verified"}}},
+                    "BrR": {"subtasks": {"S2": {"status": "Running"}}},
+                    "BrW": {"subtasks": {"S3": {"status": "Review"}}},
+                    "BrP": {"subtasks": {"S4": {"status": "Pending"}}},
+                }}
+            },
+        }
+
+    def test_status_filter_verified(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches?status=verified").get_json()
+        names = [b["branch"] for b in d["branches"]]
+        self.assertEqual(names, ["BrV"])
+
+    def test_status_filter_running(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches?status=running").get_json()
+        names = [b["branch"] for b in d["branches"]]
+        self.assertEqual(names, ["BrR"])
+
+    def test_status_filter_review(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches?status=review").get_json()
+        names = [b["branch"] for b in d["branches"]]
+        self.assertEqual(names, ["BrW"])
+
+    def test_status_filter_pending(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches?status=pending").get_json()
+        names = [b["branch"] for b in d["branches"]]
+        self.assertEqual(names, ["BrP"])
+
+    def test_status_filter_no_match_returns_empty(self):
+        # All branches fully-verified; running filter → empty
+        state = {"step": 0, "dag": {"Task 0": {"status": "Running", "depends_on": [],
+            "branches": {"BrV": {"subtasks": {"S1": {"status": "Verified"}}}}}}}
+        self._write_state(state)
+        d = self.client.get("/branches?status=running").get_json()
+        self.assertEqual(d["branches"], [])
+        self.assertEqual(d["total"], 0)
+
+    def test_status_filter_composes_with_pagination(self):
+        # 3 running branches; limit=2 → page 1 has 2, total=3
+        dag = {"Task 0": {"status": "Running", "depends_on": [], "branches": {
+            f"Br{i}": {"subtasks": {f"S{i}": {"status": "Running"}}} for i in range(3)
+        }}}
+        self._write_state({"step": 0, "dag": dag})
+        d = self.client.get("/branches?status=running&limit=2&page=1").get_json()
+        self.assertEqual(len(d["branches"]), 2)
+        self.assertEqual(d["total"], 3)
+
 
 # POST /branches/<task>/reset
 # ---------------------------------------------------------------------------
