@@ -1,19 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-228
+TASK-229
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (490 tests, 0 failures; +1 new)
+- unittest-discover (api): PASS (495 tests, 0 failures; +6 new)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified: `solo_builder/api/test_app.py` — 1 test added to TestSubtasksPagination
+Two files modified:
+- `solo_builder/api/blueprints/branches.py` — pagination + review field + pending formula fix
+- `solo_builder/api/test_app.py` — 6 tests added to TestBranchesAll
 
 ## Implementation Detail
-/subtasks already had full pagination (limit, page, total, pages) implemented and tested.
-Added test_pages_disjoint: pages 1+2 are non-overlapping and together cover all N items.
-No implementation change needed.
+GET /branches previously returned {branches, count} with no pagination and no review field.
+Added ?limit=N&page=P; response now includes total, page, pages. Also fixed pending formula
+(was total-v-r, omitting review) and added review field per branch row.
+Six tests: review present, review-not-in-pending, pagination keys, limit, pages=ceil(5/2)=3,
+two pages disjoint.

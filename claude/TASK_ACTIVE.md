@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-228
+TASK-229
 
-GET /subtasks supports limit and page query params for server-side pagination
+GET /branches supports limit and page query params for server-side pagination
