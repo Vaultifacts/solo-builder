@@ -32,7 +32,7 @@ def status():
         threshold = int(cfg.get("STALL_THRESHOLD", 5))
     except Exception:
         pass
-    total = verified = running = stalled = 0
+    total = verified = running = review = stalled = 0
     for t in dag.values():
         for b in t["branches"].values():
             for s in b["subtasks"].values():
@@ -45,13 +45,16 @@ def status():
                     age = step - s.get("last_update", 0)
                     if age >= threshold:
                         stalled += 1
+                elif st == "Review":
+                    review += 1
     return jsonify({
         "step":      step,
         "total":     total,
         "verified":  verified,
         "running":   running,
+        "review":    review,
         "stalled":   stalled,
-        "pending":   total - verified - running,
+        "pending":   total - verified - running - review,
         "pct":       round(verified / total * 100, 1) if total else 0,
         "complete":  verified == total,
     })
