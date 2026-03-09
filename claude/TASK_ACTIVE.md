@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-219
+TASK-220
 
-GET /stalled regression test confirming Review subtasks are excluded
+Prune MEMORY.md to under 200 lines by archiving detail to topic files
