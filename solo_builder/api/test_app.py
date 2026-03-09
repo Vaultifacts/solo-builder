@@ -1760,6 +1760,20 @@ class TestStalled(_Base):
         names = [s["subtask"] for s in d["stalled"]]
         self.assertNotIn("A3", names)
 
+    def test_review_not_stalled(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Running"}))
+        r = self.client.get("/stalled")
+        d = r.get_json()
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertNotIn("A1", names)
+
+    def test_pending_not_stalled(self):
+        self._write_state(self._make_state({"A1": "Pending", "A2": "Running"}))
+        r = self.client.get("/stalled")
+        d = r.get_json()
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertNotIn("A1", names)
+
 
 # Heal
 # ---------------------------------------------------------------------------
