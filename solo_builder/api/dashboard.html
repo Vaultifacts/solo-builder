@@ -159,6 +159,7 @@
           <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('history-filter');f.value=f.value==='Review'?'':'Review';renderHistory();})()">⏸ Review</button>
           <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('history-filter');f.value=f.value==='Verified'?'':'Verified';renderHistory();})()">✅ Verified</button>
         </div>
+        <div id="history-status-chips" style="display:none;gap:6px;flex-wrap:wrap;font-size:9px;color:var(--dim)"></div>
       </div>
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
