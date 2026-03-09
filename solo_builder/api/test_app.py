@@ -1630,6 +1630,16 @@ class TestShortcuts(_Base):
         self.assertIsNotNone(s_entry)
         self.assertIn("ubtask", s_entry["description"])
 
+    def test_includes_h_history_shortcut(self):
+        keys = {s["key"] for s in self.client.get("/shortcuts").get_json()["shortcuts"]}
+        self.assertIn("h", keys)
+
+    def test_h_shortcut_description_mentions_history(self):
+        shortcuts = self.client.get("/shortcuts").get_json()["shortcuts"]
+        h_entry = next((s for s in shortcuts if s["key"] == "h"), None)
+        self.assertIsNotNone(h_entry)
+        self.assertIn("istory", h_entry["description"])
+
 
 # Graph
 # ---------------------------------------------------------------------------

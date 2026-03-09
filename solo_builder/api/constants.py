@@ -67,6 +67,7 @@ _SHORTCUTS = [
     {"key": "g",    "description": "Open Graph tab"},
     {"key": "b",    "description": "Switch to Branches tab"},
     {"key": "s",    "description": "Switch to Subtasks tab"},
+    {"key": "h",    "description": "Switch to History tab"},
     {"key": "v",    "description": "Focus Verify input"},
     {"key": "p",    "description": "Pause / resume polling"},
     {"key": "?",    "description": "Toggle keyboard shortcut help"},

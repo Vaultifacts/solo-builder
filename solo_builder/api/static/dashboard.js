@@ -481,6 +481,7 @@ document.addEventListener("keydown", function (e) {
   if (e.key === "g") { window.toggleView(); return; }
   if (e.key === "b") { window.switchTab("branches"); return; }
   if (e.key === "s") { window.switchTab("subtasks"); return; }
+  if (e.key === "h") { window.switchTab("history"); return; }
 
   if (e.key === "Enter" && state.selectedTask && state.tasksCache[state.selectedTask] && !_modalSt) {
     const t = state.tasksCache[state.selectedTask];
