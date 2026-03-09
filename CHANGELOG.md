@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.3.5 — 2026-03-09  History hash persistence + review stat box + /history/count distribution (TASK-213 through TASK-215)
+
+- **215 tasks** merged to master (TASK-001 through TASK-215); **475 API tests**, **454 Discord tests**
+- History filter persisted to `location.hash` as `ht-filter=<value>`; broken inline handlers fixed — TASK-213
+- `hdr-pending` stat box shows `⏸N` review count alongside pending when review > 0 — TASK-214
+- `GET /history/count` now returns `by_status` dict with per-status event counts (Review included) — TASK-215
+
+---
+
 ## v4.2.9 — 2026-03-09  Review status in all endpoints + URL hash filter (TASK-203 through TASK-209)
 
 - **210 tasks** merged to master (TASK-001 through TASK-210); **471 API tests**, **451 Discord tests**
