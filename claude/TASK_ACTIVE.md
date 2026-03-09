@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-166
+TASK-167
 
-Improve bulk-verify feedback in Subtasks tab: show verified count in feedback span with auto-clear after 3s
+Add POST /tasks/<id>/bulk-reset endpoint: reset all non-Verified subtasks in a task to Pending
