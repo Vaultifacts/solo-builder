@@ -3279,6 +3279,75 @@ class TestGetTaskSubtasks(_Base):
         self.assertEqual(d["count"], d["total"])
 
 
+class TestGetTaskBranches(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        r = self.client.get("/tasks/Task 0/branches")
+        self.assertEqual(r.status_code, 200)
+
+    def test_404_for_unknown_task(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/tasks/No Such Task/branches")
+        self.assertEqual(r.status_code, 404)
+
+    def test_returns_envelope(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        for key in ("task", "branches", "count", "total", "page", "limit", "pages"):
+            self.assertIn(key, d)
+
+    def test_task_field_matches(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        self.assertEqual(d["task"], "Task 0")
+
+    def test_branch_fields(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        self.assertGreater(len(d["branches"]), 0)
+        br = d["branches"][0]
+        for key in ("branch", "subtask_count", "verified", "running", "pending", "pct", "status"):
+            self.assertIn(key, br)
+
+    def test_verified_count_correct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["verified"], 1)
+        self.assertEqual(br["pending"], 1)
+        self.assertEqual(br["subtask_count"], 2)
+
+    def test_status_filter(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        d = self.client.get("/tasks/Task 0/branches?status=Running").get_json()
+        self.assertEqual(d["count"], 1)
+
+    def test_status_filter_no_match(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        d = self.client.get("/tasks/Task 0/branches?status=Running").get_json()
+        self.assertEqual(d["count"], 0)
+
+    def test_no_branches_returns_zero(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [], "branches": {}}}}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["branches"], [])
+
+    def test_pagination(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/branches?limit=1&page=1").get_json()
+        self.assertEqual(d["count"], 1)
+        self.assertGreaterEqual(d["pages"], 1)
+
+    def test_pct_computed(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["pct"], 50.0)
+
+
 class TestGetTaskTimeline(_Base):
 
     def test_timeline_returns_200(self):
