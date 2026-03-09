@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.7.0 — 2026-03-09  300-task milestone: branch review field + Discord subtasks text command (TASK-295 through TASK-300)
+
+- **300 tasks** merged to master (TASK-001 through TASK-300); **591 API tests**, **298 Discord tests**
+- CHANGELOG v5.6.0 documented — TASK-295
+- `GET /subtasks/export` JSON wrapper shape (`subtasks` key + `total` count) and `?status=Review/Pending` filter tests; 4 new tests — TASK-296
+- Stalled tab: `#stalled-filter-label` span shows active filter state (e.g. `· task: X · branch: Y`) below filter inputs; UI-only — TASK-297
+- `GET /branches`: `review` field added to each row; `?status=review` + `?status=pending` filter tests; `?task=`+`?status=` compose test; 4 new tests — TASK-298
+- Discord `subtasks` plain-text command: `subtasks [task=X] [status=Y]` dispatches to `_format_subtasks()`; supports multi-word task names; help text updated; 4 new tests — TASK-299
+- **300-task milestone** CHANGELOG v5.7.0 — TASK-300
+
+---
+
 ## v5.6.0 — 2026-03-09  Stalled tab UX + Discord filters + test coverage (TASK-291 through TASK-294)
 
 - **294 tasks** merged to master (TASK-001 through TASK-294); **583 API tests**, **294 Discord tests**
