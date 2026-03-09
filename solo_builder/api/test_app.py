@@ -1587,6 +1587,38 @@ class TestBranchesAll(_Base):
         self.assertEqual(len(d["branches"]), 2)
         self.assertEqual(d["total"], 3)
 
+    # review field + ?task=+?status= compose (TASK-298)
+
+    def test_review_field_present_in_response_row(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches").get_json()
+        self.assertTrue(all("review" in b for b in d["branches"]))
+
+    def test_review_field_correct_value(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches?status=review").get_json()
+        self.assertEqual(len(d["branches"]), 1)
+        self.assertEqual(d["branches"][0]["review"], 1)
+
+    def test_status_and_task_filter_compose(self):
+        state = {"step": 0, "dag": {
+            "Task A": {"status": "Running", "depends_on": [], "branches": {
+                "BrR": {"subtasks": {"S1": {"status": "Running"}}},
+            }},
+            "Task B": {"status": "Running", "depends_on": [], "branches": {
+                "BrR2": {"subtasks": {"S2": {"status": "Running"}}},
+            }},
+        }}
+        self._write_state(state)
+        d = self.client.get("/branches?status=running&task=Task+A").get_json()
+        self.assertEqual(len(d["branches"]), 1)
+        self.assertEqual(d["branches"][0]["task"], "Task A")
+
+    def test_unknown_status_returns_all(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches?status=unknown_value").get_json()
+        self.assertEqual(len(d["branches"]), 4)
+
 
 # GET /branches/export  (TASK-258)
 # ---------------------------------------------------------------------------
