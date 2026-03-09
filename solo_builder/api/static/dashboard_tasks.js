@@ -78,6 +78,14 @@ export async function pollTasks() {
   try {
     const d = await api("/tasks");
     state.allTasks = d.tasks || [];
+    state.taskTotal = d.total ?? state.allTasks.length;
+    state.taskPages = d.pages ?? 1;
+    const countEl = document.getElementById("tasks-count-lbl");
+    if (countEl) {
+      countEl.textContent = state.taskTotal > 0
+        ? `(${state.taskTotal}${state.taskPages > 1 ? ` · p${d.page}/${state.taskPages}` : ""})`
+        : "";
+    }
     applyTaskSearch();
   } catch (e) {}
 }
