@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-152
+TASK-153
 
-Add bulk_verify command to Discord bot (plain-text + slash) counterpart to bulk_reset
+Extract _svgBar and _sparklineSvg SVG helpers into shared dashboard_svg.js module
