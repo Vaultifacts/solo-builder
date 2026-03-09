@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-299
+TASK-300
 
-Discord plain-text subtasks command: add 'subtasks' to bot.py _handle_text_command dispatch; support optional task= and status= filters; reuse _format_subtasks from bot_formatters.py; 3+ new tests in test_bot.py
+CHANGELOG v5.7.0: 300-task milestone entry covering TASK-295..299; include task count, API test count (591), Discord test count (298), and architecture highlights
