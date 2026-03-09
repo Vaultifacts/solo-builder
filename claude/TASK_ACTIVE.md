@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-308
+TASK-309
 
-GET /branches: add pending_pct field (% pending subtasks per branch, parity with pct and review_pct); 3 new tests in TestBranches
+Dashboard Branches tab: add review_pct column to the per-branch table alongside pct (verified%); UI-only, no new API tests needed
