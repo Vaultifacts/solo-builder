@@ -233,7 +233,35 @@ export function renderDetail(t) {
   timelineBtn.addEventListener("click", () => window.toggleTaskTimeline(t.id));
   statusDiv.append(" ", timelineBtn);
 
-  const nodes = [taskIdDiv, statusDiv];
+  // ── Per-task progress bar ─────────────────────────────────
+  let _total = 0, _verified = 0, _running = 0, _pending = 0;
+  Object.values(branches).forEach(bdata => {
+    Object.values(bdata.subtasks || {}).forEach(st => {
+      _total++;
+      if (st.status === "Verified") _verified++;
+      else if (st.status === "Running") _running++;
+      else _pending++;
+    });
+  });
+  const progressRow = document.createElement("div");
+  progressRow.style.cssText = "display:flex;align-items:center;gap:6px;margin:4px 0 2px";
+  const barW = 100;
+  const fillW = _total > 0 ? Math.round(_verified / _total * barW) : 0;
+  const pct = _total > 0 ? Math.round(_verified / _total * 100) : 0;
+  const trackEl = document.createElement("div");
+  trackEl.style.cssText = `width:${barW}px;height:6px;background:var(--bg3);border-radius:3px;flex-shrink:0`;
+  const fillEl = document.createElement("div");
+  fillEl.style.cssText = `width:${fillW}px;height:6px;background:var(--green);border-radius:3px`;
+  trackEl.appendChild(fillEl);
+  const pctSpan = document.createElement("span");
+  pctSpan.style.cssText = "font-size:10px;color:var(--dim)";
+  pctSpan.textContent = `${_verified}/${_total} (${pct}%)`;
+  const runSpan = document.createElement("span");
+  runSpan.style.cssText = "font-size:10px;color:var(--cyan)";
+  if (_running > 0) runSpan.textContent = `${_running}▶`;
+  progressRow.append(trackEl, pctSpan, runSpan);
+
+  const nodes = [taskIdDiv, progressRow, statusDiv];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
