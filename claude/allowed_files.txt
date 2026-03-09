@@ -72,3 +72,4 @@ solo_builder/commands/dispatcher.py
 solo_builder/commands/auto_cmds.py
 solo_builder/commands/step_runner.py
 solo_builder/cli_utils.py
+solo_builder/config/settings.json

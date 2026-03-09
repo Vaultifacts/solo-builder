@@ -1,6 +1,6 @@
 # HANDOFF: RESEARCH -> ARCHITECT
-Task: TASK-106
-Goal: Refactor solo_builder/discord_bot/bot.py (2086 lines) into focused modules
+Task: TASK-107
+Goal: Refactor solo_builder/solo_builder_cli.py (1393 lines) into focused modules
 
 ---
 
