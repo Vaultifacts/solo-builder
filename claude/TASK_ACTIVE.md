@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-144
+TASK-145
 
-Push architecture score above 97/100 by identifying and fixing remaining major findings
+Add GET /tasks/<task_id>/subtasks endpoint — flat list of subtasks for a specific task with same filter params as GET /subtasks
