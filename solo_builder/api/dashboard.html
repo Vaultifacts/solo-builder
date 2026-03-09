@@ -95,6 +95,11 @@
     <div class="task-grid" id="task-grid">
       <div style="color:var(--dim);font-size:11px">Loading…</div>
     </div>
+    <div id="tasks-pager" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px">
+      <button class="toolbar-btn" style="padding:1px 6px" onclick="_tasksPageStep(-1)">◀</button>
+      <span id="tasks-page-label" style="color:var(--dim)"></span>
+      <button class="toolbar-btn" style="padding:1px 6px" onclick="_tasksPageStep(1)">▶</button>
+    </div>
     <svg id="dag-svg" style="display:none;width:100%;min-height:300px"></svg>
   </div>
 
