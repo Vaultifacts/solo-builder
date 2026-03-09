@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-245
+TASK-246
 
-Document TASK-236 through TASK-245 in CHANGELOG.md as v4.6.0
+Add CSV/JSON download links to Branches all-tasks view respecting active status filter

@@ -60,6 +60,40 @@ window._branchesFilterStatus = function (status) {
   if (_branchesLastData) _renderBranchesAll(_branchesLastData, _branchesLastSummary);
 };
 
+function _getBranchesFiltered() {
+  const branches = (_branchesLastData && _branchesLastData.branches) || [];
+  const f = _branchesStatusFilter;
+  if (!f) return branches;
+  return branches.filter(br => {
+    if (f === "verified") return br.verified === br.total && br.total > 0;
+    if (f === "running")  return br.running  > 0;
+    if (f === "review")   return br.review   > 0;
+    if (f === "pending")  return br.pending  > 0;
+    return true;
+  });
+}
+
+function _triggerDownload(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+window._downloadBranchesCSV = function () {
+  const rows = _getBranchesFiltered();
+  const header = "task,branch,total,verified,running,review,pending,pct";
+  const lines = rows.map(b =>
+    [b.task, b.branch, b.total, b.verified, b.running, b.review ?? 0, b.pending, b.pct]
+      .map(v => JSON.stringify(String(v))).join(","));
+  _triggerDownload(new Blob([header + "\n" + lines.join("\n")], {type: "text/csv"}), "branches.csv");
+};
+
+window._downloadBranchesJSON = function () {
+  const rows = _getBranchesFiltered();
+  _triggerDownload(new Blob([JSON.stringify({branches: rows}, null, 2)], {type: "application/json"}), "branches.json");
+};
+
 /* ── Branches bulk-select state ─────────────────────────── */
 const _branchesSel = new Set();
 
