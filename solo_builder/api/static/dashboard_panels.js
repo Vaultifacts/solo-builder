@@ -72,6 +72,8 @@ export async function pollHistory() {
   } catch (_) {}
 }
 
+window._historyPageStep = function (delta) { historyPageStep(delta); };
+
 export function historyPageStep(delta) {
   const filterEl = document.getElementById("history-filter");
   const q = filterEl ? filterEl.value.trim().toLowerCase() : "";
@@ -174,9 +176,11 @@ function _renderHistory(events) {
   if (label) label.textContent = `${_historyPage}/${pages}`;
   const serverTotal = _historyServerTotal;
   if (count) {
+    const reviewCount = filtered.filter(e => e.status === "Review").length;
+    const reviewSuffix = reviewCount > 0 ? ` · ${reviewCount}⏸` : "";
     count.textContent = serverTotal != null && serverTotal > total
-      ? `${total} shown / ${serverTotal} total`
-      : `${total} event${total !== 1 ? "s" : ""}`;
+      ? `${total} shown / ${serverTotal} total${reviewSuffix}`
+      : `${total} event${total !== 1 ? "s" : ""}${reviewSuffix}`;
   }
   _updateHistoryExportLinks();
 }
