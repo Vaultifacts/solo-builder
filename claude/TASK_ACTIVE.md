@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-148
+TASK-149
 
-Fix renderGraph SVG nodeColorBg hardcoded hex colors to use CSS variables for light/dark theme compatibility
+Add POST /tasks/<id>/bulk-verify endpoint — advance all Running/Review subtasks in a task to Verified
