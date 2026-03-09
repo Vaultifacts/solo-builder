@@ -112,7 +112,10 @@ export function renderGrid(tasks) {
       const cardBadge = document.createElement("span");
       cardBadge.className = `card-mini-badge ${statusClass(t.status)}`;
       cardBadge.textContent = t.status || "Pending";
-      cardTop.append(cardIdSpan, cardBadge);
+      const cardReview = document.createElement("span");
+      cardReview.className = "card-review-badge";
+      cardReview.style.cssText = "font-size:9px;color:var(--yellow);display:none";
+      cardTop.append(cardIdSpan, cardBadge, cardReview);
 
       const cardDeps = document.createElement("div");
       cardDeps.className = "card-deps";
@@ -133,6 +136,11 @@ export function renderGrid(tasks) {
     }
     card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
     card.querySelector(".card-mini-badge").textContent = t.status || "Pending";
+    const reviewBadge = card.querySelector(".card-review-badge");
+    if (reviewBadge) {
+      if (t.review_subtasks > 0) { reviewBadge.textContent = `⏸${t.review_subtasks}`; reviewBadge.style.display = ""; }
+      else { reviewBadge.style.display = "none"; }
+    }
     card.classList.toggle("active",  t.id === state.selectedTask);
     card.classList.toggle("blocked", isBlocked);
 
