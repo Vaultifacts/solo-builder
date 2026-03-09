@@ -200,6 +200,9 @@ window.switchTab = function (name) {
     _historyUnread = 0;
     _updateHistoryBadge();
   }
+  if (name === "subtasks") {
+    _updateSubtasksExportLinks();
+  }
   if (name === "export") {
     _refreshExportHistoryByStatus();
   }

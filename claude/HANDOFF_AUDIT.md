@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-259
+TASK-260
 
 ## Verdict: PASS
 
@@ -11,12 +11,10 @@ TASK-259
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — `#subtasks-branch-filter` wired: `_subtasksBranchFilter` state var, `pollSubtasks()` ?branch= param, `_updateSubtasksExportLinks()` branch param, `window._applySubtasksBranchFilter` handler
-- `solo_builder/api/dashboard.html` — `#subtasks-branch-filter` input added beside task filter; placeholder "Branch…"; oninput="_applySubtasksBranchFilter()"
+One file modified:
+- `solo_builder/api/static/dashboard_panels.js` — `switchTab()` calls `_updateSubtasksExportLinks()` when switching to "subtasks" tab, ensuring CSV/JSON export hrefs reflect the current active filters without needing a fresh poll
 
 ## Implementation Detail
-Branch filter composes server-side with existing status/name/task filters — appended to `pollSubtasks()` URL as `&branch=X` after task param.
-Export links updated in `_updateSubtasksExportLinks()` to include `?branch=X` when active.
-`_applySubtasksBranchFilter()` checks for value change before resetting page and fetching (same guard pattern as task filter).
-No new API endpoint needed — `GET /subtasks` already supported `?branch=` (added in earlier task).
+Before this fix, if a user set a name/status/task/branch filter, navigated away, and returned to the Subtasks tab, the export link hrefs would still reflect the pre-filter default (no params) until the next poll cycle.
+Fix: add `if (name === "subtasks") { _updateSubtasksExportLinks(); }` in `switchTab()`, parallel to the existing `if (name === "export")` block.
+No new API, no new tests needed — `_updateSubtasksExportLinks` is a pure DOM update function.
