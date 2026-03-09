@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-169
+TASK-170
 
-Use GET /tasks/<id>/branches in Branches tab detail view instead of /branches/<task>
+Add Discord /task_progress slash command using GET /tasks/<id>/progress
