@@ -135,6 +135,37 @@ def _format_heal(state: dict, subtask: str) -> str:
     return f"↻ **{st}** heal trigger written — CLI will reset to Pending next loop."
 
 
+def _format_reset_task(state: dict, task_arg: str) -> str:
+    """Bulk-reset all non-Verified subtasks in a task to Pending (writes STATE.json directly)."""
+    task_id = task_arg.strip()
+    if not task_id:
+        return "Usage: `reset_task <task_id>`"
+    dag = state.get("dag", {})
+    if task_id not in dag:
+        return f"⚠️ Task **{task_id}** not found."
+    task = dag[task_id]
+    reset_count = 0
+    skipped_count = 0
+    for branch_data in task.get("branches", {}).values():
+        for st_data in branch_data.get("subtasks", {}).values():
+            if st_data.get("status") == "Verified":
+                skipped_count += 1
+            else:
+                st_data["status"] = "Pending"
+                st_data["output"] = ""
+                st_data.pop("shadow", None)
+                reset_count += 1
+    task["status"] = "Pending"
+    try:
+        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return f"❌ Failed to write state: {exc}"
+    return (
+        f"↺ **{task_id}** reset — {reset_count} subtask(s) → Pending"
+        + (f", {skipped_count} Verified preserved." if skipped_count else ".")
+    )
+
+
 def _allowed(interaction: discord.Interaction) -> bool:
     return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
 
@@ -640,6 +671,11 @@ async def _handle_text_command(message: discord.Message) -> None:
         st_arg = text[5:].strip() if " " in text else ""
         state = _load_state()
         await _send(message, _format_heal(state, st_arg))
+
+    elif low.startswith("reset_task ") or low == "reset_task":
+        task_arg = text[11:].strip() if low.startswith("reset_task ") else ""
+        state = _load_state()
+        await _send(message, _format_reset_task(state, task_arg))
 
     elif low == "agents":
         state = _load_state()
