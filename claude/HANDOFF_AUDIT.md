@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-179
+TASK-180
 
 ## Verdict: PASS
 
@@ -11,12 +11,15 @@ TASK-179
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/blueprints/branches.py` — module docstring + endpoint docstring updates
+Two files modified:
+- `solo_builder/api/static/dashboard_tasks.js` — stable IDs on progress elements + pollTaskProgress export
+- `solo_builder/api/static/dashboard.js` — import pollTaskProgress; add to tick() Promise.all
 
 ## Implementation Detail
-/branches/<task> is NOT deprecated — it has unique value: the subtasks[] array
-(name+status per subtask) required by dashboard_branches.js _renderBranchesDetail.
-/tasks/<id>/branches is the newer paginated endpoint for counts/filtering only.
-Added a module-level note and updated the endpoint docstring to explain both
-endpoints coexist for different purposes. No behavior change.
+Added IDs (detail-prog-fill, detail-prog-pct, detail-prog-run) to the progress bar elements
+in renderDetail() so they can be patched in-place without a full re-render.
+pollTaskProgress(taskId) fetches GET /tasks/<id>/progress and updates those elements.
+In tick(), it runs in parallel with all other polls via Promise.all; the full
+detail re-render still happens afterward to keep subtask status current.
+Net effect: progress bar counts update slightly faster (parallel fetch) and
+pollTaskProgress is independently callable (e.g. from window.runAuto).

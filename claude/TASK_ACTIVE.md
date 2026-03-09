@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-179
+TASK-180
 
-Add deprecation comment on GET /branches/<task> noting /tasks/<id>/branches as the preferred paginated endpoint
+Add pollTaskProgress() in dashboard_tasks.js that fetches GET /tasks/<id>/progress and updates the detail progress bar without a full task reload
