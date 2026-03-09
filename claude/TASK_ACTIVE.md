@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-242
+TASK-243
 
-Subtasks CSV/JSON export links include ?status=X when status filter is active
+Add status quick-filter buttons to Branches all-tasks view (Pending/Running/Review/Verified)
