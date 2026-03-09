@@ -1,5 +1,6 @@
 import { state } from "./dashboard_state.js";
 import { api, esc, toast, flash } from "./dashboard_utils.js";
+import { svgBar, sparklineSvg } from "./dashboard_svg.js";
 export { pollBranches } from "./dashboard_branches.js";
 export { pollCache, pollCacheHistory } from "./dashboard_cache.js";
 
@@ -91,50 +92,6 @@ function _placeholder(text) {
   return d;
 }
 
-function _svgBar(barW, fillW, label, fillColor) {
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("width", barW + 4); svg.setAttribute("height", "14");
-  const bg = document.createElementNS(NS, "rect");
-  bg.setAttribute("x","1"); bg.setAttribute("y","1"); bg.setAttribute("width", barW);
-  bg.setAttribute("height","12"); bg.setAttribute("rx","3"); bg.setAttribute("fill","var(--surface)");
-  const fg = document.createElementNS(NS, "rect");
-  fg.setAttribute("x","1"); fg.setAttribute("y","1"); fg.setAttribute("width", fillW);
-  fg.setAttribute("height","12"); fg.setAttribute("rx","3"); fg.setAttribute("fill", fillColor);
-  const txt = document.createElementNS(NS, "text");
-  txt.setAttribute("x", barW / 2); txt.setAttribute("y","10");
-  txt.setAttribute("text-anchor","middle"); txt.setAttribute("font-size","8"); txt.setAttribute("fill","var(--text)");
-  txt.textContent = label;
-  svg.append(bg, fg, txt);
-  return svg;
-}
-
-function _sparklineSvg(hist, W, H, pad) {
-  if (hist.length <= 1) return _placeholder("Not enough data yet (run more steps).");
-  const NS = "http://www.w3.org/2000/svg";
-  const maxV = Math.max(1, ...hist.map(r => r.verified));
-  const pts = hist.map((r, i) => {
-    const x = pad + (i / (hist.length - 1)) * (W - 2 * pad);
-    const y = H - pad - (r.verified / maxV) * (H - 2 * pad);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("width", W); svg.setAttribute("height", H);
-  svg.style.cssText = "display:block;margin:6px 0";
-  const poly = document.createElementNS(NS, "polyline");
-  poly.setAttribute("points", pts); poly.setAttribute("fill","none");
-  poly.setAttribute("stroke","var(--cyan)"); poly.setAttribute("stroke-width","1.5");
-  const t1 = document.createElementNS(NS, "text");
-  t1.setAttribute("x","2"); t1.setAttribute("y", H - 1);
-  t1.setAttribute("font-size","8"); t1.setAttribute("fill","var(--dim)");
-  t1.textContent = hist[0].step_index;
-  const t2 = document.createElementNS(NS, "text");
-  t2.setAttribute("x", W - 2); t2.setAttribute("y", H - 1);
-  t2.setAttribute("font-size","8"); t2.setAttribute("fill","var(--dim)"); t2.setAttribute("text-anchor","end");
-  t2.textContent = hist[hist.length - 1].step_index;
-  svg.append(poly, t1, t2);
-  return svg;
-}
 
 function _renderHistory(events) {
   const el = document.getElementById("history-content");
@@ -586,7 +543,7 @@ function _renderAgents(d) {
   stepEl.textContent = `step ${d.step}`;
   const barDiv = document.createElement("div");
   barDiv.style.marginBottom = "8px";
-  barDiv.appendChild(_svgBar(barW, fillW, `${pct}% (${f.verified}/${f.total})`, "var(--cyan)"));
+  barDiv.appendChild(svgBar(barW, fillW, `${pct}% (${f.verified}/${f.total})`, "var(--cyan)"));
   const cards = [
     {label: "Planner",       val: `cache interval: ${d.planner?.cache_interval || 5} steps`},
     {label: "Executor",      val: `max/step: ${d.executor?.max_per_step || 6}`},
@@ -620,7 +577,7 @@ export async function pollForecast() {
     const barW = 120, fillW = Math.round(barW * (d.percent_complete || 0) / 100);
     const barWrap = document.createElement("div");
     barWrap.style.marginBottom = "8px";
-    barWrap.appendChild(_svgBar(barW, fillW, `${pct}%`, "var(--green)"));
+    barWrap.appendChild(svgBar(barW, fillW, `${pct}%`, "var(--green)"));
     const mkRow = (label, content) => {
       const row = document.createElement("div");
       row.className = "diff-entry"; row.style.fontSize = "10px";
@@ -657,7 +614,7 @@ export async function pollMetrics() {
     const s = d.summary || {};
     const hist = d.history || [];
     const W = 200, H = 48, pad = 4;
-    const sparkline = _sparklineSvg(hist, W, H, pad);
+    const sparkline = sparklineSvg(hist, W, H, pad);
     const elapsedStr = d.elapsed_s != null ? `${d.elapsed_s}s` : "—";
     const rateStr    = d.steps_per_min != null ? `${d.steps_per_min}/min` : "—";
     const mkSect = (label, marginTop) => {
