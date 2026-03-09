@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-206
+TASK-207
 
 ## Verdict: PASS
 
@@ -11,11 +11,9 @@ TASK-206
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/core.py` — GET /status now tracks and returns review
-- `solo_builder/api/test_app.py` — 2 tests in TestGetStatus
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — pollStatus hdr-step update
 
 ## Implementation Detail
-Added `review` counter to GET /status. `pending` now = total - verified - running - review
-(previously review subtasks were incorrectly counted as pending).
-Two tests: review field present with correct count; pending excludes review.
+hdr-step textContent now appends " · N⏸" when d.review > 0 (zero-suppressed).
+Uses d.review from GET /status, added in TASK-206. JS-only; no new tests needed.

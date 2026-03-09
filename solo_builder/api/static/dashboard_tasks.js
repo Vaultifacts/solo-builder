@@ -24,7 +24,7 @@ export async function pollStatus() {
     document.getElementById("hdr-total").textContent    = d.total;
     document.getElementById("hdr-bar").style.width      = d.pct + "%";
     document.getElementById("hdr-pct").textContent      = d.pct + "%";
-    document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified`;
+    document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified` + (d.review > 0 ? ` · ${d.review}⏸` : "");
     if (d.step > state.prevStep) {
       const delta = (d.verified - state.prevVerified) / (d.step - state.prevStep);
       state.rateEma = state.rateEma === null ? delta : 0.3 * delta + 0.7 * state.rateEma;
