@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-119
+TASK-120
 
-Add inline progress bar to CLI auto-loop step ticker showing verified/total/pct on a single updating line
+Wire GET /dag/summary into Discord bot status command replacing current text output with markdown summary field
