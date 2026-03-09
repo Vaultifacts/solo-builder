@@ -3238,6 +3238,31 @@ class TestPostTaskBulkReset(_Base):
         s = json.loads(self._state_path.read_text())
         self.assertEqual(s["dag"]["Task 0"]["status"], "Verified")
 
+    def test_all_verified_include_verified_resets_all(self):
+        state = self._make_state({"A1": "Verified", "A2": "Verified"})
+        state["dag"]["Task 0"]["status"] = "Verified"
+        self._write_state(state)
+        d = self.client.post("/tasks/Task 0/bulk-reset",
+                             json={"include_verified": True},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["reset_count"], 2)
+        self.assertEqual(d["skipped_count"], 0)
+
+    def test_empty_task_no_branches_returns_zero_counts(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [], "branches": {}}}}
+        self._write_state(state)
+        d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
+        self.assertEqual(d["reset_count"], 0)
+        self.assertEqual(d["skipped_count"], 0)
+
+    def test_task_with_branch_but_no_subtasks_returns_zero_counts(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [],
+                 "branches": {"Branch A": {"subtasks": {}}}}}}
+        self._write_state(state)
+        d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
+        self.assertEqual(d["reset_count"], 0)
+        self.assertEqual(d["skipped_count"], 0)
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks/<id>/timeline  (TASK-139)

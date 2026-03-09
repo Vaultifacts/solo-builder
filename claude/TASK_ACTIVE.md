@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-170
+TASK-171
 
-Add Discord /task_progress slash command using GET /tasks/<id>/progress
+Add edge-case tests for POST /tasks/<id>/bulk-reset: all-Verified + include_verified, empty task, no branches
