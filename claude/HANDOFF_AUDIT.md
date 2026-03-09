@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-107
+TASK-108
 
 ## Verdict: PASS
 
@@ -12,33 +12,28 @@ TASK-107
 - architecture-audit: 92.0/100
 
 ## Scope Check
-Files changed match allowed scope:
-- `solo_builder/solo_builder_cli.py` — 1393 → ~650 lines (-53%)
-- `solo_builder/cli_utils.py` (NEW — `_setup_logging`, `_splash`, `_acquire_lock`, `_release_lock`)
-- `solo_builder/commands/dispatcher.py` (NEW — `DispatcherMixin`: `handle_command`, `start`)
-- `solo_builder/commands/auto_cmds.py` (NEW — `AutoCommandsMixin`: `_cmd_auto`)
-- `solo_builder/commands/step_runner.py` (NEW — `StepRunnerMixin`: `run_step`, `save_state`, `load_state`, `_consume_json_trigger`)
-- `claude/allowed_files.txt` (updated)
+Files changed:
+- `solo_builder/solo_builder_cli.py` — 704 → 665 lines (-6%)
+- `solo_builder/cli_utils.py` — 65 → 123 lines (added `_handle_status_subcommand`, `_handle_watch_subcommand`)
 
-No test files were modified. `test_bot.py` is unchanged.
+No test files modified.
 
 ## All Tests Pass
 - 325 total tests: PASS (0 failures)
-- TestSetCommand (18 tests): PASS — `_persist_setting` kept in `SoloBuilderCLI` where `_CFG_PATH` is test-patched
-- TestSnapshotCommand: PASS — `_take_snapshot` kept in `SoloBuilderCLI` where `_PDF_OK` is test-patched
 
 ## Implementation Notes
 
-### Mixin extraction pattern
-Methods moved from `SoloBuilderCLI` to mixin classes; globals injected via `_inject_host_globals_into_mixins()` using `setdefault` (copies value once at load time). Methods that read test-patched globals (`_PDF_OK`, `_CFG_PATH`, `STATE_PATH`) MUST remain in `solo_builder_cli.py`.
+### What was extracted (to cli_utils.py)
+- `_handle_status_subcommand(state_path)` — fast-path `status` subcommand logic from `main()`
+- `_handle_watch_subcommand(state_path, interval)` — live `watch` subcommand loop from `main()`
+These use no test-patched globals — safe to extract.
 
-### Methods kept in cli.py (not extracted)
-- `_take_snapshot`: reads `_PDF_OK` — test patches `solo_builder_cli._PDF_OK`
-- `_cmd_set`: uses `global STALL_THRESHOLD; X = val` — must write to this module's globals
-- `_persist_setting`: reads `_CFG_PATH` — test patches `solo_builder_cli._CFG_PATH`
+### What was NOT extracted (stays in cli.py)
+- `_append_journal` + `_append_cache_session_stats`: tests patch `solo_builder_cli.JOURNAL_PATH`;
+  extraction breaks `tests/test_cache.py::TestAppendCacheSessionStats` (6 tests)
+- `_fire_completion`: uses `WEBHOOK_URL` which is mutated at runtime by `_cmd_set`
+- `main()`: uses `global WEBHOOK_URL` and creates `SoloBuilderCLI()` — circular if extracted
 
-### Global injection
-`_inject_host_globals_into_mixins()` updated to include `dispatcher`, `auto_cmds`, `step_runner` in the target set.
-
-### Architecture score
-Improved from 91.6 (TASK-106) → 92.0 (TASK-107) due to reduced cli.py complexity.
+### Test-patch constraint summary (documented pattern)
+Any function that reads a module-level global patched by tests must stay in `solo_builder_cli.py`.
+Patched globals: `_PDF_OK`, `_CFG_PATH`, `STATE_PATH`, `JOURNAL_PATH`, `WEBHOOK_URL`.

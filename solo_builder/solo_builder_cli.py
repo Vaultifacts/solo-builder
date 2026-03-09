@@ -105,6 +105,8 @@ _LOG_PATH = os.path.join(_HERE, "state", "solo_builder.log")
 logger = logging.getLogger("solo_builder")
 
 
+# ── Journal helpers ──────────────────────────────────────────────────────────
+# Kept in cli.py: tests patch solo_builder_cli.JOURNAL_PATH; extraction breaks them.
 def _append_journal(
     st_name: str, task_name: str, branch_name: str,
     description: str, output: str, step: int,
@@ -183,7 +185,10 @@ try:
     from .commands.dispatcher import DispatcherMixin
     from .commands.auto_cmds import AutoCommandsMixin
     from .commands.step_runner import StepRunnerMixin
-    from .cli_utils import _setup_logging, _splash, _acquire_lock, _release_lock
+    from .cli_utils import (
+        _setup_logging, _splash, _acquire_lock, _release_lock,
+        _handle_status_subcommand, _handle_watch_subcommand,
+    )
 except ImportError:
     from dag_definition import INITIAL_DAG
     from display import TerminalDisplay
@@ -194,7 +199,10 @@ except ImportError:
     from commands.dispatcher import DispatcherMixin
     from commands.auto_cmds import AutoCommandsMixin
     from commands.step_runner import StepRunnerMixin
-    from cli_utils import _setup_logging, _splash, _acquire_lock, _release_lock
+    from cli_utils import (
+        _setup_logging, _splash, _acquire_lock, _release_lock,
+        _handle_status_subcommand, _handle_watch_subcommand,
+    )
 
 
 class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
@@ -430,7 +438,7 @@ def _inject_host_globals_into_mixins():
     _skip = frozenset({'__builtins__', '__spec__', '__loader__', '__package__'})
     for _mod_name in list(_s.modules):
         if _mod_name.endswith(('query_cmds', 'subtask_cmds', 'dag_cmds', 'settings_cmds',
-                               'dispatcher', 'auto_cmds', 'step_runner')):
+                               'dispatcher', 'auto_cmds', 'step_runner', 'cli_utils')):
             _target = vars(_s.modules[_mod_name])
             for _k, _v in list(_host_globals.items()):
                 if _k not in _skip and not _k.startswith('__'):
@@ -493,67 +501,20 @@ def main() -> None:
     """Entry point — interactive or headless."""
     # ── status subcommand (fast path, no lock needed) ────────────────────────
     if len(sys.argv) > 1 and sys.argv[1] == "status":
-        _state_path = os.path.join(_HERE, "state", "solo_builder_state.json")
-        if not os.path.exists(_state_path):
-            print(json.dumps({"error": "no state file"}))
-            return
-        with open(_state_path) as _f:
-            _state = json.load(_f)
-        _s    = dag_stats(_state.get("dag", {}))
-        _step = _state.get("step", 0)
-        _pct  = round(_s["verified"] / _s["total"] * 100, 1) if _s["total"] else 0.0
-        print(json.dumps({
-            "step":     _step,
-            "verified": _s["verified"],
-            "running":  _s["running"],
-            "pending":  _s["pending"],
-            "total":    _s["total"],
-            "pct":      _pct,
-            "complete": _s["verified"] == _s["total"],
-        }))
+        _handle_status_subcommand(os.path.join(_HERE, "state", "solo_builder_state.json"))
         return
 
     # ── watch subcommand (live progress bar, no lock needed) ─────────────────
     if len(sys.argv) > 1 and sys.argv[1] == "watch":
-        _state_path = os.path.join(_HERE, "state", "solo_builder_state.json")
-        _interval   = 2.0
+        _interval = 2.0
         if len(sys.argv) > 2:
             try:
                 _interval = float(sys.argv[2])
             except ValueError:
                 pass
-        print(f"  Watching pipeline every {_interval}s  (Ctrl+C to stop)", flush=True)
-        try:
-            while True:
-                if not os.path.exists(_state_path):
-                    print("\r  No state file — start the CLI first.                    ",
-                          end="", flush=True)
-                else:
-                    try:
-                        with open(_state_path) as _f:
-                            _wstate = json.load(_f)
-                    except (json.JSONDecodeError, OSError):
-                        time.sleep(_interval)
-                        continue
-                    _s    = dag_stats(_wstate.get("dag", {}))
-                    _step = _wstate.get("step", 0)
-                    _pct  = round(_s["verified"] / _s["total"] * 100, 1) if _s["total"] else 0.0
-                    _bar  = ("=" * int(_pct / 5)).ljust(20, "-")
-                    if _s["verified"] == _s["total"]:
-                        print(f"\r  {GREEN}Complete!{RESET} "
-                              f"{_s['verified']}/{_s['total']} verified in {_step} steps.            ")
-                        break
-                    print(
-                        f"\r  Step {_step:3d}  [{_bar}]  "
-                        f"{GREEN}{_s['verified']:3d}✓{RESET}  "
-                        f"{CYAN}{_s['running']:2d}▶{RESET}  "
-                        f"{YELLOW}{_s['pending']:3d}●{RESET}  "
-                        f"{_pct:5.1f}%",
-                        end="", flush=True,
-                    )
-                time.sleep(_interval)
-        except KeyboardInterrupt:
-            print()
+        _handle_watch_subcommand(
+            os.path.join(_HERE, "state", "solo_builder_state.json"), _interval
+        )
         return
 
     # ── .env loader (no external dependency) ────────────────────────────────
