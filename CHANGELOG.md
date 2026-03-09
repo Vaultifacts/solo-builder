@@ -1,5 +1,21 @@
 # Changelog
 
+## v5.8.0 — 2026-03-09  Branch pct fields + Discord min_age + stalled clear button (TASK-301 through TASK-310)
+
+- **310 tasks** merged to master (TASK-001 through TASK-310); **600 API tests**, **305 Discord tests**
+- `GET /branches`: `review_pct` field added (% of Review subtasks per branch); 3 new tests — TASK-301
+- Stalled tab: "✕ Clear" button shown when task or branch filter active; clears both filters + re-polls; parity with Branches/Subtasks tabs — TASK-302
+- Discord `/branches export:True` slash command: 4 new integration tests covering file attachment and CSV content — TASK-303
+- `GET /history/export ?branch=` filter: already implemented and fully tested (pre-complete) — TASK-304
+- `GET /stalled ?min_age=N`: optional override for STALL_THRESHOLD; 3 new tests — TASK-305
+- Dashboard Export tab stalled hrefs already use `?min_age=<threshold>` dynamically (pre-complete) — TASK-306
+- Discord `/stalled min_age:int=0` param: overrides STALL_THRESHOLD for the call; shows override note in output; 3 new tests — TASK-307
+- `GET /branches`: `pending_pct` field added (% pending subtasks per branch, parity with `pct`/`review_pct`); 3 new tests — TASK-308
+- Dashboard Branches tab: review count now shows `review_pct` alongside (e.g. `2⏸ (40%)`) in overview table — TASK-309
+- CHANGELOG v5.8.0 — TASK-310
+
+---
+
 ## v5.7.0 — 2026-03-09  300-task milestone: branch review field + Discord subtasks text command (TASK-295 through TASK-300)
 
 - **300 tasks** merged to master (TASK-001 through TASK-300); **591 API tests**, **298 Discord tests**
