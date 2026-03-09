@@ -4,10 +4,30 @@ import { svgEl } from "./dashboard_svg.js";
 import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats } from "./dashboard_tasks.js";
 import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory } from "./dashboard_panels.js";
 
+/* ── Health / uptime ─────────────────────────────────────── */
+async function pollHealth() {
+  try {
+    const h = await api("/health");
+    const el = document.getElementById("hdr-uptime");
+    if (!el) return;
+    const s = Math.floor(h.uptime_s || 0);
+    const hh = Math.floor(s / 3600);
+    const mm = Math.floor((s % 3600) / 60);
+    const ss = s % 60;
+    const label = hh > 0
+      ? `up ${hh}h${String(mm).padStart(2,"0")}m`
+      : mm > 0
+        ? `up ${mm}m${String(ss).padStart(2,"0")}s`
+        : `up ${ss}s`;
+    el.textContent = label;
+    el.title = `Server uptime: ${s}s · step ${h.step}`;
+  } catch (_) {}
+}
+
 /* ── Polling loop ────────────────────────────────────────── */
 async function tick() {
   if (state.pollPaused) return;
-  await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory()]);
+  await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory(), pollHealth()]);
   if (state.selectedTask && state.tasksCache[state.selectedTask]) {
     try {
       const fresh = await api("/tasks/" + encodeURIComponent(state.selectedTask));
