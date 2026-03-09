@@ -66,6 +66,7 @@ solo_builder/api/static/dashboard_tasks.js
 solo_builder/api/static/dashboard_panels.js
 solo_builder/api/static/dashboard_branches.js
 solo_builder/api/static/dashboard_cache.js
+solo_builder/api/static/dashboard_journal.js
 .gitignore
 solo_builder/dag_definition.py
 solo_builder/display.py
