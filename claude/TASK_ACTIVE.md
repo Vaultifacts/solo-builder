@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-227
+TASK-228
 
-Dashboard task grid uses GET /tasks pagination — total and pages fields shown in grid header
+GET /subtasks supports limit and page query params for server-side pagination
