@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-175
+TASK-176
 
 ## Verdict: PASS
 
@@ -11,11 +11,11 @@ TASK-175
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/tasks.py` — enhanced GET /tasks/<id>/progress with branches[] array
-- `solo_builder/api/test_app.py` — 4 new tests in TestGetTaskProgress
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — enhanced renderDetail() progress section
 
 ## Implementation Detail
-GET /tasks/<id>/progress already returned task-level counts. Enhanced to also compute per-branch
-subtask counts in a branches[] array [{branch, verified, running, pending, review, total, pct}].
-Task-level counts are preserved unchanged (backward-compatible addition).
+Refactored the inline progress loop to simultaneously collect per-branch stats.
+When task has >1 branch, renders per-branch mini progress rows (60px track, 4px height)
+between the aggregate bar and the statusDiv. Single-branch tasks unchanged.
+No extra API call — data is derived from t.branches already in hand.
