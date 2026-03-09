@@ -1566,3 +1566,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-283
+Goal: CHANGELOG v5.3.0: document TASK-278 through TASK-282 (branches clear button, export stalled row, stalled badge tooltip, history/export task filter tests, Discord /subtasks command)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
