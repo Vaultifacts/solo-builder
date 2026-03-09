@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-129
+TASK-130
 
-Add POST /tasks/<id>/reset endpoint to bulk-reset all subtasks in a task to Pending via HEAL_TRIGGER
+Replace innerHTML with DOM API in dashboard_branches.js and dashboard_cache.js to eliminate XSS major findings
