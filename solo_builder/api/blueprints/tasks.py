@@ -25,6 +25,48 @@ def get_task(task_id: str):
     return jsonify({"id": task_id, **task})
 
 
+@tasks_bp.get("/tasks/export")
+def export_all_tasks():
+    """Download a summary of all tasks as CSV (default) or JSON (?format=json).
+
+    CSV columns: task, status, verified, total, pct
+    JSON: {tasks: [...], count}
+    """
+    dag  = _load_dag()
+    rows = []
+    for task_id, task_data in dag.items():
+        total = 0
+        verified = 0
+        for br in task_data.get("branches", {}).values():
+            for st in br.get("subtasks", {}).values():
+                total += 1
+                if st.get("status") == "Verified":
+                    verified += 1
+        pct = round(verified / total * 100, 1) if total else 0
+        rows.append({
+            "task": task_id,
+            "status": task_data.get("status", "Pending"),
+            "verified": verified,
+            "total": total,
+            "pct": pct,
+        })
+    fmt = (request.args.get("format") or "csv").strip().lower()
+    if fmt == "json":
+        body = json.dumps({"tasks": rows, "count": len(rows)}, indent=2)
+        return Response(
+            body, mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=tasks.json"},
+        )
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["task", "status", "verified", "total", "pct"])
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        buf.getvalue(), mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=tasks.csv"},
+    )
+
+
 @tasks_bp.get("/tasks/<path:task_id>/export")
 def export_task(task_id: str):
     """Download a single task's subtasks as CSV (default) or JSON (?format=json).

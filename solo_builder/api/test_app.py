@@ -2966,6 +2966,54 @@ class TestGetTaskTimeline(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /tasks/export  (TASK-143)
+# ---------------------------------------------------------------------------
+
+class TestGetTasksExportAll(_Base):
+
+    def test_csv_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        r = self.client.get("/tasks/export")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/csv", r.content_type)
+
+    def test_csv_has_header(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        text = self.client.get("/tasks/export").data.decode()
+        self.assertIn("task,status,verified,total,pct", text)
+
+    def test_csv_has_task_row(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        text = self.client.get("/tasks/export").data.decode()
+        self.assertIn("Task 0", text)
+
+    def test_json_format(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/export?format=json").get_json()
+        self.assertIn("tasks", d)
+        self.assertIn("count", d)
+
+    def test_json_row_fields(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/export?format=json").get_json()
+        row = d["tasks"][0]
+        for key in ("task", "status", "verified", "total", "pct"):
+            self.assertIn(key, row)
+
+    def test_json_verified_count(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks/export?format=json").get_json()
+        row = d["tasks"][0]
+        self.assertEqual(row["verified"], 1)
+        self.assertEqual(row["total"], 2)
+
+    def test_csv_attachment_header(self):
+        self._write_state(self._make_state({"A1": "Pending"}))
+        r = self.client.get("/tasks/export")
+        self.assertIn("attachment", r.headers.get("Content-Disposition", ""))
+
+
+# ---------------------------------------------------------------------------
 # GET /tasks/<id>/export
 # ---------------------------------------------------------------------------
 

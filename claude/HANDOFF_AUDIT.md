@@ -1,22 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-142
+TASK-143
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (402 tests, 0 failures — +6 TestSubtasksExportPagination)
+- unittest-discover: PASS (402 tests, 0 failures — +7 TestGetTasksExportAll)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 96.2/100 (unchanged)
+- architecture-audit: 95.8/100 (minor variation; TASK-144 will investigate and recover)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/subtasks.py` — added ?page= and ?limit= to GET /subtasks/export; CSV slices rows; JSON wraps in {total, page, limit, pages, subtasks}; backward-compatible (limit=0 exports all)
-- `solo_builder/api/test_app.py` — added TestSubtasksExportPagination (6 tests)
+Three files modified:
+- `solo_builder/api/blueprints/tasks.py` — added GET /tasks/export; CSV (default) or JSON; columns: task, status, verified, total, pct
+- `solo_builder/api/test_app.py` — added TestGetTasksExportAll (7 tests)
+- `solo_builder/api/dashboard.html` — added Tasks section in Export tab with CSV/JSON download links
 
 ## Implementation Detail
-- Same ceiling-division logic as GET /subtasks pagination (TASK-138)
-- CSV: Content-Disposition unchanged; rows sliced before writing
-- JSON: envelope added with pagination metadata; existing subtasks array structure preserved inside
+- Registered before /tasks/<path:task_id>/export to avoid route ambiguity
+- pct computed as round(verified/total*100, 1); 0 if total=0
+- JSON wraps rows in {tasks: [...], count}
