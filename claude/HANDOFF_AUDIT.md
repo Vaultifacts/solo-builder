@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-129
+TASK-130
 
 ## Verdict: PASS
 
@@ -9,19 +9,17 @@ TASK-129
 - unittest-discover: PASS (393 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 95.6/100 (unchanged)
+- architecture-audit: 96.6/100 (improved from 95.6 — 2 XSS findings removed)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/blueprints/tasks.py` — new POST /tasks/<id>/reset endpoint + `import json`
-- `solo_builder/api/test_app.py` — new TestPostTaskReset class with 6 tests
+- `solo_builder/api/static/dashboard_branches.js` — all innerHTML replaced with DOM API
+- `solo_builder/api/static/dashboard_cache.js` — all innerHTML replaced with DOM API
 
-## Feature Description
-POST /tasks/<id>/reset bulk-resets all non-Verified subtasks in a task to Pending by directly
-updating STATE.json. Returns {ok, task, reset_count, skipped_count}. Verified subtasks are
-preserved (skipped_count). 404 if task not found. The task's own status field is also reset to
-"Pending". Previous output is cleared for each reset subtask; shadow field removed.
-
-Tests: valid task returns ok, 404 for unknown task, correct reset_count (2 subtasks),
-skipped_count for Verified subtasks, subtask status is Pending after reset,
-output cleared after reset.
+## Architecture Improvement
+Score: 95.6 → 96.6 (+1.0 pt). Two XSS major findings removed.
+- dashboard_branches.js: _renderBranchesAll and _renderBranchesDetail rewritten using
+  createElement/_div/_span/_bar helpers + replaceChildren(); selectTask wired via addEventListener
+- dashboard_cache.js: pollCache and _renderCacheHistory rewritten using createElement/replaceChildren();
+  _statRow() helper for key/value rows; _div/_span helpers for concision
+- No remaining innerHTML in either file
