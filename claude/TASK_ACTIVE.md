@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-290
+TASK-291
 
-Discord /stalled: add optional task: and branch: params that forward to GET /stalled?task=X&branch=Y; update _format_stalled to accept task_filter/branch_filter; 4+ new tests
+CHANGELOG v5.5.0: document TASK-287 through TASK-290 (stalled filters, Stalled tab task input, Discord /stalled filters)
