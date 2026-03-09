@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-114
+TASK-115
 
-Add Flask API integration tests targeting endpoints with insufficient coverage — pollMetrics, pollForecast, pollPriority, pollStalled, GET /branches, GET /subtasks, GET /timeline/<id>, GET /shortcuts, POST /config/reset — to raise coverage score in architecture audit
+Reduce solo_builder_cli.py below 600 lines by extracting remaining inline logic into existing or new modules
