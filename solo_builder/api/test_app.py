@@ -3492,6 +3492,36 @@ class TestGetTaskTimeline(_Base):
         updates = [st["last_update"] for st in d["subtasks"]]
         self.assertEqual(updates, sorted(updates))
 
+    def test_timeline_no_branches_returns_empty_list(self):
+        state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [], "branches": {}}}}
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        self.assertEqual(d["subtasks"], [])
+        self.assertEqual(d["count"], 0)
+
+    def test_timeline_history_entries_present(self):
+        state = self._make_state({"A1": "Verified"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["history"] = [
+            {"step": 1, "status": "Running"},
+            {"step": 2, "status": "Verified"},
+        ]
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        hist = d["subtasks"][0]["history"]
+        self.assertEqual(len(hist), 2)
+        self.assertEqual(hist[0]["status"], "Running")
+
+    def test_timeline_multi_branch_count(self):
+        state = self._make_state({"A1": "Verified", "A2": "Pending"})
+        state["dag"]["Task 0"]["branches"]["Branch B"] = {
+            "subtasks": {"B1": {"status": "Running", "output": "", "description": "desc B1"}}
+        }
+        self._write_state(state)
+        d = self.client.get("/tasks/Task 0/timeline").get_json()
+        self.assertEqual(d["count"], 3)
+        branches = {st["branch"] for st in d["subtasks"]}
+        self.assertIn("Branch B", branches)
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks/export  (TASK-143)
