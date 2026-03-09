@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-224
+TASK-225
 
-History tab pager shows review count alongside page/total info
+GET /tasks supports server-side pagination via limit and page query params
