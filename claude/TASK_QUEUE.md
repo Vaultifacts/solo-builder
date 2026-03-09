@@ -1422,3 +1422,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-252
+Goal: Wire ?name= server-side filter into renderSubtasks(): route non-status text from #subtasks-filter to server ?name= and include it in _updateSubtasksExportLinks hrefs
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
