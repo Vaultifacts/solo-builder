@@ -66,7 +66,7 @@ def status():
         "pending":          total - verified - running - review,
         "pct":              round(verified / total * 100, 1) if total else 0,
         "complete":         verified == total,
-        "stalled_by_branch": stalled_by_branch,
+        "stalled_by_branch": sorted(stalled_by_branch, key=lambda x: x["count"], reverse=True),
     })
 
 
