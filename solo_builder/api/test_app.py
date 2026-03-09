@@ -1211,6 +1211,65 @@ class TestSubtasksAll(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /subtasks — pagination (TASK-138)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksPagination(_Base):
+
+    def _state_with_n(self, n):
+        """State with n subtasks: A1..An all Pending."""
+        subtasks = {f"A{i}": {"status": "Pending", "output": "", "last_update": 0}
+                    for i in range(1, n + 1)}
+        state = {"dag": {"Task 0": {"status": "Pending", "branches": {
+            "Branch A": {"status": "Pending", "subtasks": subtasks}
+        }}}, "step": 0}
+        return state
+
+    def test_no_pagination_returns_all(self):
+        self._write_state(self._state_with_n(5))
+        d = self.client.get("/subtasks").get_json()
+        self.assertEqual(d["total"], 5)
+        self.assertEqual(d["count"], 5)
+
+    def test_limit_returns_page_slice(self):
+        self._write_state(self._state_with_n(10))
+        d = self.client.get("/subtasks?limit=3&page=1").get_json()
+        self.assertEqual(d["count"], 3)
+        self.assertEqual(d["total"], 10)
+
+    def test_page_2_returns_next_slice(self):
+        self._write_state(self._state_with_n(10))
+        d = self.client.get("/subtasks?limit=3&page=2").get_json()
+        self.assertEqual(d["count"], 3)
+
+    def test_last_page_returns_remainder(self):
+        self._write_state(self._state_with_n(7))
+        d = self.client.get("/subtasks?limit=3&page=3").get_json()
+        self.assertEqual(d["count"], 1)
+
+    def test_pages_field_correct(self):
+        self._write_state(self._state_with_n(10))
+        d = self.client.get("/subtasks?limit=3").get_json()
+        self.assertEqual(d["pages"], 4)  # ceil(10/3)
+
+    def test_no_limit_pages_is_one(self):
+        self._write_state(self._state_with_n(5))
+        d = self.client.get("/subtasks").get_json()
+        self.assertEqual(d["pages"], 1)
+
+    def test_invalid_limit_treated_as_zero(self):
+        self._write_state(self._state_with_n(5))
+        d = self.client.get("/subtasks?limit=abc").get_json()
+        self.assertEqual(d["count"], 5)
+
+    def test_response_has_page_and_limit_fields(self):
+        self._write_state(self._state_with_n(5))
+        d = self.client.get("/subtasks?limit=2&page=1").get_json()
+        self.assertIn("page", d)
+        self.assertIn("limit", d)
+
+
+# ---------------------------------------------------------------------------
 # GET /subtasks/export  (TASK-088)
 # ---------------------------------------------------------------------------
 
