@@ -6,7 +6,7 @@ import time
 import logging
 import logging.handlers
 
-from utils.helper_functions import BOLD, CYAN, GREEN, RESET, YELLOW, dag_stats
+from utils.helper_functions import BOLD, CYAN, GREEN, RESET, YELLOW, dag_stats  # noqa: dag_stats used by _handle_watch/_status
 
 
 def _setup_logging(log_path: str) -> None:
@@ -63,66 +63,6 @@ def _release_lock(lock_path: str) -> None:
     try:
         os.remove(lock_path)
     except FileNotFoundError:
-        pass
-
-
-def _append_journal(
-    st_name: str, task_name: str, branch_name: str,
-    description: str, output: str, step: int,
-) -> None:
-    """Append one verified Claude result to the journal file."""
-    parent = os.path.dirname(JOURNAL_PATH)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-    exists = os.path.exists(JOURNAL_PATH)
-    with open(JOURNAL_PATH, "a", encoding="utf-8") as f:
-        if not exists:
-            f.write("# Solo Builder -- Live Journal\n\n")
-        f.write(f"## {st_name} · {task_name} / {branch_name} · Step {step}\n\n")
-        if description:
-            f.write(f"**Prompt:** {description}\n\n")
-        f.write(f"{output}\n\n---\n\n")
-
-
-def _append_cache_session_stats(cache, steps: int) -> None:
-    """Append per-session ResponseCache hit/miss summary to the journal.
-
-    Only writes if the cache was consulted at least once this session.
-    Silently skips if cache is None or the journal cannot be written.
-    """
-    if cache is None:
-        return
-    try:
-        cache.persist_stats()
-        s = cache.stats()
-        total = s["hits"] + s["misses"]
-        if total == 0:
-            return
-        hit_rate = s["hits"] / total * 100
-        cum_total = s["cumulative_hits"] + s["cumulative_misses"]
-        cum_rate = s["cumulative_hits"] / cum_total * 100 if cum_total else 0.0
-        parent = os.path.dirname(JOURNAL_PATH)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        exists = os.path.exists(JOURNAL_PATH)
-        with open(JOURNAL_PATH, "a", encoding="utf-8") as f:
-            if not exists:
-                f.write("# Solo Builder -- Live Journal\n\n")
-            f.write(
-                f"## Cache session summary · Step {steps}\n\n"
-                f"| Metric | Value |\n"
-                f"|--------|-------|\n"
-                f"| Hits (session) | {s['hits']} |\n"
-                f"| Misses (session) | {s['misses']} |\n"
-                f"| Hit rate (session) | {hit_rate:.1f}% |\n"
-                f"| Hits (all-time) | {s['cumulative_hits']:,} |\n"
-                f"| Misses (all-time) | {s['cumulative_misses']:,} |\n"
-                f"| Hit rate (all-time) | {cum_rate:.1f}% |\n"
-                f"| Entries on disk | {s['size']} |\n"
-                f"| Est. tokens saved | {s['estimated_tokens_saved']:,} |\n"
-                f"\n---\n\n"
-            )
-    except Exception:
         pass
 
 
