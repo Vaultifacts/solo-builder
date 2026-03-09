@@ -235,6 +235,27 @@ class TestHistoryCount(_Base):
         # step>2 = only step 3 (A1 Verified)
         self.assertEqual(d["filtered"], 1)
 
+    def test_count_has_by_status(self):
+        d = self.client.get("/history/count").get_json()
+        self.assertIn("by_status", d)
+        self.assertIsInstance(d["by_status"], dict)
+
+    def test_count_by_status_review(self):
+        state = self._make_state({"A1": "Review", "A2": "Verified"})
+        br = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        br["A1"]["history"] = [{"status": "Review", "step": 1}]
+        br["A2"]["history"] = [{"status": "Verified", "step": 2}, {"status": "Review", "step": 1}]
+        self._write_state(state)
+        d = self.client.get("/history/count").get_json()
+        self.assertEqual(d["by_status"].get("Review"), 2)
+        self.assertEqual(d["by_status"].get("Verified"), 1)
+
+    def test_count_by_status_excludes_zero(self):
+        # absent status keys are simply not present (no zero-padding)
+        self._write_state(self._state_with_mixed())
+        d = self.client.get("/history/count").get_json()
+        self.assertNotIn("Review", d["by_status"])
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks
