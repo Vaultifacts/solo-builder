@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-249
+TASK-250
 
-History export hrefs include active branch filter: when branch filter is set, ?branch=X must be included in CSV and JSON export anchor hrefs
+Add v4.7.0 CHANGELOG entry documenting TASK-246 through TASK-250 milestone
