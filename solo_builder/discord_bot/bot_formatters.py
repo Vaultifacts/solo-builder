@@ -116,6 +116,35 @@ def _branches_to_csv(state: dict) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
+def _format_subtasks(state: dict, task_filter: str = "", status_filter: str = "") -> str:
+    """Return formatted subtask listing with optional ?task= and ?status= filters."""
+    dag = state.get("dag", {})
+    task_q   = task_filter.strip().lower()
+    status_q = status_filter.strip().lower()
+    rows: list = []
+    for task_name, task_data in dag.items():
+        if task_q and task_q not in task_name.lower():
+            continue
+        for br_name, br_data in task_data.get("branches", {}).items():
+            for st_name, st_data in br_data.get("subtasks", {}).items():
+                st_status = st_data.get("status", "Pending")
+                if status_q and status_q not in st_status.lower():
+                    continue
+                rows.append((task_name, br_name, st_name, st_status))
+    if not rows:
+        return "⚠️ No subtasks match the given filters."
+    icon_map = {"Verified": "✅", "Running": "▶", "Review": "⏸", "Pending": "⏳"}
+    lines = [f"**Subtasks** ({len(rows)})", "```"]
+    for task_name, br_name, st_name, st_status in rows:
+        icon = icon_map.get(st_status, "⏳")
+        lines.append(f"{icon} {st_name:<5} {st_status:<10}  {task_name} / {br_name}")
+    lines.append("```")
+    msg = "\n".join(lines)
+    if len(msg) > 1900:
+        msg = msg[:1900] + "\n…(truncated)"
+    return msg
+
+
 def _format_history(state: dict, limit: int = 20) -> str:
     """Return a formatted recent activity log across all subtasks."""
     dag = state.get("dag", {})

@@ -194,6 +194,61 @@ class TestFormatStalled(unittest.TestCase):
         self.assertLess(idx_a1, idx_a2)  # higher count appears first
 
 
+class TestFormatSubtasks(unittest.TestCase):
+    """Unit tests for _format_subtasks in bot_formatters."""
+
+    def _multi_task_state(self):
+        def _sub(status):
+            return {"status": status, "output": "", "description": "", "history": []}
+        return {
+            "step": 5,
+            "dag": {
+                "Task Alpha": {"status": "Running", "branches": {
+                    "main": {"subtasks": {"A1": _sub("Running"), "A2": _sub("Verified")}},
+                }},
+                "Task Beta": {"status": "Pending", "branches": {
+                    "main": {"subtasks": {"B1": _sub("Pending")}},
+                }},
+            },
+        }
+
+    def test_no_filter_returns_all(self):
+        state = self._multi_task_state()
+        result = bot_module._format_subtasks(state)
+        self.assertIn("A1", result)
+        self.assertIn("B1", result)
+
+    def test_task_filter(self):
+        state = self._multi_task_state()
+        result = bot_module._format_subtasks(state, task_filter="Alpha")
+        self.assertIn("A1", result)
+        self.assertNotIn("B1", result)
+
+    def test_status_filter(self):
+        state = self._multi_task_state()
+        result = bot_module._format_subtasks(state, status_filter="Running")
+        self.assertIn("A1", result)
+        self.assertNotIn("A2", result)
+        self.assertNotIn("B1", result)
+
+    def test_no_match_returns_warning(self):
+        state = self._multi_task_state()
+        result = bot_module._format_subtasks(state, task_filter="ZZZ")
+        self.assertIn("No subtasks", result)
+
+    def test_task_and_status_compose(self):
+        state = self._multi_task_state()
+        result = bot_module._format_subtasks(state, task_filter="Alpha", status_filter="Verified")
+        self.assertIn("A2", result)
+        self.assertNotIn("A1", result)
+        self.assertNotIn("B1", result)
+
+    def test_count_in_header(self):
+        state = self._multi_task_state()
+        result = bot_module._format_subtasks(state)
+        self.assertIn("(3)", result)  # 3 subtasks total
+
+
 class TestFormatStatus(unittest.TestCase):
     def test_all_verified(self):
         state = _make_state({"A1": "Verified", "A2": "Verified"}, step=5)
