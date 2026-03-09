@@ -65,6 +65,7 @@ _SHORTCUTS = [
     {"key": "→",    "description": "History: next page"},
     {"key": "r",    "description": "Run one step"},
     {"key": "g",    "description": "Open Graph tab"},
+    {"key": "b",    "description": "Switch to Branches tab"},
     {"key": "v",    "description": "Focus Verify input"},
     {"key": "p",    "description": "Pause / resume polling"},
     {"key": "?",    "description": "Toggle keyboard shortcut help"},

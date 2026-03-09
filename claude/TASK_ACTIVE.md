@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-161
+TASK-162
 
-Add per-branch Reset button in Branches tab detail view using POST /tasks/<id>/reset
+Add 'b' keyboard shortcut to toggle Branches tab; register in GET /shortcuts

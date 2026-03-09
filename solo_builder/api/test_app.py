@@ -1610,6 +1610,16 @@ class TestShortcuts(_Base):
         for expected in ("j", "k", "r", "p", "?", "Esc"):
             self.assertIn(expected, keys)
 
+    def test_includes_b_branches_shortcut(self):
+        keys = {s["key"] for s in self.client.get("/shortcuts").get_json()["shortcuts"]}
+        self.assertIn("b", keys)
+
+    def test_b_shortcut_description_mentions_branches(self):
+        shortcuts = self.client.get("/shortcuts").get_json()["shortcuts"]
+        b_entry = next((s for s in shortcuts if s["key"] == "b"), None)
+        self.assertIsNotNone(b_entry)
+        self.assertIn("ranch", b_entry["description"])
+
 
 # Graph
 # ---------------------------------------------------------------------------
