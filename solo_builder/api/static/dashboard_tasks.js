@@ -234,17 +234,19 @@ export function renderDetail(t) {
   statusDiv.append(" ", timelineBtn);
 
   // ── Per-task progress bar + per-branch breakdown ──────────
-  let _total = 0, _verified = 0, _running = 0, _pending = 0;
+  let _total = 0, _verified = 0, _running = 0, _review = 0, _pending = 0;
   const _branchStats = [];
   Object.entries(branches).forEach(([bname, bdata]) => {
-    let bv = 0, br = 0, bt = 0;
+    let bv = 0, br = 0, brv = 0, bt = 0;
     Object.values(bdata.subtasks || {}).forEach(st => {
       bt++;
       if (st.status === "Verified") bv++;
       else if (st.status === "Running") br++;
+      else if (st.status === "Review")  brv++;
     });
-    _branchStats.push({ name: bname, verified: bv, running: br, total: bt });
-    _total += bt; _verified += bv; _running += br; _pending += bt - bv - br;
+    _branchStats.push({ name: bname, verified: bv, running: br, review: brv, total: bt });
+    _total += bt; _verified += bv; _running += br; _review += brv;
+    _pending += bt - bv - br - brv;
   });
   const progressRow = document.createElement("div");
   progressRow.style.cssText = "display:flex;align-items:center;gap:6px;margin:4px 0 2px";
@@ -265,7 +267,10 @@ export function renderDetail(t) {
   const runSpan = document.createElement("span");
   runSpan.id = "detail-prog-run";
   runSpan.style.cssText = "font-size:10px;color:var(--cyan)";
-  if (_running > 0) runSpan.textContent = `${_running}▶`;
+  let _runText = "";
+  if (_running > 0) _runText += `${_running}▶`;
+  if (_review  > 0) _runText += (_runText ? " " : "") + `${_review}⏸`;
+  runSpan.textContent = _runText;
   progressRow.append(trackEl, pctSpan, runSpan);
 
   // per-branch mini rows (only when >1 branch)
@@ -289,7 +294,10 @@ export function renderDetail(t) {
       trk.appendChild(fll);
       const cnt = document.createElement("span");
       cnt.style.cssText = "font-size:9px;color:var(--dim)";
-      cnt.textContent = `${bs.verified}/${bs.total}`;
+      let bExtra = `${bs.verified}/${bs.total}`;
+      if (bs.running > 0) bExtra += ` ${bs.running}▶`;
+      if (bs.review  > 0) bExtra += ` ${bs.review}⏸`;
+      cnt.textContent = bExtra;
       row.append(lbl, trk, cnt);
       branchProgressDiv.appendChild(row);
     });
