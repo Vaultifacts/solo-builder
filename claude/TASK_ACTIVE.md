@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-303
+TASK-305
 
-Discord /branches slash command: add export:bool=False param; when True sends _branches_to_csv() as CSV file attachment (parity with /subtasks export:True); 4 new tests in TestHandleBranchesSlash or similar
+GET /stalled: add ?min_age=N filter to return only Running subtasks stalled >= N steps; reuse min_age pattern from GET /subtasks; 3 new tests in TestStalled
