@@ -1885,6 +1885,29 @@ class TestStalled(_Base):
         names = [s["subtask"] for s in d["stalled"]]
         self.assertNotIn("A1", names)
 
+    def test_review_only_state_stalled_count_zero(self):
+        # All subtasks in Review — none should be stalled
+        self._write_state(self._make_state({"A1": "Review", "A2": "Review"}))
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["stalled"], [])
+
+    def test_review_count_field_excludes_review(self):
+        # Running (stalled) + Review — count must equal len(stalled)
+        self._write_state(self._make_state({"A1": "Running", "A2": "Review"}))
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["count"], len(d["stalled"]))
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertNotIn("A2", names)
+
+    def test_multiple_review_none_in_stalled(self):
+        state = self._make_state({"A1": "Review", "A2": "Review", "A3": "Running"})
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertNotIn("A1", names)
+        self.assertNotIn("A2", names)
+
 
 # Heal
 # ---------------------------------------------------------------------------
