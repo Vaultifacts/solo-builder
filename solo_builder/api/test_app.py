@@ -2923,6 +2923,64 @@ class TestPostTaskReset(_Base):
 # GET /tasks/<id>/timeline  (TASK-139)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# GET /tasks/<task_id>/subtasks  (TASK-145)
+# ---------------------------------------------------------------------------
+
+class TestGetTaskSubtasks(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        r = self.client.get("/tasks/Task 0/subtasks")
+        self.assertEqual(r.status_code, 200)
+
+    def test_returns_json_envelope(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks").get_json()
+        for key in ("task", "subtasks", "count", "total", "page", "limit", "pages"):
+            self.assertIn(key, d)
+
+    def test_task_field_matches(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks").get_json()
+        self.assertEqual(d["task"], "Task 0")
+
+    def test_subtask_fields(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks").get_json()
+        self.assertGreater(len(d["subtasks"]), 0)
+        row = d["subtasks"][0]
+        for key in ("subtask", "branch", "status", "output_length"):
+            self.assertIn(key, row)
+
+    def test_status_filter(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/tasks/Task 0/subtasks?status=Verified").get_json()
+        self.assertTrue(all(r["status"] == "Verified" for r in d["subtasks"]))
+
+    def test_branch_filter(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks?branch=Branch+A").get_json()
+        self.assertTrue(all(r["branch"] == "Branch A" for r in d["subtasks"]))
+
+    def test_output_included_when_requested(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks?output=1").get_json()
+        self.assertIn("output", d["subtasks"][0])
+
+    def test_404_for_unknown_task(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/tasks/No Such Task/subtasks")
+        self.assertEqual(r.status_code, 404)
+
+    def test_pagination(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/tasks/Task 0/subtasks?limit=1&page=1").get_json()
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["limit"], 1)
+        self.assertGreaterEqual(d["pages"], 1)
+
+
 class TestGetTaskTimeline(_Base):
 
     def test_timeline_returns_200(self):

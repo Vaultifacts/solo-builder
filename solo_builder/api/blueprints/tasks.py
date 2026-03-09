@@ -165,6 +165,64 @@ def reset_task(task_id: str):
     })
 
 
+@tasks_bp.get("/tasks/<path:task_id>/subtasks")
+def task_subtasks(task_id: str):
+    """Flat list of subtasks for a single task.
+
+    Supports same ?branch=, ?status= filters (case-insensitive substring) as GET /subtasks.
+    Pagination: ?page=<n> (1-based) and ?limit=<n> (default 0 = all).
+    Response: {task, subtasks, count, total, page, limit, pages}
+    """
+    dag = _load_dag()
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    branch_q = (request.args.get("branch") or "").strip().lower()
+    status_q = (request.args.get("status") or "").strip().lower()
+    include_output = request.args.get("output", "0") == "1"
+    try:
+        limit = max(0, int(request.args.get("limit", 0)))
+    except (ValueError, TypeError):
+        limit = 0
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+    result = []
+    for br_name, br_data in task.get("branches", {}).items():
+        if branch_q and branch_q not in br_name.lower():
+            continue
+        for st_name, st_data in br_data.get("subtasks", {}).items():
+            st_status = st_data.get("status", "Pending")
+            if status_q and status_q not in st_status.lower():
+                continue
+            entry = {
+                "subtask": st_name,
+                "branch": br_name,
+                "status": st_status,
+                "output_length": len(st_data.get("output", "")),
+            }
+            if include_output:
+                entry["output"] = st_data.get("output", "")
+            result.append(entry)
+    total = len(result)
+    if limit > 0:
+        pages = max(1, -(-total // limit))
+        start = (page - 1) * limit
+        result = result[start:start + limit]
+    else:
+        pages = 1
+    return jsonify({
+        "task": task_id,
+        "subtasks": result,
+        "count": len(result),
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": pages,
+    })
+
+
 @tasks_bp.get("/tasks/<path:task_id>/timeline")
 def task_timeline(task_id: str):
     """Aggregate timeline for all subtasks in a task.
