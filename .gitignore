@@ -42,3 +42,4 @@ pypi Recovery Codes.txt
 *.env.local
 *.key
 tools/auto_batch.log
+audit_reports/
