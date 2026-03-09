@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-141
+TASK-142
 
-Add POST /subtasks/bulk-reset endpoint to reset multiple subtasks by ID in one request
+Add ?page= and ?limit= pagination to GET /subtasks/export
