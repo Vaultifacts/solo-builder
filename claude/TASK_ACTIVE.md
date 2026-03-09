@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-178
+TASK-179
 
-Verify TestTaskProgressCommand tests call bot_formatters._format_task_progress directly; add direct formatter unit tests
+Add deprecation comment on GET /branches/<task> noting /tasks/<id>/branches as the preferred paginated endpoint
