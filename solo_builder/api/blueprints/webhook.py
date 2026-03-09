@@ -38,6 +38,8 @@ def fire_webhook():
         pass
     if not webhook_url:
         return jsonify({"ok": False, "reason": "WEBHOOK_URL not configured"}), 200
+    if not webhook_url.startswith(("http://", "https://")):
+        return jsonify({"ok": False, "reason": "WEBHOOK_URL must start with http:// or https://"}), 200
     payload = json.dumps({
         "event": "complete",
         "step": step,
@@ -51,7 +53,7 @@ def fire_webhook():
             webhook_url, data=payload,
             headers={"Content-Type": "application/json"}, method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10):
+        with urllib.request.urlopen(req, timeout=10):  # noqa: S310
             pass
         return jsonify({"ok": True, "sent": True, "url": webhook_url}), 200
     except Exception as exc:

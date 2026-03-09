@@ -464,6 +464,8 @@ def _fire_completion(steps: int, verified: int, total: int) -> None:
     def _webhook() -> None:
         if not WEBHOOK_URL:
             return
+        if not WEBHOOK_URL.startswith(("http://", "https://")):
+            return
         try:
             import urllib.request, urllib.error
             payload = json.dumps({
@@ -474,7 +476,7 @@ def _fire_completion(steps: int, verified: int, total: int) -> None:
                 WEBHOOK_URL, data=payload,
                 headers={"Content-Type": "application/json"},
             )
-            urllib.request.urlopen(req, timeout=10)
+            urllib.request.urlopen(req, timeout=10)  # noqa: S310
         except Exception as exc:
             # Log failures — silent to the user but auditable
             try:
