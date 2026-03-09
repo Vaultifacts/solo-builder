@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-229
+TASK-230
 
-GET /branches supports limit and page query params for server-side pagination
+Audit and fix branches tab inline handlers for ES module window exposure gaps
