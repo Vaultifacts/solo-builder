@@ -1,24 +1,20 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-167
+TASK-168
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (439 tests, 0 failures — +10 TestPostTaskBulkReset)
+- unittest-discover (api): PASS (439 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/tasks.py` — added POST /tasks/<path:task_id>/bulk-reset
-- `solo_builder/api/test_app.py` — added TestPostTaskBulkReset (10 tests)
+One file modified:
+- `solo_builder/api/static/dashboard_tasks.js` — resetTask() endpoint changed from /reset to /bulk-reset
 
 ## Implementation Detail
-Distinct from POST /tasks/<id>/reset:
-- Does NOT clear output or remove shadow key
-- Has include_verified=false body flag to optionally reset Verified subtasks
-- task["status"] = "Pending" only when reset_count > 0
-- Returns {ok, task, reset_count, skipped_count}
-- 404 if task not found
+/bulk-reset preserves subtask output (lighter touch); /reset clears output.
+Dashboard "↺ Reset task" button no longer wipes subtask output on reset.
+Same response shape {ok, reset_count}, same toast + selectTask refresh.

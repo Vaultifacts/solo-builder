@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-167
+TASK-168
 
-Add POST /tasks/<id>/bulk-reset endpoint: reset all non-Verified subtasks in a task to Pending
+Wire POST /tasks/<id>/bulk-reset into dashboard detail panel Reset button
