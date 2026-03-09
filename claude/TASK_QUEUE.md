@@ -834,3 +834,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-176
+Goal: Wire GET /tasks/<id>/progress branches[] into dashboard task detail progress bar; remove inline per-branch computation
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

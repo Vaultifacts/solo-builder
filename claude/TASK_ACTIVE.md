@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-175
+TASK-176
 
-Add GET /tasks/<id>/progress endpoint with per-branch subtask counts (verified/running/pending/total/pct)
+Wire GET /tasks/<id>/progress branches[] into dashboard task detail progress bar; remove inline per-branch computation
