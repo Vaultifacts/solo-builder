@@ -894,3 +894,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-181
+Goal: Tag v4.0.0 milestone: add CHANGELOG entry summarising 180 tasks, 451 API tests, arch score 97.7/100
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
