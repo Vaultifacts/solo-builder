@@ -1014,3 +1014,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-218
+Goal: Dashboard History tab shows by_status chips from /history/count response
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

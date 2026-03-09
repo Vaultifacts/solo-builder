@@ -24,6 +24,23 @@ function _updateHistoryBadge() {
   }
 }
 
+const _STATUS_CHIP_COLORS = {Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"};
+
+function _updateHistoryStatusChips(byStatus) {
+  const el = document.getElementById("history-status-chips");
+  if (!el) return;
+  const entries = Object.entries(byStatus).filter(([, n]) => n > 0);
+  if (!entries.length) { el.style.display = "none"; return; }
+  el.style.display = "flex";
+  el.replaceChildren();
+  for (const [s, n] of entries) {
+    const chip = document.createElement("span");
+    chip.textContent = `${s}: ${n}`;
+    chip.style.color = _STATUS_CHIP_COLORS[s] || "var(--dim)";
+    el.append(chip);
+  }
+}
+
 export async function pollHistory() {
   try {
     const url = _historyLastStep > 0
@@ -33,7 +50,10 @@ export async function pollHistory() {
       api(url),
       api("/history/count").catch(() => null),
     ]);
-    if (countD) _historyServerTotal = countD.total;
+    if (countD) {
+      _historyServerTotal = countD.total;
+      _updateHistoryStatusChips(countD.by_status || {});
+    }
     if (!d.events || d.events.length === 0) {
       if (_historyRows.length === 0) _renderHistory([]);
       return;
