@@ -20,12 +20,22 @@ def subtasks_all():
     """Flat list of all subtasks across all tasks.
 
     Query params: task, branch, status (case-insensitive substring); output=1 includes full output.
+    Pagination: page=<n> (1-based) and limit=<n> (default 0 = all).
+    Response includes total (pre-pagination count), page, limit, pages.
     """
     dag = _load_dag()
     task_q   = (request.args.get("task")   or "").strip().lower()
     branch_q = (request.args.get("branch") or "").strip().lower()
     status_q = (request.args.get("status") or "").strip().lower()
     include_output = request.args.get("output", "0") == "1"
+    try:
+        limit = max(0, int(request.args.get("limit", 0)))
+    except (ValueError, TypeError):
+        limit = 0
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
     result = []
     for task_id, task_data in dag.items():
         if task_q and task_q not in task_id.lower():
@@ -47,7 +57,21 @@ def subtasks_all():
                 if include_output:
                     entry["output"] = st_data.get("output", "")
                 result.append(entry)
-    return jsonify({"subtasks": result, "count": len(result)})
+    total = len(result)
+    if limit > 0:
+        pages = max(1, -(-total // limit))  # ceiling division
+        start = (page - 1) * limit
+        result = result[start:start + limit]
+    else:
+        pages = 1
+    return jsonify({
+        "subtasks": result,
+        "count": len(result),
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": pages,
+    })
 
 
 @subtasks_bp.get("/subtasks/export")
