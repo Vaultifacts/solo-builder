@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.1.0 — 2026-03-09  Stall breakdown + filter UX + sort parity (TASK-267 through TASK-272)
+
+- **272 tasks** merged to master (TASK-001 through TASK-272); **559 API tests**, **274 Discord tests**
+- Stalled tab: per-branch summary card when multiple branches stalling, sorted by count desc — TASK-267
+- `GET /stalled` includes `by_branch: [{task, branch, count}]` sorted desc; 5 new tests — TASK-268
+- Discord `/stalled`: per-branch grouping summary block when multiple branches stalling; 5 new tests — TASK-269
+- Subtasks tab: `#subtasks-filter-label` shows active filters + result count beside quick-filter buttons — TASK-270
+- `GET /status` `stalled_by_branch` sorted by count desc (parity with GET /stalled); 1 new test — TASK-271
+- CHANGELOG v5.0.0 documented — TASK-272 (this entry)
+
+---
+
 ## v5.0.0 — 2026-03-09  Filter resets + Export tab completeness + Discord CSV + stall breakdown (TASK-262 through TASK-266)
 
 - **266 tasks** merged to master (TASK-001 through TASK-266); **553 API tests**, **269 Discord tests**
