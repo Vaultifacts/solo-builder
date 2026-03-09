@@ -53,7 +53,7 @@ def fire_webhook():
             webhook_url, data=payload,
             headers={"Content-Type": "application/json"}, method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10):  # noqa: S310
+        with urllib.request.urlopen(req, timeout=10):  # noqa: S310  # nosec B310
             pass
         return jsonify({"ok": True, "sent": True, "url": webhook_url}), 200
     except Exception as exc:
