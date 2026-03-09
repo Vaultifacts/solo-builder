@@ -460,6 +460,10 @@ window.healSubtask = async function (st) {
 /* ── Subtasks tab ───────────────────────────────────────── */
 let _subtasksAll = [];
 const _subtasksSel = new Set();
+let _subtasksPage  = 1;
+let _subtasksPages = 1;
+let _subtasksTotal = 0;
+const _SUBTASKS_LIMIT = 50;
 
 function _updateBulkBar() {
   const bar = document.getElementById("subtasks-bulk-bar");
@@ -470,13 +474,37 @@ function _updateBulkBar() {
   if (cnt) cnt.textContent = `${n} selected`;
 }
 
+function _updateSubtasksPager() {
+  const pager  = document.getElementById("subtasks-pager");
+  const lbl    = document.getElementById("subtasks-page-label");
+  const cnt    = document.getElementById("subtasks-count-label");
+  if (!pager) return;
+  if (_subtasksPages > 1) {
+    pager.style.display = "flex";
+    if (lbl) lbl.textContent = `${_subtasksPage} / ${_subtasksPages}`;
+    if (cnt) cnt.textContent = `${_subtasksTotal} subtasks`;
+  } else {
+    pager.style.display = "none";
+  }
+}
+
 export async function pollSubtasks() {
   try {
-    const d = await api("/subtasks");
-    _subtasksAll = d.subtasks || [];
+    const d = await api(`/subtasks?limit=${_SUBTASKS_LIMIT}&page=${_subtasksPage}`);
+    _subtasksAll   = d.subtasks || [];
+    _subtasksTotal = d.total    ?? _subtasksAll.length;
+    _subtasksPages = d.pages    ?? 1;
+    _subtasksPage  = d.page     ?? 1;
     _renderSubtasks();
   } catch (_) {}
 }
+
+window._subtasksPageStep = function (delta) {
+  const next = _subtasksPage + delta;
+  if (next < 1 || next > _subtasksPages) return;
+  _subtasksPage = next;
+  pollSubtasks();
+};
 
 window.renderHistory = function () {
   _historyPage = 1;
@@ -616,6 +644,7 @@ function _renderSubtasks() {
   });
   el.replaceChildren(...nodes);
   _updateBulkBar();
+  _updateSubtasksPager();
 }
 
 /* ── Agents panel ───────────────────────────────────────── */

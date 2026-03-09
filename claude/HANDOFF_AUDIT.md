@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-230
+TASK-231
 
 ## Verdict: PASS
 
@@ -12,14 +12,12 @@ TASK-230
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard_tasks.js` — added `window._applyTaskSearch = applyTaskSearch`
-- `solo_builder/api/static/dashboard_cache.js` — added `window._renderCacheHistory = _renderCacheHistory`
+- `solo_builder/api/static/dashboard_panels.js` — pager state vars, _updateSubtasksPager(), updated pollSubtasks(), _subtasksPageStep(), _renderSubtasks calls pager
+- `solo_builder/api/dashboard.html` — subtasks-pager div (◀/▶ + labels) added after subtasks-content
 
 ## Implementation Detail
-Audit of all onclick/oninput/onchange inline handlers in dashboard.html vs window.* assignments
-across all dashboard JS modules found two missing window exposures:
-- `_applyTaskSearch` called from `#task-search` oninput; function exported but not window-exposed
-- `_renderCacheHistory` called from `#cache-history-limit` onchange; private function not window-exposed
-
-Both gaps silently failed at runtime (ES module scope isolation). No test changes needed —
-handler wiring is structural, covered by existing behaviour.
+Subtasks tab previously fetched all subtasks in one request and rendered all client-side.
+Added server-side pagination: pollSubtasks() requests ?limit=50&page=N; pager shows when
+pages > 1. window._subtasksPageStep(delta) advances/retreats page and re-fetches.
+Client-side filter (renderSubtasks) still works within the current page.
+No new tests needed — endpoint pagination already covered by TestSubtasksPagination.

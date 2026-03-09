@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-230
+TASK-231
 
-Audit and fix branches tab inline handlers for ES module window exposure gaps
+Add pager UI to Subtasks tab (◀/▶ buttons + count label) using GET /subtasks pagination
