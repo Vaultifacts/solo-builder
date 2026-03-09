@@ -3362,6 +3362,59 @@ class TestTaskProgressSlashCommand(unittest.IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
+# /branches export:True slash command (TASK-303)
+# ---------------------------------------------------------------------------
+
+class TestBranchesExportSlash(unittest.IsolatedAsyncioTestCase):
+    """Tests for /branches slash command export=True path."""
+
+    def _state(self):
+        return {"dag": {"Task0": {"status": "Running", "depends_on": [], "branches": {
+            "BranchA": {"subtasks": {
+                "A1": {"status": "Verified", "output": "", "description": "", "history": []},
+                "A2": {"status": "Running",  "output": "", "description": "", "history": []},
+            }},
+        }}}, "step": 1}
+
+    async def _run(self, state, export=True, task="", allowed=True):
+        cmds = _make_slash_cmds()
+        iact = _make_interaction(allowed=allowed)
+        with patch.object(bot_module, "_allowed", return_value=allowed), \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await cmds["branches"](iact, task=task, export=export)
+        return iact
+
+    async def test_export_true_sends_file(self):
+        iact = await self._run(self._state(), export=True)
+        _, kwargs = iact.response.send_message.call_args
+        self.assertIn("file", kwargs)
+
+    async def test_export_true_filename_csv(self):
+        iact = await self._run(self._state(), export=True)
+        _, kwargs = iact.response.send_message.call_args
+        self.assertEqual(kwargs["file"].filename, "branches.csv")
+
+    async def test_export_false_sends_text(self):
+        iact = await self._run(self._state(), export=False)
+        _, kwargs = iact.response.send_message.call_args
+        self.assertNotIn("file", kwargs)
+
+    async def test_export_true_csv_contains_branch(self):
+        captured_args = {}
+        real_file = __import__("discord").File
+        def _capture_file(fp, filename=None, **kw):
+            captured_args["bytes"] = fp.read()
+            return real_file(io.BytesIO(captured_args["bytes"]), filename=filename, **kw)
+        cmds = _make_slash_cmds()
+        iact = _make_interaction()
+        with patch.object(bot_module, "_allowed", return_value=True), \
+             patch.object(bot_module, "_load_state", return_value=self._state()), \
+             patch("discord.File", side_effect=_capture_file):
+            await cmds["branches"](iact, task="", export=True)
+        self.assertIn(b"BranchA", captured_args.get("bytes", b""))
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
