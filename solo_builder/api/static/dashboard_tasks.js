@@ -252,14 +252,18 @@ export function renderDetail(t) {
   const fillW = _total > 0 ? Math.round(_verified / _total * barW) : 0;
   const pct = _total > 0 ? Math.round(_verified / _total * 100) : 0;
   const trackEl = document.createElement("div");
+  trackEl.id = "detail-prog-track";
   trackEl.style.cssText = `width:${barW}px;height:6px;background:var(--bg3);border-radius:3px;flex-shrink:0`;
   const fillEl = document.createElement("div");
+  fillEl.id = "detail-prog-fill";
   fillEl.style.cssText = `width:${fillW}px;height:6px;background:var(--green);border-radius:3px`;
   trackEl.appendChild(fillEl);
   const pctSpan = document.createElement("span");
+  pctSpan.id = "detail-prog-pct";
   pctSpan.style.cssText = "font-size:10px;color:var(--dim)";
   pctSpan.textContent = `${_verified}/${_total} (${pct}%)`;
   const runSpan = document.createElement("span");
+  runSpan.id = "detail-prog-run";
   runSpan.style.cssText = "font-size:10px;color:var(--cyan)";
   if (_running > 0) runSpan.textContent = `${_running}▶`;
   progressRow.append(trackEl, pctSpan, runSpan);
@@ -450,3 +454,21 @@ window.filterSubtasks = function filterSubtasks() {
     row.style.display = (!q || name.includes(q) || output.includes(q)) ? "" : "none";
   });
 };
+
+/* ── Lightweight progress bar update (no full re-render) ──── */
+export async function pollTaskProgress(taskId) {
+  if (!taskId) return;
+  try {
+    const d = await api("/tasks/" + encodeURIComponent(taskId) + "/progress");
+    const fill = document.getElementById("detail-prog-fill");
+    const pct  = document.getElementById("detail-prog-pct");
+    const run  = document.getElementById("detail-prog-run");
+    if (!fill || !pct) return;
+    const barW = 100;
+    const fillW = d.total > 0 ? Math.round(d.verified / d.total * barW) : 0;
+    const pctVal = d.total > 0 ? Math.round(d.verified / d.total * 100) : 0;
+    fill.style.width = fillW + "px";
+    pct.textContent = `${d.verified}/${d.total} (${pctVal}%)`;
+    if (run) run.textContent = d.running > 0 ? `${d.running}▶` : "";
+  } catch (_) {}
+}
