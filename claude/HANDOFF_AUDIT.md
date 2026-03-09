@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-183
+TASK-184
 
 ## Verdict: PASS
 
@@ -11,13 +11,13 @@ TASK-183
 - git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard.js` — 1 line added inside runAuto step-wait loop
+Two files modified:
+- `solo_builder/api/helpers.py` — docstring added to _task_summary
+- `solo_builder/api/blueprints/tasks.py` — docstring added to get_task
 
 ## Implementation Detail
-Inside the 700ms heartbeat poll loop in window.runAuto, added:
-  `if (state.selectedTask) pollTaskProgress(state.selectedTask);`
-This fires a lightweight /tasks/<id>/progress fetch on each 700ms iteration,
-keeping the detail panel progress bar current during auto-run without waiting
-for the full tick() that fires at step boundary.
-Fire-and-forget (not awaited) so it doesn't block the heartbeat loop.
+Audit finding: the double-fetch in tick() is correct and intentional.
+GET /tasks uses _task_summary (O(tasks) summary — no branches dict) for grid.
+GET /tasks/<id> returns full branch+subtask data for the selected task detail.
+Embedding branches in GET /tasks would make polling O(tasks×branches×subtasks).
+No code change; docstrings added to explain the design decision in-code.
