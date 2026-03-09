@@ -1,51 +1,38 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-104
+TASK-105
 
 ## Verdict: PASS
 
-## Verification Results
-- All 305 API tests: PASS (0 failures)
-- All discord_bot + cache tests: PASS
-- git-status: clean working tree
-- `from solo_builder.api.app import app`: PASS
-- `wc -l solo_builder/api/app.py`: 84 lines (was 1729, -1645 lines)
+## Verification Results (from claude/verify_last.json)
+- unittest-discover: PASS (325 tests, 0 failures)
+- git-status: PASS (clean working tree)
+- git-diff-stat: PASS
+- architecture-audit: 91.3/100
 
 ## Scope Check
 Files changed match allowed scope (HANDOFF_DEV.md):
-- solo_builder/api/app.py (1729 -> 84 lines, -95%)
-- solo_builder/api/constants.py (NEW)
-- solo_builder/api/helpers.py (NEW)
-- solo_builder/api/blueprints/__init__.py (NEW)
-- solo_builder/api/blueprints/cache.py (NEW)
-- solo_builder/api/blueprints/metrics.py (NEW)
-- solo_builder/api/blueprints/history.py (NEW)
-- solo_builder/api/blueprints/triggers.py (NEW)
-- solo_builder/api/blueprints/subtasks.py (NEW)
-- solo_builder/api/blueprints/control.py (NEW)
-- solo_builder/api/blueprints/config.py (NEW)
-- solo_builder/api/blueprints/tasks.py (NEW)
-- solo_builder/api/blueprints/branches.py (NEW)
-- solo_builder/api/blueprints/export_routes.py (NEW)
-- solo_builder/api/blueprints/dag.py (NEW)
-- solo_builder/api/blueprints/webhook.py (NEW)
-- solo_builder/api/blueprints/core.py (NEW)
-- claude/allowed_files.txt (updated)
+- `solo_builder/api/dashboard.html` — 2587 → 349 lines (-86%)
+- `solo_builder/api/static/dashboard.css` (NEW — 572 lines extracted CSS)
+- `solo_builder/api/static/dashboard.js` (NEW — 1664 lines extracted JS)
+- `claude/allowed_files.txt` (updated)
+
+No Python files, Flask blueprints, or test files were modified.
 
 ## All Tests Pass
-- 305 API tests (test_app.py): PASS
-- discord bot + cache tests: PASS
+- 325 total tests (305 API + 20 bot/cache): PASS
+- `GET /` still returns 200 with content-type `text/html`
+- Static files served at `/static/dashboard.css` and `/static/dashboard.js` via Flask default static folder
 
 ## Implementation Notes
-- Each step committed separately (Steps 1-6), all green
-- `_load_state()` and other helpers use lazy imports from `app` module so test patches on
-  `app_module.STATE_PATH` etc. continue to work correctly
-- No logic changes -- pure code movement into Flask Blueprints
-- All blueprint routes use `_get_app()` lazy import pattern for test compatibility
+- CSS extracted character-for-character from lines 9-580 of original dashboard.html
+- JS extracted character-for-character from lines 921-2584 of original dashboard.html
+- HTML shell uses `<link rel="stylesheet" href="/static/dashboard.css">` and `<script src="/static/dashboard.js" defer></script>`
+- Flask `Flask(__name__)` automatically serves `solo_builder/api/static/` at `/static/` — no Python changes required
+- No logic changes — pure extraction
 
 ## Impact
-- app.py reduced from 1729 to 84 lines (-95%)
-- 13 focused blueprint modules + 2 shared utility modules (constants, helpers)
-- `from solo_builder.api.app import app` still works (critical constraint met)
-- No behavioral changes
+- `dashboard.html` reduced from 2587 to 349 lines (-86%)
+- Architecture auditor large-file finding for `dashboard.html` resolved
+- Dashboard remains fully functional (CSS/JS content identical to inline version)
