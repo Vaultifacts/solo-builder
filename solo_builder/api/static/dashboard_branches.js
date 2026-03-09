@@ -23,11 +23,14 @@ function _bar(widthPx, totalPx, height, bg, fill) {
   return track;
 }
 
-/* ── Branches pagination state (all-tasks view) ─────────── */
-let _branchesPage  = 1;
-let _branchesPages = 1;
-let _branchesTotal = 0;
-const _BRANCHES_LIMIT = 50;
+/* ── Branches pagination + filter state (all-tasks view) ─── */
+let _branchesPage         = 1;
+let _branchesPages        = 1;
+let _branchesTotal        = 0;
+let _branchesStatusFilter = "";   // "" = all; "pending"|"running"|"review"|"verified"
+let _branchesLastData     = null;
+let _branchesLastSummary  = null;
+const _BRANCHES_LIMIT     = 50;
 
 function _updateBranchesPager() {
   const pager = document.getElementById("branches-pager");
@@ -49,6 +52,12 @@ window._branchesPageStep = function (delta) {
   if (next < 1 || next > _branchesPages) return;
   _branchesPage = next;
   pollBranches();
+};
+
+window._branchesFilterStatus = function (status) {
+  if (state.selectedTask) return; // filter only in all-tasks view
+  _branchesStatusFilter = _branchesStatusFilter === status ? "" : status;
+  if (_branchesLastData) _renderBranchesAll(_branchesLastData, _branchesLastSummary);
 };
 
 /* ── Branches bulk-select state ─────────────────────────── */
@@ -108,9 +117,11 @@ export async function pollBranches() {
         api(`/branches?limit=${_BRANCHES_LIMIT}&page=${_branchesPage}`),
         api("/dag/summary").catch(() => null),
       ]);
-      _branchesTotal = d.total  ?? (d.branches || []).length;
-      _branchesPages = d.pages  ?? 1;
-      _branchesPage  = d.page   ?? 1;
+      _branchesTotal      = d.total  ?? (d.branches || []).length;
+      _branchesPages      = d.pages  ?? 1;
+      _branchesPage       = d.page   ?? 1;
+      _branchesLastData    = d;
+      _branchesLastSummary = summary;
       _renderBranchesAll(d, summary);
     }
   } catch (_) {}
@@ -122,10 +133,32 @@ function _renderBranchesAll(d, summary) {
   _branchesSel.clear();
   _updateBranchesBulkBar();
 
-  if (!d.branches || d.branches.length === 0) {
+  // Show quick-filter buttons only when no task selected
+  const filterBar = document.getElementById("branches-status-filters");
+  const filterLbl = document.getElementById("branches-filter-label");
+  if (filterBar) filterBar.style.display = "flex";
+
+  // Apply client-side status filter
+  const f = _branchesStatusFilter;
+  let branches = d.branches || [];
+  if (f) {
+    branches = branches.filter(br => {
+      if (f === "verified") return br.verified === br.total && br.total > 0;
+      if (f === "running")  return br.running > 0;
+      if (f === "review")   return br.review  > 0;
+      if (f === "pending")  return br.pending  > 0;
+      return true;
+    });
+    if (filterLbl) filterLbl.textContent = `· ${f} filter (${branches.length})`;
+  } else {
+    if (filterLbl) filterLbl.textContent = "";
+  }
+
+  if (branches.length === 0) {
     const ph = _div(null, "detail-placeholder");
-    ph.textContent = "No branches yet.";
+    ph.textContent = f ? `No branches with ${f} subtasks.` : "No branches yet.";
     el.replaceChildren(ph);
+    _updateBranchesPager();
     return;
   }
 
@@ -170,7 +203,7 @@ function _renderBranchesAll(d, summary) {
   children.push(countHdr);
 
   const barW = 60;
-  d.branches.forEach(br => {
+  branches.forEach(br => {
     const w = Math.round(br.pct * barW / 100);
     const row = _div("cursor:pointer;display:flex;align-items:center;gap:8px", "diff-entry");
     row.title = "Click to select task";
@@ -270,7 +303,9 @@ function _renderBranchesDetail(d) {
 
   el.replaceChildren(...children);
   _updateBranchesBulkBar();
-  // pager only shown in all-tasks view
+  // pager and filter bar only shown in all-tasks view
   const pager = document.getElementById("branches-pager");
   if (pager) pager.style.display = "none";
+  const filterBar = document.getElementById("branches-status-filters");
+  if (filterBar) filterBar.style.display = "none";
 }
