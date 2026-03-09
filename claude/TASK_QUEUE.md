@@ -1686,3 +1686,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-293
+Goal: Discord /history slash command: add optional task:, branch:, status: filter params forwarded to _format_history; update formatter to accept and apply filters; 4+ new tests
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

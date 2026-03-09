@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-292
+TASK-293
 
-Stalled tab: add #stalled-branch-filter input (parity with #stalled-task-filter); wires to ?branch= on GET /stalled; window._applyStalledBranchFilter exposed
+Discord /history slash command: add optional task:, branch:, status: filter params forwarded to _format_history; update formatter to accept and apply filters; 4+ new tests
