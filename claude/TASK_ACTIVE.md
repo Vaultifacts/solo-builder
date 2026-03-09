@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-246
+TASK-247
 
-Add CSV/JSON download links to Branches all-tasks view respecting active status filter
+Route task-search through pollTasks(?task=X) for server-side filtering across all pages
