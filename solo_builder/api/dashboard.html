@@ -184,6 +184,11 @@
         <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="branchesClearSel()">✕ Clear</button>
         <span id="fb-branches-bulk" class="feedback"></span>
       </div>
+      <div id="branches-task-row" style="display:none;align-items:center;gap:6px;margin-bottom:4px">
+        <input id="branches-task-filter" type="text" placeholder="Filter by task…"
+               oninput="_applyBranchesTaskFilter()"
+               style="flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+      </div>
       <div id="branches-status-filters" style="display:none;gap:4px;margin-bottom:6px;flex-wrap:wrap">
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="_branchesFilterStatus('pending')">⏳ Pending</button>
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="_branchesFilterStatus('running')">▶ Running</button>

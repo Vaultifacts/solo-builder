@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-255
+TASK-256
 
-Add task quick-filter UI to Subtasks tab: a text input that filters subtasks by task name server-side via ?task= parameter, wired into pollSubtasks and export links
+Add #branches-task-filter input to Branches tab: wires to pollBranches with ?task=X server-side filter (parity with subtasks task filter)
