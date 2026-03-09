@@ -85,10 +85,14 @@ export function historyPageStep(delta) {
   _renderHistory(_historyRows);
 }
 
+const _KNOWN_STATUSES = new Set(["pending", "running", "review", "verified"]);
+
 function _updateHistoryExportLinks() {
   const q  = (document.getElementById("history-filter")?.value || "").trim();
   const bq = (document.getElementById("history-branch-filter")?.value || "").trim();
-  let qs = q  ? `&subtask=${encodeURIComponent(q)}`  : "";
+  const isStatus = _KNOWN_STATUSES.has(q.toLowerCase());
+  let qs = "";
+  if (q)  qs += isStatus ? `&status=${encodeURIComponent(q)}` : `&subtask=${encodeURIComponent(q)}`;
   if (bq) qs += `&branch=${encodeURIComponent(bq)}`;
   const csvHref  = `/history/export${qs ? "?" + qs.slice(1) : ""}`;
   const jsonHref = `/history/export?format=json${qs}`;
@@ -101,7 +105,8 @@ function _updateHistoryExportLinks() {
   if (tabCsv)  tabCsv.href  = csvHref;
   if (tabJson) tabJson.href = jsonHref;
   const hint = document.getElementById("export-tab-filter-hint");
-  const parts = [q ? `"${q}"` : "", bq ? `branch:"${bq}"` : ""].filter(Boolean);
+  const hintQ = q ? (isStatus ? `status:"${q}"` : `"${q}"`) : "";
+  const parts = [hintQ, bq ? `branch:"${bq}"` : ""].filter(Boolean);
   if (hint) hint.textContent = parts.length ? `(filtered: ${parts.join(", ")})` : "";
 }
 
