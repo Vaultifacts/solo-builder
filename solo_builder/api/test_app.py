@@ -2907,6 +2907,32 @@ class TestStalled(_Base):
         d_lower = self.client.get("/stalled?branch=br+a1").get_json()
         self.assertEqual(d_upper["count"], d_lower["count"])
 
+    # -- ?min_age= filter (TASK-305) ----------------------------------------
+
+    def test_min_age_overrides_threshold(self):
+        # config threshold=5 but min_age=3 → subtask with age=3 appears
+        self._set_threshold(5)
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=3)
+        self._write_state(state)
+        d = self.client.get("/stalled?min_age=3").get_json()
+        self.assertIn("S1", [s["subtask"] for s in d["stalled"]])
+
+    def test_min_age_excludes_below_age(self):
+        # min_age=10 but subtask age=5 → not returned
+        self._set_threshold(5)
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=5)
+        self._write_state(state)
+        d = self.client.get("/stalled?min_age=10").get_json()
+        self.assertEqual(d["count"], 0)
+
+    def test_min_age_invalid_value_uses_threshold(self):
+        # invalid min_age param is ignored; threshold=5 applies
+        self._set_threshold(5)
+        state = self._make_state_lu({"S1": ("Running", 0)}, step=5)
+        self._write_state(state)
+        d = self.client.get("/stalled?min_age=abc").get_json()
+        self.assertIn("S1", [s["subtask"] for s in d["stalled"]])
+
 
 # Heal
 # ---------------------------------------------------------------------------
