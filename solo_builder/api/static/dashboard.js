@@ -1,0 +1,1664 @@
+(function () {
+  "use strict";
+
+  const BASE = "";          // same origin
+  let POLL_MS = parseInt(localStorage.getItem("sb-poll-ms") || "2000", 10);
+  let _pollIntervalId = null;
+
+  let selectedTask  = null;
+  let tasksCache    = {};    // id → task data from /tasks/<id> (detailed)
+  let _taskIds      = [];    // ordered task IDs for j/k navigation
+  let _rateEma      = null;  // exponential moving avg of verified/step rate
+  let _prevVerified = 0;
+  let _prevStep     = 0;
+  let _lastSeenStep = parseInt(localStorage.getItem("sb-last-seen-step") || "0", 10);
+  let _tabFocused   = true;
+
+  /* ── Notification badge ─────────────────────────────────── */
+  function _updateNotifBadge(currentStep) {
+    const badge = document.getElementById("notif-badge");
+    if (!_tabFocused && currentStep > _lastSeenStep) {
+      const unread = currentStep - _lastSeenStep;
+      badge.textContent = unread > 99 ? "99+" : String(unread);
+      badge.classList.remove("hidden");
+      document.title = `(${unread}) Solo Builder — Step ${currentStep}`;
+    } else {
+      _lastSeenStep = currentStep;
+      localStorage.setItem("sb-last-seen-step", String(currentStep));
+      badge.classList.add("hidden");
+    }
+  }
+  window.addEventListener("focus", function () {
+    _tabFocused = true;
+    _updateNotifBadge(_prevStep);
+  });
+  window.addEventListener("blur", function () { _tabFocused = false; });
+
+  /* ── Utilities ───────────────────────────────────────────── */
+  function statusClass(s) {
+    if (!s) return "s-pending";
+    const l = s.toLowerCase();
+    if (l === "verified") return "s-verified";
+    if (l === "running")  return "s-running";
+    if (l === "blocked")  return "s-blocked";
+    return "s-pending";
+  }
+  function dotClass(s) {
+    if (!s) return "dot-pending";
+    const l = s.toLowerCase();
+    if (l === "verified") return "dot-verified";
+    if (l === "running")  return "dot-running";
+    if (l === "blocked")  return "dot-blocked";
+    return "dot-pending";
+  }
+  const _notifHistory = [];
+  const _NOTIF_MAX = 20;
+
+  function _renderNotifPanel() {
+    const list = document.getElementById("notif-list");
+    const badge = document.getElementById("notif-count-badge");
+    if (!list) return;
+    if (_notifHistory.length === 0) {
+      list.innerHTML = `<div style="color:var(--dim);font-size:10px;padding:8px 10px">No notifications yet.</div>`;
+    } else {
+      list.innerHTML = _notifHistory.slice().reverse().map(function (n) {
+        const c = n.type === "error" ? "var(--red)" : n.type === "warn" ? "var(--yellow)" : "var(--text)";
+        return `<div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px">` +
+          `<span style="color:var(--dim);margin-right:6px">${n.ts}</span>` +
+          `<span style="color:${c}">${n.msg}</span></div>`;
+      }).join("");
+    }
+    if (badge) {
+      badge.textContent = String(_notifHistory.length);
+      badge.style.display = _notifHistory.length > 0 ? "block" : "none";
+    }
+  }
+
+  function _pushNotif(msg, type) {
+    const now = new Date();
+    const ts = now.toTimeString().slice(0, 8);
+    _notifHistory.push({msg, type: type || "info", ts});
+    if (_notifHistory.length > _NOTIF_MAX) _notifHistory.shift();
+    _renderNotifPanel();
+  }
+
+  window.toggleNotifPanel = function () {
+    const panel = document.getElementById("notif-panel");
+    if (!panel) return;
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+
+  window.clearNotifHistory = function () {
+    _notifHistory.length = 0;
+    _renderNotifPanel();
+  };
+
+  function toast(msg, type) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { el.style.display = "none"; }, 4000);
+    _pushNotif(msg, type || "info");
+  }
+
+  function _playCompletionSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Three ascending beeps: C5, E5, G5
+      [[523, 0], [659, 0.15], [784, 0.3]].forEach(([freq, when]) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.18, ctx.currentTime + when);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + 0.25);
+        osc.start(ctx.currentTime + when);
+        osc.stop(ctx.currentTime + when + 0.3);
+      });
+    } catch (_) { /* AudioContext not available */ }
+  }
+
+  /* ── Fetch helpers ───────────────────────────────────────── */
+  async function api(path) {
+    const r = await fetch(BASE + path);
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  }
+
+  /* ── Header / status ─────────────────────────────────────── */
+  let _lastStatusOk = Date.now();
+  const _STALE_MS = 10_000;
+
+  function _checkStaleBanner() {
+    const stale = Date.now() - _lastStatusOk > _STALE_MS;
+    const el = document.getElementById("stale-banner");
+    if (el) el.style.display = stale ? "block" : "none";
+  }
+
+  async function pollStatus() {
+    try {
+      const t0 = performance.now();
+      const d = await api("/status");
+      const latencyMs = Math.round(performance.now() - t0);
+      _lastStatusOk = Date.now();
+      _checkStaleBanner();
+      const stepEl = document.getElementById("hdr-step");
+      if (stepEl) stepEl.title = `Poll latency: ${latencyMs}ms`;
+      document.getElementById("hdr-verified").textContent = d.verified;
+      document.getElementById("hdr-running").textContent  = d.running;
+      document.getElementById("hdr-pending").textContent  = d.pending;
+      document.getElementById("hdr-total").textContent    = d.total;
+      document.getElementById("hdr-bar").style.width      = d.pct + "%";
+      document.getElementById("hdr-pct").textContent      = d.pct + "%";
+      document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified`;
+      if (d.step > _prevStep) {
+        const delta = (d.verified - _prevVerified) / (d.step - _prevStep);
+        _rateEma = _rateEma === null ? delta : 0.3 * delta + 0.7 * _rateEma;
+        _prevVerified = d.verified;
+        _prevStep     = d.step;
+      }
+      _updateNotifBadge(d.step);
+      document.getElementById("hdr-rate").textContent =
+        _rateEma !== null ? _rateEma.toFixed(1) : "—";
+      document.title = d.complete
+        ? "Solo Builder ✓ Complete"
+        : `Solo Builder — Step ${d.step} (${d.pct}%)`;
+
+      const badge = document.getElementById("hdr-badge");
+      if (d.complete && badge.textContent !== "Complete") {
+        _playCompletionSound();
+        // Auto-fire webhook on first completion detection (TASK-080)
+        fetch(BASE + "/webhook", {method: "POST"}).then(r => r.json()).then(wd => {
+          if (wd.ok) toast("Pipeline complete — webhook fired");
+        }).catch(() => {});
+      }
+      if (d.complete) {
+        badge.textContent  = "Complete";
+        badge.className    = "status-badge badge-complete";
+      } else if (d.running > 0) {
+        badge.textContent  = "Running";
+        badge.className    = "status-badge badge-running";
+      } else {
+        badge.textContent  = "Idle";
+        badge.className    = "status-badge badge-pending";
+      }
+      _updateFavicon(d);
+    } catch (e) {
+      _checkStaleBanner();
+    }
+  }
+
+  function _updateFavicon(d) {
+    const color = d.complete      ? "%2322c55e"   // green  — all done
+                : d.stalled > 0   ? "%23eab308"   // yellow — stalled
+                : d.running > 0   ? "%2306b6d4"   // cyan   — running
+                : "%23555555";                     // grey   — idle
+    const svg = `%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='${color}'/%3E%3C/svg%3E`;
+    const fav = document.getElementById("favicon");
+    if (fav) fav.href = `data:image/svg+xml,${svg}`;
+  }
+
+  /* ── Task grid ───────────────────────────────────────────── */
+  let _allTasks = [];
+
+  async function pollTasks() {
+    try {
+      const d = await api("/tasks");
+      _allTasks = d.tasks || [];
+      _applyTaskSearch();
+    } catch (e) { /* status toast already shown */ }
+  }
+
+  function _applyTaskSearch() {
+    const q = (document.getElementById("task-search")?.value || "").trim().toLowerCase();
+    const filtered = q
+      ? _allTasks.filter(t => t.id.toLowerCase().includes(q) || (t.status || "").toLowerCase().includes(q))
+      : _allTasks;
+    renderGrid(filtered);
+  }
+
+  function renderGrid(tasks) {
+    _taskIds = tasks.map(t => t.id);
+    const grid = document.getElementById("task-grid");
+    // Build set of existing card ids
+    const existing = new Set([...grid.querySelectorAll(".task-card")].map(el => el.dataset.id));
+    const incoming  = new Set(tasks.map(t => t.id));
+
+    // Remove stale cards
+    existing.forEach(id => { if (!incoming.has(id)) grid.querySelector(`[data-id="${CSS.escape(id)}"]`)?.remove(); });
+
+    tasks.forEach(t => {
+      let card = grid.querySelector(`[data-id="${CSS.escape(t.id)}"]`);
+      const isBlocked = t.depends_on && t.depends_on.length > 0 && t.status === "Pending";
+      if (!card) {
+        card = document.createElement("div");
+        card.className = "task-card";
+        card.dataset.id = t.id;
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="card-id">${t.id}</span>
+            <span class="card-mini-badge ${statusClass(t.status)}">${t.status || "Pending"}</span>
+          </div>
+          <div class="card-deps"></div>
+          <div class="card-bar-bg"><div class="card-bar-fg" style="width:0%"></div></div>
+          <div class="card-counts"></div>`;
+        card.addEventListener("click", () => selectTask(t.id));
+        grid.appendChild(card);
+      }
+
+      // Update dynamic parts
+      card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
+      card.querySelector(".card-mini-badge").textContent = t.status || "Pending";
+      card.classList.toggle("active",  t.id === selectedTask);
+      card.classList.toggle("blocked", isBlocked);
+
+      const pct = t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0;
+      card.querySelector(".card-bar-fg").style.width = pct + "%";
+      card.querySelector(".card-counts").textContent =
+        `${t.verified_subtasks}/${t.subtask_count} verified` +
+        (t.running_subtasks > 0 ? ` · ${t.running_subtasks} running` : "");
+
+      const depEl = card.querySelector(".card-deps");
+      if (t.depends_on && t.depends_on.length) {
+        depEl.textContent = "← " + t.depends_on.join(", ");
+      } else {
+        depEl.textContent = "";
+      }
+    });
+  }
+
+  /* ── Detail panel ────────────────────────────────────────── */
+  async function selectTask(id) {
+    selectedTask = id;
+    // Highlight active card
+    document.querySelectorAll(".task-card").forEach(c => c.classList.toggle("active", c.dataset.id === id));
+
+    try {
+      const t = await api("/tasks/" + encodeURIComponent(id));
+      tasksCache[id] = t;
+      renderDetail(t);
+    } catch (e) {
+      toast("Could not load task detail: " + e.message);
+    }
+  }
+
+  function renderDetail(t) {
+    const el = document.getElementById("detail-content");
+    let html = `<div class="detail-task-id">${t.id}</div>`;
+    html += `<div class="detail-status"><span class="card-mini-badge ${statusClass(t.status)}">${t.status || "Pending"}</span>`;
+    if (t.depends_on && t.depends_on.length) {
+      html += ` <span style="color:#ff9800;font-size:10px">← ${t.depends_on.join(", ")}</span>`;
+    }
+    html += `</div>`;
+
+    const branches = t.branches || {};
+    Object.entries(branches).forEach(([bname, bdata]) => {
+      html += `<div class="branch-block"><div class="branch-name">${bname}</div>`;
+      const subtasks = bdata.subtasks || {};
+      Object.entries(subtasks).forEach(([sname, s]) => {
+        const output = (s.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const preview = output ? output.replace(/\n/g, " ").substring(0, 80) : (s.description || "");
+        const previewHtml = preview
+          ? `<span class="st-output" title="${output.substring(0, 400)}">${preview}</span>`
+          : "";
+        const esc = JSON.stringify(sname);
+        const expandBtn = output
+          ? `<button class="st-expand-btn" title="Expand output" onclick="toggleExpand(this,event)">&#9654;</button>`
+          : "";
+        const expandContent = output
+          ? `<div class="st-expand-content">${output}</div>`
+          : "";
+        html += `
+          <div class="subtask-row" onclick='showModal(${esc}, ${JSON.stringify(s).replace(/'/g, "&#39;")})'>
+            <div class="st-dot ${dotClass(s.status)}"></div>
+            <span class="st-name">${sname}</span>
+            ${previewHtml}
+            ${expandBtn}
+            ${expandContent}
+          </div>`;
+      });
+      html += `</div>`;
+    });
+
+    // Track previous subtask statuses for auto-scroll
+    const _prevStatuses = window._prevSubtaskStatuses || {};
+    const _newStatuses = {};
+    let _changedSt = null;
+    Object.entries(branches).forEach(([bname, bdata]) => {
+      Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+        _newStatuses[sname] = s.status || "Pending";
+        if (_prevStatuses[sname] && _prevStatuses[sname] !== _newStatuses[sname]) {
+          _changedSt = sname;
+        }
+      });
+    });
+    window._prevSubtaskStatuses = _newStatuses;
+
+    el.innerHTML = html;
+
+    // Auto-scroll to the last changed subtask
+    if (_changedSt) {
+      const rows = el.querySelectorAll(".subtask-row .st-name");
+      for (const r of rows) {
+        if (r.textContent === _changedSt) {
+          r.closest(".subtask-row").scrollIntoView({ behavior: "smooth", block: "nearest" });
+          break;
+        }
+      }
+    }
+  }
+
+  function toggleExpand(btn, event) {
+    event.stopPropagation();
+    const row = btn.closest(".subtask-row");
+    const panel = row.querySelector(".st-expand-content");
+    if (!panel) return;
+    const open = panel.classList.toggle("open");
+    btn.innerHTML = open ? "&#9660;" : "&#9654;";
+  }
+
+  function filterSubtasks() {
+    const q = (document.getElementById("st-search").value || "").toLowerCase();
+    document.querySelectorAll("#detail-content .subtask-row").forEach(row => {
+      const name = (row.querySelector(".st-name")?.textContent || "").toLowerCase();
+      const output = (row.querySelector(".st-output")?.textContent || "").toLowerCase();
+      row.style.display = (!q || name.includes(q) || output.includes(q)) ? "" : "none";
+    });
+  }
+
+  /* ── Journal ─────────────────────────────────────────────── */
+  async function pollJournal() {
+    try {
+      const d = await api("/journal");
+      renderJournal(d.entries);
+    } catch (_) {}
+  }
+
+  const _journalExpanded = new Set();
+
+  function renderJournal(entries) {
+    const el = document.getElementById("journal-content");
+    if (!entries || entries.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No journal entries.</div>`;
+      return;
+    }
+    const TRUNC = 300;
+    const reversed = [...entries].reverse();
+    el.innerHTML = reversed.map(e => {
+      const safe = (e.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const long = safe.length > TRUNC;
+      const key  = `${e.step}-${e.subtask}`;
+      const expanded = long && _journalExpanded.has(key);
+      const body = long && !expanded ? safe.substring(0, TRUNC) + "…" : safe;
+      const btn  = long
+        ? `<button class="journal-toggle" onclick="toggleJournal(this)" data-full="${safe.replace(/"/g, "&quot;")}" data-trunc="${TRUNC}" data-key="${key}">${expanded ? "▲ less" : "▼ more"}</button>`
+        : "";
+      return `<div class="journal-entry">
+        <div class="journal-meta">${e.subtask} · ${e.task} / ${e.branch} · Step ${e.step}</div>
+        <div class="journal-body">${body}</div>${btn}
+      </div>`;
+    }).join("");
+    // Only auto-scroll to newest when no entries are expanded (user may be reading)
+    const pane = document.getElementById("tab-journal");
+    if (pane && pane.classList.contains("active") && _journalExpanded.size === 0) pane.scrollTop = 0;
+  }
+
+  /* ── Journal toggle ──────────────────────────────────────── */
+  function toggleJournal(btn) {
+    const body = btn.previousElementSibling;
+    const full = btn.dataset.full;
+    const trunc = parseInt(btn.dataset.trunc, 10) || 300;
+    const key  = btn.dataset.key;
+    if (btn.textContent.includes("more")) {
+      body.innerHTML = full;
+      btn.textContent = "▲ less";
+      _journalExpanded.add(key);
+    } else {
+      body.innerHTML = full.substring(0, trunc) + "…";
+      btn.textContent = "▼ more";
+      _journalExpanded.delete(key);
+    }
+  }
+
+  /* ── Sidebar tabs ────────────────────────────────────────── */
+  function switchTab(name) {
+    document.querySelectorAll(".sidebar-tab").forEach(t => {
+      const tabName = t.dataset.tab || t.textContent.toLowerCase();
+      t.classList.toggle("active", tabName === name);
+    });
+    document.querySelectorAll(".sidebar-tab-content").forEach(c => c.classList.toggle("active", c.id === "tab-" + name));
+    if (name === "journal") {
+      const pane = document.getElementById("tab-journal");
+      if (pane) pane.scrollTop = 0;
+    }
+    if (name === "history") {
+      _historyUnread = 0;
+      _updateHistoryBadge();
+    }
+  }
+
+  /* ── Diff panel ──────────────────────────────────────────── */
+  async function pollDiff() {
+    try {
+      const d = await api("/diff");
+      renderDiff(d);
+    } catch (_) {}
+  }
+
+  function renderDiff(d) {
+    const el = document.getElementById("diff-content");
+    if (!d.changes || d.changes.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No changes since last save.</div>`;
+      return;
+    }
+    const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
+    let html = `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">Step ${d.old_step} → ${d.new_step}</div>`;
+    d.changes.forEach(c => {
+      const out = c.output ? ` — ${c.output.substring(0, 50)}` : "";
+      html += `<div class="diff-entry"><span class="diff-st">${c.subtask}</span><span class="diff-arrow">→</span><span style="color:${statusColor(c.old_status)}">${c.old_status}</span><span class="diff-arrow">→</span><span style="color:${statusColor(c.new_status)}">${c.new_status}</span><span style="color:var(--dim);font-size:10px">${out}</span></div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  /* ── Stats panel ─────────────────────────────────────────── */
+  async function pollStats() {
+    try {
+      const d = await api("/stats");
+      renderStats(d);
+    } catch (_) {}
+  }
+
+  function renderStats(d) {
+    const el = document.getElementById("stats-content");
+    if (!d.tasks || d.tasks.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No task data.</div>`;
+      return;
+    }
+    let html = "";
+    d.tasks.forEach(t => {
+      const pct = t.total > 0 ? Math.round(t.verified / t.total * 100) : 0;
+      const avg = t.avg_steps !== null ? t.avg_steps.toFixed(1) + "s" : "—";
+      const color = pct === 100 ? "var(--green)" : pct > 0 ? "var(--cyan)" : "var(--dim)";
+      html += `<div class="stats-row">
+        <span class="stats-task" style="color:${color}">${t.id}</span>
+        <div class="stats-bar-bg"><div class="stats-bar-fg" style="width:${pct}%"></div></div>
+        <span class="stats-num">${t.verified}/${t.total}</span>
+        <span class="stats-num">${pct}%</span>
+        <span class="stats-num">${avg}</span>
+      </div>`;
+    });
+    const gp = d.grand_total > 0 ? Math.round(d.grand_verified / d.grand_total * 100) : 0;
+    const ga = d.grand_avg_steps !== null ? d.grand_avg_steps.toFixed(1) + "s" : "—";
+    html += `<div class="stats-row" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-weight:bold">
+      <span class="stats-task">Total</span>
+      <div class="stats-bar-bg"><div class="stats-bar-fg" style="width:${gp}%"></div></div>
+      <span class="stats-num">${d.grand_verified}/${d.grand_total}</span>
+      <span class="stats-num">${gp}%</span>
+      <span class="stats-num">${ga}</span>
+    </div>`;
+    el.innerHTML = html;
+  }
+
+  /* ── History panel (incremental + paged) ─────────────────── */
+  let _historyLastStep = 0;
+  let _historyPage = 1;
+  const _PAGE_SIZE = 20;
+  const _historyRows = [];  // accumulated events, newest-first
+  let _historyRowsFiltered = [];  // filtered+sorted snapshot for modal index lookup
+
+  let _historyServerTotal = null;  // server-side total from /history/count
+  let _historyUnread = 0;          // new events since user last visited the History tab
+
+  function _updateHistoryBadge() {
+    const badge = document.getElementById("history-unread-badge");
+    if (!badge) return;
+    if (_historyUnread > 0) {
+      badge.textContent = _historyUnread > 99 ? "99+" : String(_historyUnread);
+      badge.style.display = "inline-block";
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  async function pollHistory() {
+    try {
+      const url = _historyLastStep > 0
+        ? `/history?since=${_historyLastStep}&limit=0`
+        : `/history?limit=100`;
+      const [d, countD] = await Promise.all([
+        api(url),
+        api("/history/count").catch(() => null),
+      ]);
+      if (countD) _historyServerTotal = countD.total;
+      if (!d.events || d.events.length === 0) {
+        if (_historyRows.length === 0) renderHistory([]);
+        return;
+      }
+      const historyActive = document.getElementById("tab-history")?.classList.contains("active");
+      d.events.forEach(e => {
+        if (e.step > _historyLastStep) _historyLastStep = e.step;
+        _historyRows.unshift(e);  // prepend — events arrive newest-first from API
+      });
+      if (!historyActive) {
+        _historyUnread += d.events.length;
+        _updateHistoryBadge();
+      }
+      // Keep at most 500 rows in memory
+      if (_historyRows.length > 500) _historyRows.splice(500);
+      renderHistory(_historyRows);
+    } catch (_) {}
+  }
+
+  function _historyPageStep(delta) {
+    const filterEl = document.getElementById("history-filter");
+    const q = filterEl ? filterEl.value.trim().toLowerCase() : "";
+    const filtered = q
+      ? _historyRows.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
+      : _historyRows;
+    const pages = Math.max(1, Math.ceil(filtered.length / _PAGE_SIZE));
+    _historyPage = Math.max(1, Math.min(pages, _historyPage + delta));
+    renderHistory(_historyRows);
+  }
+
+  function _updateHistoryExportLinks() {
+    const q  = (document.getElementById("history-filter")?.value || "").trim();
+    const bq = (document.getElementById("history-branch-filter")?.value || "").trim();
+    let qs = q  ? `&subtask=${encodeURIComponent(q)}`  : "";
+    if (bq) qs += `&branch=${encodeURIComponent(bq)}`;
+    const csvHref  = `/history/export${qs ? "?" + qs.slice(1) : ""}`;
+    const jsonHref = `/history/export?format=json${qs}`;
+    // History tab links
+    const csv  = document.getElementById("history-export-csv");
+    const json = document.getElementById("history-export-json");
+    if (csv)  csv.href  = csvHref;
+    if (json) json.href = jsonHref;
+    // Export tab links — keep in sync
+    const tabCsv  = document.getElementById("export-tab-history-csv");
+    const tabJson = document.getElementById("export-tab-history-json");
+    if (tabCsv)  tabCsv.href  = csvHref;
+    if (tabJson) tabJson.href = jsonHref;
+    // Show filter hint in Export tab
+    const hint = document.getElementById("export-tab-filter-hint");
+    const parts = [q ? `"${q}"` : "", bq ? `branch:"${bq}"` : ""].filter(Boolean);
+    if (hint) hint.textContent = parts.length ? `(filtered: ${parts.join(", ")})` : "";
+  }
+
+  function renderHistory(events) {
+    const el = document.getElementById("history-content");
+    if (!events || events.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No history yet.</div>`;
+      const pager = document.getElementById("history-pager");
+      if (pager) pager.style.display = "none";
+      return;
+    }
+    const filterEl = document.getElementById("history-filter");
+    const q  = filterEl ? filterEl.value.trim().toLowerCase() : "";
+    const bq = (document.getElementById("history-branch-filter")?.value || "").trim().toLowerCase();
+    let filtered = q
+      ? events.filter(e => e.subtask.toLowerCase().includes(q) || e.status.toLowerCase().includes(q) || e.task.toLowerCase().includes(q))
+      : events;
+    if (bq) filtered = filtered.filter(e => e.branch.toLowerCase().includes(bq));
+    _historyRowsFiltered = filtered;
+    const total = filtered.length;
+    const pages = Math.max(1, Math.ceil(total / _PAGE_SIZE));
+    if (_historyPage > pages) _historyPage = pages;
+    const start = (_historyPage - 1) * _PAGE_SIZE;
+    const page  = filtered.slice(start, start + _PAGE_SIZE);
+    if (page.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No matching events.</div>`;
+      const pager = document.getElementById("history-pager");
+      if (pager) pager.style.display = "none";
+      return;
+    }
+    const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
+    let html = "";
+    page.forEach((e, i) => {
+      const idx = start + i;
+      html += `<div class="diff-entry" style="cursor:pointer" onclick="openSubtaskModal(_historyRowsFiltered[${idx}])" title="Click to view subtask detail"><span style="color:var(--dim);font-size:10px">Step ${e.step}</span> <span class="diff-st">${e.subtask}</span> <span style="color:${statusColor(e.status)}">${e.status}</span> <span style="color:var(--dim);font-size:10px">(${e.task})</span></div>`;
+    });
+    el.innerHTML = html;
+    // Update pager
+    const pager = document.getElementById("history-pager");
+    const label = document.getElementById("history-page-label");
+    const count = document.getElementById("history-count-label");
+    if (pager) pager.style.display = pages > 1 ? "flex" : "none";
+    if (label) label.textContent = `${_historyPage}/${pages}`;
+    const serverTotal = _historyServerTotal;
+    if (count) {
+      count.textContent = serverTotal != null && serverTotal > total
+        ? `${total} shown / ${serverTotal} total`
+        : `${total} event${total !== 1 ? "s" : ""}`;
+    }
+  }
+
+  /* ── Branches panel ─────────────────────────────────────── */
+  let _branchesTask = null;  // track which task's branches to show
+
+  async function pollBranches() {
+    try {
+      if (selectedTask) {
+        const d = await api("/branches/" + encodeURIComponent(selectedTask));
+        renderBranchesDetail(d);
+      } else {
+        const d = await api("/branches");
+        renderBranchesAll(d);
+      }
+    } catch (_) {}
+  }
+
+  function renderBranchesAll(d) {
+    const el = document.getElementById("branches-content");
+    if (!d.branches || d.branches.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No branches yet.</div>`;
+      return;
+    }
+    const barW = 60;
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} branches across all tasks</div>`;
+    d.branches.forEach(br => {
+      const w = Math.round(br.pct * barW / 100);
+      html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="selectTask(${JSON.stringify(br.task)})" title="Click to select task">`;
+      html += `<span style="color:var(--dim);font-size:10px;min-width:60px;flex-shrink:0">${br.task}</span>`;
+      html += `<span style="color:var(--cyan);min-width:80px;flex-shrink:0">${br.branch}</span>`;
+      html += `<div style="width:${barW}px;height:6px;background:var(--bg2);border-radius:3px;flex-shrink:0"><div style="width:${w}px;height:6px;background:var(--green);border-radius:3px"></div></div>`;
+      html += `<span style="color:var(--dim);font-size:10px">${br.verified}/${br.total}</span>`;
+      if (br.running > 0) html += `<span style="font-size:10px;color:var(--cyan)">${br.running}▶</span>`;
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  function renderBranchesDetail(d) {
+    const el = document.getElementById("branches-content");
+    if (!d.branches || d.branches.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No branches.</div>`;
+      return;
+    }
+    const statusColor = s => ({Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"})[s] || "var(--text)";
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.task} — ${d.branch_count} branches</div>`;
+    d.branches.forEach(br => {
+      html += `<div style="margin-bottom:8px"><span style="color:var(--cyan);font-weight:bold">${br.branch}</span> <span style="color:var(--dim);font-size:10px">${br.subtask_count} STs</span>`;
+      html += ` <span style="font-size:10px;color:var(--green)">${br.verified}✓</span> <span style="font-size:10px;color:var(--cyan)">${br.running}▶</span> <span style="font-size:10px;color:var(--yellow)">${br.pending}●</span>`;
+      br.subtasks.forEach(st => {
+        html += `<div class="diff-entry" style="padding-left:12px"><span class="diff-st">${st.name}</span> <span style="color:${statusColor(st.status)}">${st.status}</span></div>`;
+      });
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  async function pollSettings() {
+    try {
+      const d = await api("/config");
+      renderSettings(d);
+    } catch (_) {}
+  }
+
+  let _settingsCache = {};
+  function renderSettings(d) {
+    const el = document.getElementById("settings-content");
+    if (!d || typeof d !== "object") {
+      el.innerHTML = `<div class="detail-placeholder">Could not load settings.</div>`;
+      return;
+    }
+    _settingsCache = d;
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${Object.keys(d).length} settings</div>`;
+    Object.entries(d).forEach(([k, v]) => {
+      const vStr = typeof v === "string" ? v : JSON.stringify(v);
+      const inputId = "cfg-" + k;
+      html += `<div class="diff-entry" style="display:flex;align-items:center;gap:6px">`;
+      html += `<span style="color:var(--cyan);font-size:10px;min-width:120px;flex-shrink:0">${k}</span>`;
+      if (typeof v === "boolean") {
+        const chk = v ? "checked" : "";
+        html += `<input type="checkbox" id="${inputId}" ${chk} onchange="saveSetting('${k}',this.checked)" style="accent-color:var(--cyan)">`;
+      } else {
+        html += `<input id="${inputId}" value="${vStr.replace(/"/g,'&quot;')}" style="flex:1;min-width:0;padding:1px 4px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:var(--font)" onchange="saveSetting('${k}',this.value)">`;
+      }
+      html += `</div>`;
+    });
+    html += `<span class="feedback" id="fb-settings"></span>`;
+    html += `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">` +
+      `<div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tool override</div>` +
+      `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">` +
+      `<input id="tool-override-st" class="cmd-input" placeholder="A1" title="Subtask name" style="width:50px">` +
+      `<input id="tool-override-tools" class="cmd-input-wide" placeholder="Read,Glob,Grep" title="Comma-separated tool names">` +
+      `<button class="cmd-btn btn-tools" onclick="submitToolOverride()">⚙ Set</button>` +
+      `</div>` +
+      `<span class="feedback" id="fb-tool-override"></span>` +
+      `</div>`;
+    el.innerHTML = html;
+  }
+  window.submitToolOverride = async function () {
+    const st    = (document.getElementById("tool-override-st")?.value    || "").trim().toUpperCase();
+    const tools = (document.getElementById("tool-override-tools")?.value || "").trim();
+    if (!st)    { _flash("fb-tool-override", "Subtask required"); return; }
+    if (!tools) { _flash("fb-tool-override", "Tools required"); return; }
+    try {
+      const r = await fetch(BASE + "/tools", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({subtask:st, tools})});
+      const d = await r.json();
+      if (d.ok) {
+        _flash("fb-tool-override", `Tools set for ${st}`);
+        document.getElementById("tool-override-st").value    = "";
+        document.getElementById("tool-override-tools").value = "";
+      } else { _flash("fb-tool-override", d.reason || "Error"); }
+    } catch (e) { _flash("fb-tool-override", "Network error"); }
+  };
+  window.saveSetting = async function(key, val) {
+    if (typeof val === "string") {
+      const n = Number(val);
+      if (!isNaN(n) && val.trim() !== "") val = n;
+    }
+    try {
+      const r = await fetch(BASE + "/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({[key]: val})});
+      const d = await r.json();
+      if (d.ok) { _flash("fb-settings", key + " saved"); _settingsCache = d; }
+      else _flash("fb-settings", d.reason || "Error");
+    } catch(e) { _flash("fb-settings", "Network error"); }
+  };
+
+  async function pollPriority() {
+    try {
+      const d = await api("/priority");
+      renderPriority(d);
+    } catch (_) {}
+  }
+  function renderPriority(d) {
+    const el = document.getElementById("priority-content");
+    if (!d || !d.queue) {
+      el.innerHTML = `<div class="detail-placeholder">No priority data.</div>`;
+      return;
+    }
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">${d.count} candidates · step ${d.step}</div>`;
+    if (d.queue.length === 0) {
+      html += `<div class="detail-placeholder">All subtasks Verified or blocked.</div>`;
+    } else {
+      d.queue.forEach((c, i) => {
+        const col = c.status === "Running" ? "var(--cyan)" : "var(--dim)";
+        const marker = i < 6 ? "▶ " : "  ";
+        const barW = 80;
+        const maxRisk = d.queue[0].risk || 1;
+        const fill = Math.round(barW * c.risk / maxRisk);
+        html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
+        html += `<span style="color:var(--yellow);min-width:14px">${marker}</span>`;
+        html += `<span style="color:var(--cyan);min-width:32px">${c.subtask}</span>`;
+        html += `<span style="color:${col};min-width:52px">${c.status}</span>`;
+        html += `<span style="min-width:40px;color:var(--yellow)">r=${c.risk}</span>`;
+        html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
+        html += `<span style="position:absolute;left:0;top:0;height:4px;width:${fill}%;border-radius:2px;background:${c.status==="Running"?"var(--cyan)":"var(--yellow)"}"></span></span>`;
+        html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${c.task}</span>`;
+        html += `</div>`;
+      });
+    }
+    el.innerHTML = html;
+  }
+
+  async function pollStalled() {
+    try {
+      const d = await api("/stalled");
+      renderStalled(d);
+    } catch (_) {}
+  }
+  function renderStalled(d) {
+    const el = document.getElementById("stalled-content");
+    if (!d) { el.innerHTML = `<div class="detail-placeholder">No data.</div>`; return; }
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:6px">threshold: ${d.threshold} steps · step ${d.step}</div>`;
+    if (!d.stalled || d.stalled.length === 0) {
+      html += `<div class="detail-placeholder" style="color:var(--green)">No stalled subtasks.</div>`;
+    } else {
+      d.stalled.forEach(s => {
+        const pct = Math.min(100, Math.round(s.age / (d.threshold * 3) * 100));
+        html += `<div class="diff-entry" style="font-size:10px;display:flex;align-items:center;gap:4px">`;
+        html += `<span style="color:var(--yellow);min-width:32px">${s.subtask}</span>`;
+        html += `<span style="color:var(--red);min-width:50px">${s.age} steps</span>`;
+        html += `<span style="flex:1;background:var(--surface);height:4px;border-radius:2px;position:relative">`;
+        html += `<span style="position:absolute;left:0;top:0;height:4px;width:${pct}%;border-radius:2px;background:var(--red)"></span></span>`;
+        html += `<span style="color:var(--dim);font-size:9px;min-width:60px;text-align:right">${s.task}</span>`;
+        html += `<button onclick="healSubtask('${s.subtask}')" style="background:var(--surface);color:var(--cyan);border:1px solid var(--border);border-radius:3px;font-size:9px;padding:0 4px;cursor:pointer" title="Reset to Pending">↻</button>`;
+        html += `</div>`;
+      });
+    }
+    el.innerHTML = html;
+  }
+  window.healSubtask = async function(st) {
+    try {
+      const r = await fetch(BASE + "/heal", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({subtask: st})});
+      const d = await r.json();
+      if (d.ok) toast("↻ " + st + " heal triggered");
+      else toast(d.reason || "Heal failed");
+    } catch(_) { toast("Network error"); }
+  };
+
+  /* ── Subtasks tab ───────────────────────────────────────── */
+  let _subtasksAll = [];
+
+  async function pollSubtasks() {
+    try {
+      const d = await api("/subtasks");
+      _subtasksAll = d.subtasks || [];
+      renderSubtasks();
+    } catch (_) {}
+  }
+
+  function renderSubtasks() {
+    const el = document.getElementById("subtasks-content");
+    if (!el) return;
+    const q = (document.getElementById("subtasks-filter")?.value || "").trim().toLowerCase();
+    const rows = q
+      ? _subtasksAll.filter(s =>
+          s.subtask.toLowerCase().includes(q) ||
+          s.status.toLowerCase().includes(q) ||
+          s.branch.toLowerCase().includes(q) ||
+          s.task.toLowerCase().includes(q))
+      : _subtasksAll;
+    if (rows.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">${q ? "No matching subtasks." : "No subtasks yet."}</div>`;
+      return;
+    }
+    const statusColor = s => ({Verified:"var(--green)",Running:"var(--cyan)",Review:"var(--yellow)",Pending:"var(--dim)"})[s]||"var(--text)";
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:4px">${rows.length} subtask${rows.length!==1?"s":""}</div>`;
+    rows.forEach(s => {
+      const ev = {subtask:s.subtask,task:s.task,branch:s.branch,status:s.status,step:"—",output:""};
+      html += `<div class="diff-entry" style="cursor:pointer;display:flex;align-items:center;gap:6px" onclick='openSubtaskModal(${JSON.stringify(ev)})' title="Click for detail">`;
+      html += `<span class="diff-st" style="min-width:30px">${s.subtask}</span>`;
+      html += `<span style="color:${statusColor(s.status)};min-width:60px;font-size:10px">${s.status}</span>`;
+      html += `<span style="color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.branch}</span>`;
+      html += `<span style="color:var(--dim);font-size:9px">${s.output_length}b</span>`;
+      html += `</div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  async function pollAgents() {
+    try {
+      const d = await api("/agents");
+      renderAgents(d);
+    } catch (_) {}
+  }
+  function renderAgents(d) {
+    const el = document.getElementById("agents-content");
+    if (!d) { el.innerHTML = `<div class="detail-placeholder">No data.</div>`; return; }
+    const f = d.forecast || {};
+    const pct = f.pct || 0;
+    const barW = 120, fillW = Math.round(barW * pct / 100);
+    let html = `<div style="color:var(--dim);font-size:10px;margin-bottom:8px">step ${d.step}</div>`;
+    html += `<div style="margin-bottom:8px"><svg width="${barW+4}" height="14"><rect x="1" y="1" width="${barW}" height="12" rx="3" fill="var(--surface)"/><rect x="1" y="1" width="${fillW}" height="12" rx="3" fill="var(--cyan)"/><text x="${barW/2}" y="10" text-anchor="middle" font-size="8" fill="var(--text)">${pct}% (${f.verified}/${f.total})</text></svg></div>`;
+    const cards = [
+      {label:"Planner", val:`cache interval: ${d.planner?.cache_interval || 5} steps`},
+      {label:"Executor", val:`max/step: ${d.executor?.max_per_step || 6}`},
+      {label:"SelfHealer", val:`healed: ${d.healer?.healed_total || 0}  stalled: ${d.healer?.currently_stalled || 0}  threshold: ${d.healer?.threshold || 5}`},
+      {label:"MetaOptimizer", val:`history: ${d.meta?.history_len || 0}  heal: ${d.meta?.heal_rate?.toFixed(2) || "0.00"}/step  verify: ${d.meta?.verify_rate?.toFixed(2) || "0.00"}/step`},
+      {label:"Forecast", val:`${f.remaining || 0} remaining` + (f.eta_steps ? `  ETA: ~${f.eta_steps} steps` : "")},
+    ];
+    cards.forEach(c => {
+      html += `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">${c.label}</span> <span style="color:var(--dim)">${c.val}</span></div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  async function pollForecast() {
+    try {
+      const d = await api("/forecast");
+      const el = document.getElementById("forecast-content");
+      if (!el) return;
+      const eta  = d.eta_steps != null ? `~${d.eta_steps} steps` : "N/A";
+      const rate = d.verified_per_step != null ? d.verified_per_step.toFixed(2) : "—";
+      const pct  = d.percent_complete != null ? d.percent_complete.toFixed(1) : "—";
+      const barW = 120, fillW = Math.round(barW * (d.percent_complete || 0) / 100);
+      el.innerHTML =
+        `<div style="margin-bottom:8px"><svg width="${barW+4}" height="14"><rect x="1" y="1" width="${barW}" height="12" rx="3" fill="var(--surface)"/><rect x="1" y="1" width="${fillW}" height="12" rx="3" fill="var(--green)"/><text x="${barW/2}" y="10" text-anchor="middle" font-size="8" fill="var(--text)">${pct}%</text></svg></div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Completion</span> <strong>${pct}%</strong></div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Rate</span> ${rate} verified/step</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">ETA</span> ${eta}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Verified</span> ${d.verified ?? "—"} / ${d.total ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:80px;display:inline-block">Stalled</span> ${d.stalled_count ?? 0}</div>`;
+    } catch (_) {}
+  }
+
+  async function pollMetrics() {
+    try {
+      const d = await api("/metrics");
+      const el = document.getElementById("metrics-content");
+      if (!el) return;
+      const s = d.summary || {};
+      const hist = d.history || [];
+      // SVG sparkline (verified per step)
+      const W = 200, H = 48, pad = 4;
+      let sparkline = "";
+      if (hist.length > 1) {
+        const maxV = Math.max(1, ...hist.map(r => r.verified));
+        const pts = hist.map((r, i) => {
+          const x = pad + (i / (hist.length - 1)) * (W - 2 * pad);
+          const y = H - pad - (r.verified / maxV) * (H - 2 * pad);
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(" ");
+        sparkline = `<svg width="${W}" height="${H}" style="display:block;margin:6px 0">` +
+          `<polyline points="${pts}" fill="none" stroke="var(--cyan)" stroke-width="1.5"/>` +
+          `<text x="2" y="${H-1}" font-size="8" fill="var(--dim)">${hist[0].step_index}</text>` +
+          `<text x="${W-2}" y="${H-1}" font-size="8" fill="var(--dim)" text-anchor="end">${hist[hist.length-1].step_index}</text>` +
+          `</svg>`;
+      } else {
+        sparkline = `<div class="detail-placeholder" style="font-size:10px">Not enough data yet (run more steps).</div>`;
+      }
+      const elapsedStr = d.elapsed_s != null ? `${d.elapsed_s}s` : "—";
+      const rateStr    = d.steps_per_min != null ? `${d.steps_per_min}/min` : "—";
+      el.innerHTML =
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Run health</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Verified</span> ${d.verified ?? "—"} / ${d.total ?? "—"} (${d.pct ?? 0}%)</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Pending</span> ${d.pending ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Running</span> ${d.running ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Review</span> ${d.review ?? 0}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:${(d.stalled??0)>0?"var(--yellow)":"var(--cyan)"};min-width:110px;display:inline-block">Stalled</span> ${d.stalled ?? 0}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Elapsed</span> ${elapsedStr}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Step rate</span> ${rateStr}</div>` +
+        `<div style="font-size:10px;color:var(--dim);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px">Analytics</div>` +
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:2px">Verified/step over time:</div>${sparkline}` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total steps</span> ${s.total_steps ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total verifies</span> ${s.total_verifies ?? "—"}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Avg rate</span> ${s.avg_verified_per_step ?? "—"} v/step</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Peak rate</span> ${s.peak_verified_per_step ?? "—"} v/step</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Steps w/ heals</span> ${s.steps_with_heals ?? 0}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:110px;display:inline-block">Total healed</span> ${d.total_healed ?? 0}</div>` +
+        `<div style="margin-top:8px;display:flex;gap:6px"><a class="toolbar-btn" href="/metrics/export" download="metrics.csv">Download CSV</a><a class="toolbar-btn" href="/metrics/export?format=json" download="metrics.json">Download JSON</a></div>`;
+    } catch (_) {}
+  }
+
+  /* ── Cache panel ─────────────────────────────────────────── */
+  async function pollCache() {
+    try {
+      const d = await api("/cache");
+      const el = document.getElementById("cache-content");
+      if (!el) return;
+      const entries = d.entries ?? 0;
+      const tokens = d.estimated_tokens_held ?? 0;
+      const dir = d.cache_dir ?? "—";
+      const cumHits   = d.cumulative_hits ?? 0;
+      const cumMisses = d.cumulative_misses ?? 0;
+      const hitRate   = d.cumulative_hit_rate != null ? d.cumulative_hit_rate.toFixed(1) + "%" : "—";
+      el.innerHTML =
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">This session:</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Entries on disk</span> ${entries}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Est. tokens held</span> ${tokens.toLocaleString()}</div>` +
+        `<div style="font-size:10px;color:var(--dim);margin:6px 0 4px">All sessions:</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cumulative hits</span> ${cumHits.toLocaleString()}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cumulative misses</span> ${cumMisses.toLocaleString()}</div>` +
+        `<div class="diff-entry" style="font-size:10px"><span style="color:var(--cyan);min-width:130px;display:inline-block">Hit rate</span> ${hitRate}</div>` +
+        `<div class="diff-entry" style="font-size:10px;word-break:break-all"><span style="color:var(--cyan);min-width:130px;display:inline-block">Cache dir</span> <span style="color:var(--dim)">${dir}</span></div>` +
+        `<div style="margin-top:8px"><button class="toolbar-btn" onclick="clearCache()">Clear Cache</button></div>`;
+    } catch (_) {}
+  }
+
+  async function clearCache() {
+    try {
+      await fetch("/cache", { method: "DELETE" });
+      await pollCache();
+    } catch (_) {}
+  }
+
+  /* ── Cache history panel (incremental) ───────────────────── */
+  let _cacheHistoryLastSession = 0;
+  let _cacheHistoryAllSessions = [];   // accumulated, ordered oldest→newest
+  let _cacheHistoryCumHits = 0;
+  let _cacheHistoryCumMisses = 0;
+
+  async function pollCacheHistory() {
+    try {
+      const url = _cacheHistoryLastSession > 0
+        ? `/cache/history?since=${_cacheHistoryLastSession}`
+        : `/cache/history`;
+      const d = await api(url);
+      const el = document.getElementById("cache-history-content");
+      if (!el) return;
+      // Append any new sessions
+      (d.sessions || []).forEach(s => {
+        if (s.session > _cacheHistoryLastSession) {
+          _cacheHistoryAllSessions.push(s);
+          _cacheHistoryLastSession = s.session;
+        }
+      });
+      // Always update cumulative totals (always present in response)
+      _cacheHistoryCumHits   = d.cumulative_hits ?? _cacheHistoryCumHits;
+      _cacheHistoryCumMisses = d.cumulative_misses ?? _cacheHistoryCumMisses;
+      _renderCacheHistory();
+    } catch (_) {}
+  }
+
+  function _renderCacheHistory() {
+    const el = document.getElementById("cache-history-content");
+    if (!el) return;
+    const limitSel = document.getElementById("cache-history-limit");
+    const limitN = limitSel ? parseInt(limitSel.value, 10) : 10;
+    const cumHits   = _cacheHistoryCumHits;
+    const cumMisses = _cacheHistoryCumMisses;
+    const cumTotal  = cumHits + cumMisses;
+    const cumRate   = cumTotal > 0 ? (cumHits / cumTotal * 100).toFixed(1) + "%" : "—";
+    if (_cacheHistoryAllSessions.length === 0) {
+      el.innerHTML = `<div class="detail-placeholder">No session history yet.<br>Stats accumulate after each CLI run.</div>`;
+      return;
+    }
+    // Slice to N most-recent (limitN=0 means all), then reverse for newest-first display
+    const pool = limitN > 0 ? _cacheHistoryAllSessions.slice(-limitN) : _cacheHistoryAllSessions;
+    const rows = pool.slice().reverse().map(s => {
+      const rate = s.hit_rate != null ? s.hit_rate.toFixed(1) + "%" : "—";
+      const ended = s.ended_at ? s.ended_at.replace("T", " ").substring(0, 19) + "Z" : "—";
+      return `<div class="diff-entry" style="font-size:10px">` +
+        `<span style="color:var(--cyan);min-width:24px;display:inline-block">#${s.session}</span>` +
+        `<span style="min-width:48px;display:inline-block">${s.hits}H ${s.misses}M</span>` +
+        `<span style="min-width:48px;display:inline-block">${rate}</span>` +
+        `<span style="color:var(--dim);font-size:9px">${ended}</span>` +
+        `</div>`;
+    }).join("");
+    el.innerHTML =
+      `<div style="font-size:10px;color:var(--dim);margin-bottom:4px">Sessions (newest first):</div>` +
+      rows +
+      `<div style="font-size:10px;color:var(--dim);margin-top:6px">All-time: ${cumHits.toLocaleString()}H ${cumMisses.toLocaleString()}M ${cumRate}</div>`;
+  }
+
+  /* ── Polling loop ────────────────────────────────────────── */
+  async function tick() {
+    if (_pollPaused) return;
+    await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory()]);
+    // Refresh detail panel if a task is selected
+    if (selectedTask && tasksCache[selectedTask]) {
+      try {
+        const fresh = await api("/tasks/" + encodeURIComponent(selectedTask));
+        tasksCache[selectedTask] = fresh;
+        renderDetail(fresh);
+      } catch (_) {}
+    }
+    if (_viewMode === "graph") renderGraph();
+  }
+
+  async function runAuto() {
+    const n = Math.max(1, parseInt(document.getElementById("auto-n").value || "10", 10));
+    const btn = document.getElementById("btn-auto");
+    btn.disabled = true;
+    let prevStep = -1;
+    for (let i = 0; i < n; i++) {
+      btn.textContent = `⏳ ${i+1}/${n}`;
+      try {
+        const r = await fetch("/run", { method: "POST" });
+        const d = await r.json();
+        if (!d.ok) { toast("⏩ " + (d.reason || "Pipeline complete")); break; }
+        if (prevStep < 0) prevStep = d.step;
+        // Poll lightweight heartbeat until step advances or 60s timeout
+        const deadline = Date.now() + 60000;
+        while (Date.now() < deadline) {
+          await new Promise(res => setTimeout(res, 700));
+          try {
+            const hb = await api("/heartbeat");
+            // Update header counters from heartbeat (fast path)
+            document.getElementById("hdr-verified").textContent = hb.verified;
+            document.getElementById("hdr-running").textContent  = hb.running;
+            document.getElementById("hdr-pending").textContent  = hb.pending;
+            document.getElementById("hdr-total").textContent    = hb.total;
+            if (hb.total > 0) {
+              const pct = Math.round(hb.verified / hb.total * 100);
+              document.getElementById("hdr-bar").style.width = pct + "%";
+              document.getElementById("hdr-pct").textContent = pct + "%";
+            }
+            document.getElementById("hdr-step").textContent = "Step " + hb.step;
+            btn.textContent = `⏳ ${i+1}/${n} · ${hb.verified}✓`;
+            if (hb.verified === hb.total && hb.total > 0) { await tick(); i = n; break; }
+            if (hb.step > prevStep) { prevStep = hb.step; break; }
+          } catch (_) {}
+        }
+        await tick();
+      } catch (_) { break; }
+    }
+    btn.textContent = "⏩ Auto";
+    btn.disabled = false;
+  }
+
+  async function exportOutputs() {
+    const btn = document.getElementById("btn-export");
+    btn.textContent = "⏳…";
+    try {
+      const r = await fetch("/export", { method: "POST" });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        toast("⚠ " + (d.error || d.reason || "No outputs yet — run some steps first."));
+        btn.textContent = "⬇ Export";
+        return;
+      }
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = "solo_builder_outputs.md";
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      btn.textContent = "✓ Downloaded";
+      setTimeout(() => { btn.textContent = "⬇ Export"; }, 2000);
+    } catch (_) {
+      toast("⚠ Export request failed.");
+      btn.textContent = "⬇ Export";
+    }
+  }
+
+  async function runStep() {
+    _tabFocused = true;
+    _updateNotifBadge(_prevStep);
+    const btn = document.getElementById("btn-run");
+    btn.disabled = true;
+    btn.textContent = "⏳ Sent…";
+    try {
+      const r = await fetch("/run", { method: "POST" });
+      const d = await r.json();
+      btn.textContent = d.ok ? "✓ Triggered" : "✗ " + (d.reason || "error");
+      setTimeout(() => { btn.textContent = "▶ Run Step"; btn.disabled = false; }, 1500);
+      if (d.ok) setTimeout(tick, 600);
+    } catch (_) {
+      btn.textContent = "✗ Error";
+      setTimeout(() => { btn.textContent = "▶ Run Step"; btn.disabled = false; }, 1500);
+    }
+  }
+
+  async function stopRun() {
+    const btn = document.getElementById("btn-stop");
+    btn.disabled = true;
+    btn.textContent = "⏳ Stopping…";
+    try {
+      const r = await fetch("/stop", { method: "POST" });
+      const d = await r.json();
+      btn.textContent = d.ok ? "✓ Stopped" : "⏹ Stop";
+      setTimeout(() => { btn.textContent = "⏹ Stop"; btn.disabled = false; }, 2000);
+    } catch (_) {
+      btn.textContent = "✗ Error";
+      setTimeout(() => { btn.textContent = "⏹ Stop"; btn.disabled = false; }, 2000);
+    }
+  }
+
+  /* ── Command toolbar actions ─────────────────────────────── */
+  function _flash(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("show"), 2500);
+  }
+
+  function _findTaskForSubtask(stName) {
+    // Search tasksCache for which task owns a subtask
+    stName = (stName || "").toUpperCase();
+    for (const [tid, t] of Object.entries(tasksCache)) {
+      for (const b of Object.values(t.branches || {})) {
+        for (const sn of Object.keys(b.subtasks || {})) {
+          if (sn.toUpperCase() === stName) return tid;
+        }
+      }
+    }
+    return null;
+  }
+
+  async function _postCmd(url, body, fbId, subtaskHint) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      _flash(fbId, d.ok ? "✓" : "✗ " + (d.reason || "error"));
+      if (d.ok) {
+        // Auto-select the task containing this subtask
+        if (subtaskHint) {
+          const tid = _findTaskForSubtask(subtaskHint);
+          if (tid) selectTask(tid);
+        }
+        setTimeout(tick, 600);
+      }
+    } catch (e) {
+      _flash(fbId, "✗ Error");
+    }
+  }
+
+  window.cmdVerify = function () {
+    const st   = document.getElementById("cmd-verify-st").value.trim();
+    const note = document.getElementById("cmd-verify-note").value.trim() || "Dashboard verify";
+    if (!st) { _flash("fb-verify", "Enter subtask"); return; }
+    _postCmd("/verify", {subtask: st, note: note}, "fb-verify", st);
+    document.getElementById("cmd-verify-st").value = "";
+    document.getElementById("cmd-verify-note").value = "";
+  };
+
+  window.cmdDescribe = function () {
+    const st   = document.getElementById("cmd-desc-st").value.trim();
+    const desc = document.getElementById("cmd-desc-text").value.trim();
+    if (!st || !desc) { _flash("fb-desc", "Enter subtask + prompt"); return; }
+    _postCmd("/describe", {subtask: st, desc: desc}, "fb-desc", st);
+    document.getElementById("cmd-desc-st").value = "";
+    document.getElementById("cmd-desc-text").value = "";
+  };
+
+  window.cmdTools = function () {
+    const st    = document.getElementById("cmd-tools-st").value.trim();
+    const tools = document.getElementById("cmd-tools-list").value.trim();
+    if (!st || !tools) { _flash("fb-tools", "Enter subtask + tools"); return; }
+    _postCmd("/tools", {subtask: st, tools: tools}, "fb-tools", st);
+    document.getElementById("cmd-tools-st").value = "";
+    document.getElementById("cmd-tools-list").value = "";
+  };
+
+  window.cmdSet = function () {
+    const raw = document.getElementById("cmd-set-key").value.trim();
+    if (!raw || !raw.includes("=")) { _flash("fb-set", "Format: KEY=VALUE"); return; }
+    const [key, ...rest] = raw.split("=");
+    const value = rest.join("=").trim();
+    if (!key.trim() || !value) { _flash("fb-set", "Format: KEY=VALUE"); return; }
+    _postCmd("/set", {key: key.trim(), value: value}, "fb-set");
+    document.getElementById("cmd-set-key").value = "";
+  };
+
+  /* ── Subtask modal ─────────────────────────────────────── */
+  let _modalSt = null;   // currently displayed subtask name
+
+  function _renderModal(stName, d) {
+    const status = d.status || "Pending";
+    document.getElementById("modal-title").textContent = stName;
+    document.getElementById("modal-status-wrap").innerHTML =
+      `<span class="modal-status ${statusClass(status)}">${status}</span>`;
+    document.getElementById("modal-desc").textContent = d.description || "(no description)";
+    document.getElementById("modal-output").textContent = d.output || "(no output yet)";
+    const tlWrap = document.getElementById("modal-timeline-wrap");
+    const history = d.history || [];
+    if (history.length > 0) {
+      const colorMap = {Running: "var(--cyan)", Verified: "var(--green)", Review: "var(--yellow)", Pending: "var(--dim)"};
+      let tlHtml = '<span class="timeline-entry"><span class="timeline-dot" style="background:var(--dim)"></span> Pending</span>';
+      for (const h of history) {
+        const c = colorMap[h.status] || "var(--dim)";
+        tlHtml += `<span class="timeline-arrow">\u2192</span><span class="timeline-entry"><span class="timeline-dot" style="background:${c}"></span> ${h.status} <span style="color:var(--dim)">(step ${h.step})</span></span>`;
+      }
+      document.getElementById("modal-timeline").innerHTML = tlHtml;
+      tlWrap.style.display = "";
+    } else {
+      tlWrap.style.display = "none";
+    }
+    const toolsWrap = document.getElementById("modal-tools-wrap");
+    if (d.tools) {
+      toolsWrap.style.display = "";
+      document.getElementById("modal-tools").textContent = d.tools;
+    } else {
+      toolsWrap.style.display = "none";
+    }
+  }
+
+  window.showModal = function (stName, stData) {
+    _modalSt = stName;
+    _renderModal(stName, stData);
+    document.getElementById("modal-overlay").classList.add("show");
+    // Fetch fresh data from timeline API
+    api("/timeline/" + encodeURIComponent(stName))
+      .then(d => { if (_modalSt === stName) _renderModal(stName, d); })
+      .catch(() => {});
+  };
+
+  window.closeModal = function () {
+    document.getElementById("modal-overlay").classList.remove("show");
+    _modalSt = null;
+  };
+
+  window.openKeysModal = function () {
+    document.getElementById("keys-overlay").style.display = "flex";
+    api("/shortcuts").then(function (d) {
+      const tbl = document.getElementById("shortcuts-table");
+      if (!tbl) return;
+      tbl.innerHTML = (d.shortcuts || []).map(function (s) {
+        return `<tr><td style="color:var(--cyan);width:120px"><kbd>${s.key}</kbd></td><td style="color:var(--dim)">${s.description}</td></tr>`;
+      }).join("");
+    }).catch(function () {});
+  };
+  window.closeKeysModal = function () {
+    document.getElementById("keys-overlay").style.display = "none";
+  };
+
+  /* ── Webhook ──────────────────────────────────────────────── */
+  window.fireWebhook = async function () {
+    const btn = document.getElementById("btn-fire-webhook");
+    const fb  = document.getElementById("fb-webhook");
+    if (btn) btn.disabled = true;
+    try {
+      const d = await fetch(BASE + "/webhook", {method: "POST"}).then(r => r.json());
+      if (fb) { fb.textContent = d.ok ? "Sent" : (d.reason || d.error || "Failed"); fb.style.color = d.ok ? "var(--green)" : "var(--red)"; }
+      if (d.ok) toast("Webhook fired");
+    } catch (e) {
+      if (fb) { fb.textContent = "Network error"; fb.style.color = "var(--red)"; }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  /* ── Poll pause/resume ─────────────────────────────────────── */
+  let _pollPaused = false;
+  window.togglePollPause = function () {
+    _pollPaused = !_pollPaused;
+    const btn = document.getElementById("btn-poll-pause");
+    if (_pollPaused) {
+      btn.textContent = "▶ Resume";
+      btn.style.background = "#2a1a1a";
+      btn.style.color = "#f77";
+      btn.style.borderColor = "#733";
+    } else {
+      btn.textContent = "⏸ Pause";
+      btn.style.background = "#1a2a1a";
+      btn.style.color = "#6f6";
+      btn.style.borderColor = "#373";
+      tick();
+    }
+  };
+
+  /* ── Subtask detail modal ─────────────────────────────────── */
+  window.openSubtaskModal = function (ev) {
+    const statusColor = s => ({Verified:"var(--green)",Running:"var(--cyan)",Review:"var(--yellow)",Pending:"var(--dim)"})[s] || "var(--text)";
+    document.getElementById("sd-title").textContent  = ev.subtask;
+    document.getElementById("sd-task").textContent   = ev.task;
+    document.getElementById("sd-branch").textContent = ev.branch;
+    document.getElementById("sd-step").textContent   = ev.step;
+    const sdStatus = document.getElementById("sd-status");
+    sdStatus.textContent = ev.status;
+    sdStatus.style.color = statusColor(ev.status);
+    document.getElementById("sd-output").textContent = ev.output || "(no output)";
+    document.getElementById("sd-sparkline").innerHTML = "";
+    document.getElementById("st-modal-overlay").style.display = "flex";
+    // TASK-094: fetch timeline and render sparkline
+    api("/timeline/" + encodeURIComponent(ev.subtask)).then(function (td) {
+      const hist = td.history || [];
+      const sparkEl = document.getElementById("sd-sparkline");
+      if (!sparkEl) return;
+      if (hist.length === 0) { sparkEl.innerHTML = ""; return; }
+      const W = 300, H = 36, pad = 4;
+      const statusVal = {Pending:1, Running:2, Review:3, Verified:4};
+      const statusClr = {Pending:"var(--dim)", Running:"var(--cyan)", Review:"var(--yellow)", Verified:"var(--green)"};
+      const pts = hist.map((h, i) => {
+        const v = statusVal[h.status] || 1;
+        const x = pad + (hist.length < 2 ? (W - 2*pad)/2 : i / (hist.length - 1) * (W - 2*pad));
+        const y = H - pad - ((v - 1) / 3) * (H - 2*pad);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+      const dots = hist.map((h, i) => {
+        const v = statusVal[h.status] || 1;
+        const x = pad + (hist.length < 2 ? (W - 2*pad)/2 : i / (hist.length - 1) * (W - 2*pad));
+        const y = H - pad - ((v - 1) / 3) * (H - 2*pad);
+        const c = (statusClr[h.status] || "var(--dim)").replace("var(--","").replace(")","");
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${statusClr[h.status]||"var(--dim)"}" title="${h.status} @ step ${h.step}"/>`;
+      }).join("");
+      sparkEl.innerHTML =
+        `<div style="font-size:10px;color:var(--dim);margin-bottom:3px">Timeline (${hist.length} transition${hist.length!==1?"s":""})</div>` +
+        `<svg width="${W}" height="${H}" style="display:block;overflow:visible">` +
+        `<polyline points="${pts}" fill="none" stroke="var(--border)" stroke-width="1"/>` +
+        dots +
+        `</svg>` +
+        `<div style="display:flex;gap:10px;font-size:9px;margin-top:2px;color:var(--dim)">` +
+        `<span style="color:var(--dim)">▪ Pending</span><span style="color:var(--cyan)">▪ Running</span>` +
+        `<span style="color:var(--yellow)">▪ Review</span><span style="color:var(--green)">▪ Verified</span></div>`;
+    }).catch(function () {});
+  };
+  window.closeSubtaskModal = function () {
+    document.getElementById("st-modal-overlay").style.display = "none";
+  };
+
+  /* ── Keyboard shortcuts ───────────────────────────────────── */
+  document.addEventListener("keydown", function (e) {
+    // Ignore when typing in inputs
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    if (e.key === "Escape") {
+      closeModal(); closeKeysModal(); closeSubtaskModal();
+      const np = document.getElementById("notif-panel");
+      if (np) np.style.display = "none";
+      const ts = document.getElementById("task-search");
+      if (ts && ts.value) { ts.value = ""; _applyTaskSearch(); }
+      return;
+    }
+    if (e.key === "?") { openKeysModal(); return; }
+    if (e.key === "p") { togglePollPause(); return; }
+
+    // j/k — navigate tasks
+    if (e.key === "j" || e.key === "k") {
+      if (_taskIds.length === 0) return;
+      const cur = _taskIds.indexOf(selectedTask);
+      let next;
+      if (e.key === "j") next = cur < 0 ? 0 : Math.min(cur + 1, _taskIds.length - 1);
+      else               next = cur <= 0 ? _taskIds.length - 1 : cur - 1;
+      selectTask(_taskIds[next]);
+      return;
+    }
+
+    // v — verify first non-verified subtask of selected task
+    if (e.key === "v" && selectedTask && tasksCache[selectedTask]) {
+      const t = tasksCache[selectedTask];
+      for (const b of Object.values(t.branches || {})) {
+        for (const [sn, s] of Object.entries(b.subtasks || {})) {
+          if (s.status !== "Verified") {
+            _postCmd("/verify", {subtask: sn, note: "Keyboard verify"}, "fb-verify", sn);
+            return;
+          }
+        }
+      }
+      return;
+    }
+
+    // ArrowLeft/ArrowRight — page through History tab when active
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      const historyPane = document.getElementById("tab-history");
+      if (historyPane && historyPane.classList.contains("active")) {
+        _historyPageStep(e.key === "ArrowRight" ? 1 : -1);
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // r — trigger run step
+    if (e.key === "r") { runStep(); return; }
+
+    // g — toggle graph view
+    if (e.key === "g") { toggleView(); return; }
+
+    // Enter — open modal for first non-verified subtask
+    if (e.key === "Enter" && selectedTask && tasksCache[selectedTask] && !_modalSt) {
+      const t = tasksCache[selectedTask];
+      for (const b of Object.values(t.branches || {})) {
+        for (const [sn, s] of Object.entries(b.subtasks || {})) {
+          if (s.status !== "Verified") { showModal(sn, s); return; }
+        }
+      }
+      return;
+    }
+  });
+
+  window.modalVerify = function () {
+    if (!_modalSt) return;
+    _postCmd("/verify", {subtask: _modalSt, note: "Dashboard modal verify"}, "fb-verify", _modalSt);
+    closeModal();
+  };
+
+  window.modalDescribe = function () {
+    if (!_modalSt) return;
+    const desc = prompt("Enter new prompt for " + _modalSt + ":");
+    if (!desc) return;
+    _postCmd("/describe", {subtask: _modalSt, desc: desc}, "fb-desc", _modalSt);
+    closeModal();
+  };
+
+  window.modalTools = function () {
+    if (!_modalSt) return;
+    const tools = prompt("Enter tools for " + _modalSt + " (e.g. Read,Glob,Grep or none):");
+    if (!tools) return;
+    _postCmd("/tools", {subtask: _modalSt, tools: tools}, "fb-tools", _modalSt);
+    closeModal();
+  };
+
+  window.modalRenameShow = function () {
+    const wrap = document.getElementById("modal-rename-wrap");
+    const input = document.getElementById("modal-rename-input");
+    input.value = document.getElementById("modal-desc").textContent || "";
+    wrap.style.display = "";
+    input.focus();
+  };
+  window.modalRenameSubmit = function () {
+    if (!_modalSt) return;
+    const desc = document.getElementById("modal-rename-input").value.trim();
+    if (!desc) { _flash("fb-rename", "Enter a description"); return; }
+    _postCmd("/rename", {subtask: _modalSt, desc: desc}, "fb-rename", _modalSt);
+    document.getElementById("modal-rename-wrap").style.display = "none";
+    setTimeout(() => {
+      api("/timeline/" + encodeURIComponent(_modalSt))
+        .then(d => { if (_modalSt) _renderModal(_modalSt, d); })
+        .catch(() => {});
+    }, 800);
+  };
+
+  /* ── Search / filter ──────────────────────────────────────── */
+  let _filterText = "";
+
+  window.applyFilter = function () {
+    _filterText = (document.getElementById("search-input").value || "").toLowerCase();
+    // Filter task cards
+    document.querySelectorAll(".task-card").forEach(card => {
+      const id = (card.dataset.id || "").toLowerCase();
+      const badge = (card.querySelector(".card-mini-badge")?.textContent || "").toLowerCase();
+      const match = !_filterText || id.includes(_filterText) || badge.includes(_filterText);
+      card.style.display = match ? "" : "none";
+    });
+    // Filter subtask rows in detail panel
+    document.querySelectorAll(".subtask-row").forEach(row => {
+      const name = (row.querySelector(".st-name")?.textContent || "").toLowerCase();
+      const output = (row.querySelector(".st-output")?.textContent || "").toLowerCase();
+      const match = !_filterText || name.includes(_filterText) || output.includes(_filterText);
+      row.style.display = match ? "" : "none";
+    });
+  };
+
+  /* ── DAG graph view ───────────────────────────────────────── */
+  let _viewMode = "grid";   // "grid" or "graph"
+
+  window.toggleView = function () {
+    _viewMode = _viewMode === "grid" ? "graph" : "grid";
+    const btn = document.getElementById("btn-view");
+    btn.textContent = _viewMode === "grid" ? "Graph" : "Grid";
+    document.getElementById("task-grid").style.display = _viewMode === "grid" ? "" : "none";
+    document.getElementById("dag-svg").style.display   = _viewMode === "grid" ? "none" : "";
+    if (_viewMode === "graph") renderGraph();
+  };
+
+  function renderGraph() {
+    const svg = document.getElementById("dag-svg");
+    if (!_taskIds.length) { svg.innerHTML = ""; return; }
+
+    // Compute levels by topological sort
+    const taskMap = {};
+    _taskIds.forEach(id => { taskMap[id] = tasksCache[id] || {}; });
+    const levels = {};
+    const visited = new Set();
+    function getLevel(id) {
+      if (levels[id] !== undefined) return levels[id];
+      if (visited.has(id)) return 0;
+      visited.add(id);
+      const deps = (taskMap[id].depends_on || []).filter(d => taskMap[d]);
+      if (!deps.length) { levels[id] = 0; return 0; }
+      const maxDep = Math.max(...deps.map(d => getLevel(d)));
+      levels[id] = maxDep + 1;
+      return levels[id];
+    }
+    _taskIds.forEach(id => getLevel(id));
+
+    // Group by level
+    const byLevel = {};
+    _taskIds.forEach(id => {
+      const lv = levels[id] || 0;
+      if (!byLevel[lv]) byLevel[lv] = [];
+      byLevel[lv].push(id);
+    });
+    const maxLevel = Math.max(...Object.keys(byLevel).map(Number));
+
+    // Layout params
+    const NW = 120, NH = 44, PX = 160, PY = 70, OX = 30, OY = 30;
+    const totalW = (maxLevel + 1) * PX + OX * 2;
+    const maxPerLevel = Math.max(...Object.values(byLevel).map(a => a.length));
+    const totalH = maxPerLevel * PY + OY * 2;
+    svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+    svg.style.minHeight = Math.max(200, totalH) + "px";
+
+    // Compute positions
+    const pos = {};
+    Object.entries(byLevel).forEach(([lv, ids]) => {
+      const n = ids.length;
+      const startY = (totalH - n * PY) / 2 + PY / 2;
+      ids.forEach((id, i) => {
+        pos[id] = { x: OX + Number(lv) * PX, y: startY + i * PY };
+      });
+    });
+
+    // Color by status
+    function nodeColor(t) {
+      const s = (t.status || "").toLowerCase();
+      if (s === "verified") return "var(--green)";
+      if (s === "running") return "var(--cyan)";
+      return "var(--yellow)";
+    }
+    function nodeColorBg(t) {
+      const s = (t.status || "").toLowerCase();
+      if (s === "verified") return "#1b3d1e";
+      if (s === "running") return "#0d2d33";
+      return "#2a2200";
+    }
+
+    let html = '<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="var(--dim)"/></marker></defs>';
+
+    // Draw edges
+    _taskIds.forEach(id => {
+      const deps = (taskMap[id].depends_on || []).filter(d => pos[d]);
+      deps.forEach(dep => {
+        const from = pos[dep], to = pos[id];
+        html += `<line x1="${from.x + NW}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="var(--dim)" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>`;
+      });
+    });
+
+    // Draw nodes
+    _taskIds.forEach(id => {
+      const t = taskMap[id];
+      const p = pos[id];
+      const col = nodeColor(t);
+      const bg = nodeColorBg(t);
+      const branches = t.branches || {};
+      const nSt = Object.values(branches).reduce((a, b) => a + Object.keys(b.subtasks || {}).length, 0);
+      const nV = Object.values(branches).reduce((a, b) => a + Object.values(b.subtasks || {}).filter(s => s.status === "Verified").length, 0);
+      const pct = nSt ? Math.round(nV / nSt * 100) : 0;
+      const barW = NW - 16, barH = 5, barX = p.x + 8, barY = p.y + 10;
+      html += `<rect x="${p.x}" y="${p.y - NH/2}" width="${NW}" height="${NH + 8}" rx="4" fill="${bg}" stroke="${col}" stroke-width="1.5" style="cursor:pointer" onclick="selectTask('${id}')"/>`;
+      html += `<text x="${p.x + NW/2}" y="${p.y - 6}" fill="${col}" text-anchor="middle" font-size="11" font-family="var(--font)" font-weight="bold">${id}</text>`;
+      html += `<text x="${p.x + NW/2}" y="${p.y + 6}" fill="var(--dim)" text-anchor="middle" font-size="9" font-family="var(--font)">${nV}/${nSt} (${pct}%)</text>`;
+      html += `<rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="2" fill="var(--surface)"/>`;
+      html += `<rect x="${barX}" y="${barY}" width="${Math.round(barW * pct / 100)}" height="${barH}" rx="2" fill="${col}"/>`;
+    });
+
+    svg.innerHTML = html;
+  }
+
+  /* ── Theme toggle ─────────────────────────────────────────── */
+  function _applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.getElementById("btn-theme").textContent = theme === "dark" ? "🌙" : "☀️";
+  }
+  _applyTheme(localStorage.getItem("sb-theme") || "dark");
+
+  window.toggleTheme = function () {
+    const next = (localStorage.getItem("sb-theme") || "dark") === "dark" ? "light" : "dark";
+    localStorage.setItem("sb-theme", next);
+    _applyTheme(next);
+  };
+
+  window.setPollInterval = function (ms) {
+    POLL_MS = ms;
+    localStorage.setItem("sb-poll-ms", ms);
+    if (_pollIntervalId !== null) clearInterval(_pollIntervalId);
+    _pollIntervalId = setInterval(tick, POLL_MS);
+  };
+
+  // Restore dropdown to saved value
+  const pollSel = document.getElementById("poll-interval-select");
+  if (pollSel) pollSel.value = String(POLL_MS);
+
+  tick();
+  _pollIntervalId = setInterval(tick, POLL_MS);
+})();

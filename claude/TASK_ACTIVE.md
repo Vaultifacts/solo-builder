@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-104
+TASK-105
 
-Refactor solo_builder/api/app.py: split the large Flask app into focused modules (routes, auth, websocket, config endpoints) to reduce file size and address architecture auditor large-file findings
+Refactor solo_builder/api/dashboard.html: extract inline JavaScript and CSS into separate static files to reduce the 2587-line monolithic SPA and address architecture auditor large-file findings

@@ -56,6 +56,8 @@ solo_builder/api/blueprints/webhook.py
 solo_builder/api/blueprints/core.py
 solo_builder/api/test_app.py
 solo_builder/api/dashboard.html
+solo_builder/api/static/dashboard.css
+solo_builder/api/static/dashboard.js
 .gitignore
 solo_builder/dag_definition.py
 solo_builder/display.py
