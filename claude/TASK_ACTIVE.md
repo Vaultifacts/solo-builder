@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-112
+TASK-113
 
-Prune tracked snapshot artifacts and untrack chat.log to clear large-file architecture findings
+Fix XSS findings in dashboard JS modules by escaping user data and using textContent where possible
