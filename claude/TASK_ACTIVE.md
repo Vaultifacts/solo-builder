@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-116
+TASK-117
 
-Fix remaining architecture major findings: Bandit B310 urllib.urlopen in webhook.py, plus other major items identified by arch auditor
+Add standalone pytest-style def test_* functions to improve architecture auditor function ratio metric
