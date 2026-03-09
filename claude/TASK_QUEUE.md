@@ -1314,3 +1314,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-243
+Goal: Add status quick-filter buttons to Branches all-tasks view (Pending/Running/Review/Verified)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
