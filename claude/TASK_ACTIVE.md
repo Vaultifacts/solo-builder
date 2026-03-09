@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-306
+TASK-307
 
-Dashboard Export tab: update stalled export hrefs to use ?min_age=<threshold> (dynamically fetched from GET /stalled); update #export-stalled-threshold label to show the active threshold value
+Discord /stalled slash command: add min_age:int=0 param; when >0, passes ?min_age=N to GET /stalled API call and includes note in output; 3 new tests in TestFormatStalled or similar

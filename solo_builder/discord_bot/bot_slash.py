@@ -190,14 +190,16 @@ def register_slash_commands(bot: discord.Client) -> None:
     @app_commands.describe(
         task="Filter by task name substring (case-insensitive). Omit for all tasks.",
         branch="Filter by branch name substring (case-insensitive). Omit for all branches.",
+        min_age="Override STALL_THRESHOLD: only show subtasks stalled >= this many steps.",
     )
     async def stalled_cmd(
-        interaction: discord.Interaction, task: str = "", branch: str = ""
+        interaction: discord.Interaction, task: str = "", branch: str = "", min_age: int = 0
     ) -> None:
         if not _b._allowed(interaction):
             await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
             return
-        await interaction.response.send_message(_b._format_stalled(_b._load_state(), task, branch))
+        await interaction.response.send_message(
+            _b._format_stalled(_b._load_state(), task, branch, min_age))
 
     @bot.tree.command(name="heal", description="Reset a Running subtask to Pending")
     @app_commands.describe(subtask="Subtask name (e.g. A1)")

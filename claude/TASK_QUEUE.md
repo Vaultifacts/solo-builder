@@ -1842,3 +1842,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-307
+Goal: Discord /stalled slash command: add min_age:int=0 param; when >0, passes ?min_age=N to GET /stalled API call and includes note in output; 3 new tests in TestFormatStalled or similar
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

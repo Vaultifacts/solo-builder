@@ -257,6 +257,28 @@ class TestFormatStalled(unittest.TestCase):
         self.assertNotIn("Br A1", result)
         self.assertNotIn("Br B1", result)
 
+    # min_age override (TASK-307)
+
+    def test_min_age_overrides_threshold_includes_subtask(self):
+        # subtask age=3, config threshold=5, min_age=3 → should appear
+        state = self._multi_branch_state(step=3, last_update=0)
+        with patch.object(bot_module, "_format_stalled",
+                          wraps=bot_module._format_stalled):
+            result = bot_module._format_stalled(state, min_age=3)
+        self.assertNotIn("none", result)
+
+    def test_min_age_higher_excludes_subtask(self):
+        # subtask age=5, min_age=10 → none stalled
+        state = self._multi_branch_state(step=5, last_update=0)
+        result = bot_module._format_stalled(state, min_age=10)
+        self.assertIn("none", result)
+
+    def test_min_age_note_in_output(self):
+        # when min_age > 0, output contains override note
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state, min_age=2)
+        self.assertIn("min_age override", result)
+
 
 class TestFormatSubtasks(unittest.TestCase):
     """Unit tests for _format_subtasks in bot_formatters."""
