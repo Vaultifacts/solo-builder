@@ -410,11 +410,13 @@ function _renderPriority(d) {
 }
 
 /* ── Stalled panel ──────────────────────────────────────── */
-let _stalledTaskFilter = "";
+let _stalledTaskFilter   = "";
+let _stalledBranchFilter = "";
 
 export async function pollStalled() {
   try {
-    const qs = _stalledTaskFilter ? `?task=${encodeURIComponent(_stalledTaskFilter)}` : "";
+    let qs = _stalledTaskFilter   ? `?task=${encodeURIComponent(_stalledTaskFilter)}`   : "";
+    if (_stalledBranchFilter) qs += (qs ? "&" : "?") + `branch=${encodeURIComponent(_stalledBranchFilter)}`;
     const d = await api("/stalled" + qs);
     _renderStalled(d);
   } catch (_) {}
@@ -423,6 +425,12 @@ export async function pollStalled() {
 window._applyStalledTaskFilter = function () {
   const el = document.getElementById("stalled-task-filter");
   _stalledTaskFilter = el ? el.value.trim() : "";
+  pollStalled();
+};
+
+window._applyStalledBranchFilter = function () {
+  const el = document.getElementById("stalled-branch-filter");
+  _stalledBranchFilter = el ? el.value.trim() : "";
   pollStalled();
 };
 
