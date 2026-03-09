@@ -2596,6 +2596,44 @@ class TestStalled(_Base):
         counts = [e["count"] for e in d["by_branch"]]
         self.assertEqual(counts, sorted(counts, reverse=True))
 
+    # -- Cross-endpoint stall consistency invariants (TASK-273) -----------
+
+    def test_cross_endpoint_stalled_count_invariant(self):
+        # /status.stalled == /stalled.count for multi-task state with mixed fresh/stall
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        status_d  = self.client.get("/status").get_json()
+        stalled_d = self.client.get("/stalled").get_json()
+        self.assertEqual(status_d["stalled"], stalled_d["count"])
+
+    def test_cross_endpoint_by_branch_sum_invariant(self):
+        # sum(status.stalled_by_branch[*].count) == sum(stalled.by_branch[*].count)
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        status_d  = self.client.get("/status").get_json()
+        stalled_d = self.client.get("/stalled").get_json()
+        status_sum  = sum(e["count"] for e in status_d["stalled_by_branch"])
+        stalled_sum = sum(e["count"] for e in stalled_d["by_branch"])
+        self.assertEqual(status_sum, stalled_sum)
+
+    def test_cross_endpoint_by_branch_entries_match(self):
+        # Both endpoints must agree on which branches are stalling and their counts
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        status_d  = self.client.get("/status").get_json()
+        stalled_d = self.client.get("/stalled").get_json()
+        status_keys  = {(e["task"], e["branch"]): e["count"] for e in status_d["stalled_by_branch"]}
+        stalled_keys = {(e["task"], e["branch"]): e["count"] for e in stalled_d["by_branch"]}
+        self.assertEqual(status_keys, stalled_keys)
+
+    def test_cross_endpoint_zero_stall_both_empty(self):
+        # When nothing stalled, both by_branch lists must be empty
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        status_d  = self.client.get("/status").get_json()
+        stalled_d = self.client.get("/stalled").get_json()
+        self.assertEqual(status_d["stalled_by_branch"], [])
+        self.assertEqual(stalled_d["by_branch"], [])
+
 
 # Heal
 # ---------------------------------------------------------------------------
