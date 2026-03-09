@@ -704,7 +704,17 @@ function _renderSubtasks() {
   const el = document.getElementById("subtasks-content");
   if (!el) return;
   const rows = _subtasksAll;  // server-side filters (status, name) already applied
-  const hasFilter = _subtasksStatusFilter || _subtasksNameFilter;
+  const hasFilter = _subtasksStatusFilter || _subtasksNameFilter || _subtasksTaskFilter || _subtasksBranchFilter;
+  // Update filter summary label
+  const filterLbl = document.getElementById("subtasks-filter-label");
+  if (filterLbl) {
+    const parts = [];
+    if (_subtasksStatusFilter) parts.push(_subtasksStatusFilter);
+    if (_subtasksNameFilter)   parts.push(`"${_subtasksNameFilter}"`);
+    if (_subtasksTaskFilter)   parts.push(`task:${_subtasksTaskFilter}`);
+    if (_subtasksBranchFilter) parts.push(`branch:${_subtasksBranchFilter}`);
+    filterLbl.textContent = parts.length ? `· ${parts.join(" ")} (${rows.length})` : "";
+  }
   if (rows.length === 0) {
     el.replaceChildren(_placeholder(hasFilter ? "No matching subtasks." : "No subtasks yet."));
     return;

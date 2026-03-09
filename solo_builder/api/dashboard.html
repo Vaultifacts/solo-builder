@@ -237,11 +237,12 @@
         <a id="subtasks-export-csv"  class="toolbar-btn" href="/subtasks/export" download="subtasks.csv" style="font-size:9px;padding:2px 5px">CSV</a>
         <a id="subtasks-export-json" class="toolbar-btn" href="/subtasks/export?format=json" download="subtasks.json" style="font-size:9px;padding:2px 5px">JSON</a>
       </div>
-      <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;margin-bottom:2px;flex-wrap:wrap;align-items:center">
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Pending'?'':'Pending';renderSubtasks();})()">⏳ Pending</button>
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Running'?'':'Running';renderSubtasks();})()">▶ Running</button>
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Review'?'':'Review';renderSubtasks();})()">⏸ Review</button>
         <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('subtasks-filter');f.value=f.value==='Verified'?'':'Verified';renderSubtasks();})()">✅ Verified</button>
+        <span id="subtasks-filter-label" style="font-size:9px;color:var(--yellow);margin-left:4px"></span>
       </div>
       <div id="subtasks-bulk-bar" style="display:none;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
         <span id="subtasks-sel-count" style="font-size:9px;color:var(--dim)">0 selected</span>
