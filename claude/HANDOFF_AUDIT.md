@@ -1,19 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-136
+TASK-137
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (404 tests, 0 failures — +7 from TestGetTaskExport)
+- unittest-discover: PASS (402 tests, 0 failures — +5 from TestResetBranchCommand)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 96.6/100 (unchanged)
+- architecture-audit: 96.2/100 (minor variation; no new categories of finding)
 
 ## Scope Check
-Four files modified:
-- `solo_builder/api/blueprints/tasks.py` — added `GET /tasks/<path:task_id>/export`; CSV (default) or JSON (?format=json); Content-Disposition attachment
-- `solo_builder/api/test_app.py` — added `TestGetTaskExport` (7 tests)
-- `solo_builder/api/dashboard.html` — added "Selected Task" export section in Export tab (hidden until task selected)
-- `solo_builder/api/static/dashboard_tasks.js` — added `_updateTaskExportLinks(id)` called from `selectTask()`; wires CSV/JSON hrefs + shows section
+Three files modified:
+- `solo_builder/discord_bot/bot.py` — added `_format_reset_branch(state, task_arg, branch_arg)` helper + plain-text handler for `reset_branch <task> <branch>`
+- `solo_builder/discord_bot/bot_slash.py` — added `/reset_branch` slash command with `task` and `branch` parameters
+- `solo_builder/discord_bot/test_bot.py` — added `TestResetBranchCommand` (5 tests)
+
+## Implementation Detail
+- Mirrors `_format_reset_task` pattern; validates task then branch; skips Verified; writes STATE.json directly
+- 5 tests: valid reset writes state, skips Verified, unknown task, unknown branch, no-args shows usage
