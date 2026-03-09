@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-305
+TASK-306
 
-GET /stalled: add ?min_age=N filter to return only Running subtasks stalled >= N steps; reuse min_age pattern from GET /subtasks; 3 new tests in TestStalled
+Dashboard Export tab: update stalled export hrefs to use ?min_age=<threshold> (dynamically fetched from GET /stalled); update #export-stalled-threshold label to show the active threshold value
