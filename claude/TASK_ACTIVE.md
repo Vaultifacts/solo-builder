@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-134
+TASK-135
 
-Add reset_task command to Discord bot (plain-text + slash) that calls POST /tasks/<id>/reset
+Convert renderDetail innerHTML to DOM API in dashboard_tasks.js

@@ -1,5 +1,5 @@
 import { state } from "./dashboard_state.js";
-import { api, esc, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
+import { api, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
 export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 
 window.addEventListener("focus", function () {
@@ -103,14 +103,31 @@ export function renderGrid(tasks) {
       card = document.createElement("div");
       card.className = "task-card";
       card.dataset.id = t.id;
-      card.innerHTML = `
-        <div class="card-top">
-          <span class="card-id">${esc(t.id)}</span>
-          <span class="card-mini-badge ${statusClass(t.status)}">${esc(t.status || "Pending")}</span>
-        </div>
-        <div class="card-deps"></div>
-        <div class="card-bar-bg"><div class="card-bar-fg" style="width:0%"></div></div>
-        <div class="card-counts"></div>`;
+
+      const cardTop = document.createElement("div");
+      cardTop.className = "card-top";
+      const cardIdSpan = document.createElement("span");
+      cardIdSpan.className = "card-id";
+      cardIdSpan.textContent = t.id;
+      const cardBadge = document.createElement("span");
+      cardBadge.className = `card-mini-badge ${statusClass(t.status)}`;
+      cardBadge.textContent = t.status || "Pending";
+      cardTop.append(cardIdSpan, cardBadge);
+
+      const cardDeps = document.createElement("div");
+      cardDeps.className = "card-deps";
+
+      const barBg = document.createElement("div");
+      barBg.className = "card-bar-bg";
+      const barFg = document.createElement("div");
+      barFg.className = "card-bar-fg";
+      barFg.style.width = "0%";
+      barBg.appendChild(barFg);
+
+      const cardCounts = document.createElement("div");
+      cardCounts.className = "card-counts";
+
+      card.replaceChildren(cardTop, cardDeps, barBg, cardCounts);
       card.addEventListener("click", () => selectTask(t.id));
       grid.appendChild(card);
     }
@@ -150,47 +167,13 @@ window.selectTask = selectTask;
 
 export function renderDetail(t) {
   const el = document.getElementById("detail-content");
-  let html = `<div class="detail-task-id">${esc(t.id)}</div>`;
-  html += `<div class="detail-status"><span class="card-mini-badge ${statusClass(t.status)}">${esc(t.status || "Pending")}</span>`;
-  if (t.depends_on && t.depends_on.length) {
-    html += ` <span style="color:#ff9800;font-size:10px">← ${esc(t.depends_on.join(", "))}</span>`;
-  }
-  html += ` <button class="toolbar-btn" style="font-size:9px;padding:2px 6px;margin-left:8px" onclick="resetTask(${JSON.stringify(t.id)})" title="Reset all non-Verified subtasks to Pending">↺ Reset task</button>`;
-  html += `</div>`;
-
   const branches = t.branches || {};
-  Object.entries(branches).forEach(([bname, bdata]) => {
-    html += `<div class="branch-block"><div class="branch-name">${esc(bname)}</div>`;
-    const subtasks = bdata.subtasks || {};
-    Object.entries(subtasks).forEach(([sname, s]) => {
-      const output = (s.output || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const preview = output ? output.replace(/\n/g, " ").substring(0, 80) : esc(s.description || "");
-      const previewHtml = preview
-        ? `<span class="st-output" title="${output.substring(0, 400).replace(/"/g, "&quot;")}">${preview}</span>`
-        : "";
-      const snameJson = JSON.stringify(sname);
-      const expandBtn = output
-        ? `<button class="st-expand-btn" title="Expand output" onclick="toggleExpand(this,event)">&#9654;</button>`
-        : "";
-      const expandContent = output
-        ? `<div class="st-expand-content">${output}</div>`
-        : "";
-      html += `
-        <div class="subtask-row" onclick='showModal(${snameJson}, ${JSON.stringify(s).replace(/'/g, "&#39;")})'>
-          <div class="st-dot ${dotClass(s.status)}"></div>
-          <span class="st-name">${esc(sname)}</span>
-          ${previewHtml}
-          ${expandBtn}
-          ${expandContent}
-        </div>`;
-    });
-    html += `</div>`;
-  });
 
+  // Track status changes for auto-scroll
   const _prevStatuses = window._prevSubtaskStatuses || {};
   const _newStatuses = {};
   let _changedSt = null;
-  Object.entries(branches).forEach(([bname, bdata]) => {
+  Object.entries(branches).forEach(([, bdata]) => {
     Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
       _newStatuses[sname] = s.status || "Pending";
       if (_prevStatuses[sname] && _prevStatuses[sname] !== _newStatuses[sname]) {
@@ -200,7 +183,93 @@ export function renderDetail(t) {
   });
   window._prevSubtaskStatuses = _newStatuses;
 
-  el.innerHTML = html;
+  // Build DOM
+  const taskIdDiv = document.createElement("div");
+  taskIdDiv.className = "detail-task-id";
+  taskIdDiv.textContent = t.id;
+
+  const statusDiv = document.createElement("div");
+  statusDiv.className = "detail-status";
+
+  const badgeSpan = document.createElement("span");
+  badgeSpan.className = `card-mini-badge ${statusClass(t.status)}`;
+  badgeSpan.textContent = t.status || "Pending";
+  statusDiv.appendChild(badgeSpan);
+
+  if (t.depends_on && t.depends_on.length) {
+    const depsSpan = document.createElement("span");
+    depsSpan.style.cssText = "color:#ff9800;font-size:10px";
+    depsSpan.textContent = "← " + t.depends_on.join(", ");
+    statusDiv.append(" ", depsSpan);
+  }
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "toolbar-btn";
+  resetBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:8px";
+  resetBtn.title = "Reset all non-Verified subtasks to Pending";
+  resetBtn.textContent = "↺ Reset task";
+  resetBtn.addEventListener("click", () => window.resetTask(t.id));
+  statusDiv.append(" ", resetBtn);
+
+  const nodes = [taskIdDiv, statusDiv];
+
+  Object.entries(branches).forEach(([bname, bdata]) => {
+    const branchBlock = document.createElement("div");
+    branchBlock.className = "branch-block";
+
+    const branchNameEl = document.createElement("div");
+    branchNameEl.className = "branch-name";
+    branchNameEl.textContent = bname;
+    branchBlock.appendChild(branchNameEl);
+
+    Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+      const rawOutput = s.output || "";
+
+      const row = document.createElement("div");
+      row.className = "subtask-row";
+      row.addEventListener("click", () => window.showModal(sname, s));
+
+      const dot = document.createElement("div");
+      dot.className = `st-dot ${dotClass(s.status)}`;
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "st-name";
+      nameSpan.textContent = sname;
+
+      row.append(dot, nameSpan);
+
+      if (rawOutput) {
+        const outSpan = document.createElement("span");
+        outSpan.className = "st-output";
+        outSpan.title = rawOutput.substring(0, 400);
+        outSpan.textContent = rawOutput.replace(/\n/g, " ").substring(0, 80);
+        row.appendChild(outSpan);
+
+        const expandBtn = document.createElement("button");
+        expandBtn.className = "st-expand-btn";
+        expandBtn.title = "Expand output";
+        expandBtn.textContent = "▶";
+        expandBtn.addEventListener("click", (event) => window.toggleExpand(expandBtn, event));
+
+        const expandContent = document.createElement("div");
+        expandContent.className = "st-expand-content";
+        expandContent.textContent = rawOutput;
+
+        row.append(expandBtn, expandContent);
+      } else if (s.description) {
+        const descSpan = document.createElement("span");
+        descSpan.className = "st-output";
+        descSpan.textContent = s.description;
+        row.appendChild(descSpan);
+      }
+
+      branchBlock.appendChild(row);
+    });
+
+    nodes.push(branchBlock);
+  });
+
+  el.replaceChildren(...nodes);
 
   if (_changedSt) {
     const rows = el.querySelectorAll(".subtask-row .st-name");
@@ -243,4 +312,3 @@ window.filterSubtasks = function filterSubtasks() {
     row.style.display = (!q || name.includes(q) || output.includes(q)) ? "" : "none";
   });
 };
-
