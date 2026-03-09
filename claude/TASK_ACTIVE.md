@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-157
+TASK-158
 
-Add bulk-reset/bulk-verify UI to the Branches tab in dashboard_panels.js and dashboard.html
+Add GET /health uptime_s display as tooltip on the dashboard status indicator

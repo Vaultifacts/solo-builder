@@ -22,6 +22,7 @@
   </div>
   <span id="hdr-badge" class="status-badge badge-pending">—</span>
   <span class="step-info" id="hdr-step">Step —</span><span class="notif-badge hidden" id="notif-badge" title="Unread steps">0</span>
+  <span id="hdr-uptime" title="Server uptime" style="font-size:10px;color:var(--dim);cursor:default;letter-spacing:0.5px"></span>
   <input id="task-search" type="search" placeholder="Filter tasks…" title="Filter task list by name or status (Esc to clear)" oninput="_applyTaskSearch()" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:11px;padding:2px 8px;outline:none;width:120px;font-family:var(--font)">
   <button id="btn-run" onclick="runStep()" title="Signal CLI to run one step">▶ Run Step</button>
   <button id="btn-export" onclick="exportOutputs()" title="Download all subtask outputs as Markdown">⬇ Export</button>
