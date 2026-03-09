@@ -882,3 +882,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-180
+Goal: Add pollTaskProgress() in dashboard_tasks.js that fetches GET /tasks/<id>/progress and updates the detail progress bar without a full task reload
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
