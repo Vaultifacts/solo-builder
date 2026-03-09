@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-231
+TASK-232
 
 ## Verdict: PASS
 
@@ -12,12 +12,12 @@ TASK-231
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — pager state vars, _updateSubtasksPager(), updated pollSubtasks(), _subtasksPageStep(), _renderSubtasks calls pager
-- `solo_builder/api/dashboard.html` — subtasks-pager div (◀/▶ + labels) added after subtasks-content
+- `solo_builder/api/static/dashboard_branches.js` — pagination state vars, _updateBranchesPager(), _branchesPageStep(), updated pollBranches() all-tasks fetch, _renderBranchesAll calls pager, detail view hides pager
+- `solo_builder/api/dashboard.html` — branches-pager div (◀/▶ + labels) added after branches-content
 
 ## Implementation Detail
-Subtasks tab previously fetched all subtasks in one request and rendered all client-side.
-Added server-side pagination: pollSubtasks() requests ?limit=50&page=N; pager shows when
-pages > 1. window._subtasksPageStep(delta) advances/retreats page and re-fetches.
-Client-side filter (renderSubtasks) still works within the current page.
-No new tests needed — endpoint pagination already covered by TestSubtasksPagination.
+Branches tab all-tasks view previously fetched all branches without pagination.
+Added server-side pagination: pollBranches() all-tasks path requests ?limit=50&page=N.
+window._branchesPageStep(delta) advances/retreats page and re-fetches.
+Pager shows only when pages > 1, hidden when switching to per-task detail view.
+No test changes — endpoint pagination already covered by TestBranchesAll.
