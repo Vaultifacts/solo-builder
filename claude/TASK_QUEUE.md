@@ -1758,3 +1758,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-299
+Goal: Discord plain-text subtasks command: add 'subtasks' to bot.py _handle_text_command dispatch; support optional task= and status= filters; reuse _format_subtasks from bot_formatters.py; 3+ new tests in test_bot.py
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

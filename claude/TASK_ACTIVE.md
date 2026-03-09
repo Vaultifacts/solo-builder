@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-298
+TASK-299
 
-GET /branches: verify ?status=review and ?status=pending filter work correctly; add 3+ tests (parity with GET /branches/export filter tests)
+Discord plain-text subtasks command: add 'subtasks' to bot.py _handle_text_command dispatch; support optional task= and status= filters; reuse _format_subtasks from bot_formatters.py; 3+ new tests in test_bot.py
