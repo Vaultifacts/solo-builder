@@ -1,23 +1,19 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-253
+TASK-254
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (528 tests, 0 failures; +6 new)
-- node tools/lint_dashboard_handlers.js: PASS (0 gaps)
+- unittest-discover (api): PASS (534 tests, 0 failures; +6 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Three files modified:
-- `solo_builder/api/blueprints/branches.py` — ?status= filter added to branches_all(); applies before pagination
-- `solo_builder/api/static/dashboard_branches.js` — _branchesFilterStatus now calls pollBranches() (server re-fetch) instead of client-side render; pollBranches includes ?status=X in URL; _renderBranchesAll simplified (removed client-side filter loop)
-- `solo_builder/api/test_app.py` — 6 new tests in TestBranchesAll: verified/running/review/pending filter, no-match, composes with pagination
+One file modified:
+- `solo_builder/api/test_app.py` — 6 new tests in TestStalled: multi-task count, subtask names across tasks, task field correctness, branch field correctness, /status stalled matches /stalled count for multi-task state, partial stall within a branch
 
 ## Implementation Detail
-GET /branches previously had no status filter; _branchesFilterStatus did client-side filtering after fetch, breaking pagination (filter only applied to current page).
-Added ?status=pending|running|review|verified to server (applied before pagination).
-Dashboard now re-fetches on filter change (reset to page 1), same pattern as subtasks ?status= filter.
-verified semantics: verified==total && total>0. Others: count > 0.
+Previous stall tests only used single-task/single-branch _make_state().
+New _make_multi_task_state() helper creates 2 tasks × 2 branches (3 Running, 1 Verified).
+Tests verify: correct count across multiple tasks, task/branch metadata on each stalled entry, /status.stalled == /stalled.count parity, and that fresh Running (age < threshold) in same branch are excluded.

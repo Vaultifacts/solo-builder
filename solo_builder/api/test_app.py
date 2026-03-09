@@ -2304,6 +2304,99 @@ class TestStalled(_Base):
         self.assertNotIn("S4", names)
         self.assertNotIn("S5", names)
 
+    # -- Multi-task / multi-branch cross-detection (TASK-254) -------------
+
+    def _make_multi_task_state(self, threshold=5):
+        """Two tasks, two branches each, each with one Running subtask at last_update=0.
+        step=threshold so all Running subtasks are exactly at the stall boundary.
+        """
+        return {
+            "step": threshold,
+            "dag": {
+                "Task A": {
+                    "status": "Running", "depends_on": [],
+                    "branches": {
+                        "Br A1": {"subtasks": {"SA1": {"status": "Running",
+                                                        "output": "", "last_update": 0}}},
+                        "Br A2": {"subtasks": {"SA2": {"status": "Running",
+                                                        "output": "", "last_update": 0}}},
+                    },
+                },
+                "Task B": {
+                    "status": "Running", "depends_on": [],
+                    "branches": {
+                        "Br B1": {"subtasks": {"SB1": {"status": "Running",
+                                                        "output": "", "last_update": 0}}},
+                        "Br B2": {"subtasks": {"SB2": {"status": "Verified",
+                                                        "output": "", "last_update": 0}}},
+                    },
+                },
+            },
+        }
+
+    def test_multi_task_stalled_count(self):
+        # 3 Running stalled + 1 Verified → stalled count = 3
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["count"], 3)
+
+    def test_multi_task_stalled_subtask_names(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        names = {s["subtask"] for s in d["stalled"]}
+        self.assertIn("SA1", names)
+        self.assertIn("SA2", names)
+        self.assertIn("SB1", names)
+        self.assertNotIn("SB2", names)  # Verified, not stalled
+
+    def test_multi_task_stalled_task_field(self):
+        # Each entry must carry its correct task name
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        by_subtask = {s["subtask"]: s["task"] for s in d["stalled"]}
+        self.assertEqual(by_subtask.get("SA1"), "Task A")
+        self.assertEqual(by_subtask.get("SA2"), "Task A")
+        self.assertEqual(by_subtask.get("SB1"), "Task B")
+
+    def test_multi_task_stalled_branch_field(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        by_subtask = {s["subtask"]: s["branch"] for s in d["stalled"]}
+        self.assertEqual(by_subtask.get("SA1"), "Br A1")
+        self.assertEqual(by_subtask.get("SB1"), "Br B1")
+
+    def test_multi_task_status_stalled_matches_stalled_endpoint(self):
+        # /status.stalled must equal /stalled.count across multi-task state
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        status_d  = self.client.get("/status").get_json()
+        stalled_d = self.client.get("/stalled").get_json()
+        self.assertEqual(status_d["stalled"], stalled_d["count"])
+
+    def test_multi_task_partial_stall_only_above_threshold(self):
+        # Mix: some at step=5 (stalled), some at step=4 (fresh); threshold=5
+        self._set_threshold(5)
+        state = {
+            "step": 5,
+            "dag": {
+                "Task A": {"status": "Running", "depends_on": [], "branches": {
+                    "Br A": {"subtasks": {
+                        "Stalled": {"status": "Running", "output": "", "last_update": 0},
+                        "Fresh":   {"status": "Running", "output": "", "last_update": 1},
+                    }},
+                }},
+            },
+        }
+        self._write_state(state)
+        d = self.client.get("/stalled").get_json()
+        names = [s["subtask"] for s in d["stalled"]]
+        self.assertIn("Stalled", names)
+        self.assertNotIn("Fresh", names)
+
 
 # Heal
 # ---------------------------------------------------------------------------
