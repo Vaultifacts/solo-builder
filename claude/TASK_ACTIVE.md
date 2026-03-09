@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-253
+TASK-254
 
-Add server-side ?status= filter to GET /branches (all-tasks view): currently client-only so pagination + filter don't compose; add ?status= parameter to backend + wire dashboard to use it + tests
+Add GET /stalled multi-task cross-branch regression test: verify stall detection works correctly when stalled subtasks exist across multiple tasks and branches

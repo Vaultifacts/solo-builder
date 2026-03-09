@@ -1446,3 +1446,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-254
+Goal: Add GET /stalled multi-task cross-branch regression test: verify stall detection works correctly when stalled subtasks exist across multiple tasks and branches
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
