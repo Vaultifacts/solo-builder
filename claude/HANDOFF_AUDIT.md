@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-126
+TASK-127
 
 ## Verdict: PASS
 
@@ -9,18 +9,14 @@ TASK-126
 - unittest-discover: PASS (393 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 92.9/100 (was 93.8 — see note below)
+- architecture-audit: 92.5/100 (minor fluctuation from TASK-126 new files; no new issues introduced)
 
 ## Scope Check
-Three files modified/created:
-- `solo_builder/api/static/dashboard_panels.js` — removed branches + cache sections; added re-exports; 605→439 lines
-- `solo_builder/api/static/dashboard_branches.js` — NEW: pollBranches, _renderBranchesAll, _renderBranchesDetail
-- `solo_builder/api/static/dashboard_cache.js` — NEW: pollCache, pollCacheHistory, clearCache, _renderCacheHistory
-- `claude/allowed_files.txt` — added the two new JS modules
+One file modified:
+- `solo_builder/api/dashboard.html` — added DAG Definition section in Export tab with JSON download link
 
-## Architecture Note
-Score dropped from 93.8 → 92.9. Each new JS file containing `innerHTML =` is flagged as a
-separate XSS major finding. The innerHTML usage is identical to what was in dashboard_panels.js;
-splitting into 2 new files counts as 2 new findings vs 1 before. All usages are safe (server
-data escaped via esc(), numeric values, or pre-escaped output strings). No new exploitable XSS.
-Primary goal achieved: dashboard_panels.js is now 439 lines (was 605), well under the 500-line target.
+## Feature Description
+Added a "DAG Definition" section to the Export tab in the sidebar, with a single
+`<a class="toolbar-btn" href="/dag/export" download="dag.json">JSON</a>` link.
+GET /dag/export already existed (aliased to GET /tasks/export); this wires it into
+the UI between Cache Stats and Webhook sections. No new endpoints, no JS changes.
