@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-250
+TASK-251
 
-Add v4.7.0 CHANGELOG entry documenting TASK-246 through TASK-250 milestone
+Add ?task= filter parity to GET /subtasks/export: currently GET /subtasks supports ?task= but GET /subtasks/export ignores it; wire filter + add tests

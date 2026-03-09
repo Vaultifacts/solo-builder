@@ -393,3 +393,4 @@
 - [2026-03-09T18:24:50.3253225Z] Starting TASK-248 via tools/start_task.ps1 with automated preflight gating.
 - [2026-03-09T18:28:02.6327366Z] Starting TASK-249 via tools/start_task.ps1 with automated preflight gating.
 - [2026-03-09T18:32:03.0587493Z] Starting TASK-250 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-09T18:32:58.3117964Z] Starting TASK-251 via tools/start_task.ps1 with automated preflight gating.
