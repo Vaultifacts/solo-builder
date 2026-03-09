@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-284
+TASK-285
 
-History tab export links sync with active task/branch/status filters: update export-tab-history-csv/json hrefs on switchTab('export') to include ?task=, ?branch=, ?status= when set in the History tab
+Discord /subtasks export:True — send full CSV file attachment (parity with /branches export:True); _subtasks_to_csv() formatter + 5+ tests
