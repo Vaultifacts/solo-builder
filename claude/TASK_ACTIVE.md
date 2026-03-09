@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-238
+TASK-239
 
-Reset page to 1 when task-search, subtasks-filter (non-status), or branch task-search input changes
+Add Node.js CI lint script that parses dashboard.html inline handlers and cross-checks window.* assignments
