@@ -58,7 +58,18 @@ class AutoCommandsMixin:
                 ran += 1
 
                 stats = dag_stats(self.dag)
+                _pct = round(stats["verified"] / stats["total"] * 100, 1) if stats["total"] else 0.0
+                _bar = make_bar(stats["verified"], stats["total"], width=BAR_WIDTH)
+                _run_tag = f"  {CYAN}{stats['running']} running{RESET}" if stats["running"] else ""
+                print(
+                    f"\r  {CYAN}Step {self.step:4d}{RESET}  "
+                    f"[{_bar}]  "
+                    f"{GREEN}{stats['verified']}{RESET}/{stats['total']}  "
+                    f"({_pct:.1f}%){_run_tag}",
+                    end="", flush=True,
+                )
                 if stats["verified"] == stats["total"]:
+                    print()  # end the progress line
                     self.save_state(silent=True)   # flush JSON before bot reads it
                     _fire_completion(self.step, stats["verified"], stats["total"])
                     time.sleep(1.2)
@@ -199,7 +210,7 @@ class AutoCommandsMixin:
                     _waited += 0.05
 
                 if _stopped:
-                    print(f"\n  {YELLOW}Auto-run stopped remotely at step {self.step}.{RESET}")
+                    print(f"\n  {YELLOW}Auto-run stopped remotely at step {self.step}.{RESET}", flush=True)
                     time.sleep(0.5)
                     self.display.render(
                         self.dag, self.memory_store, self.step,
@@ -208,7 +219,7 @@ class AutoCommandsMixin:
                     break
 
         except KeyboardInterrupt:
-            print(f"\n  {YELLOW}Auto-run paused at step {self.step}.{RESET}")
+            print(f"\n  {YELLOW}Auto-run paused at step {self.step}.{RESET}", flush=True)
             time.sleep(0.5)
             self.display.render(
                 self.dag, self.memory_store, self.step,
