@@ -19,7 +19,7 @@ def _get_app():
 def subtasks_all():
     """Flat list of all subtasks across all tasks.
 
-    Query params: task, branch, status (case-insensitive substring); output=1 includes full output.
+    Query params: task, branch, status, name (case-insensitive substring); output=1 includes full output.
     Pagination: page=<n> (1-based) and limit=<n> (default 0 = all).
     Response includes total (pre-pagination count), page, limit, pages.
     """
@@ -27,6 +27,7 @@ def subtasks_all():
     task_q   = (request.args.get("task")   or "").strip().lower()
     branch_q = (request.args.get("branch") or "").strip().lower()
     status_q = (request.args.get("status") or "").strip().lower()
+    name_q   = (request.args.get("name")   or "").strip().lower()
     include_output = request.args.get("output", "0") == "1"
     try:
         limit = max(0, int(request.args.get("limit", 0)))
@@ -46,6 +47,8 @@ def subtasks_all():
             for st_name, st_data in br_data.get("subtasks", {}).items():
                 st_status = st_data.get("status", "Pending")
                 if status_q and status_q not in st_status.lower():
+                    continue
+                if name_q and name_q not in st_name.lower():
                     continue
                 entry = {
                     "subtask": st_name,
@@ -78,7 +81,7 @@ def subtasks_all():
 def subtasks_export():
     """Export all subtasks as CSV (default) or JSON (?format=json).
 
-    Supports same ?task=, ?branch=, ?status= filters as GET /subtasks.
+    Supports same ?task=, ?branch=, ?status=, ?name= filters as GET /subtasks.
     Pagination: ?page=<n>&limit=<n> (limit=0 exports all).
     CSV columns: subtask,task,branch,status,output_length
     JSON wraps rows in {total, page, limit, pages, subtasks: [...]} when paginated.
@@ -87,6 +90,7 @@ def subtasks_export():
     task_q   = (request.args.get("task")   or "").strip().lower()
     branch_q = (request.args.get("branch") or "").strip().lower()
     status_q = (request.args.get("status") or "").strip().lower()
+    name_q   = (request.args.get("name")   or "").strip().lower()
     fmt = (request.args.get("format") or "csv").strip().lower()
     try:
         limit = max(0, int(request.args.get("limit", 0)))
@@ -106,6 +110,8 @@ def subtasks_export():
             for st_name, st_data in br_data.get("subtasks", {}).items():
                 st_status = st_data.get("status", "Pending")
                 if status_q and status_q not in st_status.lower():
+                    continue
+                if name_q and name_q not in st_name.lower():
                     continue
                 rows.append({
                     "subtask": st_name,
