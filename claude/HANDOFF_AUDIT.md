@@ -1,24 +1,19 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-186
+TASK-187
 
-## Verdict: PASS
+## Verdict: PASS (no code change required)
 
 ## Verification Results
 - unittest-discover (api): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
-- git-diff-stat: PASS
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — renderDetail progress bar shows Review count
+No files modified. Audit-only task.
 
-## Implementation Detail
-The renderDetail() progress bar previously showed only running▶ in runSpan.
-Enhancement:
-- `_review` counter tracked alongside `_verified`, `_running`, `_pending` in main subtask loop
-- runSpan now shows `N▶ M⏸` (zero counts suppressed — no clutter when status absent)
-- Per-branch mini rows also show `running▶` and `review⏸` separately
-- `_branchStats` push now includes `review` field for per-branch display
-No new tests needed: JS-only change; API test suite fully passes (454/454).
+## Finding
+GET /tasks/<id>/progress already returns `review` in each branches[] entry.
+- Implemented in TASK-175 (blueprints/tasks.py line 246: `"review": bc["Review"]`)
+- Tested in TASK-182 (test_app.py line 3054: key presence check; line 3091: count assertion)
+TASK-187 is satisfied by existing implementation. No additional work required.
