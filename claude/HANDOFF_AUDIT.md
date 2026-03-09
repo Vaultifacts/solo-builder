@@ -1,20 +1,21 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-223
+TASK-224
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (483 tests, 0 failures; +2 new)
-- unittest-discover (all discord): PASS (454 tests, 0 failures)
+- unittest-discover (all): PASS (454 tests, 0 failures)
+- unittest-discover (api): PASS (483 tests, 0 failures)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/test_app.py` — 2 tests added to TestMetricsHealth
+- `solo_builder/api/static/dashboard_panels.js` — _historyPageStep exposed + review suffix in count label
 
 ## Implementation Detail
-GET /metrics already returns review at line 191 of metrics.py; existing test_health_fields_present
-checks presence. Added test_review_count_correct (2 Review subtasks = d.review==2) and
-test_review_not_counted_in_pending (1 Review + 1 Pending = review==1, pending==1). No impl change.
+Two fixes in one commit: (1) history pager ◀/▶ buttons called `_historyPageStep` from HTML inline
+handlers, but historyPageStep was only imported in dashboard.js — never window-exposed. Added
+`window._historyPageStep = function(delta) { historyPageStep(delta); }` before the export.
+(2) history-count-label now appends ' · N⏸' when the filtered event set includes Review events.
