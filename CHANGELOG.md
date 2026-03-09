@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.5.0 — 2026-03-09  Stalled filters + Stalled tab UX + Discord /stalled filters (TASK-287 through TASK-290)
+
+- **290 tasks** merged to master (TASK-001 through TASK-290); **579 API tests**, **290 Discord tests**
+- CHANGELOG v5.4.0 documented — TASK-287
+- `GET /stalled` accepts `?branch=` substring filter (parity with `?task=`); 3 new tests — TASK-288
+- Stalled tab: `#stalled-task-filter` input re-fetches `GET /stalled?task=X` on each keystroke — TASK-289
+- Discord `/stalled`: optional `task=` and `branch=` params; `_format_stalled()` updated with filters; 4 new tests — TASK-290
+
+---
+
 ## v5.4.0 — 2026-03-09  Export fixes + Discord CSV + stalled filters (TASK-283 through TASK-286)
 
 - **286 tasks** merged to master (TASK-001 through TASK-286); **576 API tests**, **286 Discord tests**
