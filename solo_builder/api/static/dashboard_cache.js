@@ -146,3 +146,5 @@ function _renderCacheHistory() {
 
   el.replaceChildren(hdr, ...rows, footer);
 }
+
+window._renderCacheHistory = _renderCacheHistory;

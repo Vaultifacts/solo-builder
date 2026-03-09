@@ -476,6 +476,8 @@ window.toggleTaskTimeline = async function toggleTaskTimeline(taskId) {
   el.appendChild(panel);
 };
 
+window._applyTaskSearch = applyTaskSearch;
+
 window.filterSubtasks = function filterSubtasks() {
   const q = (document.getElementById("st-search").value || "").toLowerCase();
   document.querySelectorAll("#detail-content .subtask-row").forEach(row => {

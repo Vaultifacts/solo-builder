@@ -1,23 +1,25 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-229
+TASK-230
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (495 tests, 0 failures; +6 new)
+- unittest-discover (api): PASS (495 tests, 0 failures)
 - unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/blueprints/branches.py` — pagination + review field + pending formula fix
-- `solo_builder/api/test_app.py` — 6 tests added to TestBranchesAll
+- `solo_builder/api/static/dashboard_tasks.js` — added `window._applyTaskSearch = applyTaskSearch`
+- `solo_builder/api/static/dashboard_cache.js` — added `window._renderCacheHistory = _renderCacheHistory`
 
 ## Implementation Detail
-GET /branches previously returned {branches, count} with no pagination and no review field.
-Added ?limit=N&page=P; response now includes total, page, pages. Also fixed pending formula
-(was total-v-r, omitting review) and added review field per branch row.
-Six tests: review present, review-not-in-pending, pagination keys, limit, pages=ceil(5/2)=3,
-two pages disjoint.
+Audit of all onclick/oninput/onchange inline handlers in dashboard.html vs window.* assignments
+across all dashboard JS modules found two missing window exposures:
+- `_applyTaskSearch` called from `#task-search` oninput; function exported but not window-exposed
+- `_renderCacheHistory` called from `#cache-history-limit` onchange; private function not window-exposed
+
+Both gaps silently failed at runtime (ES module scope isolation). No test changes needed —
+handler wiring is structural, covered by existing behaviour.
