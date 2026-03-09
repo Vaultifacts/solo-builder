@@ -2537,6 +2537,40 @@ class TestStalled(_Base):
         self.assertIn("Stalled", names)
         self.assertNotIn("Fresh", names)
 
+    # -- by_branch grouping (TASK-268) ------------------------------------
+
+    def test_by_branch_key_present(self):
+        d = self.client.get("/stalled").get_json()
+        self.assertIn("by_branch", d)
+
+    def test_by_branch_empty_when_no_stall(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(d["by_branch"], [])
+
+    def test_by_branch_populated_from_multi_task(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        self.assertGreater(len(d["by_branch"]), 0)
+        entry = d["by_branch"][0]
+        self.assertIn("task", entry)
+        self.assertIn("branch", entry)
+        self.assertIn("count", entry)
+
+    def test_by_branch_count_sum_equals_total(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        self.assertEqual(sum(e["count"] for e in d["by_branch"]), d["count"])
+
+    def test_by_branch_sorted_desc(self):
+        self._set_threshold(5)
+        self._write_state(self._make_multi_task_state(threshold=5))
+        d = self.client.get("/stalled").get_json()
+        counts = [e["count"] for e in d["by_branch"]]
+        self.assertEqual(counts, sorted(counts, reverse=True))
+
 
 # Heal
 # ---------------------------------------------------------------------------
