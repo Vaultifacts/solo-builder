@@ -868,3 +868,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-106
+Goal: Refactor solo_builder/discord_bot/bot.py: split the 2086-line monolithic Discord bot into focused command-group modules to address architecture auditor large-file findings
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
