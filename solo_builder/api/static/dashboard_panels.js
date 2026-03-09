@@ -591,6 +591,12 @@ window._resetSubtasksFilters = function () {
   _updateSubtasksExportLinks();
 };
 
+window._clearSubtasksFilters = function () {
+  const hadFilter = _subtasksStatusFilter || _subtasksNameFilter || _subtasksTaskFilter || _subtasksBranchFilter;
+  window._resetSubtasksFilters();
+  if (hadFilter) pollSubtasks();
+};
+
 window.renderHistory = function () {
   _historyPage = 1;
   _renderHistory(_historyRows);
@@ -715,6 +721,8 @@ function _renderSubtasks() {
     if (_subtasksBranchFilter) parts.push(`branch:${_subtasksBranchFilter}`);
     filterLbl.textContent = parts.length ? `· ${parts.join(" ")} (${rows.length})` : "";
   }
+  const clearBtn = document.getElementById("subtasks-clear-filters");
+  if (clearBtn) clearBtn.style.display = hasFilter ? "" : "none";
   if (rows.length === 0) {
     el.replaceChildren(_placeholder(hasFilter ? "No matching subtasks." : "No subtasks yet."));
     return;
