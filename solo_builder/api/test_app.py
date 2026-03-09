@@ -1093,6 +1093,59 @@ class TestBranchesAll(_Base):
         self.assertEqual(d["branches"], [])
 
 
+# POST /branches/<task>/reset
+# ---------------------------------------------------------------------------
+
+class TestBranchReset(_Base):
+
+    def test_reset_valid_branch_returns_ok(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        r = self.client.post("/branches/Task 0/reset",
+                             json={"branch": "Branch A"})
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["task"], "Task 0")
+        self.assertEqual(d["branch"], "Branch A")
+
+    def test_reset_missing_branch_field_returns_400(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/branches/Task 0/reset", json={})
+        self.assertEqual(r.status_code, 400)
+
+    def test_reset_invalid_task_returns_404(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/branches/Task 999/reset",
+                             json={"branch": "Branch A"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_reset_invalid_branch_returns_404(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/branches/Task 0/reset",
+                             json={"branch": "Branch ZZZ"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_reset_counts_reset_subtasks(self):
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/branches/Task 0/reset",
+                             json={"branch": "Branch A"}).get_json()
+        self.assertEqual(d["reset_count"], 2)
+
+    def test_reset_skips_verified(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.post("/branches/Task 0/reset",
+                             json={"branch": "Branch A"}).get_json()
+        self.assertEqual(d["reset_count"], 1)
+        self.assertEqual(d["skipped_count"], 1)
+
+    def test_reset_sets_subtasks_to_pending(self):
+        self._write_state(self._make_state({"A1": "Running"}))
+        self.client.post("/branches/Task 0/reset", json={"branch": "Branch A"})
+        state = json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Pending")
+
+
 # ---------------------------------------------------------------------------
 # GET /subtasks  (TASK-087)
 # ---------------------------------------------------------------------------

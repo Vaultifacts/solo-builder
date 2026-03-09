@@ -1,7 +1,9 @@
-"""Branches blueprint — GET /branches, /branches/<task_id>."""
+"""Branches blueprint — GET /branches, /branches/<task_id>, POST /branches/<task_id>/reset."""
+import json
+
 from flask import Blueprint, jsonify, abort, request
 
-from ..helpers import _load_dag
+from ..helpers import _load_dag, _load_state
 
 branches_bp = Blueprint("branches", __name__)
 
@@ -60,3 +62,47 @@ def branches(task_id: str):
             ],
         })
     return jsonify({"task": task_id, "branch_count": len(result), "branches": result})
+
+
+@branches_bp.post("/branches/<path:task_id>/reset")
+def reset_branch(task_id: str):
+    """Bulk-reset all non-Verified subtasks in a branch to Pending.
+
+    Body: {"branch": "<branch_name>"}
+    Returns {ok, task, branch, reset_count, skipped_count}.
+    404 if task or branch not found.
+    """
+    from .. import app as _app_mod
+    body = request.get_json(silent=True) or {}
+    branch_name = (body.get("branch") or "").strip()
+    if not branch_name:
+        return jsonify({"ok": False, "reason": "Missing 'branch' field."}), 400
+    state = _load_state()
+    dag = state.get("dag", {})
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    branch = task.get("branches", {}).get(branch_name)
+    if branch is None:
+        abort(404, description=f"Branch '{branch_name}' not found in task '{task_id}'.")
+    reset_count = 0
+    skipped_count = 0
+    for st_data in branch.get("subtasks", {}).values():
+        if st_data.get("status") == "Verified":
+            skipped_count += 1
+        else:
+            st_data["status"] = "Pending"
+            st_data["output"] = ""
+            st_data.pop("shadow", None)
+            reset_count += 1
+    try:
+        _app_mod.STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+    return jsonify({
+        "ok": True,
+        "task": task_id,
+        "branch": branch_name,
+        "reset_count": reset_count,
+        "skipped_count": skipped_count,
+    })
