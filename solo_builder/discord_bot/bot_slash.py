@@ -207,6 +207,14 @@ def register_slash_commands(bot: discord.Client) -> None:
             return
         await interaction.response.send_message(_b._format_reset_task(_b._load_state(), task))
 
+    @bot.tree.command(name="reset_branch", description="Bulk-reset all non-Verified subtasks in a branch to Pending")
+    @app_commands.describe(task="Task ID (e.g. Task 0)", branch="Branch name (e.g. Branch A)")
+    async def reset_branch_cmd(interaction: discord.Interaction, task: str, branch: str) -> None:
+        if not _b._allowed(interaction):
+            await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+            return
+        await interaction.response.send_message(_b._format_reset_branch(_b._load_state(), task, branch))
+
     @bot.tree.command(name="agents", description="Show all agent statistics")
     async def agents_cmd(interaction: discord.Interaction) -> None:
         if not _b._allowed(interaction):

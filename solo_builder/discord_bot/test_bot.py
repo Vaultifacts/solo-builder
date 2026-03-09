@@ -2150,6 +2150,60 @@ class TestResetTaskCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Usage", text)
 
 
+class TestResetBranchCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot reset_branch command."""
+
+    async def test_reset_branch_valid(self):
+        """reset_branch Task0 BranchA resets non-Verified subtasks and writes state."""
+        state = _make_state({"A1": "Running", "A2": "Pending"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text") as mock_write:
+            await bot_module._handle_text_command(_make_msg("reset_branch Task0 BranchA"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Task0", text)
+        self.assertIn("BranchA", text)
+        self.assertIn("reset", text.lower())
+        mock_write.assert_called_once()
+
+    async def test_reset_branch_skips_verified(self):
+        """reset_branch preserves Verified subtasks."""
+        state = _make_state({"A1": "Verified", "A2": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text"):
+            await bot_module._handle_text_command(_make_msg("reset_branch Task0 BranchA"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("preserved", text)
+
+    async def test_reset_branch_unknown_task(self):
+        """reset_branch with unknown task returns warning."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("reset_branch ZZZ BranchA"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("not found", text)
+
+    async def test_reset_branch_unknown_branch(self):
+        """reset_branch with unknown branch returns warning."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("reset_branch Task0 ZZZ"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("not found", text)
+
+    async def test_reset_branch_no_args_shows_usage(self):
+        """reset_branch with no args shows usage."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("reset_branch"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+
 class TestAgentsCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot agents command."""
 

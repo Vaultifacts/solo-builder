@@ -166,6 +166,38 @@ def _format_reset_task(state: dict, task_arg: str) -> str:
     )
 
 
+def _format_reset_branch(state: dict, task_arg: str, branch_arg: str) -> str:
+    """Bulk-reset all non-Verified subtasks in a branch to Pending (writes STATE.json directly)."""
+    task_id = task_arg.strip()
+    branch_id = branch_arg.strip()
+    if not task_id or not branch_id:
+        return "Usage: `reset_branch <task_id> <branch>`"
+    dag = state.get("dag", {})
+    if task_id not in dag:
+        return f"⚠️ Task **{task_id}** not found."
+    branches = dag[task_id].get("branches", {})
+    if branch_id not in branches:
+        return f"⚠️ Branch **{branch_id}** not found in task **{task_id}**."
+    reset_count = 0
+    skipped_count = 0
+    for st_data in branches[branch_id].get("subtasks", {}).values():
+        if st_data.get("status") == "Verified":
+            skipped_count += 1
+        else:
+            st_data["status"] = "Pending"
+            st_data["output"] = ""
+            st_data.pop("shadow", None)
+            reset_count += 1
+    try:
+        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return f"❌ Failed to write state: {exc}"
+    return (
+        f"↺ **{task_id}/{branch_id}** reset — {reset_count} subtask(s) → Pending"
+        + (f", {skipped_count} Verified preserved." if skipped_count else ".")
+    )
+
+
 def _allowed(interaction: discord.Interaction) -> bool:
     return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
 
@@ -676,6 +708,13 @@ async def _handle_text_command(message: discord.Message) -> None:
         task_arg = text[11:].strip() if low.startswith("reset_task ") else ""
         state = _load_state()
         await _send(message, _format_reset_task(state, task_arg))
+
+    elif low.startswith("reset_branch ") or low == "reset_branch":
+        parts = text[13:].strip().split(None, 1) if low.startswith("reset_branch ") else []
+        task_arg   = parts[0] if len(parts) > 0 else ""
+        branch_arg = parts[1] if len(parts) > 1 else ""
+        state = _load_state()
+        await _send(message, _format_reset_branch(state, task_arg, branch_arg))
 
     elif low == "agents":
         state = _load_state()
