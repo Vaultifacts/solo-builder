@@ -231,6 +231,19 @@ class TestGetTasks(_Base):
         d = self.client.get("/tasks").get_json()
         self.assertEqual(d["tasks"], [])
 
+    def test_summary_includes_pct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks").get_json()
+        task = d["tasks"][0]
+        self.assertIn("pct", task)
+        self.assertAlmostEqual(task["pct"], 50.0)
+
+    def test_summary_pct_zero_when_no_subtasks(self):
+        state = {"dag": {"Task 0": {"branches": {}, "status": "Pending"}}, "step": 0}
+        self._write_state(state)
+        d = self.client.get("/tasks").get_json()
+        self.assertEqual(d["tasks"][0]["pct"], 0.0)
+
 
 # ---------------------------------------------------------------------------
 # GET /tasks/<id>
