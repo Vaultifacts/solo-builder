@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-216
+TASK-217
 
-CHANGELOG v4.3.x entry documenting TASK-213 through TASK-215
+GET /history response includes review count in top-level metadata
