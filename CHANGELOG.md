@@ -1,5 +1,33 @@
 # Changelog
 
+## v4.1.4 — 2026-03-09  Review Status Propagation Complete (TASK-186 through TASK-195)
+
+### Summary
+- **195 tasks** merged to master (TASK-001 through TASK-195)
+- **462 API tests**, **445 Discord tests** — 0 failures
+- Review status now visible everywhere: dashboard progress bars, Discord formatter, stalled exclusion
+
+### Changes
+
+#### API
+- `GET /tasks` response now includes `pct` (precomputed verified %) per task — TASK-188
+- `GET /tasks/<id>/progress` `branches[]` includes `review` field — confirmed TASK-187
+- `GET /stalled` confirmed to exclude Review (and Pending) subtasks — TASK-194
+- 4 new edge-case tests for `/subtasks/bulk-reset` and `/subtasks/bulk-verify` — TASK-189
+
+#### Dashboard
+- `renderDetail()` progress bar now shows `N⏸` (Review count) alongside `N▶` (Running) — TASK-186
+- Per-branch mini rows show `running▶` and `review⏸` separately — TASK-186
+- `renderGrid()` card mini-bars use server-supplied `pct` from `GET /tasks` — TASK-191
+- `pollTaskProgress()` now updates per-branch mini rows in-place (fill width + count text) — TASK-192
+- `pollTaskProgress()` runSpan shows `review⏸` alongside `running▶` — TASK-192
+
+#### Discord Bot
+- 5 tests added: Review in `_format_filter` output, ⏸ icon, count, exclusion — TASK-190
+- `/bulk_verify` slash command confirmed present with 5 tests — TASK-193 (no-op)
+
+---
+
 ## v4.0.0 — 2026-03-09  Milestone: 180 Tasks Complete
 
 ### Summary
