@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-155
+TASK-156
 
-Add edge-case tests for GET /tasks/<id>/subtasks: empty task, zero subtasks, 404, pagination edge cases
+Add slash command integration tests for /bulk_reset and /bulk_verify in test_bot.py
