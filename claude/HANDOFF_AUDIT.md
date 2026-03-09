@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-176
+TASK-177
 
 ## Verdict: PASS
 
@@ -12,10 +12,13 @@ TASK-176
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — enhanced renderDetail() progress section
+- `solo_builder/api/blueprints/tasks.py` — updated docstrings only
 
 ## Implementation Detail
-Refactored the inline progress loop to simultaneously collect per-branch stats.
-When task has >1 branch, renders per-branch mini progress rows (60px track, 4px height)
-between the aggregate bar and the statusDiv. Single-branch tasks unchanged.
-No extra API call — data is derived from t.branches already in hand.
+Audit finding: POST /tasks/<id>/reset is still valid — it has unique semantics
+(clears output + removes shadow key) that /bulk-reset deliberately does not.
+No HTTP callers remain after TASK-168 switched dashboard to /bulk-reset, but
+the endpoint is correct to keep for clean-slate resets via direct API calls.
+Updated docstring to cross-reference /bulk-reset and explain when to use each.
+Updated module docstring to enumerate all current endpoints.
+No behavior change.
