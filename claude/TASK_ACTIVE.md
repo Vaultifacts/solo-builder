@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-164
+TASK-165
 
-Add 's' keyboard shortcut for Subtasks tab; register in _SHORTCUTS and add tests
+Add GET /tasks/<id>/branches endpoint: paginated branch list with optional status filter
