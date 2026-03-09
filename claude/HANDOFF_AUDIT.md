@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-278
+TASK-279
 
 ## Verdict: PASS
 
@@ -12,8 +12,8 @@ TASK-278
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard_branches.js` — `window._clearBranchesFilters` added: clears status+task filters, resets page, clears task input DOM value, calls `_updateBranchesExportLinks()`, polls only if filter was active; `_renderBranchesAll()` shows/hides `#branches-clear-filters` via `hasFilter`
-- `solo_builder/api/dashboard.html` — `#branches-clear-filters` button added (display:none default) in the status filter bar beside the filter label; calls `_clearBranchesFilters()`
+- `solo_builder/api/static/dashboard_panels.js` — `_refreshExportHistoryByStatus()` extended: after updating history by-status chips, fetches `GET /stalled` to get `threshold`, then sets `#export-stalled-csv` and `#export-stalled-json` hrefs to `/subtasks/export?status=running&min_age=<threshold>` (+ `&format=json`); updates `#export-stalled-threshold` label text to `≥ N steps stalled`
+- `solo_builder/api/dashboard.html` — "Stalled Subtasks" row added to Export tab after Subtasks row; anchors have IDs `export-stalled-csv/json` with default `min_age=5` fallback hrefs; threshold label `#export-stalled-threshold` shown beside heading
 
 ## Implementation Detail
-Mirrors TASK-274 (subtasks clear button) exactly — same guard pattern, same show/hide via `_renderBranches*`, same `hadFilter` check before poll.
+Threshold is fetched live from `GET /stalled` on every Export tab open (same call as the Stalled tab); links default to `min_age=5` on first render and update once the fetch resolves. No new tests needed — pure dashboard UI addition.

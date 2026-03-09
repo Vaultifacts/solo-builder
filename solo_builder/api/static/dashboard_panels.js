@@ -225,6 +225,16 @@ async function _refreshExportHistoryByStatus() {
       el.append(chip);
     }
   } catch (_) {}
+  try {
+    const sd = await api("/stalled");
+    const minAge = sd.threshold || 5;
+    const csv  = document.getElementById("export-stalled-csv");
+    const json = document.getElementById("export-stalled-json");
+    if (csv)  csv.href  = `/subtasks/export?status=running&min_age=${minAge}`;
+    if (json) json.href = `/subtasks/export?status=running&min_age=${minAge}&format=json`;
+    const lbl = document.getElementById("export-stalled-threshold");
+    if (lbl) lbl.textContent = `≥ ${minAge} steps stalled`;
+  } catch (_) {}
 }
 
 /* ── Settings panel ─────────────────────────────────────── */

@@ -1518,3 +1518,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-279
+Goal: Export tab: add Stalled Subtasks row linking to /subtasks/export?min_age=X&status=running where X = configured STALL_THRESHOLD from GET /stalled response
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

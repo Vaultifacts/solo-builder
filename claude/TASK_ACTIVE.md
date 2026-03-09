@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-259
+TASK-279
 
-Add #subtasks-branch-filter input to Subtasks tab: wires to pollSubtasks with ?branch=X server-side filter, composes with existing name/status/task filters
+Export tab: add Stalled Subtasks row linking to /subtasks/export?min_age=X&status=running where X = configured STALL_THRESHOLD from GET /stalled response
