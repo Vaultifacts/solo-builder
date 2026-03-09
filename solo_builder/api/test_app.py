@@ -3040,6 +3040,34 @@ class TestGetTaskProgress(_Base):
         r = self.client.get("/tasks/No Such Task/progress")
         self.assertEqual(r.status_code, 404)
 
+    def test_branches_field_present(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertIn("branches", d)
+        self.assertIsInstance(d["branches"], list)
+
+    def test_branches_field_has_branch_entry(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        self.assertEqual(len(d["branches"]), 1)
+        br = d["branches"][0]
+        for key in ("branch", "verified", "running", "pending", "review", "total", "pct"):
+            self.assertIn(key, br)
+
+    def test_branches_counts_correct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["verified"], 1)
+        self.assertEqual(br["running"], 1)
+        self.assertEqual(br["total"], 2)
+
+    def test_branches_pct_correct(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/tasks/Task 0/progress").get_json()
+        br = d["branches"][0]
+        self.assertAlmostEqual(br["pct"], 50.0)
+
 
 class TestPostTaskBulkVerify(_Base):
 
