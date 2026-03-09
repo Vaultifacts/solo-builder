@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-289
+TASK-290
 
-Stalled tab: add task filter input that re-fetches GET /stalled?task=X on change; clears on empty; mirrors subtasks tab filter UX
+Discord /stalled: add optional task: and branch: params that forward to GET /stalled?task=X&branch=Y; update _format_stalled to accept task_filter/branch_filter; 4+ new tests

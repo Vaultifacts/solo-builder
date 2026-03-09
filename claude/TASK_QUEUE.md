@@ -1650,3 +1650,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-290
+Goal: Discord /stalled: add optional task: and branch: params that forward to GET /stalled?task=X&branch=Y; update _format_stalled to accept task_filter/branch_filter; 4+ new tests
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
