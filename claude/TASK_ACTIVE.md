@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-309
+TASK-310
 
-Dashboard Branches tab: add review_pct column to the per-branch table alongside pct (verified%); UI-only, no new API tests needed
+CHANGELOG v5.8.0: document TASK-301..309; include task count (310), API tests (600), Discord tests (305); tag v5.8.0
