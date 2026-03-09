@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-243
+TASK-244
 
-Add status quick-filter buttons to Branches all-tasks view (Pending/Running/Review/Verified)
+Add regression test: task card review_subtasks badge verified present and correct in GET /tasks response
