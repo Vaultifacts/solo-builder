@@ -1,21 +1,20 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-222
+TASK-223
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (all): PASS (454 tests, 0 failures)
-- unittest-discover (api): PASS (481 tests, 0 failures)
+- unittest-discover (api): PASS (483 tests, 0 failures; +2 new)
+- unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/dashboard.html` — export-history-by-status div added
-- `solo_builder/api/static/dashboard_panels.js` — _refreshExportHistoryByStatus() + switchTab hook
+One file modified:
+- `solo_builder/api/test_app.py` — 2 tests added to TestMetricsHealth
 
 ## Implementation Detail
-Added a chip row (#export-history-by-status) below Activity History links in the Export tab.
-Populated on switchTab("export") by fetching /history/count and rendering by_status entries.
-Reuses _STATUS_CHIP_COLORS constant already present in dashboard_panels.js. No API change; no tests needed.
+GET /metrics already returns review at line 191 of metrics.py; existing test_health_fields_present
+checks presence. Added test_review_count_correct (2 Review subtasks = d.review==2) and
+test_review_not_counted_in_pending (1 Review + 1 Pending = review==1, pending==1). No impl change.
