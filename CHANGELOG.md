@@ -1,5 +1,18 @@
 # Changelog
 
+## v4.8.0 — 2026-03-09  Server-side filters + UI filter inputs + stall cross-task tests (TASK-251 through TASK-257)
+
+- **257 tasks** merged to master (TASK-001 through TASK-257); **534 API tests**, **454 Discord tests**
+- `GET /subtasks` + `GET /subtasks/export` accept `?name=` substring filter on subtask name — TASK-251
+- `renderSubtasks()` routes non-status text to server-side `?name=` re-fetch; export links include `&name=X` — TASK-252
+- `GET /branches` accepts `?status=pending|running|review|verified`; applied before pagination; dashboard re-fetches on filter change — TASK-253
+- Stall detection cross-task tests: count across 2 tasks × 2 branches, task/branch metadata fields, `/status.stalled == /stalled.count` — TASK-254
+- Subtasks tab: `#branches-task-filter` input wired to server `?task=` filter + export links — TASK-255
+- Branches tab: task filter input wired to server `?task=` filter; shown only in all-tasks view — TASK-256
+- CHANGELOG v4.7.0 documented — TASK-250 (prior batch entry)
+
+---
+
 ## v4.7.0 — 2026-03-09  Branches export + task filter + stall tests + history branch filter (TASK-246 through TASK-250)
 
 - **250 tasks** merged to master (TASK-001 through TASK-250); **512 API tests**, **454 Discord tests**

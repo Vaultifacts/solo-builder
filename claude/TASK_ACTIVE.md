@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-256
+TASK-257
 
-Add #branches-task-filter input to Branches tab: wires to pollBranches with ?task=X server-side filter (parity with subtasks task filter)
+Add v4.8.0 CHANGELOG entry documenting TASK-251 through TASK-257
