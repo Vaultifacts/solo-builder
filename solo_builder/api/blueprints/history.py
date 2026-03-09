@@ -57,13 +57,14 @@ def history():
         events = [e for e in events if status_q in e["status"].lower()]
     events.sort(key=lambda e: e["step"], reverse=True)
     total = len(events)
+    review = sum(1 for e in events if e["status"] == "Review")
     if limit:
         pages = max(1, -(-total // limit))  # ceiling division
         start = (page - 1) * limit
         events = events[start: start + limit]
     else:
         pages = 1
-    return jsonify({"events": events, "total": total, "page": page, "pages": pages})
+    return jsonify({"events": events, "total": total, "review": review, "page": page, "pages": pages})
 
 
 @history_bp.get("/history/count")

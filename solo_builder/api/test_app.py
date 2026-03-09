@@ -830,6 +830,27 @@ class TestHistory(_Base):
         d = self.client.get("/history").get_json()
         self.assertEqual(d["events"][0]["output"], "")
 
+    def test_history_response_has_review_key(self):
+        d = self.client.get("/history").get_json()
+        self.assertIn("review", d)
+
+    def test_history_review_count_correct(self):
+        state = self._make_state({"A1": "Review", "A2": "Verified"})
+        br = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        br["A1"]["history"] = [{"status": "Review", "step": 1}, {"status": "Review", "step": 2}]
+        br["A2"]["history"] = [{"status": "Verified", "step": 3}]
+        self._write_state(state)
+        d = self.client.get("/history?limit=0").get_json()
+        self.assertEqual(d["review"], 2)
+
+    def test_history_review_zero_when_none(self):
+        state = self._make_state({"A1": "Verified"})
+        br = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        br["A1"]["history"] = [{"status": "Verified", "step": 1}]
+        self._write_state(state)
+        d = self.client.get("/history?limit=0").get_json()
+        self.assertEqual(d["review"], 0)
+
 
 # ---------------------------------------------------------------------------
 # GET /history/export
