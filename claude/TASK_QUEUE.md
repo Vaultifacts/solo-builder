@@ -1458,3 +1458,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-255
+Goal: Add task quick-filter UI to Subtasks tab: a text input that filters subtasks by task name server-side via ?task= parameter, wired into pollSubtasks and export links
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
