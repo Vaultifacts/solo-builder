@@ -405,6 +405,7 @@ _HELP_TEXT = (
     "`history [N]`                      — last N status transitions (default 20)\n"
     "`search <keyword>`                 — find subtasks by keyword\n"
     "`filter <status>`                  — show subtasks matching a status\n"
+    "`subtasks [task=X] [status=Y]`     — list subtasks with optional filters\n"
     "`priority`                         — show what executes next (ranked by risk)\n"
     "`stalled`                          — show subtasks stuck longer than threshold\n"
     "`heal <subtask>`                   — reset a Running subtask to Pending\n"
@@ -859,6 +860,21 @@ async def _handle_text_command(message: discord.Message) -> None:
         task_arg = text[9:].strip() if low.startswith("branches ") else ""
         state = _load_state()
         await _send(message, _format_branches(state, task_arg))
+
+    elif low == "subtasks" or low.startswith("subtasks "):
+        rest = text[8:].strip() if low.startswith("subtasks ") else ""
+        task_filter = ""
+        status_filter = ""
+        # Extract status=WORD (single word, no spaces in status values)
+        for part in rest.split():
+            if part.startswith("status="):
+                status_filter = part[7:]
+        # Extract task= value: everything after "task=" up to the next key= or end
+        if "task=" in rest:
+            after = rest[rest.index("task=") + 5:]
+            task_filter = after.split(" status=")[0].split(" task=")[0].strip()
+        state = _load_state()
+        await _send(message, _format_subtasks(state, task_filter, status_filter))
 
     elif low.startswith("rename "):
         parts = text[7:].strip().split(None, 1)

@@ -2957,6 +2957,65 @@ class TestBranchesCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("not found", text)
 
 
+class TestSubtasksTextCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for 'subtasks' plain-text command (TASK-299)."""
+
+    def _state(self):
+        return {
+            "dag": {
+                "Task A": {"status": "Running", "branches": {
+                    "main": {"subtasks": {
+                        "A1": {"status": "Verified", "last_update": 1},
+                        "A2": {"status": "Running", "last_update": 2},
+                    }},
+                }},
+                "Task B": {"status": "Pending", "branches": {
+                    "main": {"subtasks": {
+                        "B1": {"status": "Pending", "last_update": 0},
+                    }},
+                }},
+            },
+            "step": 3,
+        }
+
+    async def test_subtasks_no_filter_returns_all(self):
+        """'subtasks' with no args shows all subtasks."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=self._state()):
+            await bot_module._handle_text_command(_make_msg("subtasks"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("A1", text)
+        self.assertIn("B1", text)
+
+    async def test_subtasks_task_filter(self):
+        """'subtasks task=Task A' shows only Task A subtasks."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=self._state()):
+            await bot_module._handle_text_command(_make_msg("subtasks task=Task A"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("A1", text)
+        self.assertNotIn("B1", text)
+
+    async def test_subtasks_status_filter(self):
+        """'subtasks status=Pending' shows only Pending subtasks."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=self._state()):
+            await bot_module._handle_text_command(_make_msg("subtasks status=Pending"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("B1", text)
+        self.assertNotIn("A2", text)
+
+    async def test_subtasks_no_match_returns_message(self):
+        """'subtasks status=Verified task=Task B' yields no-match message."""
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=self._state()):
+            await bot_module._handle_text_command(
+                _make_msg("subtasks status=Verified task=Task B"))
+        text = mock_send.call_args[0][1]
+        # B1 is Pending, not Verified — should be absent
+        self.assertNotIn("B1", text)
+
+
 class TestRenameCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot rename command."""
 
