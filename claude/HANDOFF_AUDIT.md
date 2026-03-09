@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-237
+TASK-238
 
 ## Verdict: PASS
 
@@ -11,11 +11,13 @@ TASK-237
 - git-status: PASS (clean working tree)
 
 ## Scope Check
-One file modified:
-- `solo_builder/api/static/dashboard_branches.js` — 3 lines added to _renderBranchesAll() row rendering
+Two files modified:
+- `solo_builder/api/static/dashboard_tasks.js` — window._applyTaskSearch now resets _tasksPage=1
+- `solo_builder/api/static/dashboard_panels.js` — renderSubtasks non-status else-branch resets _subtasksPage=1
 
 ## Implementation Detail
-GET /branches response has included review count per row since TASK-229 but
-_renderBranchesAll() did not display it. Added yellow N⏸ badge after running
-count, shown only when review > 0, matching the pattern used for running (cyan N▶).
+Previously typing in task-search or subtasks-filter could show stale paginated results
+from a non-first page. Now _applyTaskSearch resets _tasksPage=1 before filtering
+(so next poll fetches page 1). renderSubtasks non-status text branch resets
+_subtasksPage=1 (so next poll re-fetches from page 1 without a status filter).
 No test changes needed.
