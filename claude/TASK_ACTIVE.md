@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-285
+TASK-286
 
-Discord /subtasks export:True — send full CSV file attachment (parity with /branches export:True); _subtasks_to_csv() formatter + 5+ tests
+GET /stalled: add ?task= substring filter to restrict stalled results to one task; 3+ new tests
