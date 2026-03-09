@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.9.0 — 2026-03-09  Branches export + subtasks branch filter + export link re-sync (TASK-258 through TASK-261)
+
+- **261 tasks** merged to master (TASK-001 through TASK-261); **548 API tests**, **454 Discord tests**
+- `GET /branches/export` endpoint added; CSV/JSON download with ?task=, ?status=, ?format=json — TASK-258
+- Subtasks tab: `#subtasks-branch-filter` input wired to server `?branch=` filter + export links — TASK-259
+- Subtasks tab export links re-synced on tab switch via `switchTab("subtasks")` → `_updateSubtasksExportLinks()` — TASK-260
+- CHANGELOG v4.8.0 documented — TASK-261 (this entry)
+
+---
+
 ## v4.8.0 — 2026-03-09  Server-side filters + UI filter inputs + stall cross-task tests (TASK-251 through TASK-257)
 
 - **257 tasks** merged to master (TASK-001 through TASK-257); **534 API tests**, **454 Discord tests**
