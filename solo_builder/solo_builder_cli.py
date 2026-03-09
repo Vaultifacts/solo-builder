@@ -13,7 +13,6 @@ Agents:
 CLI commands: run | snapshot | status | add_task | set KEY=VALUE | help | exit
 """
 
-import argparse
 import asyncio
 import logging
 import logging.handlers
@@ -202,6 +201,7 @@ except ImportError:
     from cli_utils import (
         _setup_logging, _splash, _acquire_lock, _release_lock,
         _handle_status_subcommand, _handle_watch_subcommand,
+        _load_dotenv, _build_arg_parser, _clear_stale_triggers, _emit_json_result,
     )
 
 
@@ -426,8 +426,6 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════════
-# ── Inject host module globals into mixin modules ────────────────────────────
-# Mixin methods look up names in their defining module's globals. Inject all
 # ── Global injection ─────────────────────────────────────────────────────────
 # Mixin methods look up names in their defining module's globals. Inject all
 # uppercase names from this module into each mixin module so that references
@@ -457,7 +455,6 @@ def _inject_host_globals_into_mixins():
                     _target.setdefault(_k, _v)
 
 _inject_host_globals_into_mixins()
-
 
 
 def _fire_completion(steps: int, verified: int, total: int) -> None:
@@ -507,8 +504,6 @@ def _fire_completion(steps: int, verified: int, total: int) -> None:
     threading.Thread(target=_notify,  daemon=True).start()
 
 
-
-
 def main() -> None:
     """Entry point — interactive or headless."""
     # ── status subcommand (fast path, no lock needed) ────────────────────────
@@ -529,48 +524,10 @@ def main() -> None:
         )
         return
 
-    # ── .env loader (no external dependency) ────────────────────────────────
-    _env_path = os.path.join(_HERE, ".env")
-    if os.path.exists(_env_path):
-        with open(_env_path) as _f:
-            for _line in _f:
-                _line = _line.strip()
-                if _line and not _line.startswith("#") and "=" in _line:
-                    _k, _, _v = _line.partition("=")
-                    os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+    _load_dotenv(_HERE)
 
     # ── Argument parsing ─────────────────────────────────────────────────────
-    parser = argparse.ArgumentParser(prog="solo-builder", add_help=True)
-    parser.add_argument(
-        "--headless", action="store_true",
-        help="Non-interactive mode: auto-run then exit (no prompts).",
-    )
-    parser.add_argument(
-        "--auto", type=int, metavar="N", default=None,
-        help="Steps to run in headless mode (omit for full pipeline).",
-    )
-    parser.add_argument(
-        "--no-resume", action="store_true",
-        help="Ignore saved state and start a fresh pipeline.",
-    )
-    parser.add_argument(
-        "--output-format", choices=["text", "json"], default="text",
-        help="'json' sends final stats as JSON to stdout; all other output goes to stderr.",
-    )
-    parser.add_argument(
-        "--webhook", metavar="URL", default=None,
-        help="POST completion JSON to this URL (overrides WEBHOOK_URL in settings).",
-    )
-    parser.add_argument(
-        "--quiet", "-q", action="store_true",
-        help="Suppress all display output (headless only). Combine with --output-format json "
-             "for completely silent runs where only the JSON result reaches stdout.",
-    )
-    parser.add_argument(
-        "--export", action="store_true",
-        help="After the run, write all Claude outputs to solo_builder_outputs.md.",
-    )
-    args = parser.parse_args()
+    args = _build_arg_parser().parse_args()
 
     # ── Apply flag overrides ─────────────────────────────────────────────────
     if args.webhook:
@@ -587,35 +544,8 @@ def main() -> None:
         sys.stdout = sys.stderr       # ANSI display → (possibly devnull) stderr; JSON → real stdout
 
     # ── Run ──────────────────────────────────────────────────────────────────
-    _LOCK_PATH  = os.path.join(_HERE, "state", "solo_builder.lock")
-    _STOP_PATH  = os.path.join(_HERE, "state", "stop_trigger")
-    _RUN_PATH   = os.path.join(_HERE, "state", "run_trigger")
-    _AT_PATH    = os.path.join(_HERE, "state", "add_task_trigger.json")
-    _AB_PATH    = os.path.join(_HERE, "state", "add_branch_trigger.json")
-    _PB_PATH    = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
-    _D_PATH     = os.path.join(_HERE, "state", "describe_trigger.json")
-    _T_PATH     = os.path.join(_HERE, "state", "tools_trigger.json")
-    _R_PATH     = os.path.join(_HERE, "state", "reset_trigger")
-    _SNAP_PATH  = os.path.join(_HERE, "state", "snapshot_trigger")
-    _SET_PATH   = os.path.join(_HERE, "state", "set_trigger.json")
-    _DEP_PATH   = os.path.join(_HERE, "state", "depends_trigger.json")
-    _UDEP_PATH  = os.path.join(_HERE, "state", "undepends_trigger.json")
-    _UNDO_PATH  = os.path.join(_HERE, "state", "undo_trigger")
-    _PAUSE_PATH = os.path.join(_HERE, "state", "pause_trigger")
-    _HEAL_PATH  = os.path.join(_HERE, "state", "heal_trigger.json")
-    os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
-    _setup_logging(_LOG_PATH)
+    _LOCK_PATH = _clear_stale_triggers(_HERE, _LOG_PATH)
     logger.info("startup version=2.1.50 headless=%s auto=%s", args.headless, args.auto)
-    # Clear stale triggers from previous runs
-    _DAGIMPORT_PATH = os.path.join(_HERE, "state", "dag_import_trigger.json")
-    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
-                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH,
-                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH, _PAUSE_PATH, _HEAL_PATH,
-                   _DAGIMPORT_PATH):
-        try:
-            os.remove(_stale)
-        except FileNotFoundError:
-            pass
     _acquire_lock(_LOCK_PATH)
     cli = None
 
@@ -661,16 +591,7 @@ def main() -> None:
         if _json_mode:
             sys.stdout = sys.__stdout__
             if cli is not None:
-                stats = dag_stats(cli.dag)
-                out = {
-                    "steps":    cli.step,
-                    "verified": stats["verified"],
-                    "total":    stats["total"],
-                    "complete": stats["verified"] == stats["total"],
-                }
-                if args.export:
-                    out["export"] = {"path": _export_path, "count": _export_count}
-                print(json.dumps(out))
+                _emit_json_result(cli, args, _export_path, _export_count)
 
 
 if __name__ == "__main__":
