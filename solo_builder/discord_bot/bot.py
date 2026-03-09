@@ -80,9 +80,9 @@ CHANNEL_ID = int(os.environ.get("DISCORD_CHANNEL_ID", "0") or "0")
 from .bot_formatters import (
     _has_work, _find_subtask_output,
     _format_log, _format_search, _format_branches, _format_history,
-    _format_stats, _format_cache, _format_tasks, _format_priority,
-    _format_stalled, _format_agents, _format_forecast, _format_filter,
-    _format_timeline, _format_diff, _format_status, _format_graph,
+    _format_stats, _format_cache, _format_tasks, _format_task_progress,
+    _format_priority, _format_stalled, _format_agents, _format_forecast,
+    _format_filter, _format_timeline, _format_diff, _format_status, _format_graph,
 )
 
 # Settings key map (hoisted from _handle_text_command to avoid duplication)
@@ -269,40 +269,6 @@ def _format_bulk_verify(state: dict, names: list[str], skip_non_running: bool = 
     return "  ".join(parts) + "."
 
 
-def _format_task_progress(state: dict, task_id: str) -> str:
-    """Return a per-branch progress summary for a single task."""
-    task_id = task_id.strip()
-    if not task_id:
-        return "Usage: `task_progress <task_id>`"
-    dag = state.get("dag", {})
-    if task_id not in dag:
-        return f"⚠️ Task **{task_id}** not found."
-    task = dag[task_id]
-    branches = task.get("branches", {})
-    if not branches:
-        return f"**{task_id}** — no branches."
-    lines = [f"**{task_id}** — {task.get('status', 'Pending')}", "```"]
-    t_total = t_verified = t_running = t_pending = 0
-    for br_name, br_data in branches.items():
-        subtasks = br_data.get("subtasks", {})
-        total    = len(subtasks)
-        verified = sum(1 for s in subtasks.values() if s.get("status") == "Verified")
-        running  = sum(1 for s in subtasks.values() if s.get("status") == "Running")
-        pending  = total - verified - running
-        pct      = int(verified / total * 100) if total else 0
-        bar_fill = int(pct * 10 / 100)
-        bar      = "█" * bar_fill + "░" * (10 - bar_fill)
-        lines.append(f"{br_name:<16} [{bar}] {verified:>2}/{total:<2} {pct:>3}%  {running}▶ {pending}●")
-        t_total    += total
-        t_verified += verified
-        t_running  += running
-        t_pending  += pending
-    t_pct = int(t_verified / t_total * 100) if t_total else 0
-    lines.append(f"{'TOTAL':<16}   {t_verified:>2}/{t_total:<2} {t_pct:>3}%  {t_running}▶ {t_pending}●")
-    lines.append("```")
-    return "\n".join(lines)
-
-
 def _allowed(interaction: discord.Interaction) -> bool:
     return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
 
@@ -445,6 +411,7 @@ _HELP_TEXT = (
     "`agents`                           — show all agent statistics\n"
     "`forecast`                         — detailed completion forecast with ETA\n"
     "`tasks`                            — per-task summary table (verified/total/status)\n"
+    "`task_progress <task_id>`          — per-branch progress for a single task\n"
     "`log [subtask]`                    — show journal entries\n"
     "`graph`                            — visual ASCII DAG dependency graph\n"
     "`heartbeat`                        — live counters from step.txt\n"
