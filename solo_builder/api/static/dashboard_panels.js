@@ -460,10 +460,12 @@ window.healSubtask = async function (st) {
 /* ── Subtasks tab ───────────────────────────────────────── */
 let _subtasksAll = [];
 const _subtasksSel = new Set();
-let _subtasksPage  = 1;
-let _subtasksPages = 1;
-let _subtasksTotal = 0;
-const _SUBTASKS_LIMIT = 50;
+let _subtasksPage         = 1;
+let _subtasksPages        = 1;
+let _subtasksTotal        = 0;
+let _subtasksStatusFilter = "";   // "" = all; "Pending"|"Running"|"Review"|"Verified"
+const _SUBTASKS_LIMIT     = 50;
+const _SUBTASKS_STATUS_VALS = new Set(["pending", "running", "review", "verified"]);
 
 function _updateBulkBar() {
   const bar = document.getElementById("subtasks-bulk-bar");
@@ -490,7 +492,9 @@ function _updateSubtasksPager() {
 
 export async function pollSubtasks() {
   try {
-    const d = await api(`/subtasks?limit=${_SUBTASKS_LIMIT}&page=${_subtasksPage}`);
+    let url = `/subtasks?limit=${_SUBTASKS_LIMIT}&page=${_subtasksPage}`;
+    if (_subtasksStatusFilter) url += `&status=${encodeURIComponent(_subtasksStatusFilter)}`;
+    const d = await api(url);
     _subtasksAll   = d.subtasks || [];
     _subtasksTotal = d.total    ?? _subtasksAll.length;
     _subtasksPages = d.pages    ?? 1;
@@ -530,12 +534,27 @@ window.renderHistory = function () {
 }());
 
 window.renderSubtasks = function () {
-  _renderSubtasks();
-  const q = (document.getElementById("subtasks-filter")?.value || "").trim();
+  const q  = (document.getElementById("subtasks-filter")?.value || "").trim();
+  const ql = q.toLowerCase();
   const params = new URLSearchParams(location.hash.slice(1));
   if (q) { params.set("st-filter", q); } else { params.delete("st-filter"); }
   const next = params.toString();
   history.replaceState(null, "", next ? "#" + next : location.pathname + location.search);
+
+  if (_SUBTASKS_STATUS_VALS.has(ql)) {
+    // Known status value → server-side filter, reset to page 1
+    _subtasksStatusFilter = ql;
+    _subtasksPage = 1;
+    pollSubtasks();
+  } else if (_subtasksStatusFilter) {
+    // Filter cleared or changed to non-status text → drop server filter, re-fetch
+    _subtasksStatusFilter = "";
+    _subtasksPage = 1;
+    pollSubtasks();
+  } else {
+    // Non-status text, no server filter change → client-side re-render only
+    _renderSubtasks();
+  }
 };
 
 // Restore subtasks filter from URL hash on load
