@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-235
+TASK-236
 
 ## Verdict: PASS
 
@@ -12,9 +12,13 @@ TASK-235
 
 ## Scope Check
 One file modified:
-- `CHANGELOG.md` — v4.5.0 entry added covering TASK-226 through TASK-235
+- `solo_builder/api/static/dashboard_panels.js` — _subtasksStatusFilter state, updated pollSubtasks() URL, updated renderSubtasks() routing logic
 
 ## Implementation Detail
-Prepended v4.5.0 changelog entry summarising: /branches pagination+review fix,
-pager UIs for Subtasks/Branches/Tasks tabs, ES module window-exposure gap fixes,
-and CI invariant implementation. 495 API tests / 454 Discord tests confirmed.
+Quick-filter buttons (Pending/Running/Review/Verified) set subtasks-filter text to an
+exact status value and call renderSubtasks(). Previously renderSubtasks() only did
+client-side re-render of the current page. Now it detects exact status values (case-
+insensitive) and re-fetches from server with ?status=X&page=1, so all matching subtasks
+across all pages are covered. Non-status text input continues as client-side filter.
+Clearing a status filter triggers a full re-fetch without ?status to restore all subtasks.
+No test changes — server ?status= filter already covered by existing subtask tests.
