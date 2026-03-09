@@ -1,22 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-214
+TASK-215
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (all): PASS (454 tests, 0 failures)
-- unittest-discover (api): PASS (472 tests, 0 failures)
+- unittest-discover (api): PASS (475 tests, 0 failures; +3 new)
+- unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/dashboard.html` — hdr-review span added inside pending stat box
-- `solo_builder/api/static/dashboard_tasks.js` — pollStatus() drives hdr-review on each tick
+- `solo_builder/api/blueprints/history.py` — by_status dict added to /history/count response
+- `solo_builder/api/test_app.py` — 3 tests added to TestHistoryCount
 
 ## Implementation Detail
-The pending stat box previously had no indication of review subtasks. Added a `hdr-review` span
-(yellow, 9px) hidden by default. In pollStatus(), after setting hdr-pending, the hdr-review span
-is updated: shows ⏸N when d.review > 0, hidden otherwise. No new tests required — no API change.
+GET /history/count previously returned only {total, filtered}. Added by_status dict: iterates all
+history events and increments by_status[status] for each. Review is included naturally — no special
+casing needed. Three tests: key present, Review count matches, absent statuses not zero-padded.

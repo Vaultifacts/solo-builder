@@ -80,20 +80,23 @@ def history_count():
     status_q  = (request.args.get("status")  or "").strip().lower()
     total = 0
     filtered = 0
+    by_status: dict = {}
     for task_id, task_data in dag.items():
         for branch_name, branch_data in task_data.get("branches", {}).items():
             for st_name, st_data in branch_data.get("subtasks", {}).items():
                 for h in st_data.get("history", []):
                     total += 1
+                    s = h.get("status", "")
+                    by_status[s] = by_status.get(s, 0) + 1
                     step = h.get("step", 0)
                     if since is not None and step <= since:
                         continue
                     if task_q    and task_q    not in task_id.lower():      continue
                     if branch_q  and branch_q  not in branch_name.lower():  continue
                     if subtask_q and subtask_q not in st_name.lower():      continue
-                    if status_q  and status_q  not in h.get("status", "").lower(): continue
+                    if status_q  and status_q  not in s.lower():            continue
                     filtered += 1
-    return jsonify({"total": total, "filtered": filtered})
+    return jsonify({"total": total, "filtered": filtered, "by_status": by_status})
 
 
 @history_bp.get("/history/export")

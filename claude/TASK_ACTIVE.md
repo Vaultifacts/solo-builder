@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-214
+TASK-215
 
-hdr-pending stat box shows review count separately when review > 0
+GET /history/count returns review in status distribution
