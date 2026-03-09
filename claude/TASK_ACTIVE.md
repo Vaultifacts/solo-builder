@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-126
+TASK-127
 
-Extract branch-rendering functions from dashboard_panels.js into dashboard_branches.js to bring all modules under 500 lines
+Add GET /dag/export download link to dashboard Export tab alongside existing CSV/JSON exports
