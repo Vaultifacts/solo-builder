@@ -145,6 +145,27 @@ def _format_subtasks(state: dict, task_filter: str = "", status_filter: str = ""
     return msg
 
 
+def _subtasks_to_csv(state: dict, task_filter: str = "", status_filter: str = "") -> bytes:
+    """Return CSV bytes of all subtasks with optional task/status filters."""
+    dag = state.get("dag", {})
+    task_q   = task_filter.strip().lower()
+    status_q = status_filter.strip().lower()
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["subtask", "task", "branch", "status", "output_length"])
+    for task_name, task_data in dag.items():
+        if task_q and task_q not in task_name.lower():
+            continue
+        for br_name, br_data in task_data.get("branches", {}).items():
+            for st_name, st_data in br_data.get("subtasks", {}).items():
+                st_status = st_data.get("status", "Pending")
+                if status_q and status_q not in st_status.lower():
+                    continue
+                writer.writerow([st_name, task_name, br_name, st_status,
+                                  len(st_data.get("output", ""))])
+    return buf.getvalue().encode("utf-8")
+
+
 def _format_history(state: dict, limit: int = 20) -> str:
     """Return a formatted recent activity log across all subtasks."""
     dag = state.get("dag", {})
