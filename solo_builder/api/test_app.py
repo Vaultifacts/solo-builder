@@ -1514,6 +1514,38 @@ class TestSubtasksAll(_Base):
         st = next(s for s in d["subtasks"] if s["subtask"] == "A1")
         self.assertEqual(st["output_length"], 5)
 
+    # ?name= filter (TASK-251)
+
+    def test_name_filter_exact_match(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/subtasks?name=A1").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertEqual(names, ["A1"])
+
+    def test_name_filter_substring_match(self):
+        self._write_state(self._make_state({"Alpha": "Pending", "Beta": "Pending"}))
+        d = self.client.get("/subtasks?name=lph").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertIn("Alpha", names)
+        self.assertNotIn("Beta", names)
+
+    def test_name_filter_no_match_returns_empty(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?name=ZZZ").get_json()
+        self.assertEqual(d["subtasks"], [])
+
+    def test_name_filter_case_insensitive(self):
+        self._write_state(self._make_state({"Alpha": "Pending"}))
+        d = self.client.get("/subtasks?name=alpha").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertIn("Alpha", names)
+
+    def test_name_filter_composes_with_status(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Verified"}))
+        d = self.client.get("/subtasks?name=A1&status=Verified").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertEqual(names, ["A1"])
+
 
 # ---------------------------------------------------------------------------
 # GET /subtasks — pagination (TASK-138)
@@ -1646,6 +1678,37 @@ class TestSubtasksExport(_Base):
         self._write_state(self._make_state())
         r = self.client.get("/subtasks/export?format=json")
         self.assertIn("subtasks.json", r.headers.get("Content-Disposition", ""))
+
+    # ?name= filter (TASK-251)
+
+    def test_export_name_filter_match(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/subtasks/export?format=json&name=A1").get_json()["subtasks"]
+        self.assertEqual(len(d), 1)
+        self.assertEqual(d[0]["subtask"], "A1")
+
+    def test_export_name_filter_no_match(self):
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks/export?format=json&name=ZZZ").get_json()["subtasks"]
+        self.assertEqual(d, [])
+
+    def test_export_name_filter_case_insensitive(self):
+        self._write_state(self._make_state({"Alpha": "Pending"}))
+        d = self.client.get("/subtasks/export?format=json&name=alpha").get_json()["subtasks"]
+        self.assertEqual(len(d), 1)
+
+    def test_export_csv_name_filter(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        r = self.client.get("/subtasks/export?name=A2")
+        lines = r.data.decode().strip().splitlines()
+        self.assertEqual(len(lines), 2)  # header + 1 row
+
+    def test_export_name_and_status_compose(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Running"}))
+        d = self.client.get("/subtasks/export?format=json&name=A&status=Running").get_json()["subtasks"]
+        names = [r["subtask"] for r in d]
+        self.assertIn("A2", names)
+        self.assertNotIn("A1", names)
 
 
 # ---------------------------------------------------------------------------
