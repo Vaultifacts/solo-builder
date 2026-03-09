@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-156
+TASK-157
 
-Add slash command integration tests for /bulk_reset and /bulk_verify in test_bot.py
+Add bulk-reset/bulk-verify UI to the Branches tab in dashboard_panels.js and dashboard.html
