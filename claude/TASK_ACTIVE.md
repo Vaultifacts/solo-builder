@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-158
+TASK-159
 
-Add GET /health uptime_s display as tooltip on the dashboard status indicator
+Add edge-case tests for POST /tasks/<id>/bulk-verify: empty task, all-verified, non-existent task
