@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-234
+TASK-235
 
-Final audit of dashboard.html inline handlers vs window.* assignments; fix any remaining gaps
+Document TASK-226 through TASK-235 in CHANGELOG.md as v4.5.0

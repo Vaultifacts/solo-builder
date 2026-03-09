@@ -1,5 +1,19 @@
 # Changelog
 
+## v4.5.0 — 2026-03-09  Pager UIs + window-exposure audit + CI invariant (TASK-226 through TASK-235)
+
+- **235 tasks** merged to master (TASK-001 through TASK-235); **495 API tests**, **454 Discord tests**
+- `GET /branches` supports `?limit=N&page=P`; response adds `total`, `page`, `pages`; `review` field added per row; `pending` formula fixed (was omitting review) — TASK-229
+- Dashboard **Subtasks tab** pager `◀/▶` added; `pollSubtasks()` fetches `?limit=50&page=N` — TASK-231
+- Dashboard **Branches tab** all-tasks pager `◀/▶` added; hidden in per-task detail view — TASK-232
+- Dashboard **Tasks panel** pager `◀/▶` added below task grid — TASK-233
+- ES module `window.*` gap audit: `_applyTaskSearch` and `_renderCacheHistory` exposed — TASK-230
+- Final inline handler audit: zero gaps remain across all 50 handler calls in dashboard.html — TASK-234
+- CI invariant check (`tools/ci_invariant_check.ps1`) implemented; enforces test-count floor — TASK-019 (backfill)
+- CHANGELOG v4.4.5 documented — TASK-226 (prior batch entry)
+
+---
+
 ## v4.4.5 — 2026-03-09  Pagination + pager fixes + Export chips + metrics tests (TASK-221 through TASK-225)
 
 - **225 tasks** merged to master (TASK-001 through TASK-225); **489 API tests**, **454 Discord tests**
