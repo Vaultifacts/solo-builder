@@ -240,6 +240,80 @@ def bulk_verify_task(task_id: str):
     })
 
 
+@tasks_bp.get("/tasks/<path:task_id>/branches")
+def task_branches(task_id: str):
+    """Paginated branch list for a single task.
+
+    Optional filters: ?status=<substring> (case-insensitive match on dominant branch status).
+    Pagination: ?page=<n> (1-based) and ?limit=<n> (default 0 = all).
+    Response: {task, branches, count, total, page, limit, pages}
+    Each branch entry: {branch, subtask_count, verified, running, pending, review, pct, status}
+    404 if task not found.
+    """
+    dag = _load_dag()
+    task = dag.get(task_id)
+    if task is None:
+        abort(404, description=f"Task '{task_id}' not found.")
+    status_q = (request.args.get("status") or "").strip().lower()
+    try:
+        limit = max(0, int(request.args.get("limit", 0)))
+    except (ValueError, TypeError):
+        limit = 0
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+
+    result = []
+    for br_name, br_data in task.get("branches", {}).items():
+        counts = {"Verified": 0, "Running": 0, "Pending": 0, "Review": 0}
+        for st_data in br_data.get("subtasks", {}).values():
+            s = st_data.get("status", "Pending")
+            counts[s] = counts.get(s, 0) + 1
+        total_st = sum(counts.values())
+        verified = counts["Verified"]
+        pct = round(verified / total_st * 100, 1) if total_st else 0.0
+        # Dominant status: Running > Review > Pending > Verified
+        if counts["Running"]:
+            dom = "Running"
+        elif counts["Review"]:
+            dom = "Review"
+        elif counts["Pending"]:
+            dom = "Pending"
+        else:
+            dom = "Verified"
+        if status_q and status_q not in dom.lower():
+            continue
+        result.append({
+            "branch": br_name,
+            "subtask_count": total_st,
+            "verified": verified,
+            "running": counts["Running"],
+            "pending": counts["Pending"],
+            "review": counts["Review"],
+            "pct": pct,
+            "status": dom,
+        })
+
+    total = len(result)
+    if limit > 0:
+        pages = max(1, -(-total // limit))
+        start = (page - 1) * limit
+        result = result[start:start + limit]
+    else:
+        pages = 1
+
+    return jsonify({
+        "task": task_id,
+        "branches": result,
+        "count": len(result),
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": pages,
+    })
+
+
 @tasks_bp.get("/tasks/<path:task_id>/subtasks")
 def task_subtasks(task_id: str):
     """Flat list of subtasks for a single task.
