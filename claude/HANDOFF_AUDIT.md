@@ -1,24 +1,22 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-218
+TASK-219
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (all): PASS (454 tests, 0 failures)
-- unittest-discover (api): PASS (478 tests, 0 failures)
+- unittest-discover (api): PASS (481 tests, 0 failures; +3 new)
+- unittest-discover (all discord): PASS (454 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/dashboard.html` — history-status-chips div added
-- `solo_builder/api/static/dashboard_panels.js` — _updateHistoryStatusChips() + pollHistory() update
+One file modified:
+- `solo_builder/api/test_app.py` — 3 regression tests added to TestStalled
 
 ## Implementation Detail
-Added a flex div (#history-status-chips) below the quick-filter buttons in the History tab.
-_updateHistoryStatusChips(byStatus) renders one chip per non-zero status in by_status from
-/history/count. Each chip shows "Status: N" coloured by status (green/cyan/yellow/dim).
-pollHistory() already fetches /history/count — added by_status consumption there. No tests
-needed (pure UI; no API change).
+/stalled endpoint already correctly excludes Review (only checks status=="Running"). Added 3
+regression tests: (1) Review-only state yields count=0 and empty list, (2) count field equals
+len(stalled) when Running+Review coexist with Review absent, (3) multiple Review subtasks all
+absent from stalled list. No implementation change required.

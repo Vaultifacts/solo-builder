@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-218
+TASK-219
 
-Dashboard History tab shows by_status chips from /history/count response
+GET /stalled regression test confirming Review subtasks are excluded
