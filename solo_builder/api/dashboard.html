@@ -153,6 +153,12 @@
         <input id="history-branch-filter" type="text" placeholder="Filter branch…"
                oninput="_historyPage=1;renderHistory(_historyRows); _updateHistoryExportLinks()"
                style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:2px 6px;outline:none"/>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('history-filter');f.value=f.value==='Pending'?'':'Pending';_historyPage=1;renderHistory(_historyRows);_updateHistoryExportLinks();})()">⏳ Pending</button>
+          <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('history-filter');f.value=f.value==='Running'?'':'Running';_historyPage=1;renderHistory(_historyRows);_updateHistoryExportLinks();})()">▶ Running</button>
+          <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('history-filter');f.value=f.value==='Review'?'':'Review';_historyPage=1;renderHistory(_historyRows);_updateHistoryExportLinks();})()">⏸ Review</button>
+          <button class="toolbar-btn" style="font-size:9px;padding:1px 5px" onclick="(function(){var f=document.getElementById('history-filter');f.value=f.value==='Verified'?'':'Verified';_historyPage=1;renderHistory(_historyRows);_updateHistoryExportLinks();})()">✅ Verified</button>
+        </div>
       </div>
       <div id="history-content">
         <div class="detail-placeholder">No history yet.</div>
