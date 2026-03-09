@@ -1647,6 +1647,34 @@ class TestBranchesAll(_Base):
         d = self.client.get("/branches").get_json()
         self.assertEqual(d["branches"][0]["review_pct"], 0.0)
 
+    # pending_pct field (TASK-308)
+
+    def test_pending_pct_field_present(self):
+        self._write_state(self._multi_status_state())
+        d = self.client.get("/branches").get_json()
+        self.assertTrue(all("pending_pct" in b for b in d["branches"]))
+
+    def test_pending_pct_correct_value(self):
+        state = {"step": 0, "dag": {"T": {"status": "Running", "depends_on": [], "branches": {
+            "B": {"subtasks": {
+                "S1": {"status": "Pending"},
+                "S2": {"status": "Pending"},
+                "S3": {"status": "Verified"},
+                "S4": {"status": "Verified"},
+            }},
+        }}}}
+        self._write_state(state)
+        d = self.client.get("/branches").get_json()
+        self.assertEqual(d["branches"][0]["pending_pct"], 50.0)
+
+    def test_pending_pct_zero_when_all_verified(self):
+        state = {"step": 0, "dag": {"T": {"status": "Running", "depends_on": [], "branches": {
+            "B": {"subtasks": {"S1": {"status": "Verified"}, "S2": {"status": "Verified"}}},
+        }}}}
+        self._write_state(state)
+        d = self.client.get("/branches").get_json()
+        self.assertEqual(d["branches"][0]["pending_pct"], 0.0)
+
 
 # GET /branches/export  (TASK-258)
 # ---------------------------------------------------------------------------
