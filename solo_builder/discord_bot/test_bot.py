@@ -232,6 +232,31 @@ class TestFormatStalled(unittest.TestCase):
         idx_a2 = result.find("Br A2")
         self.assertLess(idx_a1, idx_a2)  # higher count appears first
 
+    # -- task_filter / branch_filter (TASK-290) ----------------------------
+
+    def test_task_filter_restricts_results(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state, task_filter="Task A")
+        self.assertNotIn("Task B", result)
+        self.assertIn("Br A1", result)
+
+    def test_task_filter_no_match_returns_none(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state, task_filter="ZZZ")
+        self.assertIn("none", result)
+
+    def test_branch_filter_restricts_results(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state, branch_filter="Br A1")
+        self.assertNotIn("Br A2", result)
+        self.assertNotIn("Br B1", result)
+
+    def test_task_and_branch_filter_compose(self):
+        state = self._multi_branch_state(step=10, last_update=0)
+        result = bot_module._format_stalled(state, task_filter="Task A", branch_filter="Br A2")
+        self.assertNotIn("Br A1", result)
+        self.assertNotIn("Br B1", result)
+
 
 class TestFormatSubtasks(unittest.TestCase):
     """Unit tests for _format_subtasks in bot_formatters."""
