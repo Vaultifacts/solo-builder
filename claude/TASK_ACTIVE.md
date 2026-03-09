@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-135
+TASK-136
 
-Convert renderDetail innerHTML to DOM API in dashboard_tasks.js
+Add GET /tasks/<id>/export endpoint for single-task JSON/CSV download
