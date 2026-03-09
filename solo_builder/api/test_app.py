@@ -164,6 +164,18 @@ class TestGetStatus(_Base):
         d = self.client.get("/status").get_json()
         self.assertEqual(d["stalled"], 0)
 
+    def test_status_includes_review_field(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/status").get_json()
+        self.assertIn("review", d)
+        self.assertEqual(d["review"], 1)
+
+    def test_review_not_counted_in_pending(self):
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/status").get_json()
+        self.assertEqual(d["pending"], 1)
+        self.assertEqual(d["review"], 1)
+
 
 # ---------------------------------------------------------------------------
 # GET /history/count
