@@ -856,3 +856,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-105
+Goal: Refactor solo_builder/api/dashboard.html: extract inline JavaScript and CSS into separate static files to reduce the 2587-line monolithic SPA and address architecture auditor large-file findings
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
