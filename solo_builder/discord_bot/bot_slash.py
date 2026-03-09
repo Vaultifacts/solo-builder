@@ -54,6 +54,7 @@ def register_slash_commands(bot: discord.Client) -> None:
             "`/agents`                           — show all agent statistics\n"
             "`/forecast`                         — detailed completion forecast with ETA\n"
             "`/tasks`                            — per-task summary table (verified/total/status)\n"
+            "`/task_progress task_id`            — per-branch progress for a single task\n"
             "`/heartbeat`                        — live counters from step.txt\n"
             "`/cache [clear:yes]`                — response cache disk stats (optional wipe)\n"
             "`/help`                             — this message"
@@ -232,6 +233,14 @@ def register_slash_commands(bot: discord.Client) -> None:
             return
         names = subtasks.strip().split()
         await interaction.response.send_message(_b._format_bulk_verify(_b._load_state(), names))
+
+    @bot.tree.command(name="task_progress", description="Per-branch progress summary for a task")
+    @app_commands.describe(task_id="Task ID to inspect (e.g. TASK-001)")
+    async def task_progress_cmd(interaction: discord.Interaction, task_id: str) -> None:
+        if not _b._allowed(interaction):
+            await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+            return
+        await interaction.response.send_message(_b._format_task_progress(_b._load_state(), task_id))
 
     @bot.tree.command(name="agents", description="Show all agent statistics")
     async def agents_cmd(interaction: discord.Interaction) -> None:
