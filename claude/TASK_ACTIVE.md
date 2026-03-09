@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-257
+TASK-258
 
-Add v4.8.0 CHANGELOG entry documenting TASK-251 through TASK-257
+Add GET /branches/export endpoint: CSV and JSON download for branch data, supports same ?task= and ?status= filters as GET /branches, with Content-Disposition attachment header

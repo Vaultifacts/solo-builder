@@ -1494,3 +1494,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-258
+Goal: Add GET /branches/export endpoint: CSV and JSON download for branch data, supports same ?task= and ?status= filters as GET /branches, with Content-Disposition attachment header
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
