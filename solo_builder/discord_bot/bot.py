@@ -198,6 +198,40 @@ def _format_reset_branch(state: dict, task_arg: str, branch_arg: str) -> str:
     )
 
 
+def _format_bulk_reset(state: dict, names: list[str], skip_verified: bool = True) -> str:
+    """Bulk-reset named subtasks to Pending (writes STATE.json directly)."""
+    if not names:
+        return "Usage: `bulk_reset <A1> [A2 ...]`"
+    dag = state.get("dag", {})
+    remaining = set(names)
+    reset_names: list[str] = []
+    skipped_count = 0
+    for task_data in dag.values():
+        for branch_data in task_data.get("branches", {}).values():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                if st_name not in remaining:
+                    continue
+                if skip_verified and st_data.get("status") == "Verified":
+                    skipped_count += 1
+                    remaining.discard(st_name)
+                    continue
+                st_data["status"] = "Pending"
+                st_data["output"] = ""
+                st_data.pop("shadow", None)
+                reset_names.append(st_name)
+                remaining.discard(st_name)
+    try:
+        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return f"❌ Failed to write state: {exc}"
+    parts = [f"↺ bulk-reset: **{len(reset_names)}** → Pending"]
+    if skipped_count:
+        parts.append(f"{skipped_count} Verified preserved")
+    if remaining:
+        parts.append(f"not found: {', '.join(sorted(remaining))}")
+    return "  ".join(parts) + "."
+
+
 def _allowed(interaction: discord.Interaction) -> bool:
     return not CHANNEL_ID or interaction.channel_id == CHANNEL_ID
 
@@ -715,6 +749,11 @@ async def _handle_text_command(message: discord.Message) -> None:
         branch_arg = parts[1] if len(parts) > 1 else ""
         state = _load_state()
         await _send(message, _format_reset_branch(state, task_arg, branch_arg))
+
+    elif low.startswith("bulk_reset ") or low == "bulk_reset":
+        names = text[11:].strip().split() if low.startswith("bulk_reset ") else []
+        state = _load_state()
+        await _send(message, _format_bulk_reset(state, names))
 
     elif low == "agents":
         state = _load_state()

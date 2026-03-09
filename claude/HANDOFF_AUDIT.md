@@ -1,24 +1,24 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-146
+TASK-147
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover: PASS (384 tests, 0 failures — +8 TestSubtasksBulkVerify)
+- unittest-discover (bot + api): PASS (600 tests, 0 failures — +5 TestBulkResetCommand)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: N/A (Python-only change; no JS modifications)
+- architecture-audit: N/A (bot/slash only; no JS changes)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/subtasks.py` — added POST /subtasks/bulk-verify; same pattern as bulk-reset; already-Verified subtasks always skipped; optional skip_non_running flag; writes STATE.json directly
-- `solo_builder/api/test_app.py` — added TestSubtasksBulkVerify (8 tests)
+Three files modified:
+- `solo_builder/discord_bot/bot.py` — added _format_bulk_reset(state, names, skip_verified) helper; added plain-text handler for `bulk_reset <A1> [A2 ...]`
+- `solo_builder/discord_bot/bot_slash.py` — added /bulk_reset slash command with subtasks string param
+- `solo_builder/discord_bot/test_bot.py` — added TestBulkResetCommand (5 tests)
 
 ## Implementation Detail
-- Body: {subtasks: [names], skip_non_running: false}
-- Already-Verified always skipped (skipped_count)
-- skip_non_running=true: only Running/Review subtasks advanced; Pending/Verified skipped
-- Returns {ok, verified_count, skipped_count, not_found: [sorted], verified: [names]}
-- 400 if subtasks missing or empty list
+- Reads STATE.json directly (same pattern as _format_reset_branch)
+- skip_verified=True by default; Verified subtasks always preserved
+- Returns count of reset, skipped, not_found; same result format as reset_branch
+- Usage: `bulk_reset <A1> [A2 ...]` (no-args returns usage hint)

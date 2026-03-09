@@ -2204,6 +2204,61 @@ class TestResetBranchCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Usage", text)
 
 
+class TestBulkResetCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for bot bulk_reset command."""
+
+    async def test_bulk_reset_valid(self):
+        """bulk_reset A1 A2 resets non-Verified subtasks and writes state."""
+        state = _make_state({"A1": "Running", "A2": "Pending"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text") as mock_write:
+            await bot_module._handle_text_command(_make_msg("bulk_reset A1 A2"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("2", text)
+        self.assertIn("Pending", text)
+        mock_write.assert_called_once()
+
+    async def test_bulk_reset_skips_verified(self):
+        """bulk_reset preserves Verified subtasks and reports skipped count."""
+        state = _make_state({"A1": "Verified", "A2": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text"):
+            await bot_module._handle_text_command(_make_msg("bulk_reset A1 A2"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("preserved", text)
+
+    async def test_bulk_reset_not_found_reported(self):
+        """bulk_reset reports subtask names that were not found in state."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text"):
+            await bot_module._handle_text_command(_make_msg("bulk_reset A1 Z9"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Z9", text)
+
+    async def test_bulk_reset_no_args_shows_usage(self):
+        """bulk_reset with no args shows usage hint."""
+        state = _make_state({"A1": "Running"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state):
+            await bot_module._handle_text_command(_make_msg("bulk_reset"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Usage", text)
+
+    async def test_bulk_reset_result_format(self):
+        """bulk_reset returns the reset count in the response."""
+        state = _make_state({"A1": "Pending"}, step=5)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text"):
+            await bot_module._handle_text_command(_make_msg("bulk_reset A1"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("1", text)
+
+
 class TestAgentsCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot agents command."""
 

@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-146
+TASK-147
 
-Add POST /subtasks/bulk-verify endpoint — advance multiple subtasks to Verified in one request
+Add bulk_reset command to Discord bot (plain-text + slash) that calls POST /subtasks/bulk-reset
