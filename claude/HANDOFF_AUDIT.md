@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-118
+TASK-119
 
 ## Verdict: PASS
 
@@ -12,13 +12,12 @@ TASK-118
 - architecture-audit: 93.4/100 (unchanged)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/dag.py` — new GET /dag/summary endpoint
-- `solo_builder/tests/test_api_integration.py` — 8 new tests in TestDagSummary class
+One file modified:
+- `solo_builder/commands/auto_cmds.py` — added inline progress bar to _cmd_auto() loop
 
 ## Feature Description
-GET /dag/summary returns:
-- `step`, `total`, `verified`, `running`, `pending`, `pct`, `complete` — overview counts
-- `tasks` — per-task breakdown (id, status, branches, subtasks, verified, running, pct)
-- `summary` — markdown-formatted text suitable for Discord bot replies and CLI display
-Tests: 385 → 393 (+8 integration tests).
+After each step in the auto-run loop, the CLI now prints an overwriting single line:
+  Step  42  [===========----------]  35/70  (50.0%)  3 running
+- Uses `make_bar()` and ANSI colors from injected host globals
+- `\r` + `end=""` keeps it on one line; `flush=True` for immediate rendering
+- `print()` on complete/remote-stop/Ctrl-C to end the line cleanly
