@@ -333,7 +333,7 @@ window.openSubtaskModal = function (ev) {
   document.getElementById("sd-branch").textContent = ev.branch;
   document.getElementById("sd-step").textContent   = ev.step;
   const sdStatus = document.getElementById("sd-status");
-  sdStatus.textContent = ev.status;
+  sdStatus.textContent = ev.status === "Review" ? "Review ⏸" : ev.status;
   sdStatus.style.color = statusColor(ev.status);
   document.getElementById("sd-output").textContent = ev.output || "(no output)";
   document.getElementById("sd-sparkline").replaceChildren();
