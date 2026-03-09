@@ -16,7 +16,18 @@ tasks_bp = Blueprint("tasks", __name__)
 @tasks_bp.get("/tasks")
 def list_tasks():
     dag = _load_dag()
-    return jsonify({"tasks": [_task_summary(tid, t) for tid, t in dag.items()]})
+    all_tasks = [_task_summary(tid, t) for tid, t in dag.items()]
+    total = len(all_tasks)
+    limit = request.args.get("limit", 0, type=int)
+    page  = max(1, request.args.get("page",  1, type=int))
+    if limit > 0:
+        pages = max(1, -(-total // limit))
+        start = (page - 1) * limit
+        tasks = all_tasks[start: start + limit]
+    else:
+        pages = 1
+        tasks = all_tasks
+    return jsonify({"tasks": tasks, "total": total, "page": page, "pages": pages})
 
 
 @tasks_bp.get("/tasks/<path:task_id>")
