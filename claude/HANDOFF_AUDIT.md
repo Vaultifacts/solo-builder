@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-160
+TASK-161
 
 ## Verdict: PASS
 
@@ -12,11 +12,11 @@ TASK-160
 
 ## Scope Check
 One file modified:
-- `solo_builder/api/static/dashboard_tasks.js` — inserted progress bar row in renderDetail()
+- `solo_builder/api/static/dashboard_branches.js` — added Reset button to each branch header in _renderBranchesDetail
 
 ## Implementation Detail
-- Tallies verified/total/running from t.branches in renderDetail (data already present)
-- Creates 100px track + green fill div + pct label + cyan running-count span
-- Inserted between taskIdDiv and statusDiv in the nodes array
-- Updates every poll tick (renderDetail already called each tick when task selected)
-- No new API endpoint calls; no test changes (JS-only)
+- Branch header wrapped in flex div for alignment
+- "↺ Reset" button collects non-Verified subtask names from br.subtasks
+- POSTs to /subtasks/bulk-reset, then calls pollBranches() to refresh
+- No-op if all subtasks in the branch are already Verified
+- Uses existing /subtasks/bulk-reset endpoint (TASK-146)
