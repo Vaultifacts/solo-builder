@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-220
+TASK-221
 
-Prune MEMORY.md to under 200 lines by archiving detail to topic files
+CHANGELOG v4.4.0 entry documenting TASK-216 through TASK-220
