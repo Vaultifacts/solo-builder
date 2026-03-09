@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.0.0 — 2026-03-09  Filter resets + Export tab completeness + Discord CSV + stall breakdown (TASK-262 through TASK-266)
+
+- **266 tasks** merged to master (TASK-001 through TASK-266); **553 API tests**, **269 Discord tests**
+- `selectTask()` clears all subtask filters (status/name/task/branch) + input values on task switch — TASK-262
+- Export tab: Branches (CSV+JSON via /branches/export) and Subtasks (CSV+JSON via /subtasks/export) rows added — TASK-263
+- Discord `/branches export:True` sends full CSV file attachment; `_branches_to_csv()` formatter + 6 tests — TASK-264
+- `GET /status` now includes `stalled_by_branch: [{task, branch, count}]` for per-branch stall breakdown; 5 new tests — TASK-265
+- CHANGELOG v4.9.0 documented — TASK-266 (this entry)
+
+---
+
 ## v4.9.0 — 2026-03-09  Branches export + subtasks branch filter + export link re-sync (TASK-258 through TASK-261)
 
 - **261 tasks** merged to master (TASK-001 through TASK-261); **548 API tests**, **454 Discord tests**
