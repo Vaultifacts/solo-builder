@@ -1,20 +1,20 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-274
+TASK-275
 
 ## Verdict: PASS
 
 ## Verification Results
-- lint_dashboard_handlers.js: PASS (48 handler calls, 0 gaps)
-- unittest-discover (api): PASS (563 tests, 0 failures; +0 new, UI-only)
+- unittest-discover (api): PASS (568 tests, 0 failures; +5 new)
 - git-status: PASS (clean working tree)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard_panels.js` — `window._clearSubtasksFilters` added: calls `_resetSubtasksFilters()` then `pollSubtasks()` only if a filter was active; `_renderSubtasks()` shows/hides `#subtasks-clear-filters` button based on `hasFilter`
-- `solo_builder/api/dashboard.html` — `#subtasks-clear-filters` button added (hidden by default, display:none) beside filter label; calls `_clearSubtasksFilters()`
+- `solo_builder/api/blueprints/subtasks.py` — `?min_age=N` added to both `subtasks_all()` and `subtasks_export()`: skips non-Running subtasks and Running subtasks with age < N; changed `_load_dag()` → `_load_state()` to access `step`; docstrings updated
+- `solo_builder/api/test_app.py` — 5 new tests in `TestSubtasksAll`: stalled running returned, fresh running excluded, non-running excluded, min_age=0 returns all, at-boundary included
 
 ## Implementation Detail
-`_clearSubtasksFilters` guards the `pollSubtasks()` call with `hadFilter` check to avoid an unnecessary fetch when no filters were active.
-Button initially `display:none` — shown only when at least one filter is active (set by `_renderSubtasks`).
+`min_age=0` (default) is a no-op — the `if min_age > 0` guard prevents any filtering.
+Filter applied after status/name/task/branch filters, so `?status=running&min_age=5` composes correctly.
+`age = step - st_data.get("last_update", 0)` matches the stall computation in core.py and subtasks.py stalled().

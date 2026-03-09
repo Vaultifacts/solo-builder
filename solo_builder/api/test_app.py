@@ -1838,6 +1838,47 @@ class TestSubtasksPagination(_Base):
         self.assertTrue(names1.isdisjoint(names2))
         self.assertEqual(len(names1) + len(names2), 6)
 
+    # -- ?min_age= filter (TASK-275) ----------------------------------------
+
+    def _stall_state(self, step=10, last_update=0):
+        """State with one Running subtask at given last_update."""
+        state = self._make_state({"A1": "Running", "A2": "Verified"}, step=step)
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = last_update
+        return state
+
+    def test_min_age_returns_stalled_running(self):
+        # step=10, last_update=0 → age=10 ≥ min_age=5
+        self._write_state(self._stall_state(step=10, last_update=0))
+        d = self.client.get("/subtasks?min_age=5").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertIn("A1", names)
+        self.assertNotIn("A2", names)  # Verified excluded
+
+    def test_min_age_excludes_fresh_running(self):
+        # step=10, last_update=8 → age=2 < min_age=5
+        self._write_state(self._stall_state(step=10, last_update=8))
+        d = self.client.get("/subtasks?min_age=5").get_json()
+        self.assertEqual(len(d["subtasks"]), 0)
+
+    def test_min_age_excludes_non_running(self):
+        state = self._make_state({"A1": "Pending", "A2": "Verified", "A3": "Review"})
+        self._write_state(state)
+        d = self.client.get("/subtasks?min_age=1").get_json()
+        self.assertEqual(len(d["subtasks"]), 0)
+
+    def test_min_age_zero_returns_all(self):
+        self._write_state(self._stall_state(step=10, last_update=0))
+        d_all = self.client.get("/subtasks").get_json()
+        d_zero = self.client.get("/subtasks?min_age=0").get_json()
+        self.assertEqual(d_all["total"], d_zero["total"])
+
+    def test_min_age_at_boundary(self):
+        # age == min_age → included (>=)
+        self._write_state(self._stall_state(step=5, last_update=0))
+        d = self.client.get("/subtasks?min_age=5").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertIn("A1", names)
+
 
 # ---------------------------------------------------------------------------
 # GET /subtasks/export  (TASK-088)
