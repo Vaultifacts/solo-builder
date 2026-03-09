@@ -2914,6 +2914,40 @@ class TestSubtasksBulkReset(_Base):
         st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
         self.assertEqual(st["status"], "Pending")
 
+    def test_reset_clears_output_and_shadow(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "old"
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["shadow"] = "s"
+        self._write_state(state)
+        self.client.post("/subtasks/bulk-reset", json={"subtasks": ["A1"]})
+        saved = json.loads(self._state_path.read_text())
+        st = saved["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st.get("output", ""), "")
+        self.assertNotIn("shadow", st)
+
+    def test_reset_review_status(self):
+        self._write_state(self._make_state({"A1": "Review"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1"]}).get_json()
+        self.assertEqual(d["reset_count"], 1)
+
+
+class TestSubtasksBulkVerifyExtra(_Base):
+
+    def test_verify_review_status_advanced(self):
+        self._write_state(self._make_state({"A1": "Review"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1"]}).get_json()
+        self.assertEqual(d["verified_count"], 1)
+        state = json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
+        self.assertEqual(st["status"], "Verified")
+
+    def test_verify_missing_subtasks_field_returns_400(self):
+        self._write_state(self._make_state())
+        r = self.client.post("/subtasks/bulk-verify", json={})
+        self.assertEqual(r.status_code, 400)
+
 
 # ---------------------------------------------------------------------------
 # POST /webhook  (TASK-078)
