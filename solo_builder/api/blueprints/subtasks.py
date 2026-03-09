@@ -1,4 +1,4 @@
-"""Subtasks blueprint — /subtasks, /subtasks/export, /subtask/<id>, /subtask/<id>/output, /subtask/<id>/reset, /timeline/<subtask>, /stalled."""
+"""Subtasks blueprint — /subtasks, /subtasks/export, /subtasks/bulk-reset, /subtask/<id>, /subtask/<id>/output, /subtask/<id>/reset, /timeline/<subtask>, /stalled."""
 import csv
 import io
 import json
@@ -118,6 +118,53 @@ def subtasks_export():
         buf.getvalue(), mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=subtasks.csv"},
     )
+
+
+@subtasks_bp.post("/subtasks/bulk-reset")
+def subtasks_bulk_reset():
+    """Reset multiple subtasks to Pending in a single request.
+
+    Body: {"subtasks": ["A1", "B2", ...], "skip_verified": true}
+    - subtasks: list of subtask names to reset (case-sensitive)
+    - skip_verified: if true (default), Verified subtasks are preserved
+    Returns {ok, reset_count, skipped_count, not_found: [names], reset: [names]}
+    """
+    from .. import app as _app_mod
+    body = request.get_json(silent=True) or {}
+    names = body.get("subtasks")
+    if not isinstance(names, list) or not names:
+        return jsonify({"ok": False, "reason": "Field 'subtasks' must be a non-empty list."}), 400
+    skip_verified = body.get("skip_verified", True)
+    state = _load_state()
+    dag = state.get("dag", {})
+    remaining = set(names)
+    reset_names: list = []
+    skipped_count = 0
+    for task_data in dag.values():
+        for branch_data in task_data.get("branches", {}).values():
+            for st_name, st_data in branch_data.get("subtasks", {}).items():
+                if st_name not in remaining:
+                    continue
+                if skip_verified and st_data.get("status") == "Verified":
+                    skipped_count += 1
+                    remaining.discard(st_name)
+                    continue
+                st_data["status"] = "Pending"
+                st_data["output"] = ""
+                st_data.pop("shadow", None)
+                reset_names.append(st_name)
+                remaining.discard(st_name)
+    try:
+        _app_mod.STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": str(exc)}), 500
+    return jsonify({
+        "ok": True,
+        "reset_count": len(reset_names),
+        "skipped_count": skipped_count,
+        "not_found": sorted(remaining),
+        "reset": reset_names,
+    })
 
 
 @subtasks_bp.get("/subtask/<subtask_id>")
