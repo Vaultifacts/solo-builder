@@ -108,12 +108,12 @@ class TestFormatStatus(unittest.TestCase):
         result = bot_module._format_status(state)
         self.assertIn("100.0%", result)
         self.assertIn("Step 5", result)
-        self.assertIn("2  ▶ 0", result)
+        self.assertIn("2/2", result)
 
     def test_mixed_statuses(self):
         state = _make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"}, step=3)
         result = bot_module._format_status(state)
-        self.assertIn("1  ▶ 1", result)
+        self.assertIn("1 running", result)
         self.assertIn("33.3%", result)
 
     def test_empty_dag(self):
@@ -1667,12 +1667,12 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         text = mock_send.call_args[0][1]
         self.assertIn("Usage", text)
 
-    async def test_format_status_includes_branch_rows(self):
-        """_format_status output includes per-branch progress bars."""
+    async def test_format_status_includes_task_row(self):
+        """_format_status output includes per-task summary rows."""
         state = _make_state({"A1": "Verified", "A2": "Pending"}, step=1)
         result = bot_module._format_status(state)
-        # BranchA branch row should appear in the code block
-        self.assertIn("BranchA", result)
+        # Task row should appear in the markdown summary
+        self.assertIn("Task0", result)
 
     async def test_tools_queues_trigger(self):
         """'tools H1 Read,Glob,Grep' writes the correct trigger file."""

@@ -410,44 +410,43 @@ def _format_timeline(state: dict, st_target: str) -> str:
 
 
 def _format_status(state: dict) -> str:
+    """Return a markdown summary matching GET /dag/summary's `summary` field format."""
     dag   = state.get("dag", {})
     step  = state.get("step", 0)
-    total = verified = running = review = 0
-    rows: list[str] = []
+    total = verified = running = pending = 0
+    task_rows: list[str] = []
 
-    for task_name, task in dag.items():
-        tv = tr = trv = tt = 0
-        branch_rows: list[str] = []
-        for b_name, b in task.get("branches", {}).items():
-            bv = br = brv = bt = 0
-            for s in b.get("subtasks", {}).values():
-                st = s.get("status", "")
-                bt += 1
-                if st == "Verified": bv += 1
-                elif st == "Running": br += 1
-                elif st == "Review":  brv += 1
-            tv += bv; tr += br; trv += brv; tt += bt
-            b_done = int((bv / bt) * 6) if bt else 0
-            b_bar  = "█" * b_done + "░" * (6 - b_done)
-            if bv == bt:      b_sym = "✓"
-            elif brv:         b_sym = "⏸"
-            elif br:          b_sym = "▶"
-            else:             b_sym = "·"
-            branch_rows.append(f"  {b_name:<14}{b_bar} {bv}/{bt} {b_sym}")
+    for task_id, task_data in dag.items():
+        t_total = t_verified = t_running = 0
+        for br in task_data.get("branches", {}).values():
+            for st in br.get("subtasks", {}).values():
+                t_total += 1
+                s = st.get("status", "Pending")
+                if s == "Verified":
+                    t_verified += 1
+                elif s == "Running":
+                    t_running += 1
+        t_pct = round(t_verified / t_total * 100, 1) if t_total else 0.0
+        t_status = task_data.get("status", "Pending")
+        bar = ("=" * int(t_pct / 10)).ljust(10, "-")
+        task_rows.append(
+            f"- **{task_id}** [{bar}] {t_verified}/{t_total} ({t_pct}%)  {t_status}"
+        )
+        total    += t_total
+        verified += t_verified
+        running  += t_running
+        pending  += t_total - t_verified - t_running
 
-        total += tt; verified += tv; running += tr; review += trv
-        done = int((tv / tt) * 10) if tt else 0
-        bar  = "█" * done + "░" * (10 - done)
-        rows.append(f"{task_name:<8} {bar} {tv}/{tt}")
-        rows.extend(branch_rows)
-
-    pct = round(verified / total * 100, 1) if total else 0
-    header = (
-        f"**Solo Builder** · Step {step}\n"
-        f"✅ {verified}  ▶ {running}  ⏸ {review}  "
-        f"⏳ {total - verified - running - review} / {total}  ({pct}%)\n"
-    )
-    return header + "```\n" + "\n".join(rows) + "\n```"
+    pct = round(verified / total * 100, 1) if total else 0.0
+    lines = [
+        "## Pipeline Summary",
+        f"- Step {step}",
+        f"- {verified}/{total} subtasks verified ({pct}%)",
+        f"- {running} running, {pending} pending",
+        "",
+        "### Tasks",
+    ] + task_rows
+    return "\n".join(lines)
 
 
 def _format_log(st_filter: str = "") -> str:
