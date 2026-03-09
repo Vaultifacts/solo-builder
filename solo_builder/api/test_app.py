@@ -1680,6 +1680,47 @@ class TestBranchesExport(_Base):
         lines = self.client.get("/branches/export").data.decode().strip().splitlines()
         self.assertEqual(len(lines), 1)  # header only
 
+    # ?status=review / ?status=pending + JSON wrapper shape (TASK-294)
+
+    def _four_branch_state(self):
+        """State with Verified, Running, Review, and Pending branches."""
+        return {
+            "step": 0,
+            "dag": {
+                "Task 0": {"status": "Running", "depends_on": [], "branches": {
+                    "Br V": {"subtasks": {"S1": {"status": "Verified"}}},
+                    "Br R": {"subtasks": {"S2": {"status": "Running"}}},
+                    "Br Rv": {"subtasks": {"S3": {"status": "Review"}}},
+                    "Br P": {"subtasks": {"S4": {"status": "Pending"}}},
+                }},
+            },
+        }
+
+    def test_export_status_filter_review(self):
+        self._write_state(self._four_branch_state())
+        rows = self.client.get("/branches/export?format=json&status=review").get_json()["branches"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["branch"], "Br Rv")
+
+    def test_export_status_filter_pending(self):
+        self._write_state(self._four_branch_state())
+        rows = self.client.get("/branches/export?format=json&status=pending").get_json()["branches"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["branch"], "Br P")
+
+    def test_export_json_total_matches_branches_length(self):
+        self._write_state(self._four_branch_state())
+        d = self.client.get("/branches/export?format=json").get_json()
+        self.assertEqual(d["total"], len(d["branches"]))
+        self.assertEqual(d["total"], 4)
+
+    def test_export_status_and_task_compose(self):
+        self._write_state(self._four_branch_state())
+        rows = self.client.get(
+            "/branches/export?format=json&status=running&task=Task+0").get_json()["branches"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["branch"], "Br R")
+
 
 # POST /branches/<task>/reset
 # ---------------------------------------------------------------------------

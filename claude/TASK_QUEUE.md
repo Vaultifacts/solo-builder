@@ -1698,3 +1698,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-294
+Goal: GET /branches/export ?format=json: verify JSON response wraps rows in {total, branches:[...]} object instead of bare array; fix if needed and add tests
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
