@@ -89,3 +89,4 @@ solo_builder/tests/test_utils_standalone.py
 solo_builder/api/static/dashboard_svg.js
 CHANGELOG.md
 tools/lint_dashboard_handlers.js
+.githooks/pre-commit
