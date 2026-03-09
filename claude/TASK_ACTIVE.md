@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-184
+TASK-185
 
-Audit GET /tasks endpoint response: verify it includes all fields dashboard_tasks.js needs to avoid the double-fetch per-task in tick()
+Enhance _format_task_progress in bot_formatters.py to show per-branch block-bar table with branch names and counts

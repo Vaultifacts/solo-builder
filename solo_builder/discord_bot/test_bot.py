@@ -164,6 +164,11 @@ class TestFormatTaskProgress(unittest.TestCase):
         result = bot_module._format_task_progress(state, "Task0")
         self.assertIn("no branches", result)
 
+    def test_review_status_shown_in_output(self):
+        state = _make_state({"A1": "Review", "A2": "Pending"})
+        result = bot_module._format_task_progress(state, "Task0")
+        self.assertIn("⏸", result)
+
 
 class TestAutoRunning(unittest.TestCase):
     def setUp(self):
