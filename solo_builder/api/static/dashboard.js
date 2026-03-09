@@ -479,6 +479,7 @@ document.addEventListener("keydown", function (e) {
 
   if (e.key === "r") { window.runStep(); return; }
   if (e.key === "g") { window.toggleView(); return; }
+  if (e.key === "b") { window.switchTab("branches"); return; }
 
   if (e.key === "Enter" && state.selectedTask && state.tasksCache[state.selectedTask] && !_modalSt) {
     const t = state.tasksCache[state.selectedTask];
