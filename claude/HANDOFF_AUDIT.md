@@ -1,22 +1,23 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-148
+TASK-149
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (384 tests, 0 failures)
+- unittest-discover: PASS (393 tests, 0 failures — +9 TestPostTaskBulkVerify)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 97.7/100 (no regression)
+- architecture-audit: N/A (Python-only; no JS changes)
 
 ## Scope Check
 Two files modified:
-- `solo_builder/api/static/dashboard.css` — added --node-bg-verified/running/pending to :root (dark theme hex) and [data-theme="light"] (light theme hex)
-- `solo_builder/api/static/dashboard.js` — nodeColorBg now returns CSS variable strings instead of hardcoded hex
+- `solo_builder/api/blueprints/tasks.py` — added POST /tasks/<path:task_id>/bulk-verify; optional body {skip_non_running:bool}; already-Verified always skipped; sets task status=Verified when any subtask advanced; writes STATE.json directly
+- `solo_builder/api/test_app.py` — added TestPostTaskBulkVerify (9 tests)
 
 ## Implementation Detail
-- Dark: --node-bg-verified:#1b3d1e, --node-bg-running:#0d2d33, --node-bg-pending:#2a2200 (original values preserved)
-- Light: --node-bg-verified:#e0f5e0, --node-bg-running:#e0f2f5, --node-bg-pending:#fff8e0 (match existing badge light colors)
-- renderGraph nodeColorBg was the only caller of these hex values; no other code changed
+- Registered before /tasks/<path:task_id>/subtasks to avoid route ambiguity
+- skip_non_running=false by default (verify all non-Verified)
+- task.status set to "Verified" only when at least one subtask was advanced
+- Returns {ok, task, verified_count, skipped_count}; 404 if task not found
