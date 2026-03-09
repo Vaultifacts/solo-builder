@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-301
+TASK-302
 
-GET /branches: add review_pct field (percentage of subtasks in Review state per branch, parity with pct/verified%); 3+ new tests in TestBranches
+Dashboard Stalled tab: add '✕ Clear' button shown when _stalledTaskFilter or _stalledBranchFilter is active; clicking clears both filters and re-polls; parity with Branches/Subtasks tabs
