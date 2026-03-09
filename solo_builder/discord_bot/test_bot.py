@@ -2689,6 +2689,125 @@ class TestFormatCache(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Slash command tests — /bulk_reset and /bulk_verify
+# ---------------------------------------------------------------------------
+
+import discord_bot.bot_slash as _slash_module
+
+
+def _make_slash_cmds():
+    """Register slash commands against a mock bot; return captured command dict."""
+    captured = {}
+
+    def _capture(name, **kwargs):
+        def _decorator(fn):
+            captured[name] = fn
+            return fn
+        return _decorator
+
+    import discord
+    mock_bot = MagicMock()
+    mock_bot.tree.command = _capture
+    mock_bot.tree.error = lambda fn: fn
+    # app_commands.describe must be identity so we capture the real async fn
+    with patch.object(discord.app_commands, "describe", return_value=lambda fn: fn):
+        _slash_module.register_slash_commands(mock_bot)
+    return captured
+
+
+def _make_interaction(allowed=True):
+    iact = MagicMock()
+    iact.response = AsyncMock()
+    iact.channel_id = 0
+    iact.guild_id = None
+    return iact
+
+
+class TestBulkResetSlashCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for /bulk_reset slash command."""
+
+    async def _run(self, subtasks_str, state, allowed=True):
+        cmds = _make_slash_cmds()
+        interaction = _make_interaction(allowed=allowed)
+        with patch.object(bot_module, "_allowed", return_value=allowed), \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text"):
+            await cmds["bulk_reset"](interaction, subtasks_str)
+        return interaction
+
+    async def test_slash_bulk_reset_sends_message(self):
+        state = _make_state({"A1": "Pending"}, step=1)
+        iact = await self._run("A1", state)
+        iact.response.send_message.assert_called_once()
+
+    async def test_slash_bulk_reset_resets_subtask(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        iact = await self._run("A1", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("1", text)
+
+    async def test_slash_bulk_reset_not_found_reported(self):
+        state = _make_state({"A1": "Pending"}, step=1)
+        iact = await self._run("Z9", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("Z9", text)
+
+    async def test_slash_bulk_reset_unauthorized(self):
+        state = _make_state({"A1": "Pending"}, step=1)
+        iact = await self._run("A1", state, allowed=False)
+        args, kwargs = iact.response.send_message.call_args
+        self.assertTrue(kwargs.get("ephemeral") or "Wrong" in (args[0] if args else ""))
+
+    async def test_slash_bulk_reset_multi_subtask_split(self):
+        state = _make_state({"A1": "Running", "A2": "Running"}, step=1)
+        iact = await self._run("A1 A2", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("2", text)
+
+
+class TestBulkVerifySlashCommand(unittest.IsolatedAsyncioTestCase):
+    """Tests for /bulk_verify slash command."""
+
+    async def _run(self, subtasks_str, state, allowed=True):
+        cmds = _make_slash_cmds()
+        interaction = _make_interaction(allowed=allowed)
+        with patch.object(bot_module, "_allowed", return_value=allowed), \
+             patch.object(bot_module, "_load_state", return_value=state), \
+             patch("pathlib.Path.write_text"):
+            await cmds["bulk_verify"](interaction, subtasks_str)
+        return interaction
+
+    async def test_slash_bulk_verify_sends_message(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        iact = await self._run("A1", state)
+        iact.response.send_message.assert_called_once()
+
+    async def test_slash_bulk_verify_verifies_subtask(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        iact = await self._run("A1", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("1", text)
+
+    async def test_slash_bulk_verify_skips_already_verified(self):
+        state = _make_state({"A1": "Verified"}, step=1)
+        iact = await self._run("A1", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("0", text)
+
+    async def test_slash_bulk_verify_unauthorized(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        iact = await self._run("A1", state, allowed=False)
+        args, kwargs = iact.response.send_message.call_args
+        self.assertTrue(kwargs.get("ephemeral") or "Wrong" in (args[0] if args else ""))
+
+    async def test_slash_bulk_verify_not_found_reported(self):
+        state = _make_state({"A1": "Running"}, step=1)
+        iact = await self._run("Z9", state)
+        text = iact.response.send_message.call_args[0][0]
+        self.assertIn("Z9", text)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
