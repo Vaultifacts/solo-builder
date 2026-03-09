@@ -35,6 +35,8 @@ tools/schedule_auto_batch.ps1
 tools/cache_stats.py
 tools/auto_batch.py
 solo_builder/discord_bot/bot.py
+solo_builder/discord_bot/bot_formatters.py
+solo_builder/discord_bot/bot_slash.py
 solo_builder/discord_bot/test_bot.py
 solo_builder/.github/workflows/smoke-test.yml
 solo_builder/api/app.py
