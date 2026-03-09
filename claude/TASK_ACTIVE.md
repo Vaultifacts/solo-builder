@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-172
+TASK-173
 
-Add h keyboard shortcut to switch to History tab; add to _SHORTCUTS constant; 2 tests
+Extract _format_task_progress to bot_formatters.py; add task_progress to plain-text help in bot.py
