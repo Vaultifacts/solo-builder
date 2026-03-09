@@ -1,21 +1,19 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-249
+TASK-250
 
 ## Verdict: PASS
 
 ## Verification Results
-- unittest-discover (api): PASS (512 tests, 0 failures; +5 new)
 - git-status: PASS (clean working tree)
+- CHANGELOG.md: v4.7.0 entry present, accurate test counts (512 API)
 
 ## Scope Check
-Two files modified:
-- `solo_builder/api/blueprints/history.py` — added ?branch= filter to history_export(); updated docstring
-- `solo_builder/api/test_app.py` — 5 new tests in TestHistoryExport: branch match, no match, case-insensitive, compose with status, CSV branch filter
+One file modified:
+- `CHANGELOG.md` — v4.7.0 entry added (TASK-246 through TASK-250); 250-task milestone
 
 ## Implementation Detail
-GET /history/export accepted ?subtask=, ?status=, ?task= but NOT ?branch=.
-The JS (_updateHistoryExportLinks) already appended &branch=X to export hrefs when branch filter active — the server silently ignored it.
-Fix: added branch_q = request.args.get("branch") and filter step alongside the other filters.
-Parity with GET /history/count which already supported ?branch=.
+Added v4.7.0 CHANGELOG block above v4.6.0.
+Documents: branches CSV/JSON download (246), task search server-side filter (247), stall boundary tests (248), history export branch filter fix (249).
+Milestone: 250 tasks merged, 512 API tests.

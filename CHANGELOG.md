@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.7.0 — 2026-03-09  Branches export + task filter + stall tests + history branch filter (TASK-246 through TASK-250)
+
+- **250 tasks** merged to master (TASK-001 through TASK-250); **512 API tests**, **454 Discord tests**
+- Branches tab CSV/JSON client-side download (filtered data via `Blob` + `URL.createObjectURL`) — TASK-246
+- `GET /tasks` accepts `?task=` substring filter; dashboard `_applyTaskSearch` re-fetches server-side — TASK-247
+- Stall detection boundary + regression tests: at-threshold, below-threshold, custom `STALL_THRESHOLD`, `/status.stalled` == `/stalled.count` (+7 tests) — TASK-248
+- `GET /history/export` was silently ignoring `?branch=` parameter; now correctly filters (+5 tests) — TASK-249
+- CHANGELOG v4.6.0 documented — TASK-245 (prior batch entry)
+
+---
+
 ## v4.6.0 — 2026-03-09  Status filters + CI lint + review regressions (TASK-236 through TASK-245)
 
 - **245 tasks** merged to master (TASK-001 through TASK-245); **498 API tests**, **454 Discord tests**
