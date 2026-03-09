@@ -2466,6 +2466,32 @@ class TestForecastCommand(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Forecast", text)
 
 
+class TestFormatForecastReview(unittest.TestCase):
+    """Direct unit tests: Review subtasks in _format_forecast."""
+
+    def test_review_shown_in_breakdown(self):
+        state = _make_state({"A1": "Review", "A2": "Pending"})
+        text = bot_module._format_forecast(state)
+        self.assertIn("⏸", text)
+
+    def test_review_counts_toward_total_not_verified(self):
+        state = _make_state({"A1": "Review", "A2": "Verified"})
+        text = bot_module._format_forecast(state)
+        # pct should be 50% (1 verified out of 2 total), not 100%
+        self.assertIn("50.0%", text)
+
+    def test_review_counts_as_remaining(self):
+        state = _make_state({"A1": "Review", "A2": "Verified"})
+        text = bot_module._format_forecast(state)
+        # remaining = total - verified = 2 - 1 = 1
+        self.assertIn("Remaining  1", text)
+
+    def test_review_icon_present(self):
+        state = _make_state({"A1": "Review"})
+        text = bot_module._format_forecast(state)
+        self.assertIn("1⏸", text)
+
+
 class TestHistoryCommand(unittest.IsolatedAsyncioTestCase):
     """Tests for bot history command."""
 
