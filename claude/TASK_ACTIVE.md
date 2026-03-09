@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-171
+TASK-172
 
-Add edge-case tests for POST /tasks/<id>/bulk-reset: all-Verified + include_verified, empty task, no branches
+Add h keyboard shortcut to switch to History tab; add to _SHORTCUTS constant; 2 tests
