@@ -125,6 +125,22 @@ class TestFormatStatus(unittest.TestCase):
         result = bot_module._format_status(state)
         self.assertIn("Task0", result)
 
+    def test_review_shown_in_summary_line(self):
+        state = _make_state({"A1": "Review", "A2": "Pending"})
+        result = bot_module._format_status(state)
+        self.assertIn("1 review", result)
+
+    def test_review_not_counted_in_pending(self):
+        state = _make_state({"A1": "Review", "A2": "Pending"})
+        result = bot_module._format_status(state)
+        self.assertIn("1 pending", result)
+        self.assertNotIn("2 pending", result)
+
+    def test_pending_sum_to_total(self):
+        state = _make_state({"A1": "Verified", "A2": "Running", "A3": "Review", "A4": "Pending"})
+        result = bot_module._format_status(state)
+        self.assertIn("1/4", result)  # 1 verified out of 4 total
+
 
 class TestFormatTaskProgress(unittest.TestCase):
     """Direct unit tests for _format_task_progress in bot_formatters."""

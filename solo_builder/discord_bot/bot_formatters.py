@@ -455,11 +455,11 @@ def _format_status(state: dict) -> str:
     """Return a markdown summary matching GET /dag/summary's `summary` field format."""
     dag   = state.get("dag", {})
     step  = state.get("step", 0)
-    total = verified = running = pending = 0
+    total = verified = running = review = pending = 0
     task_rows: list[str] = []
 
     for task_id, task_data in dag.items():
-        t_total = t_verified = t_running = 0
+        t_total = t_verified = t_running = t_review = 0
         for br in task_data.get("branches", {}).values():
             for st in br.get("subtasks", {}).values():
                 t_total += 1
@@ -468,6 +468,8 @@ def _format_status(state: dict) -> str:
                     t_verified += 1
                 elif s == "Running":
                     t_running += 1
+                elif s == "Review":
+                    t_review += 1
         t_pct = round(t_verified / t_total * 100, 1) if t_total else 0.0
         t_status = task_data.get("status", "Pending")
         bar = ("=" * int(t_pct / 10)).ljust(10, "-")
@@ -477,14 +479,15 @@ def _format_status(state: dict) -> str:
         total    += t_total
         verified += t_verified
         running  += t_running
-        pending  += t_total - t_verified - t_running
+        review   += t_review
+        pending  += t_total - t_verified - t_running - t_review
 
     pct = round(verified / total * 100, 1) if total else 0.0
     lines = [
         "## Pipeline Summary",
         f"- Step {step}",
         f"- {verified}/{total} subtasks verified ({pct}%)",
-        f"- {running} running, {pending} pending",
+        f"- {running} running, {review} review, {pending} pending",
         "",
         "### Tasks",
     ] + task_rows
