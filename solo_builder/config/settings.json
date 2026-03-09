@@ -1,5 +1,5 @@
 {
-    "STALL_THRESHOLD": 99,
+    "STALL_THRESHOLD": 10,
     "SNAPSHOT_INTERVAL": 20,
     "DAG_UPDATE_INTERVAL": 5,
     "PDF_OUTPUT_PATH": "./snapshots/",

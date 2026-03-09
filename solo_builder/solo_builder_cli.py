@@ -105,22 +105,6 @@ _LOG_PATH = os.path.join(_HERE, "state", "solo_builder.log")
 logger = logging.getLogger("solo_builder")
 
 
-def _setup_logging() -> None:
-    """Configure a rotating file handler for structured log output."""
-    os.makedirs(os.path.dirname(_LOG_PATH), exist_ok=True)
-    handler = logging.handlers.RotatingFileHandler(
-        _LOG_PATH, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8"
-    )
-    handler.setFormatter(logging.Formatter(
-        "%(asctime)s %(levelname)-8s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-    ))
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
-    logger.propagate = False
-
-
-
 def _append_journal(
     st_name: str, task_name: str, branch_name: str,
     description: str, output: str, step: int,
@@ -196,6 +180,10 @@ try:
     from .commands.subtask_cmds import SubtaskCommandsMixin
     from .commands.dag_cmds import DagCommandsMixin
     from .commands.settings_cmds import SettingsCommandsMixin
+    from .commands.dispatcher import DispatcherMixin
+    from .commands.auto_cmds import AutoCommandsMixin
+    from .commands.step_runner import StepRunnerMixin
+    from .cli_utils import _setup_logging, _splash, _acquire_lock, _release_lock
 except ImportError:
     from dag_definition import INITIAL_DAG
     from display import TerminalDisplay
@@ -203,9 +191,15 @@ except ImportError:
     from commands.subtask_cmds import SubtaskCommandsMixin
     from commands.dag_cmds import DagCommandsMixin
     from commands.settings_cmds import SettingsCommandsMixin
+    from commands.dispatcher import DispatcherMixin
+    from commands.auto_cmds import AutoCommandsMixin
+    from commands.step_runner import StepRunnerMixin
+    from cli_utils import _setup_logging, _splash, _acquire_lock, _release_lock
 
 
-class SoloBuilderCLI(QueryCommandsMixin, SubtaskCommandsMixin, DagCommandsMixin, SettingsCommandsMixin):
+class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
+                     QueryCommandsMixin, SubtaskCommandsMixin, DagCommandsMixin,
+                     SettingsCommandsMixin):
     """
     Orchestrates all agents and handles the interactive CLI loop.
 
@@ -249,103 +243,8 @@ class SoloBuilderCLI(QueryCommandsMixin, SubtaskCommandsMixin, DagCommandsMixin,
         for w in warnings:
             print(f"{YELLOW}[DAG Warning] {w}{RESET}")
 
-    # ── Step ────────────────────────────────────────────────────────────────
-    def run_step(self) -> None:
-        """Execute one full agent pipeline step."""
-        self.step += 1
-        step_alerts: List[str] = []
-
-        # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps,
-        #    or immediately when a task flips to Verified — which unblocks dependents)
-        verified_tasks = sum(
-            1 for t in self.dag.values() if t.get("status") == "Verified"
-        )
-        if (self.step - self._last_priority_step) >= DAG_UPDATE_INTERVAL \
-                or verified_tasks > self._last_verified_tasks:
-            self._priority_cache     = self.planner.prioritize(self.dag, self.step)
-            self._last_priority_step = self.step
-            self._last_verified_tasks = verified_tasks
-        priority = self._priority_cache
-
-        # 2. ShadowAgent: detect and resolve conflicts
-        conflicts = self.shadow.detect_conflicts(self.dag)
-        for task_name, branch_name, st_name in conflicts:
-            step_alerts.append(
-                f"  {ALERT_CONFLICT} {CYAN}{st_name}{RESET}: "
-                f"shadow/status mismatch → resolving"
-            )
-            self.shadow.resolve_conflict(
-                self.dag, task_name, branch_name, st_name,
-                self.step, self.memory_store,
-            )
-
-        # 3. SelfHealer: detect stalls (alert before healing)
-        stalled = self.healer.find_stalled(self.dag, self.step)
-        for _, _, st_name, age in stalled:
-            step_alerts.append(
-                f"  {ALERT_STALLED} {CYAN}{st_name}{RESET} stalled {age} steps"
-            )
-        healed = self.healer.heal(
-            self.dag, stalled, self.step, self.memory_store, step_alerts
-        )
-
-        # 4. Executor: advance subtasks
-        actions = self.executor.execute_step(
-            self.dag, priority, self.step, self.memory_store
-        )
-
-        # 5. Verifier: fix any status inconsistencies
-        fixes = self.verifier.verify(self.dag)
-        if VERBOSITY == "DEBUG":
-            for fix in fixes:
-                step_alerts.append(f"  {DIM}Verifier: {fix}{RESET}")
-
-        # 6. ShadowAgent: update expected state map
-        self.shadow.update_expected(self.dag)
-
-        # 7. MetaOptimizer: record + maybe adjust weights
-        verified_count = sum(1 for a in actions.values() if a == "verified")
-        self.meta.record(healed, verified_count)
-        opt_note = self.meta.optimize(self.planner)
-        if opt_note and VERBOSITY == "DEBUG":
-            step_alerts.append(f"  {DIM}{opt_note}{RESET}")
-
-        # 8. Auto-snapshot
-        if self.step % SNAPSHOT_INTERVAL == 0:
-            self._take_snapshot(auto=True)
-
-        # 9. Auto-save state
-        if self.step % AUTO_SAVE_INTERVAL == 0:
-            self.save_state(silent=True)
-
-        # Heartbeat: write live counters every step for Discord bot real-time tracking
-        _hb = os.path.join(_HERE, "state", "step.txt")
-        try:
-            _hb_v = _hb_t = _hb_p = _hb_r = _hb_rv = 0
-            for _ht in self.dag.values():
-                for _hb2 in _ht["branches"].values():
-                    for _hs in _hb2["subtasks"].values():
-                        _hb_t += 1
-                        _st = _hs.get("status", "")
-                        if _st == "Verified":  _hb_v  += 1
-                        elif _st == "Pending": _hb_p  += 1
-                        elif _st == "Running": _hb_r  += 1
-                        elif _st == "Review":  _hb_rv += 1
-            with open(_hb, "w") as _f:
-                _f.write(f"{self.step},{_hb_v},{_hb_t},{_hb_p},{_hb_r},{_hb_rv}")
-        except OSError:
-            pass
-
-        # Accumulate alerts
-        self.alerts = (self.alerts + step_alerts)[-MAX_ALERTS:]
-
-        # Render
-        self.display.render(
-            self.dag, self.memory_store, self.step,
-            self.alerts, self.meta.forecast(self.dag),
-        )
-
-    # ── Snapshot ────────────────────────────────────────────────────────────
+    # ── Snapshot ──────────────────────────────────────────────────────────────
+    # Kept in cli.py so that test patches on _PDF_OK resolve correctly.
     def _take_snapshot(self, auto: bool = False) -> None:
         if not _PDF_OK:
             print(f"{YELLOW}PDF unavailable — install matplotlib.{RESET}")
@@ -362,522 +261,18 @@ class SoloBuilderCLI(QueryCommandsMixin, SubtaskCommandsMixin, DagCommandsMixin,
         except Exception as exc:
             print(f"  {RED}Snapshot failed: {exc}{RESET}")
 
-    # ── Persistence ──────────────────────────────────────────────────────────
-    def save_state(self, silent: bool = False) -> None:
-        """Serialize full runtime state to JSON on disk."""
-        os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-        # Rotate backups: .3 → delete, .2 → .3, .1 → .2, current → .1
-        if os.path.exists(STATE_PATH):
-            for i in range(3, 1, -1):
-                src = f"{STATE_PATH}.{i - 1}"
-                dst = f"{STATE_PATH}.{i}"
-                if os.path.exists(src):
-                    try:
-                        os.replace(src, dst)
-                    except OSError:
-                        pass
-            try:
-                import shutil
-                shutil.copy2(STATE_PATH, f"{STATE_PATH}.1")
-            except OSError:
-                pass
-        payload = {
-            "step":             self.step,
-            "snapshot_counter": self.snapshot_counter,
-            "healed_total":     self.healer.healed_total,
-            "dag":              self.dag,
-            "memory_store":     self.memory_store,
-            "alerts":           self.alerts,
-            "meta_history":     self.meta._history,
-        }
-        try:
-            # Atomic write: serialize to temp file then replace — prevents corruption
-            # if the process is killed mid-write (multiple surfaces read STATE_PATH)
-            tmp_path = STATE_PATH + ".tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2)
-            os.replace(tmp_path, STATE_PATH)
-            logger.info("state_saved step=%d path=%s", self.step, STATE_PATH)
-            if not silent:
-                print(f"  {GREEN}State saved → {STATE_PATH}{RESET}")
-        except Exception as exc:
-            logger.error("state_save_failed step=%d error=%s", self.step, exc)
-            print(f"  {RED}Save failed: {exc}{RESET}")
-
-    def load_state(self) -> bool:
-        """
-        Load state from disk into this instance.
-        Returns True if loaded successfully, False otherwise.
-        """
-        if not os.path.exists(STATE_PATH):
-            return False
-        # Try primary state file; on JSON corruption fall back to most recent backup
-        paths_to_try = [STATE_PATH] + [f"{STATE_PATH}.{n}" for n in (1, 2, 3)]
-        for attempt_path in paths_to_try:
-            if not os.path.exists(attempt_path):
-                continue
-            try:
-                with open(attempt_path, "r", encoding="utf-8") as f:
-                    payload = json.load(f)
-                if attempt_path != STATE_PATH:
-                    logger.warning("state_recovered from=%s", attempt_path)
-                    print(f"  {YELLOW}Primary state corrupt — recovered from {attempt_path}{RESET}")
-                self.step             = payload["step"]
-                self.snapshot_counter = payload["snapshot_counter"]
-                self.healer.healed_total = payload["healed_total"]
-                self.dag              = payload["dag"]
-                self.memory_store     = payload["memory_store"]
-                self.alerts           = payload["alerts"]
-                self.meta._history    = payload.get("meta_history", [])
-                # Rebuild MetaOptimizer rolling rates
-                if self.meta._history:
-                    window = min(10, len(self.meta._history))
-                    recent = self.meta._history[-window:]
-                    self.meta.heal_rate   = sum(r["healed"]   for r in recent) / window
-                    self.meta.verify_rate = sum(r["verified"] for r in recent) / window
-                # Rebuild ShadowAgent expected state map
-                self.shadow.update_expected(self.dag)
-                logger.info("state_loaded step=%d path=%s", self.step, attempt_path)
-                return True
-            except (json.JSONDecodeError, KeyError):
-                if attempt_path == STATE_PATH:
-                    logger.warning("state_corrupt path=%s trying_backups=True", attempt_path)
-                    print(f"  {YELLOW}State file corrupt — trying backups…{RESET}")
-                continue
-            except Exception as exc:
-                logger.error("state_load_failed path=%s error=%s", attempt_path, exc)
-                print(f"  {RED}Load failed: {exc}{RESET}")
-                return False
-        print(f"  {RED}All state files corrupt or missing — starting fresh.{RESET}")
-        return False
-
-    def _consume_json_trigger(path: str):
-        """Read, parse, and atomically delete a JSON trigger file.
-
-        Returns the parsed dict/list on success, or *None* if the file
-        doesn't exist or can't be read.
-        """
-        if not os.path.exists(path):
-            return None
-        try:
-            data = json.loads(open(path, encoding="utf-8").read())
-            os.remove(path)
-            return data
-        except Exception:
-            return None
-
-    # ── Auto-run ─────────────────────────────────────────────────────────────
-    def _cmd_auto(self, args: str) -> None:
-        """
-        auto [N] — run N steps automatically (default: until COMPLETE).
-        Speed controlled by AUTO_STEP_DELAY seconds between steps.
-        Press Ctrl+C to pause.
-        """
-        global AUTO_STEP_DELAY
-        try:
-            limit = int(args.strip()) if args.strip() else None
-        except ValueError:
-            print(f"  {YELLOW}Usage: auto [N]  (N = number of steps){RESET}")
-            return
-
-        stats = dag_stats(self.dag)
-        if stats["verified"] == stats["total"]:
-            print(f"  {GREEN}DAG already complete. Reset with 'reset' or add tasks.{RESET}")
-            time.sleep(1)
-            self.display.render(
-                self.dag, self.memory_store, self.step,
-                self.alerts, self.meta.forecast(self.dag),
-            )
-            return
-
-        ran    = 0
-        label  = f"{limit} steps" if limit else "until complete"
-        print(f"  {CYAN}Auto-run: {label}  │  delay={AUTO_STEP_DELAY}s  │  Ctrl+C to pause{RESET}")
-        time.sleep(0.6)
-
-        _trigger     = os.path.join(_HERE, "state", "run_trigger")
-        _stoptrig    = os.path.join(_HERE, "state", "stop_trigger")
-        _attrigger   = os.path.join(_HERE, "state", "add_task_trigger.json")
-        _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
-        _pbtrigger   = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
-        _dtrigger    = os.path.join(_HERE, "state", "describe_trigger.json")
-        _rntrigger   = os.path.join(_HERE, "state", "rename_trigger.json")
-        _ttrigger    = os.path.join(_HERE, "state", "tools_trigger.json")
-        _rtrigger    = os.path.join(_HERE, "state", "reset_trigger")
-        _snaptrigger = os.path.join(_HERE, "state", "snapshot_trigger")
-        _settrigger  = os.path.join(_HERE, "state", "set_trigger.json")
-        _deptrigger  = os.path.join(_HERE, "state", "depends_trigger.json")
-        _undeptrigger = os.path.join(_HERE, "state", "undepends_trigger.json")
-        _undotrigger  = os.path.join(_HERE, "state", "undo_trigger")
-        _pausetrigger = os.path.join(_HERE, "state", "pause_trigger")
-        _healtrigger  = os.path.join(_HERE, "state", "heal_trigger.json")
-        _dagimptrigger = os.path.join(_HERE, "state", "dag_import_trigger.json")
-        try:
-            while True:
-                self.run_step()
-                ran += 1
-
-                stats = dag_stats(self.dag)
-                if stats["verified"] == stats["total"]:
-                    self.save_state(silent=True)   # flush JSON before bot reads it
-                    _fire_completion(self.step, stats["verified"], stats["total"])
-                    time.sleep(1.2)
-                    break
-
-                if limit is not None and ran >= limit:
-                    break
-
-                # Honour external triggers (dashboard Run Step, Discord/Telegram verify)
-                # NOTE: check verify_trigger BEFORE breaking on run_trigger so that
-                # external verify requests aren't skipped when auto-mode is running.
-                _waited  = 0.0
-                _stopped = False
-                _vtrigger = os.path.join(_HERE, "state", "verify_trigger.json")
-                while _waited < AUTO_STEP_DELAY:
-                    if os.path.exists(_stoptrig):
-                        try:
-                            os.remove(_stoptrig)
-                        except OSError:
-                            pass
-                        _stopped = True
-                        break
-                    # Pause gate: spin while pause_trigger exists (don't advance _waited)
-                    while os.path.exists(_pausetrigger):
-                        if _waited < 0.05:  # first detection — print once
-                            print(f"  {YELLOW}Auto-run paused remotely. Waiting for resume…{RESET}", flush=True)
-                            _waited = 0.05
-                        time.sleep(0.2)
-                        # Still honour stop during pause
-                        if os.path.exists(_stoptrig):
-                            break
-                    vdata = self._consume_json_trigger(_vtrigger)
-                    if vdata:
-                        for e in (vdata if isinstance(vdata, list) else [vdata]):
-                            self._cmd_verify(
-                                f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
-                            )
-                    adata = self._consume_json_trigger(_attrigger)
-                    if adata:
-                        spec = adata.get("spec", "").strip()
-                        if spec:
-                            self._cmd_add_task(spec)
-                    abdata = self._consume_json_trigger(_abtrigger)
-                    if abdata:
-                        task_arg = abdata.get("task", "").strip()
-                        spec     = abdata.get("spec", "").strip()
-                        if task_arg and spec:
-                            self._cmd_add_branch(task_arg, spec_override=spec)
-                    pbdata = self._consume_json_trigger(_pbtrigger)
-                    if pbdata:
-                        pb_task   = pbdata.get("task", "").strip()
-                        pb_branch = pbdata.get("branch", "").strip()
-                        if pb_task and pb_branch:
-                            self._cmd_prioritize_branch(pb_task, pb_branch)
-                    ddata = self._consume_json_trigger(_dtrigger)
-                    if ddata:
-                        d_st   = ddata.get("subtask", "").strip().upper()
-                        d_desc = ddata.get("desc", "").strip()
-                        if d_st and d_desc:
-                            self._cmd_describe(f"{d_st} {d_desc}")
-                    rndata = self._consume_json_trigger(_rntrigger)
-                    if rndata:
-                        rn_st   = rndata.get("subtask", "").strip().upper()
-                        rn_desc = rndata.get("desc", "").strip()
-                        if rn_st and rn_desc:
-                            self._cmd_rename(f"{rn_st} {rn_desc}")
-                    tdata = self._consume_json_trigger(_ttrigger)
-                    if tdata:
-                        t_st    = tdata.get("subtask", "").strip().upper()
-                        t_tools = tdata.get("tools", "").strip()
-                        if t_st and t_tools:
-                            self._cmd_tools(f"{t_st} {t_tools}")
-                    sdata = self._consume_json_trigger(_settrigger)
-                    if sdata:
-                        s_key = sdata.get("key", "").strip()
-                        s_val = sdata.get("value", "").strip()
-                        if s_key and s_val:
-                            self._cmd_set(f"{s_key}={s_val}")
-                    healdata = self._consume_json_trigger(_healtrigger)
-                    if healdata:
-                        h_st = healdata.get("subtask", "").strip().upper()
-                        if h_st:
-                            self._cmd_heal(h_st)
-                    depdata = self._consume_json_trigger(_deptrigger)
-                    if depdata:
-                        dep_target = depdata.get("target", "").strip()
-                        dep_dep    = depdata.get("dep", "").strip()
-                        if dep_target and dep_dep:
-                            self._cmd_depends(f"{dep_target} {dep_dep}")
-                    if os.path.exists(_undeptrigger):
-                        try:
-                            uddata = json.loads(
-                                open(_undeptrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_undeptrigger)
-                            ud_target = uddata.get("target", "").strip()
-                            ud_dep    = uddata.get("dep", "").strip()
-                            if ud_target and ud_dep:
-                                self._cmd_undepends(f"{ud_target} {ud_dep}")
-                        except Exception:
-                            pass
-                    if os.path.exists(_rtrigger):
-                        try:
-                            os.remove(_rtrigger)
-                        except OSError:
-                            pass
-                        self._cmd_reset()
-                    if os.path.exists(_snaptrigger):
-                        try:
-                            os.remove(_snaptrigger)
-                        except OSError:
-                            pass
-                        self._take_snapshot(auto=False)
-                    if os.path.exists(_undotrigger):
-                        try:
-                            os.remove(_undotrigger)
-                        except OSError:
-                            pass
-                        self._cmd_undo()
-                    dagimpdata = self._consume_json_trigger(_dagimptrigger)
-                    if dagimpdata and isinstance(dagimpdata.get("dag"), dict):
-                        errors = validate_dag(dagimpdata["dag"])
-                        if not errors:
-                            self.save_state(silent=True)
-                            self.dag = dagimpdata["dag"]
-                            self.shadow.update_expected(self.dag)
-                            self._last_priority_step = -(DAG_UPDATE_INTERVAL + 1)
-                            src = dagimpdata.get("exported_step", "?")
-                            print(f"  {GREEN}DAG imported via trigger (exported at step {src}){RESET}")
-                            logger.info("dag_imported_via_trigger src_step=%s", src)
-                    if os.path.exists(_trigger):
-                        try:
-                            os.remove(_trigger)
-                        except OSError:
-                            pass
-                        break
-                    time.sleep(0.05)
-                    _waited += 0.05
-
-                if _stopped:
-                    print(f"\n  {YELLOW}Auto-run stopped remotely at step {self.step}.{RESET}")
-                    time.sleep(0.5)
-                    self.display.render(
-                        self.dag, self.memory_store, self.step,
-                        self.alerts, self.meta.forecast(self.dag),
-                    )
-                    break
-
-        except KeyboardInterrupt:
-            print(f"\n  {YELLOW}Auto-run paused at step {self.step}.{RESET}")
-            time.sleep(0.5)
-            self.display.render(
-                self.dag, self.memory_store, self.step,
-                self.alerts, self.meta.forecast(self.dag),
-            )
-
-    # ── Command dispatcher ───────────────────────────────────────────────────
-    def handle_command(self, raw: str) -> None:
-        raw = raw.strip()
-        cmd = raw.lower()
-
-        if cmd == "run":
-            self.run_step()
-
-        elif cmd.startswith("auto"):
-            self._cmd_auto(cmd[4:])
-
-        elif cmd == "snapshot":
-            self._take_snapshot(auto=False)
-            input(f"  {DIM}Press Enter to continue…{RESET}")
-            self.display.render(
-                self.dag, self.memory_store, self.step,
-                self.alerts, self.meta.forecast(self.dag),
-            )
-
-        elif cmd == "save":
-            self.save_state()
-            time.sleep(0.6)
-            self.display.render(
-                self.dag, self.memory_store, self.step,
-                self.alerts, self.meta.forecast(self.dag),
-            )
-
-        elif cmd == "load":
-            ok = self.load_state()
-            if ok:
-                print(f"  {GREEN}State loaded — step {self.step}, "
-                      f"{dag_stats(self.dag)['verified']} verified.{RESET}")
-                time.sleep(0.8)
-            self.display.render(
-                self.dag, self.memory_store, self.step,
-                self.alerts, self.meta.forecast(self.dag),
-            )
-
-        elif cmd.startswith("load_backup"):
-            self._cmd_load_backup(raw[12:].strip())
-
-        elif cmd == "undo":
-            self._cmd_undo()
-
-        elif cmd == "diff":
-            self._cmd_diff()
-
-        elif cmd.startswith("timeline "):
-            self._cmd_timeline(raw[9:])
-
-        elif cmd == "reset":
-            self._cmd_reset()
-
-        elif cmd == "status":
-            self._cmd_status()
-
-        elif cmd == "stats":
-            self._cmd_stats()
-
-        elif cmd == "cache":
-            self._cmd_cache()
-
-        elif cmd == "cache clear":
-            self._cmd_cache(clear=True)
-
-        elif cmd == "history":
-            self._cmd_history("")
-
-        elif cmd.startswith("history "):
-            self._cmd_history(raw[8:])
-
-        elif cmd == "add_task":
-            self._cmd_add_task()
-
-        elif cmd.startswith("add_task "):
-            self._cmd_add_task(raw[9:])
-
-        elif cmd.startswith("add_branch"):
-            _ab_parts = raw[10:].strip().split(None, 1)
-            if len(_ab_parts) >= 2:
-                self._cmd_add_branch(_ab_parts[0], spec_override=_ab_parts[1])
-            else:
-                self._cmd_add_branch(raw[10:])
-
-        elif cmd.startswith("prioritize_branch"):
-            _pb_parts = raw[17:].strip().split(None, 1)
-            self._cmd_prioritize_branch(*_pb_parts)
-
-        elif cmd == "export":
-            self._cmd_export()
-
-        elif cmd == "export_dag" or cmd.startswith("export_dag "):
-            self._cmd_export_dag(raw[10:].strip() if cmd.startswith("export_dag ") else "")
-
-        elif cmd.startswith("import_dag "):
-            self._cmd_import_dag(raw[11:])
-
-        elif cmd == "depends":
-            self._cmd_depends("")
-
-        elif cmd.startswith("depends "):
-            self._cmd_depends(raw[8:])
-
-        elif cmd.startswith("undepends "):
-            self._cmd_undepends(raw[10:])
-
-        elif cmd.startswith("describe "):
-            self._cmd_describe(raw[9:])
-
-        elif cmd.startswith("verify "):
-            self._cmd_verify(raw[7:])
-
-        elif cmd.startswith("tools "):
-            self._cmd_tools(raw[6:])
-
-        elif cmd.startswith("output "):
-            self._cmd_output(raw[7:])
-
-        elif cmd == "branches":
-            self._cmd_branches("")
-
-        elif cmd.startswith("branches "):
-            self._cmd_branches(raw[9:])
-
-        elif cmd.startswith("rename "):
-            self._cmd_rename(raw[7:])
-
-        elif cmd.startswith("search "):
-            self._cmd_search(raw[7:])
-
-        elif cmd.startswith("filter "):
-            self._cmd_filter(raw[7:])
-
-        elif cmd == "graph":
-            self._cmd_graph()
-
-        elif cmd == "log":
-            self._cmd_log("")
-
-        elif cmd.startswith("log "):
-            self._cmd_log(raw[4:])
-
-        elif cmd == "pause":
-            self._cmd_pause()
-
-        elif cmd == "resume":
-            self._cmd_resume()
-
-        elif cmd.startswith("set "):
-            self._cmd_set(raw[4:])
-
-        elif cmd == "config":
-            self._cmd_config()
-
-        elif cmd == "priority":
-            self._cmd_priority()
-
-        elif cmd == "stalled":
-            self._cmd_stalled()
-
-        elif cmd.startswith("heal "):
-            self._cmd_heal(raw[5:])
-
-        elif cmd == "agents":
-            self._cmd_agents()
-
-        elif cmd == "forecast":
-            self._cmd_forecast()
-
-        elif cmd == "tasks":
-            self._cmd_tasks()
-
-        elif cmd == "help":
-            self._cmd_help()
-
-        elif cmd == "exit":
-            self.save_state(silent=True)
-            print(f"\n{CYAN}Solo Builder shutting down. "
-                  f"Steps: {self.step}  │  Healed: {self.healer.healed_total}  "
-                  f"│  State saved.{RESET}\n")
-            self.running = False
-
-        elif cmd == "":
-            pass   # empty enter → redraw
-
-        else:
-            print(f"  {YELLOW}Unknown command '{cmd}'. "
-                  f"Type 'help' for options.{RESET}")
-            time.sleep(0.8)
-            self.display.render(
-                self.dag, self.memory_store, self.step,
-                self.alerts, self.meta.forecast(self.dag),
-            )
-
-    # ── Sub-commands ─────────────────────────────────────────────────────────
+    # ── Settings mutator ─────────────────────────────────────────────────────
+    # Kept in cli.py so that `global X; X = val` writes to this module's globals,
+    # and _persist_setting reads _CFG_PATH from this module (where tests patch it).
     def _persist_setting(self, cfg_key: str, value) -> None:
         """Silently write one key back to config/settings.json."""
+        import json as _json
         try:
             with open(_CFG_PATH, encoding="utf-8") as f:
-                cfg = json.load(f)
+                cfg = _json.load(f)
             cfg[cfg_key] = value
             with open(_CFG_PATH, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, indent=4)
+                _json.dump(cfg, f, indent=4)
         except Exception:
             pass
 
@@ -1019,53 +414,6 @@ class SoloBuilderCLI(QueryCommandsMixin, SubtaskCommandsMixin, DagCommandsMixin,
             self.alerts, self.meta.forecast(self.dag),
         )
 
-    def start(self, headless: bool = False, auto_steps: Optional[int] = None,
-              no_resume: bool = False, output_format: str = "text") -> None:
-        """Run the CLI loop.  In headless mode: skip prompts, auto-run, then exit."""
-        if not no_resume and os.path.exists(STATE_PATH):
-            try:
-                with open(STATE_PATH, "r", encoding="utf-8") as f:
-                    saved = json.load(f)
-                saved_step = saved.get("step", 0)
-                saved_v    = dag_stats(saved.get("dag", {})).get("verified", 0)
-                saved_t    = dag_stats(saved.get("dag", {})).get("total", 0)
-                print(f"  {CYAN}Saved state found: step {saved_step}, "
-                      f"{saved_v}/{saved_t} verified.{RESET}")
-                if headless:
-                    ok = self.load_state()
-                    if ok:
-                        print(f"  {GREEN}Resumed from step {self.step}.{RESET}")
-                else:
-                    ans = input(f"  {BOLD}Resume? [Y/n]:{RESET} ").strip().lower()
-                    if ans in ("", "y", "yes"):
-                        ok = self.load_state()
-                        if ok:
-                            print(f"  {GREEN}Resumed from step {self.step}.{RESET}")
-                            time.sleep(0.5)
-            except Exception:
-                pass  # corrupt save → start fresh
-
-        self.display.render(
-            self.dag, self.memory_store, self.step,
-            self.alerts, self.meta.forecast(self.dag) if self.step else "N/A",
-        )
-
-        if headless:
-            self._cmd_auto(str(auto_steps) if auto_steps is not None else "")
-            self.save_state()
-            return
-
-        while self.running:
-            try:
-                raw = input(f"\n  {BOLD}{CYAN}solo-builder >{RESET} ")
-                self.handle_command(raw)
-            except (KeyboardInterrupt, EOFError):
-                print(f"\n  {YELLOW}Interrupted — type 'exit' to quit.{RESET}")
-                self.display.render(
-                    self.dag, self.memory_store, self.step,
-                    self.alerts, self.meta.forecast(self.dag),
-                )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENTRY POINT
@@ -1081,7 +429,8 @@ def _inject_host_globals_into_mixins():
     _host_globals = vars(_s.modules[__name__])
     _skip = frozenset({'__builtins__', '__spec__', '__loader__', '__package__'})
     for _mod_name in list(_s.modules):
-        if _mod_name.endswith(('query_cmds', 'subtask_cmds', 'dag_cmds', 'settings_cmds')):
+        if _mod_name.endswith(('query_cmds', 'subtask_cmds', 'dag_cmds', 'settings_cmds',
+                               'dispatcher', 'auto_cmds', 'step_runner')):
             _target = vars(_s.modules[_mod_name])
             for _k, _v in list(_host_globals.items()):
                 if _k not in _skip and not _k.startswith('__'):
@@ -1089,24 +438,6 @@ def _inject_host_globals_into_mixins():
 
 _inject_host_globals_into_mixins()
 
-
-def _splash() -> None:
-    lines = [
-        "╔══════════════════════════════════════════════════════╗",
-        "║      SOLO BUILDER — AI AGENT CLI  v2.1               ║",
-        "║                                                       ║",
-        "║  DAG · Shadow · Self-Heal · Auto-Run · Persistence   ║",
-        "╚══════════════════════════════════════════════════════╝",
-    ]
-    print(f"\n{BOLD}{CYAN}")
-    for line in lines:
-        print(f"  {line}")
-    print(RESET)
-
-    if not _PDF_OK:
-        print(f"  {YELLOW}[!] matplotlib not found — PDF snapshots disabled.")
-        print(f"      Install with: pip install matplotlib{RESET}\n")
-    time.sleep(0.6)
 
 
 def _fire_completion(steps: int, verified: int, total: int) -> None:
@@ -1156,26 +487,6 @@ def _fire_completion(steps: int, verified: int, total: int) -> None:
     threading.Thread(target=_notify,  daemon=True).start()
 
 
-def _acquire_lock(lock_path: str) -> None:
-    """Write a PID lockfile; exit if another instance is already running."""
-    if os.path.exists(lock_path):
-        try:
-            pid = int(open(lock_path).read().strip())
-            os.kill(pid, 0)          # Raises if process doesn't exist
-            print(f"\n  Solo Builder is already running (PID {pid}).")
-            print(f"  If that process is stale, delete {lock_path} and retry.\n")
-            sys.exit(1)
-        except (ProcessLookupError, PermissionError):
-            os.remove(lock_path)     # Stale lock — clean up
-    with open(lock_path, "w") as f:
-        f.write(str(os.getpid()))
-
-
-def _release_lock(lock_path: str) -> None:
-    try:
-        os.remove(lock_path)
-    except FileNotFoundError:
-        pass
 
 
 def main() -> None:
@@ -1320,7 +631,7 @@ def main() -> None:
     _PAUSE_PATH = os.path.join(_HERE, "state", "pause_trigger")
     _HEAL_PATH  = os.path.join(_HERE, "state", "heal_trigger.json")
     os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
-    _setup_logging()
+    _setup_logging(_LOG_PATH)
     logger.info("startup version=2.1.50 headless=%s auto=%s", args.headless, args.auto)
     # Clear stale triggers from previous runs
     _DAGIMPORT_PATH = os.path.join(_HERE, "state", "dag_import_trigger.json")
@@ -1348,7 +659,7 @@ def main() -> None:
     _signal.signal(_signal.SIGTERM, _sigterm_handler)
 
     try:
-        _splash()
+        _splash(_PDF_OK)
         cli = SoloBuilderCLI()
         cli.start(
             headless=args.headless,

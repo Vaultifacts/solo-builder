@@ -1,7 +1,7 @@
 # HANDOFF TO AUDITOR (from DEV)
 
 ## Task
-TASK-106
+TASK-107
 
 ## Verdict: PASS
 
@@ -9,39 +9,36 @@ TASK-106
 - unittest-discover: PASS (325 tests, 0 failures)
 - git-status: PASS (clean working tree)
 - git-diff-stat: PASS
-- architecture-audit: 91.6/100
+- architecture-audit: 92.0/100
 
 ## Scope Check
-Files changed match allowed scope (HANDOFF_DEV.md):
-- `solo_builder/discord_bot/bot.py` — 2086 → 925 lines (-56%)
-- `solo_builder/discord_bot/bot_formatters.py` (NEW — 550 lines, 18 formatter functions)
-- `solo_builder/discord_bot/bot_slash.py` (NEW — 610 lines, 39 slash commands)
+Files changed match allowed scope:
+- `solo_builder/solo_builder_cli.py` — 1393 → ~650 lines (-53%)
+- `solo_builder/cli_utils.py` (NEW — `_setup_logging`, `_splash`, `_acquire_lock`, `_release_lock`)
+- `solo_builder/commands/dispatcher.py` (NEW — `DispatcherMixin`: `handle_command`, `start`)
+- `solo_builder/commands/auto_cmds.py` (NEW — `AutoCommandsMixin`: `_cmd_auto`)
+- `solo_builder/commands/step_runner.py` (NEW — `StepRunnerMixin`: `run_step`, `save_state`, `load_state`, `_consume_json_trigger`)
 - `claude/allowed_files.txt` (updated)
 
 No test files were modified. `test_bot.py` is unchanged.
 
 ## All Tests Pass
-- 325 total tests (305 API + 20 bot/cache): PASS
-- `from discord_bot.bot import _format_status, _load_state, _auto_task` — module-level names preserved for test patching
-- All 20+ path constants remain in bot.py module namespace (required by test patches)
+- 325 total tests: PASS (0 failures)
+- TestSetCommand (18 tests): PASS — `_persist_setting` kept in `SoloBuilderCLI` where `_CFG_PATH` is test-patched
+- TestSnapshotCommand: PASS — `_take_snapshot` kept in `SoloBuilderCLI` where `_PDF_OK` is test-patched
 
 ## Implementation Notes
 
-### Step 1 — bot_formatters.py
-- 18 functions extracted: `_has_work`, `_find_subtask_output`, and 16 `_format_*` helpers
-- `_format_log` and `_format_diff` use lazy `import discord_bot.bot as _b` inside function body to respect test patches on `JOURNAL_PATH`, `STATE_PATH`, `_load_state`
-- All 18 re-exported from bot.py via explicit `from .bot_formatters import ...` block
-- `_KEY_MAP` hoisted from inside `_handle_text_command` to module level
+### Mixin extraction pattern
+Methods moved from `SoloBuilderCLI` to mixin classes; globals injected via `_inject_host_globals_into_mixins()` using `setdefault` (copies value once at load time). Methods that read test-patched globals (`_PDF_OK`, `_CFG_PATH`, `STATE_PATH`) MUST remain in `solo_builder_cli.py`.
 
-### Step 2 — bot_slash.py
-- `register_slash_commands(bot)` wraps all 39 `@bot.tree.command` decorated functions
-- Lazy `import discord_bot.bot as _b` at function top avoids circular import
-- All references to bot.py names go through `_b.` prefix
-- `global _auto_task` replaced by `_b._auto_task = asyncio.create_task(...)`
-- Local duplicate `_KEY_MAP` in `set_cmd` replaced by `_b._KEY_MAP`
-- Called in bot.py after `bot = SoloBuilderBot()` and error handler
+### Methods kept in cli.py (not extracted)
+- `_take_snapshot`: reads `_PDF_OK` — test patches `solo_builder_cli._PDF_OK`
+- `_cmd_set`: uses `global STALL_THRESHOLD; X = val` — must write to this module's globals
+- `_persist_setting`: reads `_CFG_PATH` — test patches `solo_builder_cli._CFG_PATH`
 
-## Impact
-- `bot.py` reduced from 2086 to 925 lines (-56%)
-- Architecture auditor large-file finding for `bot.py` resolved
-- No logic changes — code moved verbatim
+### Global injection
+`_inject_host_globals_into_mixins()` updated to include `dispatcher`, `auto_cmds`, `step_runner` in the target set.
+
+### Architecture score
+Improved from 91.6 (TASK-106) → 92.0 (TASK-107) due to reduced cli.py complexity.
