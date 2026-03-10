@@ -25,7 +25,8 @@ $steps = @(
   'new_file_guard.ps1',
   'enforce_allowed_files.ps1',
   'no_dep_bump_guard.ps1',
-  'precommit_gate.ps1'
+  'precommit_gate.ps1',
+  'context_window_warn.ps1'
 )
 
 foreach ($step in $steps) {

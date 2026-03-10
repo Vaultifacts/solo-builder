@@ -185,3 +185,5 @@ tools/version_bump.py
 solo_builder/tests/test_version_bump.py
 tools/prompt_regression_check.py
 solo_builder/tests/test_prompt_regression_check.py
+tools/context_window_warn.ps1
+tools/dev_gate.ps1
