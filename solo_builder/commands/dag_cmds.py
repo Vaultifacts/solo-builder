@@ -114,6 +114,12 @@ class DagCommandsMixin:
                 "output":      "",
             }
 
+        # Propagate CLAUDE_ALLOWED_TOOLS so sdk_tool routing is reachable
+        _allowed = (CLAUDE_ALLOWED_TOOLS or "").strip()
+        if _allowed:
+            for st in subtasks.values():
+                st.setdefault("tools", _allowed)
+
         # Enforce subtask limit
         if len(subtasks) > MAX_SUBTASKS_PER_BRANCH:
             excess = list(subtasks)[MAX_SUBTASKS_PER_BRANCH:]
@@ -227,6 +233,12 @@ class DagCommandsMixin:
                 "status": "Pending", "shadow": "Pending",
                 "last_update": self.step, "description": spec, "output": "",
             }
+
+        # Propagate CLAUDE_ALLOWED_TOOLS so sdk_tool routing is reachable
+        _allowed = (CLAUDE_ALLOWED_TOOLS or "").strip()
+        if _allowed:
+            for st in subtasks.values():
+                st.setdefault("tools", _allowed)
 
         # Enforce subtask limit
         if len(subtasks) > MAX_SUBTASKS_PER_BRANCH:
