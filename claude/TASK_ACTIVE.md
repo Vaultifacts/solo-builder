@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-381
+TASK-382
 
-HealthTabLiveRunCheck — GET /health/live-summary aggregating fast in-process check results
+DashboardE2ESmoke — Flask test-client smoke tests for dashboard HTML and key API endpoints
