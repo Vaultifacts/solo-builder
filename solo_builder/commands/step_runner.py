@@ -2,6 +2,8 @@
 import os
 import json
 
+from config.loader import DAG_UPDATE_INTERVAL, MAX_ALERTS
+
 
 class StepRunnerMixin:
     """Mixin: run_step, _take_snapshot, save_state, load_state, _consume_json_trigger."""

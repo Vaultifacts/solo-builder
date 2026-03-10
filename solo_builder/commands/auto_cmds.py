@@ -3,6 +3,8 @@ import os
 import json
 import time
 
+from config.loader import BAR_WIDTH, DAG_UPDATE_INTERVAL
+
 
 class AutoCommandsMixin:
     """Mixin: _cmd_auto() auto-run loop with trigger polling."""
