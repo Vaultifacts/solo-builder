@@ -140,3 +140,6 @@ docs/CLI_REFACTOR_DESIGN.md
 tools/archive_journal.py
 solo_builder/tests/test_archive_journal.py
 solo_builder/tests/test_executor_timing.py
+solo_builder/tests/test_mutation_runner.py
+tools/run_mutation_tests.py
+pyproject.toml
