@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-352
+TASK-353
 
-release notes generator — auto-generate release notes from CHANGELOG.md (RD-010 to RD-015)
+version bump tool — semver bump with CHANGELOG.md and version file update (RD-020 to RD-025)
