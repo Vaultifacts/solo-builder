@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.29.0 — 2026-03-10  ApiHealthEndpoint — version + X-Response-Time + 5 tests (TASK-339)
+
+- **339 tasks** merged to master; **1096 tests**, all passing
+- `api/blueprints/core.py`: /health now returns `version` (from pyproject.toml) + `total_subtasks` count (OM-002) — TASK-339
+- `api/app.py`: `before_request` records `_start_time`; `after_request` adds `X-Response-Time: Nms` on every response (OM-003) — TASK-339
+- `api/test_app.py` + `tests/test_api_integration.py`: 5 new tests — version, total_subtasks, X-Response-Time presence/format — TASK-339
+
+---
+
 ## v5.28.0 — 2026-03-10  HitlTriggerConfig — hitl_policy.py + settings.json + 19 tests (TASK-338)
 
 - **338 tasks** merged to master; **466 tests**, all passing
