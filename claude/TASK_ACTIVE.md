@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-332
+TASK-333
 
-ContextWindowMonitor — tools/context_window_check.py script checking CLAUDE.md + MEMORY.md line counts with configurable thresholds (AI-008)
+ExecutorStepTimingLog — log step elapsed_ms in execute_step via structured logger (OM-042)
