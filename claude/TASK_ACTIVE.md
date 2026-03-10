@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-361
+TASK-362
 
-Wire dep_severity_check into pre_release_check as REQUIRED gate + auto-generate requirements-lock.txt (SE-012, SE-015)
+Wire HitlPolicy + hitl_gate.py into executor.py dispatch as hard gate (Phase 3 of HITL design)
