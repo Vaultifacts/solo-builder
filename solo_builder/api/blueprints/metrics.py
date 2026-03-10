@@ -206,17 +206,49 @@ def metrics():
     })
 
 
+def _percentile(sorted_values: list[float], pct: float) -> float:
+    """Return the *pct*-th percentile of a pre-sorted list (0 < pct <= 1)."""
+    if not sorted_values:
+        return 0.0
+    idx = max(0, int(len(sorted_values) * pct) - 1)
+    return round(sorted_values[idx], 4)
+
+
+def _latency_buckets(sorted_values: list[float]) -> dict[str, int]:
+    """Count values into five latency bands (PE-001 to PE-005)."""
+    buckets: dict[str, int] = {
+        "lt_1s": 0, "1s_5s": 0, "5s_10s": 0, "10s_30s": 0, "gt_30s": 0,
+    }
+    for v in sorted_values:
+        if v < 1:
+            buckets["lt_1s"] += 1
+        elif v < 5:
+            buckets["1s_5s"] += 1
+        elif v < 10:
+            buckets["5s_10s"] += 1
+        elif v < 30:
+            buckets["10s_30s"] += 1
+        else:
+            buckets["gt_30s"] += 1
+    return buckets
+
+
 @metrics_bp.get("/metrics/summary")
 def metrics_summary():
-    """Return executor step metrics summary from metrics.jsonl (TASK-323).
+    """Return executor step metrics summary from metrics.jsonl (TASK-323, TASK-344).
 
     Fields returned:
-      record_count    — total JSONL records in the file
-      avg_elapsed_s   — mean step elapsed time in seconds
-      p95_elapsed_s   — 95th-percentile step elapsed time
+      record_count     — total JSONL records in the file
+      avg_elapsed_s    — mean step elapsed time in seconds
+      min_elapsed_s    — minimum step elapsed time
+      p50_elapsed_s    — median step elapsed time (PE-001)
+      p95_elapsed_s    — 95th-percentile step elapsed time
+      p99_elapsed_s    — 99th-percentile step elapsed time (PE-002 to PE-005)
+      max_elapsed_s    — maximum step elapsed time
+      latency_buckets  — count of steps in each latency band
       sdk_success_rate — overall SDK success rate (0.0–1.0 or null if no dispatches)
-      total_started   — total subtasks started across all recorded steps
-      total_verified  — total subtasks verified across all recorded steps
+      total_started    — total subtasks started across all recorded steps
+      total_verified   — total subtasks verified across all recorded steps
     """
     records = []
     try:
@@ -230,19 +262,22 @@ def metrics_summary():
 
     if not records:
         return jsonify({
-            "record_count": 0,
-            "avg_elapsed_s": None,
-            "p95_elapsed_s": None,
+            "record_count":    0,
+            "avg_elapsed_s":   None,
+            "min_elapsed_s":   None,
+            "p50_elapsed_s":   None,
+            "p95_elapsed_s":   None,
+            "p99_elapsed_s":   None,
+            "max_elapsed_s":   None,
+            "latency_buckets": None,
             "sdk_success_rate": None,
-            "total_started": 0,
-            "total_verified": 0,
+            "total_started":   0,
+            "total_verified":  0,
         })
 
     elapsed = sorted(r.get("elapsed_s", 0.0) for r in records)
     n = len(elapsed)
     avg_elapsed = round(sum(elapsed) / n, 4)
-    p95_idx = max(0, int(n * 0.95) - 1)
-    p95_elapsed = round(elapsed[p95_idx], 4)
 
     total_dispatched = sum(r.get("sdk_dispatched", 0) for r in records)
     total_succeeded  = sum(r.get("sdk_succeeded",  0) for r in records)
@@ -254,7 +289,12 @@ def metrics_summary():
     return jsonify({
         "record_count":    n,
         "avg_elapsed_s":   avg_elapsed,
-        "p95_elapsed_s":   p95_elapsed,
+        "min_elapsed_s":   round(elapsed[0], 4),
+        "p50_elapsed_s":   _percentile(elapsed, 0.50),
+        "p95_elapsed_s":   _percentile(elapsed, 0.95),
+        "p99_elapsed_s":   _percentile(elapsed, 0.99),
+        "max_elapsed_s":   round(elapsed[-1], 4),
+        "latency_buckets": _latency_buckets(elapsed),
         "sdk_success_rate": sdk_rate,
         "total_started":   total_started,
         "total_verified":  total_verified,

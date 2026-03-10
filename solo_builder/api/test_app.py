@@ -5140,6 +5140,137 @@ class TestApiRateLimiter(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TASK-344: PerformanceLatencyMetrics — p50/p95/p99 + latency buckets
+# ---------------------------------------------------------------------------
+
+class TestMetricsSummaryLatency(_Base):
+    """TASK-344: /metrics/summary now includes p50, p99, min, max, latency_buckets."""
+
+    def _write_jsonl(self, records: list[dict]) -> None:
+        import json as _json
+        from solo_builder.api.constants import METRICS_JSONL_PATH
+        METRICS_JSONL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        METRICS_JSONL_PATH.write_text(
+            "\n".join(_json.dumps(r) for r in records) + "\n",
+            encoding="utf-8",
+        )
+
+    def _clear_jsonl(self) -> None:
+        from solo_builder.api.constants import METRICS_JSONL_PATH
+        if METRICS_JSONL_PATH.exists():
+            METRICS_JSONL_PATH.write_text("", encoding="utf-8")
+
+    def setUp(self):
+        super().setUp()
+        self._write_state(self._make_state())
+        self._clear_jsonl()
+
+    def tearDown(self):
+        self._clear_jsonl()
+        super().tearDown()
+
+    def test_empty_file_returns_nulls(self):
+        d = self.client.get("/metrics/summary").get_json()
+        for key in ("p50_elapsed_s", "p95_elapsed_s", "p99_elapsed_s",
+                    "min_elapsed_s", "max_elapsed_s", "latency_buckets"):
+            self.assertIn(key, d)
+            self.assertIsNone(d[key])
+
+    def test_p50_present_with_data(self):
+        self._write_jsonl([
+            {"elapsed_s": 2.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 4.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 6.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+        ])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertIsNotNone(d["p50_elapsed_s"])
+
+    def test_p99_present_with_data(self):
+        self._write_jsonl([{"elapsed_s": float(i), "sdk_dispatched": 1, "sdk_succeeded": 1}
+                           for i in range(1, 11)])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertIsNotNone(d["p99_elapsed_s"])
+
+    def test_p95_gte_p50(self):
+        self._write_jsonl([{"elapsed_s": float(i), "sdk_dispatched": 1, "sdk_succeeded": 1}
+                           for i in range(1, 11)])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertGreaterEqual(d["p95_elapsed_s"], d["p50_elapsed_s"])
+
+    def test_p99_gte_p95(self):
+        self._write_jsonl([{"elapsed_s": float(i), "sdk_dispatched": 1, "sdk_succeeded": 1}
+                           for i in range(1, 21)])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertGreaterEqual(d["p99_elapsed_s"], d["p95_elapsed_s"])
+
+    def test_min_lte_max(self):
+        self._write_jsonl([
+            {"elapsed_s": 1.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 9.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+        ])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertLessEqual(d["min_elapsed_s"], d["max_elapsed_s"])
+
+    def test_min_equals_smallest_value(self):
+        self._write_jsonl([
+            {"elapsed_s": 3.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 1.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 5.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+        ])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertEqual(d["min_elapsed_s"], 1.0)
+
+    def test_max_equals_largest_value(self):
+        self._write_jsonl([
+            {"elapsed_s": 3.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 1.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+            {"elapsed_s": 5.0, "sdk_dispatched": 1, "sdk_succeeded": 1},
+        ])
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertEqual(d["max_elapsed_s"], 5.0)
+
+    def test_latency_buckets_keys(self):
+        self._write_jsonl([{"elapsed_s": 2.0, "sdk_dispatched": 1, "sdk_succeeded": 1}])
+        d = self.client.get("/metrics/summary").get_json()
+        buckets = d["latency_buckets"]
+        self.assertIsInstance(buckets, dict)
+        for key in ("lt_1s", "1s_5s", "5s_10s", "10s_30s", "gt_30s"):
+            self.assertIn(key, buckets)
+
+    def test_latency_bucket_counts_correct(self):
+        self._write_jsonl([
+            {"elapsed_s": 0.5,  "sdk_dispatched": 1, "sdk_succeeded": 1},  # lt_1s
+            {"elapsed_s": 2.0,  "sdk_dispatched": 1, "sdk_succeeded": 1},  # 1s_5s
+            {"elapsed_s": 7.0,  "sdk_dispatched": 1, "sdk_succeeded": 1},  # 5s_10s
+            {"elapsed_s": 20.0, "sdk_dispatched": 1, "sdk_succeeded": 1},  # 10s_30s
+            {"elapsed_s": 45.0, "sdk_dispatched": 1, "sdk_succeeded": 1},  # gt_30s
+        ])
+        d = self.client.get("/metrics/summary").get_json()
+        buckets = d["latency_buckets"]
+        self.assertEqual(buckets["lt_1s"],   1)
+        self.assertEqual(buckets["1s_5s"],   1)
+        self.assertEqual(buckets["5s_10s"],  1)
+        self.assertEqual(buckets["10s_30s"], 1)
+        self.assertEqual(buckets["gt_30s"],  1)
+
+    def test_latency_bucket_sum_equals_record_count(self):
+        records = [{"elapsed_s": float(i), "sdk_dispatched": 1, "sdk_succeeded": 1}
+                   for i in range(1, 11)]
+        self._write_jsonl(records)
+        d = self.client.get("/metrics/summary").get_json()
+        buckets = d["latency_buckets"]
+        self.assertEqual(sum(buckets.values()), d["record_count"])
+
+    def test_existing_fields_still_present(self):
+        """Backwards compatibility — no existing fields removed."""
+        self._write_jsonl([{"elapsed_s": 1.0, "sdk_dispatched": 2, "sdk_succeeded": 2}])
+        d = self.client.get("/metrics/summary").get_json()
+        for key in ("record_count", "avg_elapsed_s", "p95_elapsed_s",
+                    "sdk_success_rate", "total_started", "total_verified"):
+            self.assertIn(key, d)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
