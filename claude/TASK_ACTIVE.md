@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-378
+TASK-379
 
-CIQualityGateDashboardWidget — GET /health/ci-quality endpoint + Health tab widget
+PreReleaseDashboardWidget — GET /health/pre-release endpoint + Health tab widget
