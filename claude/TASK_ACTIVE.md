@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-341
+TASK-342
 
-AIActionScopeEnforcement: tool allowlist per task type (AI-033)
+ThreatModelDocument: baseline threat model (SE-001 to SE-006)

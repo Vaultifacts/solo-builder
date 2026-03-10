@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.32.0 — 2026-03-10  ThreatModelDocument — updated model + validator + 21 tests (TASK-342)
+
+- **342 tasks** merged to master; **1185 tests**, all passing
+- `docs/THREAT_MODEL.md`: updated T-003 mitigations to reflect HitlPolicy (TASK-338) + ToolScopePolicy (TASK-341); residual risk lowered from Medium to Low-Medium; changelog entry added (SE-001 to SE-006) — TASK-342
+- `tools/threat_model_check.py`: validates THREAT_MODEL.md has correct gap IDs (SE-001–SE-006), date, required control references (secret_scan, hitl, HitlPolicy, ToolScopePolicy), and threat sections; `--json` and `--quiet` flags; exits 0=pass, 1=fail — TASK-342
+- `tests/test_threat_model_check.py`: 21 tests — file existence, gap IDs, date, controls, JSON/text/quiet output, main(), live document passes — TASK-342
+
+---
+
 ## v5.31.0 — 2026-03-10  AIActionScopeEnforcement — tool allowlist per task type + 38 tests (TASK-341)
 
 - **341 tasks** merged to master; **1164 tests**, all passing
