@@ -7,6 +7,7 @@ import time as _time
 from flask import Blueprint, jsonify, request, Response
 
 from ..helpers import _load_state
+from ..constants import METRICS_JSONL_PATH
 
 metrics_bp = Blueprint("metrics", __name__)
 
@@ -202,6 +203,61 @@ def metrics():
             "steps_with_heals":       steps_with_heals,
         },
         "history": history,
+    })
+
+
+@metrics_bp.get("/metrics/summary")
+def metrics_summary():
+    """Return executor step metrics summary from metrics.jsonl (TASK-323).
+
+    Fields returned:
+      record_count    — total JSONL records in the file
+      avg_elapsed_s   — mean step elapsed time in seconds
+      p95_elapsed_s   — 95th-percentile step elapsed time
+      sdk_success_rate — overall SDK success rate (0.0–1.0 or null if no dispatches)
+      total_started   — total subtasks started across all recorded steps
+      total_verified  — total subtasks verified across all recorded steps
+    """
+    records = []
+    try:
+        with open(METRICS_JSONL_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+    except FileNotFoundError:
+        records = []
+
+    if not records:
+        return jsonify({
+            "record_count": 0,
+            "avg_elapsed_s": None,
+            "p95_elapsed_s": None,
+            "sdk_success_rate": None,
+            "total_started": 0,
+            "total_verified": 0,
+        })
+
+    elapsed = sorted(r.get("elapsed_s", 0.0) for r in records)
+    n = len(elapsed)
+    avg_elapsed = round(sum(elapsed) / n, 4)
+    p95_idx = max(0, int(n * 0.95) - 1)
+    p95_elapsed = round(elapsed[p95_idx], 4)
+
+    total_dispatched = sum(r.get("sdk_dispatched", 0) for r in records)
+    total_succeeded  = sum(r.get("sdk_succeeded",  0) for r in records)
+    sdk_rate = round(total_succeeded / total_dispatched, 4) if total_dispatched else None
+
+    total_started  = sum(r.get("started",  0) for r in records)
+    total_verified = sum(r.get("verified", 0) for r in records)
+
+    return jsonify({
+        "record_count":    n,
+        "avg_elapsed_s":   avg_elapsed,
+        "p95_elapsed_s":   p95_elapsed,
+        "sdk_success_rate": sdk_rate,
+        "total_started":   total_started,
+        "total_verified":  total_verified,
     })
 
 

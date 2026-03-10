@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.12.0 — 2026-03-10  CLI refactor analysis + security header integration tests (TASK-323)
+
+- **323 tasks** merged to master; **208 tests**, all passing
+- `docs/CLI_REFACTOR_DESIGN.md`: corrected Phase 1 analysis — 6 of 8 "read-only" constants are mutable via `do_set` (`STALL_THRESHOLD`, `SNAPSHOT_INTERVAL`, `VERBOSITY`, `AUTO_STEP_DELAY`, `AUTO_SAVE_INTERVAL`, `CLAUDE_ALLOWED_TOOLS`); 13 truly read-only constants identified; Phase 1 demoted to low-priority — TASK-323
+- `solo_builder/api/test_app.py`: +5 Flask test-client integration tests (`TestSecurityHeadersIntegration`) asserting all security headers arrive end-to-end through the real `@after_request` hook, including HSTS — TD-TEST-003 resolved — TASK-323
+- `docs/TECH_DEBT_REGISTER.md`: TD-SEC-003 (HSTS) and TD-TEST-003 (header integration tests) added and resolved — TASK-323
+
+---
+
 ## v5.11.0 — 2026-03-10  Middleware extraction + CLI refactor design spike (TASK-322)
 
 - **322 tasks** merged to master; **203 tests**, all passing

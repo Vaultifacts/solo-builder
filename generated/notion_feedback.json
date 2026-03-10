@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-10T03:57:18.212472+00:00",
+  "generated_at": "2026-03-10T04:17:31.288424+00:00",
   "layer1_completion": {
     "complete": 8,
     "total": 8,
@@ -49,10 +49,10 @@
       "raw_text": "TechnicalDebtRegister \u2014 make debt visible and manageable (ME-003)"
     },
     {
-      "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py",
-      "checked": false,
-      "audit_refs": "TD-ARCH-001",
-      "raw_text": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py (TD-ARCH-001)"
+      "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py (TD-ARCH-001) \u2014 design spike complete; Phase 1 deferred",
+      "checked": true,
+      "audit_refs": "",
+      "raw_text": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py (TD-ARCH-001) \u2014 design spike complete; Phase 1 deferred"
     },
     {
       "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
@@ -62,7 +62,7 @@
     },
     {
       "title": "SecurityHeadersMiddleware \u2014 add Flask security headers (X-Frame-Options, CSP, HSTS) to API",
-      "checked": false,
+      "checked": true,
       "audit_refs": "SE-021, SE-025",
       "raw_text": "SecurityHeadersMiddleware \u2014 add Flask security headers (X-Frame-Options, CSP, HSTS) to API (SE-021, SE-025)"
     },
@@ -74,9 +74,39 @@
     },
     {
       "title": "ApiRateLimiting \u2014 protect API endpoints from abuse with per-IP rate limiting",
-      "checked": false,
+      "checked": true,
       "audit_refs": "SE-022, SE-023",
       "raw_text": "ApiRateLimiting \u2014 protect API endpoints from abuse with per-IP rate limiting (SE-022, SE-023)"
+    },
+    {
+      "title": "StructuredLogFormatter \u2014 configure Python logging with JSON formatter for machine-readable log output",
+      "checked": false,
+      "audit_refs": "OM-011 to OM-020",
+      "raw_text": "StructuredLogFormatter \u2014 configure Python logging with JSON formatter for machine-readable log output (OM-011 to OM-020)"
+    },
+    {
+      "title": "TestDataFactory \u2014 centralise test state builders (_make_state, _make_multi_task_state) into a shared fixture module",
+      "checked": false,
+      "audit_refs": "TD-TEST-003",
+      "raw_text": "TestDataFactory \u2014 centralise test state builders (_make_state, _make_multi_task_state) into a shared fixture module (TD-TEST-003)"
+    },
+    {
+      "title": "ApiInputValidation \u2014 add request body schema validation to POST endpoints",
+      "checked": false,
+      "audit_refs": "SE-030 to SE-035",
+      "raw_text": "ApiInputValidation \u2014 add request body schema validation to POST endpoints (SE-030 to SE-035)"
+    },
+    {
+      "title": "DependencyAuditCheck \u2014 add pip-audit / safety scan step to CI workflow",
+      "checked": false,
+      "audit_refs": "TD-SEC-002 follow-up",
+      "raw_text": "DependencyAuditCheck \u2014 add pip-audit / safety scan step to CI workflow (TD-SEC-002 follow-up)"
+    },
+    {
+      "title": "MetricsDashboardEndpoint \u2014 expose GET /metrics/summary returning step latency and SDK success rate from metrics.jsonl",
+      "checked": false,
+      "audit_refs": "OM-021 to OM-030",
+      "raw_text": "MetricsDashboardEndpoint \u2014 expose GET /metrics/summary returning step latency and SDK success rate from metrics.jsonl (OM-021 to OM-030)"
     }
   ],
   "risks": [
@@ -256,6 +286,6 @@
       "Observability & Monitoring",
       "Security Engineering"
     ],
-    "open_priorities": 3
+    "open_priorities": 5
   }
 }
