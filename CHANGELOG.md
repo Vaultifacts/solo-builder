@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.34.0 — 2026-03-10  PerformanceLatencyMetrics — p50/p99/min/max/buckets + 29 tests (TASK-344)
+
+- **344 tasks** merged to master; **1235 tests**, all passing
+- `api/blueprints/metrics.py`: `/metrics/summary` now returns `p50_elapsed_s`, `p99_elapsed_s`, `min_elapsed_s`, `max_elapsed_s`, and `latency_buckets` (5 bands: lt_1s, 1s-5s, 5s-10s, 10s-30s, gt_30s); `_percentile()` and `_latency_buckets()` helpers extracted (PE-001 to PE-005) — TASK-344
+- `tests/test_latency_helpers.py`: 17 unit tests for `_percentile` (boundaries, ordering, rounding) and `_latency_buckets` (5 bands, boundary edges, sum invariant) — TASK-344
+- `api/test_app.py` `TestMetricsSummaryLatency`: 12 integration tests — null on empty, p50/p99 present, ordering (p95≥p50, p99≥p95), min≤max, bucket keys/counts/sum, backwards compat — TASK-344
+
+---
+
 ## v5.33.0 — 2026-03-10  CiQualityGate — 6-tool quality runner + 21 tests (TASK-343)
 
 - **343 tasks** merged to master; **1206 tests**, all passing
