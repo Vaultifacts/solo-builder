@@ -181,3 +181,5 @@ tools/lint_check.py
 solo_builder/tests/test_lint_check.py
 tools/release_notes_gen.py
 solo_builder/tests/test_release_notes_gen.py
+tools/version_bump.py
+solo_builder/tests/test_version_bump.py

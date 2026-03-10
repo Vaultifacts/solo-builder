@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.43.0 — 2026-03-10  VersionBump — semver bump tool + 37 tests (TASK-353)
+
+- **353 tasks** merged to master; **1514 tests**, all passing
+- `tools/version_bump.py`: `SemVer` frozen dataclass (parse/bump/str); `_read_current_version()` reads from VERSION.txt or falls back to CHANGELOG.md; `--write` flag updates VERSION.txt + prepends new CHANGELOG header; `--current`, `--dry-run`, `--json`, `--quiet`, `--title` flags; exits 0=success, 1=error, 2=usage (RD-020 to RD-025) — TASK-353
+- `tests/test_version_bump.py`: 37 tests — `SemVer` (parse/bump-all-types/resets/immutable/invalid), `_read_current_version` (version-file/changelog-fallback/missing/precedence), `_compute_next` (all types), write helpers (version-file/changelog-prepend), `run()` (dry-run/write/current/json/quiet/exit-codes), `main()` flags — TASK-353
+
+---
+
 ## v5.42.0 — 2026-03-10  ReleaseNotesGen — CHANGELOG parser + release notes generator + 32 tests (TASK-352)
 
 - **352 tasks** merged to master; **1477 tests**, all passing
