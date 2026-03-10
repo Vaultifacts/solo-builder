@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-326
+TASK-327
 
-StructuredLogFormatter — JSON formatter for machine-readable log output (OM-011)
+ApiInputValidation — centralized request body schema validation for POST endpoints (SE-030)
