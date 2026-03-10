@@ -124,3 +124,5 @@ solo_builder/runners/hitl_gate.py
 solo_builder/metrics.jsonl
 solo_builder/tests/test_hitl_gate.py
 solo_builder/api/middleware.py
+solo_builder/utils/log_formatter.py
+solo_builder/tests/test_log_formatter.py
