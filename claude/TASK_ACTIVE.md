@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-345
+TASK-346
 
-OpenApiSpec: generate OpenAPI 3.0 spec from Flask routes (DK-005, DK-006)
+DiscordBotRoleGuard: role-based access for destructive slash commands (SE-030)

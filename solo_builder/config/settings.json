@@ -23,5 +23,7 @@
     "HITL_PAUSE_TOOLS": "Bash,Write,Edit",
     "HITL_NOTIFY_TOOLS": "WebFetch,WebSearch",
     "HITL_BLOCK_KEYWORDS": "force-push,branch -D,reset --hard",
-    "HITL_PAUSE_KEYWORDS": "delete,drop,purge,rm -rf,truncate,wipe,overwrite,format"
+    "HITL_PAUSE_KEYWORDS": "delete,drop,purge,rm -rf,truncate,wipe,overwrite,format",
+    "DISCORD_ADMIN_ROLE_ID": "",
+    "DISCORD_DESTRUCTIVE_COMMANDS": "reset,heal,undo,add_task,add_branch,prioritize_branch,depends,undepends"
 }

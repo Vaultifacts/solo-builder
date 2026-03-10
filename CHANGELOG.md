@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.36.0 — 2026-03-10  DiscordBotRoleGuard — role-based access for destructive commands + 24 tests (TASK-346)
+
+- **346 tasks** merged to master; **1289 tests**, all passing
+- `utils/discord_role_guard.py`: `RoleConfig` + `check_admin_role()` + `load_role_config()`; reads `DISCORD_ADMIN_ROLE_ID` + `DISCORD_DESTRUCTIVE_COMMANDS` from settings.json; guild owner always allowed; open mode when role ID unset (SE-030) — TASK-346
+- `config/settings.json`: added `DISCORD_ADMIN_ROLE_ID` (empty = open) and `DISCORD_DESTRUCTIVE_COMMANDS` (8 command names) — TASK-346
+- `tests/test_discord_role_guard.py`: 24 tests — csv parsing, RoleConfig validate/to_dict/immutable, load_role_config (missing/valid/empty/invalid), check_admin_role (open mode, non-destructive, with/without role, guild owner, no user, multiple roles, deny messages) — TASK-346
+
+---
+
 ## v5.35.0 — 2026-03-10  OpenApiSpec — generate_openapi.py + 30 tests (TASK-345)
 
 - **345 tasks** merged to master; **1265 tests**, all passing
