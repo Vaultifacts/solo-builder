@@ -107,9 +107,9 @@ When session context reaches 85%+:
 
 ---
 
-## Automated Monitoring (future)
+## Automated Monitoring (complete)
 
-The following monitoring improvements are tracked but not yet implemented:
+All monitoring improvements are now implemented:
 
 | Gap ID | Description | Status |
 |---|---|---|
@@ -128,7 +128,7 @@ The following monitoring improvements are tracked but not yet implemented:
 |---|---|---|
 | AI-008 to AI-013 (strategy) | No context window management strategy | **Resolved by TASK-316** |
 
-The strategy is defined. Automated enforcement tools are follow-on tasks.
+The strategy is defined. All automated enforcement tools are implemented (AI-008 through AI-013).
 
 ---
 
