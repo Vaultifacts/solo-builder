@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-339
+TASK-340
 
-ApiHealthEndpoint — GET /health endpoint returning version + uptime + test counts (OM-001, OM-002)
+PreReleaseCheck — tools/pre_release_check.py runs all verification gates and generates release checklist (RD-001, RD-002)
