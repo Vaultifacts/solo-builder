@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.52.0 — 2026-03-10  HitlGateWiring — HitlPolicy config-driven gate wired into executor + 14 tests (TASK-362)
+
+- **362 tasks** merged to master; **1792 tests**, all passing
+- `runners/executor.py`: imported `load_policy` + `evaluate_with_policy` from `utils.hitl_policy`; `Executor.__init__` loads `HitlPolicy` once as `self._hitl_policy`; HITL level now computed as `max(_hitl_evaluate(...), evaluate_with_policy(self._hitl_policy, ...))` — most conservative gate wins (AI-026, AI-032) — TASK-362
+- `tests/test_hitl_gate_wiring.py`: 14 tests — policy loaded at init (attribute/isinstance/nonempty), policy block (keyword keeps Running/block > gate-level-0), policy pause (tool/keyword keeps Running without TTY), policy notify (warning logged for level-1), max-level merge (gate-block wins/policy-block wins/equal levels pause), no-tools path (bypasses HITL → dice-roll Verified), integration (evaluate_with_policy called/receives HitlPolicy instance) — TASK-362
+
+---
+
 ## v5.51.0 — 2026-03-10  DepAuditGate — dep-audit REQUIRED in pre_release + lock_file_gen.py + 33 tests (TASK-361)
 
 - **361 tasks** merged to master; **2163 tests**, all passing
