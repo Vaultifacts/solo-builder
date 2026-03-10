@@ -118,6 +118,13 @@ def _builtin_gates() -> list[dict]:
             "required": False,
             "timeout_sec": 30,
         },
+        {
+            "name":     "prompt-regression",
+            "command":  f'"{_PYTHON}" tools/prompt_regression_check.py --quiet',
+            "required": True,
+            "timeout_sec": 30,
+            "notes":    "Validates all PromptTemplate entries against regression checklist (AI-002, AI-003).",
+        },
     ]
 
 
