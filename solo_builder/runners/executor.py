@@ -17,6 +17,7 @@ from .anthropic_runner import AnthropicRunner
 from .sdk_tool_runner import SdkToolRunner, validate_tools as _validate_tools
 from .hitl_gate import evaluate as _hitl_evaluate, level_name as _hitl_level_name
 from utils.hitl_policy import load_policy as _load_hitl_policy, evaluate_with_policy as _hitl_policy_evaluate
+from utils.tool_scope_policy import load_scope_policy as _load_scope_policy, evaluate_scope as _scope_evaluate
 
 # ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
 _SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -75,6 +76,7 @@ class Executor:
         self._project_context = project_context
         self._append_journal  = append_journal or (lambda *a, **kw: None)
         self._hitl_policy     = _load_hitl_policy()
+        self._scope_policy    = _load_scope_policy()
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
         # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
         _cache = make_cache()
@@ -149,6 +151,7 @@ class Executor:
             elif status == "Running":
                 st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
+                action_type = st_data.get("action_type", "").strip()
 
                 # ── Tool validation + HITL gate ────────────────────────────
                 if st_tools:
@@ -179,6 +182,18 @@ class Executor:
                         logger.warning("hitl_%s step=%d task=%s subtask=%s tools=%s",
                                        _hitl_level_name(_hl).lower(), step,
                                        task_name, st_name, st_tools)
+
+                    # ── Tool-scope gate ────────────────────────────────────
+                    _at = action_type or self._scope_policy.default_action_type
+                    _tool_list = [t.strip() for t in st_tools.split(",") if t.strip()]
+                    _sr = _scope_evaluate(self._scope_policy, _at, _tool_list)
+                    if not _sr.allowed:
+                        logger.warning(
+                            "scope_denied step=%d task=%s subtask=%s "
+                            "action_type=%s denied=%s",
+                            step, task_name, st_name, _at, _sr.denied,
+                        )
+                        continue  # subtask stays Running; action_type must be fixed
 
                 if _use_local and self.claude.available:
                     # Local CLI mode: bypass API runners entirely.

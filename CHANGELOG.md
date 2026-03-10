@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.55.0 — 2026-03-10  AIActionScopeEnforcement — ToolScopePolicy wired into executor as hard gate + 16 tests (TASK-365)
+
+- **365 tasks** merged to master; **1865 tests**, all passing
+- `runners/executor.py`: imported `load_scope_policy` + `evaluate_scope` from `utils.tool_scope_policy`; `Executor.__init__` loads `ToolScopePolicy` once as `self._scope_policy`; `action_type` read from subtask data; scope evaluated after HITL gate — denied tools log `scope_denied` warning and keep subtask Running (AI-033) — TASK-365
+- `tests/test_tool_scope_wiring.py`: 16 tests — policy loaded at init (attribute/isinstance/allowlists/default-type), scope denied (tool keeps Running/scope_denied warning/action_type in log), scope allowed (no scope_denied), action_type from subtask data (read_from_subtask/default-when-none), evaluate_scope integration (called/receives policy/not called without tools), multi-tool scope (all-must-be-allowed/all-allowed-passes) — TASK-365
+
+---
+
 ## v5.54.0 — 2026-03-10  PromptRegressionTests — 41 regression tests pinning PromptTemplate outputs (TASK-364)
 
 - **364 tasks** merged to master; **1849 tests**, all passing

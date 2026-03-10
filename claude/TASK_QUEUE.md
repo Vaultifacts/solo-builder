@@ -2404,3 +2404,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-365
+Goal: AIActionScopeEnforcement: Wire ToolScopePolicy into executor.py to enforce per-action-type tool allowlists at dispatch time (AI-033)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

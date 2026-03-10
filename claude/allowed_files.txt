@@ -205,3 +205,4 @@ tools/lock_file_gen.py
 solo_builder/tests/test_lock_file_gen.py
 solo_builder/tests/test_hitl_gate_wiring.py
 solo_builder/tests/test_prompt_regression.py
+solo_builder/tests/test_tool_scope_wiring.py
