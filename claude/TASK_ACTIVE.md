@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-333
+TASK-334
 
-ExecutorStepTimingLog — log step elapsed_ms in execute_step via structured logger (OM-042)
+MutationTestingSetup — add mutmut config + baseline mutation score run on solo_builder core modules (QA-035)
