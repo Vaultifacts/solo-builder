@@ -79,6 +79,20 @@ _ROUTES: list[dict] = [
     {"path": "/cache/clear",    "method": "POST",   "tag": "Cache",      "summary": "Clear the priority cache"},
     # Webhook
     {"path": "/webhook/test",   "method": "POST",   "tag": "Webhook",    "summary": "Test Discord webhook"},
+    # Health (detailed checks)
+    {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts"},
+    {"path": "/health/gates",            "method": "GET", "tag": "Health", "summary": "Executor gate inventory (schema + policies)"},
+    {"path": "/health/context-window",   "method": "GET", "tag": "Health", "summary": "Context window line-count check (CLAUDE.md / MEMORY.md / JOURNAL.md)"},
+    {"path": "/health/threat-model",     "method": "GET", "tag": "Health", "summary": "Threat model freshness check (SE-001 to SE-006)"},
+    {"path": "/health/slo",              "method": "GET", "tag": "Health", "summary": "SLO status: SLO-003 success rate + SLO-005 latency median"},
+    {"path": "/health/prompt-regression","method": "GET", "tag": "Health", "summary": "Prompt template regression check (AI-002, AI-003)"},
+    {"path": "/health/debt-scan",        "method": "GET", "tag": "Health", "summary": "Code debt scan: TODO/FIXME/HACK/XXX markers (capped at 20)"},
+    {"path": "/health/ci-quality",       "method": "GET", "tag": "Health", "summary": "CI quality gate tool inventory (6 configured tools)"},
+    {"path": "/health/pre-release",      "method": "GET", "tag": "Health", "summary": "Pre-release gate inventory (builtin + VERIFY.json gates)"},
+    {"path": "/health/live-summary",     "method": "GET", "tag": "Health", "summary": "Live in-process health summary (threat-model + context-window + slo)"},
+    # Policy
+    {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json"},
+    {"path": "/policy/scope",            "method": "GET", "tag": "Policy", "summary": "Tool scope policy rules from settings.json"},
 ]
 
 

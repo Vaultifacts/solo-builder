@@ -232,3 +232,4 @@ solo_builder/tests/test_health_tab_grid.py
 solo_builder/api/blueprints/live_summary.py
 solo_builder/tests/test_live_summary_dashboard_widget.py
 solo_builder/tests/test_dashboard_e2e_smoke.py
+solo_builder/tests/test_openapi_health_routes.py
