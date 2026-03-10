@@ -1,0 +1,38 @@
+#!/bin/sh
+# post-commit — sync repo metrics to Notion after every commit.
+#
+# Safe to run repeatedly: notion_sync.py only PATCHes specific blocks,
+# never rewrites or duplicates pages.
+#
+# Silently skips if:
+#   • NOTION_INTEGRATION_TOKEN is not set
+#   • Python is not found in PATH
+#
+# Windows compatibility: Git for Windows runs hooks in Git Bash (sh).
+# Python is located via `command -v python` which finds the Windows Python
+# registered in PATH (e.g. C:\Program Files\Python313\python.exe).
+
+set -e
+
+# Require the token — skip silently if not configured
+if [ -z "$NOTION_INTEGRATION_TOKEN" ]; then
+    exit 0
+fi
+
+# Find Python — try python then python3
+PYTHON_BIN=""
+if command -v python > /dev/null 2>&1; then
+    PYTHON_BIN="python"
+elif command -v python3 > /dev/null 2>&1; then
+    PYTHON_BIN="python3"
+else
+    # Python not found — skip silently
+    exit 0
+fi
+
+# Always run from repo root so relative paths in the scripts resolve correctly
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Run sync; suppress non-zero exit so the commit is never blocked by Notion errors
+PYTHONIOENCODING=utf-8 "$PYTHON_BIN" tools/notion_sync.py 2>&1 || true

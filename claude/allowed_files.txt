@@ -90,6 +90,7 @@ solo_builder/api/static/dashboard_svg.js
 CHANGELOG.md
 tools/lint_dashboard_handlers.js
 .githooks/pre-commit
+.githooks/post-commit
 docs/PROMPT_STANDARD.md
 generated/next_task.json
 generated/notion_feedback.json
