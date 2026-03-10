@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.38.0 — 2026-03-10  ConfigDriftDetector — settings.json drift detection + 20 tests (TASK-348)
+
+- **348 tasks** merged to master; **1334 tests**, all passing
+- `tools/config_drift.py`: `detect_drift()` compares live settings.json against `_CONFIG_DEFAULTS`; reports missing keys (using defaults), overrides (with default vs live), and unknown keys (added since defaults); `--json`, `--quiet`, `--settings` flags; exits 0=no drift, 1=drift found (PW-010 to PW-015) — TASK-348
+- `tests/test_config_drift.py`: 20 tests — DriftReport (has_drift, to_dict), detect_drift (identical/missing/override/unknown/missing-file/invalid-json), run() (exit codes, JSON structure, quiet, text), main() flags — TASK-348
+
+---
+
 ## v5.37.0 — 2026-03-10  StateBackupRestore — backup/restore script + 25 tests (TASK-347)
 
 - **347 tasks** merged to master; **1314 tests**, all passing
