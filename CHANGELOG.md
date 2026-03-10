@@ -1,5 +1,31 @@
 # Changelog
 
+## v5.88.0 — 2026-03-10  OpenAPIHealthRoutes — 12 health+policy routes in spec (TASK-383)
+
+- **383 tasks** merged to master; **2323 tests**, all passing
+- `tools/generate_openapi.py`: added 10 health routes + 2 policy routes to `_ROUTES` catalogue — TASK-383
+- `tests/test_openapi_health_routes.py`: 26 tests verifying routes in catalogue + built spec — TASK-383
+
+---
+
+## v5.86.0 — 2026-03-10  DashboardE2ESmoke — Flask test-client smoke tests (TASK-382)
+
+- **382 tasks** merged to master; **2297 tests**, all passing
+- `tests/test_dashboard_e2e_smoke.py`: 21 smoke tests covering GET / HTML response, key API endpoints, widget IDs, JS modules, grid layout — TASK-382
+
+---
+
+## v5.84.0 — 2026-03-10  HealthTabLiveRunCheck — GET /health/live-summary (TASK-381)
+
+- **381 tasks** merged to master; **2276 tests**, all passing
+- `api/blueprints/live_summary.py`: `GET /health/live-summary` runs threat-model + context-window + slo in-process; returns `{ok, passed, total, checks:[{name,ok,detail}]}` — TASK-381
+- `api/app.py`: registered `live_summary_bp` — TASK-381
+- `api/static/dashboard_panels.js`: `pollLiveSummaryDetailed()` renders X/N passing summary + per-check OK/FAIL rows — TASK-381
+- `api/dashboard.html`: `live-summary-detailed-content` div above health-detailed — TASK-381
+- `tests/test_live_summary_dashboard_widget.py`: 34 tests — TASK-381
+
+---
+
 ## v5.82.0 — 2026-03-10  HealthTabRefactor — 2-column grid layout for Health tab (TASK-380)
 
 - **380 tasks** merged to master; **2242 tests**, all passing
