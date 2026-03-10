@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.45.0 — 2026-03-10  ContextWindowBudget — per-file utilization budgets + 29 tests (TASK-355)
+
+- **355 tasks** merged to master; **1575 tests**, all passing
+- `tools/context_window_budget.py`: `check_budget()` tracks per-file line-count utilization against configurable budgets; `BudgetConfig` frozen dataclass; `load_budget_config()` reads `CW_BUDGET_*` from settings.json; statuses: ok/warn/critical/over_budget/missing; compaction hint on issues; `--json`, `--quiet`, `--settings` flags; exits 0=within budget, 1=pressure detected (AI-008 to AI-013) — TASK-355
+- `tests/test_context_window_budget.py`: 29 tests — `BudgetConfig` (immutable/defaults), `load_budget_config` (missing/override/warn-pct/partial), `FileResult`/`BudgetReport` (all statuses/to_dict), `check_budget` (ok/warn/critical/over/missing/utilization/multiple), `run()` (exit codes/JSON/quiet/text/compaction-hint), `main()` flags — TASK-355
+
+---
+
 ## v5.44.0 — 2026-03-10  PromptRegressionCheck — template validation + 32 tests (TASK-354)
 
 - **354 tasks** merged to master; **1546 tests**, all passing
