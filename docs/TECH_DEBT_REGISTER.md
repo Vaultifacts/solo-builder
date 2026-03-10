@@ -46,110 +46,6 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 
 ---
 
-### TD-ARCH-002 — `hitl_gate.py` not wired into executor dispatch
-**Priority:** High | **Added:** 2026-03-10
-
-`hitl_gate.py` exists and is tested, but `executor.py` does not call
-`evaluate()` before dispatching jobs. The HITL gate is inert.
-
-**Impact:** T-003 (unscoped tool grant) residual risk remains.
-
-**Resolution path:** Phase 3 of HITL design — call `evaluate(st_tools, description)`
-in `Executor.execute_step()` before each `claude_jobs`/`sdk_tool_jobs` dispatch.
-Estimated scope: Small (10–15 lines). Tracked: AI-032.
-
----
-
-### TD-ARCH-003 — Subprocess `ClaudeRunner` as unreliable fallback
-**Priority:** Low | **Added:** 2026-03-10
-
-`ClaudeRunner` (the `claude -p` subprocess) is used as a fallback when the
-Anthropic SDK is unavailable. It depends on a local `claude` CLI installation
-and returns unstructured JSON. It's slower, less reliable, and harder to test
-than the SDK path.
-
-**Impact:** Inconsistent behaviour when SDK is unavailable; harder to mock in tests.
-
-**Resolution path:** Make the SDK path the only supported path; demote
-`ClaudeRunner` to a clearly-labelled "local development override" with a
-warning. Estimated scope: Small.
-
----
-
-### TD-TEST-001 — No integration tests for executor routing logic
-**Priority:** Medium | **Added:** 2026-03-10
-
-`executor.py` routing (which path fires for which subtask type) is not tested
-end-to-end. Tests mock the runners but don't verify that the correct runner
-receives the correct prompt under each condition.
-
-**Impact:** A routing regression (e.g., SDK path falling through to subprocess
-silently) would not be caught by CI.
-
-**Resolution path:** Add `TestExecutorRouting` class to `test_runners.py` with
-mocked runners; verify prompt content and runner selection for each path.
-Estimated scope: Small–Medium.
-
----
-
-### TD-TEST-002 — No tests for `hitl_gate.py`
-**Priority:** High | **Added:** 2026-03-10
-
-`hitl_gate.py` has no test file. The evaluation rules are untested.
-
-**Impact:** Rule regressions (wrong level returned) are invisible.
-
-**Resolution path:** Create `solo_builder/tests/test_hitl_gate.py` covering all
-6 evaluation rules plus boundary cases. Estimated scope: Small.
-
----
-
-### TD-ARCH-005 — Unknown tool names silently become no-ops in `SdkToolRunner`
-**Priority:** High | **Added:** 2026-03-10
-
-`SdkToolRunner` filters declared tools against `_SCHEMAS` at dispatch time:
-`schemas = [s for s in self._SCHEMAS if s["name"] in allowed]`. If a subtask
-declares `"tools": "Bash,Write"`, neither name matches any schema, so `schemas`
-is empty and the API call proceeds as a no-tool call — no error is raised.
-
-**Impact:** Misconfigured subtasks silently degrade to no-tool execution with no
-warning. A developer who expects `Bash` to run gets a text-only response.
-Also means the tool policy table in `AI_ACTION_SCOPE.md` is not enforced at
-runtime — unknown tool names bypass the HITL gate entirely.
-
-**Resolution path:** Add `validate_tools(tools_str)` called at subtask-creation
-time (in `dag_cmds.add_task`, `add_branch`, and the API `POST /tasks` endpoint)
-that raises `ValueError` for any tool name not in `_SCHEMAS`. Estimated scope: Small.
-
----
-
-### TD-SEC-001 — No path allowlist on `Read` tool
-**Priority:** Medium | **Added:** 2026-03-10
-
-`SdkToolRunner` exposes a `Read` tool with no path validation. Claude could
-read any file accessible to the process (e.g., `.env`, `~/.ssh/id_rsa` if
-paths allow).
-
-**Impact:** T-005 residual risk — key exfiltration via Read tool.
-
-**Resolution path:** Add path validation in `SdkToolRunner._handle_read()` to
-restrict reads to `repo_root` and below. Estimated scope: Small.
-
----
-
-### TD-SEC-002 — No dependency lockfile
-**Priority:** Medium | **Added:** 2026-03-10
-
-`requirements.txt` uses `>=` version constraints. `pip install` may install
-a newer version with vulnerabilities.
-
-**Impact:** T-006 (supply chain) residual risk.
-
-**Resolution path:** Run `pip freeze > requirements-lock.txt` and add it to
-`allowed_files.txt`. Pin to exact versions for reproducibility. Estimated scope: Trivial.
-
----
-
 ### TD-OPS-001 — No executor metrics instrumentation
 **Priority:** Medium | **Added:** 2026-03-10
 
@@ -164,20 +60,6 @@ write to a JSON metrics log after each session. Estimated scope: Small.
 
 ---
 
-### TD-DEP-001 — `anthropic` SDK version unpinned
-**Priority:** Low | **Added:** 2026-03-10
-
-`solo_builder/` has no `requirements.txt` (only `tools/requirements.txt`
-exists). The `anthropic` SDK version in use is whatever `pip install anthropic`
-resolved at install time.
-
-**Impact:** Silent API behaviour changes on SDK upgrades.
-
-**Resolution path:** Add `solo_builder/requirements.txt` pinning `anthropic>=0.x`.
-Estimated scope: Trivial.
-
----
-
 ## Resolved Debt
 
 | ID | Description | Resolved in |
@@ -189,6 +71,14 @@ Estimated scope: Trivial.
 | TD-DOC-005 | No SLO definitions | TASK-315 |
 | TD-DOC-006 | No context window strategy | TASK-316 |
 | TD-ARCH-004 | AI-002: subprocess path missing project context | TASK-312 |
+| TD-ARCH-002 | hitl_gate.py not wired into executor dispatch | TASK-318 |
+| TD-ARCH-003 | Subprocess ClaudeRunner as unreliable fallback — now warns | TASK-318 |
+| TD-ARCH-005 | Unknown tool names silently no-op in SdkToolRunner | TASK-318 |
+| TD-SEC-001 | No path allowlist on Read tool | TASK-318 |
+| TD-SEC-002 | No dependency lockfile for tools/ | TASK-318 |
+| TD-TEST-001 | No integration tests for executor routing logic | TASK-318 |
+| TD-TEST-002 | No tests for hitl_gate.py | TASK-317 |
+| TD-DEP-001 | anthropic SDK version unpinned in solo_builder/ | TASK-318 |
 
 ---
 
@@ -196,12 +86,12 @@ Estimated scope: Trivial.
 
 | Category | Open items | High priority |
 |---|---|---|
-| TD-ARCH | 4 | 2 (hitl_gate not wired; unknown tools silent no-op) |
-| TD-TEST | 2 | 1 (hitl_gate tests missing) |
-| TD-SEC | 2 | 0 |
+| TD-ARCH | 1 | 0 |
+| TD-TEST | 0 | 0 |
+| TD-SEC | 0 | 0 |
 | TD-OPS | 1 | 0 |
-| TD-DEP | 1 | 0 |
-| **Total** | **10** | **3** |
+| TD-DEP | 0 | 0 |
+| **Total** | **2** | **0** |
 
 ---
 
@@ -226,3 +116,4 @@ Estimated scope: Trivial.
 | Date | Change |
 |---|---|
 | 2026-03-10 | Initial register (TASK-317). 9 open items across 5 categories. ME-003 resolved. |
+| 2026-03-10 | TASK-318: Resolved 8 items — TD-ARCH-002/003/005, TD-SEC-001/002, TD-TEST-001/002, TD-DEP-001. 2 open items remain. |

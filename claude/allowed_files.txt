@@ -103,6 +103,7 @@ tools/notion_feedback.py
 tools/notion_sync.py
 tools/post-commit.hook
 tools/requirements.txt
+tools/requirements-lock.txt
 tools/task_orchestrator.py
 tools/verify_permissions.py
 .claude/settings.local.json

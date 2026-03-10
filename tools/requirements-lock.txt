@@ -1,0 +1,7 @@
+# Exact pinned versions for tools/requirements.txt dependencies
+# Generated: 2026-03-10 via pip freeze
+# Install with: pip install -r tools/requirements-lock.txt
+
+charset-normalizer==3.4.5
+python-dotenv==1.0.1
+requests==2.32.3
