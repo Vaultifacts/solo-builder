@@ -710,6 +710,29 @@ class TestSecurityHeaders(_Base):
             r2.headers.get("X-Request-ID"),
         )
 
+    def test_x_response_time_present(self):
+        """TASK-339: X-Response-Time header in milliseconds on every response (OM-003)."""
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        rt = resp.headers.get("X-Response-Time", "")
+        self.assertTrue(rt.endswith("ms"), f"Expected X-Response-Time to end with 'ms', got: {rt!r}")
+
+    def test_health_version_field(self):
+        """TASK-339: GET /health returns version string (OM-002)."""
+        self._write_state(self._make_state())
+        resp = self.client.get("/health")
+        d = resp.get_json()
+        self.assertIn("version", d)
+        self.assertIsInstance(d["version"], str)
+
+    def test_health_total_subtasks_field(self):
+        """TASK-339: GET /health returns total_subtasks count."""
+        self._write_state(self._make_state())
+        resp = self.client.get("/health")
+        d = resp.get_json()
+        self.assertIn("total_subtasks", d)
+        self.assertGreaterEqual(d["total_subtasks"], 0)
+
 
 class TestRateLimit(_Base):
     """TASK-322: In-memory rate limiter returns 429 when limit exceeded (SE-022, SE-023)."""

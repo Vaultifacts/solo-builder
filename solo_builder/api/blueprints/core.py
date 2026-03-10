@@ -92,14 +92,39 @@ def heartbeat():
                         "pending": 0, "running": 0, "review": 0})
 
 
+def _read_version() -> str:
+    """Read version from pyproject.toml; fall back to 'unknown'."""
+    try:
+        import importlib.metadata
+        return importlib.metadata.version("solo-builder")
+    except Exception:
+        pass
+    try:
+        toml = Path(__file__).resolve().parents[3] / "pyproject.toml"
+        for line in toml.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith("version"):
+                return line.split("=")[1].strip().strip('"\'')
+    except Exception:
+        pass
+    return "unknown"
+
+
 @core_bp.get("/health")
 def health():
-    """Liveness probe: returns server uptime, current step, and state file presence."""
+    """Extended health probe: uptime, version, step, state file, SLO-001 test count."""
     _app = _get_app()
     state = _load_state()
+    dag   = state.get("dag", {})
+    total_subtasks = sum(
+        len(b.get("subtasks", {}))
+        for t in dag.values()
+        for b in t.get("branches", {}).values()
+    )
     return jsonify({
-        "ok": True,
-        "uptime_s": round(time.time() - _app._APP_START_TIME, 1),
-        "step": state.get("step", 0),
+        "ok":               True,
+        "version":          _read_version(),
+        "uptime_s":         round(time.time() - _app._APP_START_TIME, 1),
+        "step":             state.get("step", 0),
         "state_file_exists": _app.STATE_PATH.exists(),
+        "total_subtasks":   total_subtasks,
     })

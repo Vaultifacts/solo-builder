@@ -64,6 +64,11 @@ app.register_blueprint(core_bp)
 
 
 @app.before_request
+def _record_request_start():
+    request._start_time = time.time()  # type: ignore[attr-defined]
+
+
+@app.before_request
 def rate_limit():
     ip    = request.remote_addr or "unknown"
     write = request.method in ("POST", "DELETE", "PUT", "PATCH")
@@ -73,7 +78,14 @@ def rate_limit():
 
 @app.after_request
 def security_headers(resp):
-    return _security.apply(resp)
+    resp = _security.apply(resp)
+    # X-Response-Time: elapsed milliseconds (OM-003)
+    try:
+        elapsed_ms = round((time.time() - request._start_time) * 1000)  # type: ignore[attr-defined]
+        resp.headers["X-Response-Time"] = f"{elapsed_ms}ms"
+    except AttributeError:
+        pass
+    return resp
 
 
 # ---------------------------------------------------------------------------
