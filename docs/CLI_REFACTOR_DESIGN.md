@@ -1,6 +1,6 @@
 # CLI God File Refactor Design
 **TASK-322 | TD-ARCH-001**
-Last updated: 2026-03-10
+Last updated: 2026-03-10 (Phase 2 closed)
 
 ---
 
@@ -76,21 +76,28 @@ Re-import them in `solo_builder_cli.py` for backwards compatibility.
 
 ### Phase 2 — CLI command dispatch
 
-**Status: ~95% complete (TASK-107).** `commands/dispatcher.py` already contains
-`DispatcherMixin.handle_command()` and `start()` with dispatch to all `_cmd_*`
-methods. Only one `_cmd_*` implementation remains in `solo_builder_cli.py`:
+**Status: COMPLETE (TASK-330 + TASK-331).**
 
-| Method | Location | Blocker |
-|---|---|---|
-| `_cmd_set` | `solo_builder_cli.py` | Uses `global STALL_THRESHOLD, SNAPSHOT_INTERVAL, ...` — `global` writes to defining module's namespace; moving breaks mutation semantics |
+- **TASK-330**: `self._runtime_cfg` dict (8 keys) added to `SoloBuilderCLI.__init__`;
+  dual-writes wired in all 8 `_cmd_set` branches.
+- **TASK-331**: `_cmd_set` moved to `commands/dispatcher.py` (145 lines extracted);
+  bare `global` mutations replaced by `self._runtime_cfg` writes; `WEBHOOK_URL`
+  propagated back to `solo_builder_cli` via `sys.modules` since `_fire_completion`
+  reads it as a module-level function. `solo_builder_cli.py` reduced from
+  665 → 478 lines.
 
-**Phase 2 test-patch audit (TASK-324):** 0 tests patch or invoke `_cmd_*`
-methods by name. Test-patch risk is Low.
+`commands/dispatcher.py` now contains the **complete** dispatch layer:
+`handle_command()`, `start()`, and `_cmd_set()`.
 
-**Remaining work:** Move `_cmd_set` by replacing the module-global mutation
-pattern with a mutable config dict (`_runtime_cfg`) stored on the `SoloBuilderCLI`
-instance. `_cmd_set` can then live anywhere and modify `self._runtime_cfg`
-instead of raw module globals. Estimated scope: Small (1–2 hours).
+No `_cmd_*` methods remain in `solo_builder_cli.py`. TD-ARCH-001 Phase 2 is closed.
+
+**Outstanding stale-globals issue (non-blocking):** Mixin modules (`step_runner.py`,
+`settings_cmds.py`, `auto_cmds.py`) read injected copies of `VERBOSITY`,
+`SNAPSHOT_INTERVAL`, etc. that were set once at load time via `setdefault`.
+Runtime `do_set` changes persist to disk but don't propagate to mixin-module
+namespaces within the same session. This is pre-existing behaviour — changes
+take effect on next startup. Fix scoped to Phase 3 (`_inject_host_globals_into_mixins`
+rewrite).
 
 ### Phase 3 — Mixin host refactor
 
@@ -106,11 +113,11 @@ Phases 1, 2, and 3 deferred. Phase 1 requires correcting the initial
 is low-value without a second consumer. Phases 2–3 require the patch-update
 task estimated at 3–5 hours.
 
-**Status:** Design spike complete. TD-ARCH-001 remains open. Phase 2 is ~95%
-done from TASK-107 — only `_cmd_set` remains, blocked by the module-global
-mutation pattern. Path forward: introduce `self._runtime_cfg` dict on
-`SoloBuilderCLI` and route all `_cmd_set` mutations through it. Phase 1
-remains low-priority (no second consumer for read-only constants).
+**Status:** TD-ARCH-001 Phase 2 CLOSED (TASK-331). `solo_builder_cli.py` is now
+a thin host — entry point, config loader, frozen globals, and mixin glue only.
+All dispatch logic lives in `commands/`. Phase 1 remains deferred (no second
+consumer for read-only constants). Phase 3 (frozen globals / stale injection
+fix) is the next architectural milestone.
 
 ---
 
@@ -122,3 +129,5 @@ remains low-priority (no second consumer for read-only constants).
 | 2026-03-10 | TASK-323: corrected Phase 1 — `do_set` mutates 6 constants originally listed as read-only. Three-category classification added. Phase 1 demoted to low-priority. |
 | 2026-03-10 | TASK-324: Phase 2 risk downgraded — 0 tests patch `do_*` methods. EXEC_VERIFY_PROB global drift fixed. |
 | 2026-03-10 | TASK-325: Phase 2 found ~95% done from TASK-107; only _cmd_set remains, blocked by module-global mutation; path forward via self._runtime_cfg documented. |
+| 2026-03-10 | TASK-330: self._runtime_cfg (8 keys) added to SoloBuilderCLI.__init__; dual-writes in all 8 _cmd_set branches. |
+| 2026-03-10 | TASK-331: _cmd_set extracted to commands/dispatcher.py; solo_builder_cli.py 665→478 lines; TD-ARCH-001 Phase 2 CLOSED. |

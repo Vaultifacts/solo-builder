@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.21.0 — 2026-03-10  CorrelationIdMiddleware — X-Request-ID + X-API-Version headers (TASK-331)
+
+- **331 tasks** merged to master; **344 tests**, all passing
+- `api/middleware.py`: `SecurityHeadersMiddleware.apply()` now adds `X-API-Version: 1` header on every response; `X-Request-ID` echoed from caller or generated as UUID4 — unique per request (OM-041, BE-040) — TASK-331
+- `commands/dispatcher.py`: `DispatcherMixin` extracted from `solo_builder_cli.py` with `_cmd_set` method for runtime config updates (TD-ARCH-001 Phase 2c) — TASK-331
+- `tests/test_middleware.py`: 8 unit tests for X-Request-ID generation, echo, uniqueness, RuntimeError handling, existing headers preservation — TASK-331
+- `tests/test_api_integration.py`: 4 new integration tests — X-API-Version=1, UUID4 generated, echo from caller, uniqueness — TASK-331
+- `tests/test_runtime_cfg.py`: 157-line test file for `_cmd_set` / `_runtime_cfg` synchronization — TASK-331
+
+---
+
 ## v5.20.0 — 2026-03-10  AnthropicMaxTokensIncrease — 256→4096 across all locations (TASK-330)
 
 - **330 tasks** merged to master; **1329 tests**, all passing
