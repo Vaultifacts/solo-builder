@@ -2428,3 +2428,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-368
+Goal: ExecutorGateSummaryAPI: GET /executor/gates endpoint summarizing HITL/scope/validation gate status for queued subtasks (AI-026, AI-033)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

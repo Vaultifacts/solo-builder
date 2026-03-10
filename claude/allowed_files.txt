@@ -208,3 +208,5 @@ solo_builder/tests/test_prompt_regression.py
 solo_builder/tests/test_tool_scope_wiring.py
 solo_builder/api/blueprints/policy.py
 solo_builder/tests/test_policy_api.py
+solo_builder/api/blueprints/executor_gates.py
+solo_builder/tests/test_executor_gates_api.py

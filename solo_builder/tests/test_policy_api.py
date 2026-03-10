@@ -10,6 +10,8 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import collections
+
 import api.app as app_module
 import api.blueprints.policy as policy_mod
 
@@ -37,6 +39,9 @@ class _Base(unittest.TestCase):
         for p in self._patches:
             p.start()
         app_module.app.config["TESTING"] = True
+        # Reset rate limiter state so test isolation is maintained
+        app_module._rate_limiter._read  = collections.defaultdict(collections.deque)
+        app_module._rate_limiter._write = collections.defaultdict(collections.deque)
         self.client = app_module.app.test_client()
 
     def tearDown(self):
