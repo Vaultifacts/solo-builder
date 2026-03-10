@@ -149,6 +149,22 @@ def _mac_report(has_alerts=False):
     return r
 
 
+def _slo_mod_widget():
+    m = MagicMock()
+    m.METRICS_PATH        = MagicMock()
+    m.DEFAULT_MIN_RECORDS = 5
+    m._load_records       = MagicMock(return_value=[{}] * 10)
+    m._check_slo003       = MagicMock(return_value={
+        "slo": "SLO-003", "target": ">=95%", "value": 1.0, "status": "ok",
+        "detail": "40/40 succeeded",
+    })
+    m._check_slo005       = MagicMock(return_value={
+        "slo": "SLO-005", "target": "<=10.0s median", "value": 0.001, "status": "ok",
+        "detail": "fast",
+    })
+    return m
+
+
 class _ApiBase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
@@ -178,11 +194,13 @@ class _ApiBase(unittest.TestCase):
         sv_mod.validate      = MagicMock(return_value=sv  or _sv_report())
         cd_mod.detect_drift  = MagicMock(return_value=cd  or _cd_report())
         mac_mod.check_alerts = MagicMock(return_value=mac or _mac_report())
+        sc_mod = _slo_mod_widget()
 
         def _fake_load(name):
-            return {"state_validator": sv_mod,
-                    "config_drift":    cd_mod,
-                    "metrics_alert_check": mac_mod}[name]
+            return {"state_validator":     sv_mod,
+                    "config_drift":        cd_mod,
+                    "metrics_alert_check": mac_mod,
+                    "slo_check":           sc_mod}[name]
         return patch.object(hd_mod, "_load_tool", side_effect=_fake_load)
 
 
