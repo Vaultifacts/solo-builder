@@ -139,3 +139,4 @@ tools/context_window_check.py
 docs/CLI_REFACTOR_DESIGN.md
 tools/archive_journal.py
 solo_builder/tests/test_archive_journal.py
+solo_builder/tests/test_executor_timing.py

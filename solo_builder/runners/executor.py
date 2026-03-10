@@ -337,6 +337,9 @@ class Executor:
                         self._roll_up(dag, task_name, branch_name)
 
         _write_step_metrics(step, _step_t0, _sdk_dispatched, _sdk_succeeded, actions)
+        elapsed_ms = round((time.monotonic() - _step_t0) * 1000)
+        logger.info("step_complete step=%d elapsed_ms=%d actions=%d",
+                    step, elapsed_ms, len(actions))
         return actions
 
     @staticmethod
