@@ -130,6 +130,7 @@
       <button class="sidebar-tab" onclick="switchTab('cache')">Cache</button>
       <button class="sidebar-tab" data-tab="cache-history" onclick="switchTab('cache-history')">Cache History</button>
       <button class="sidebar-tab" data-tab="export" onclick="switchTab('export')">Export</button>
+      <button class="sidebar-tab" data-tab="health" onclick="switchTab('health')">Health</button>
     </div>
     <div class="sidebar-tab-content active" id="tab-journal">
       <div id="journal-content">
@@ -382,6 +383,11 @@
             <span id="fb-webhook" style="font-size:10px;color:var(--dim)"></span>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-health">
+      <div id="health-detailed-content">
+        <div class="detail-placeholder">Loading health…</div>
       </div>
     </div>
   </div>

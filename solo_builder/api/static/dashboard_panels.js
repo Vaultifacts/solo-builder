@@ -967,3 +967,78 @@ export async function pollMetrics() {
   } catch (_) {}
 }
 
+/* ── Health detailed (OM-001 to OM-005) ──────────────────── */
+export async function pollHealthDetailed() {
+  try {
+    const d = await api("/health/detailed");
+    const el = document.getElementById("health-detailed-content");
+    if (!el) return;
+
+    const checks = d.checks || {};
+    const sv  = checks.state_valid    || {};
+    const cd  = checks.config_drift   || {};
+    const ma  = checks.metrics_alerts || {};
+
+    const mkBadge = (ok) => {
+      const b = document.createElement("span");
+      b.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;font-weight:bold;margin-right:8px;flex-shrink:0;color:#000;background:${ok ? "var(--green)" : "var(--red)"}`;
+      b.textContent = ok ? "OK" : "FAIL";
+      return b;
+    };
+    const mkRow = (label, ok, detail) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = "color:var(--dim);width:120px;flex-shrink:0";
+      lbl.textContent = label;
+      const det = document.createElement("span");
+      det.style.color = ok ? "var(--text)" : "var(--yellow)";
+      det.textContent = detail;
+      row.append(mkBadge(ok), lbl, det);
+      return row;
+    };
+
+    const svDetail = sv.ok
+      ? "state valid"
+      : `${(sv.errors || []).length} error(s), ${(sv.warnings || []).length} warn(s)`;
+    const cdDetail = cd.ok
+      ? "no drift"
+      : `${(cd.unknown_keys || []).length} unknown · ${cd.overridden_count || 0} overridden`;
+    const maDetail = ma.ok
+      ? "no alerts"
+      : `${ma.alert_count || 0} alert(s) active`;
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${d.ok ? "var(--green)" : "var(--red)"}`;
+    hdrText.textContent = `System Health: ${d.ok ? "OK" : "FAIL"}`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr, mkRow("State Valid", sv.ok, svDetail),
+                        mkRow("Config Drift", cd.ok, cdDetail),
+                        mkRow("Metrics Alerts", ma.ok, maDetail)];
+
+    if (!sv.ok && (sv.errors || []).length) {
+      const errDiv = document.createElement("div");
+      errDiv.style.cssText = "margin-top:5px;font-size:9px;color:var(--red)";
+      errDiv.textContent = sv.errors.slice(0, 3).join(" · ");
+      nodes.push(errDiv);
+    }
+    if (!ma.ok && (ma.alerts || []).length) {
+      const aDiv = document.createElement("div");
+      aDiv.style.cssText = "margin-top:5px;font-size:9px;color:var(--yellow)";
+      aDiv.textContent = ma.alerts.map(a => a.name || a.message || "alert").slice(0, 3).join(" · ");
+      nodes.push(aDiv);
+    }
+
+    el.replaceChildren(...nodes);
+
+    const favicon = document.getElementById("favicon");
+    if (favicon) {
+      const color = d.ok ? "%2322c55e" : "%23ef4444";
+      favicon.href = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='${color}'/%3E%3C/svg%3E`;
+    }
+  } catch (_) {}
+}
+

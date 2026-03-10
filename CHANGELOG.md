@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.48.0 — 2026-03-10  HealthDashboardWidget — Health tab polling /health/detailed + 21 tests (TASK-358)
+
+- **358 tasks** merged to master; **2063 tests**, all passing
+- `api/static/dashboard_panels.js`: `pollHealthDetailed()` — polls `/health/detailed`, renders ok/fail badge per check (state_valid/config_drift/metrics_alerts); updates favicon green/red; exception-safe (OM-006 to OM-010) — TASK-358
+- `api/static/dashboard.js`: imported `pollHealthDetailed` from `dashboard_panels.js`; added to `tick()` `Promise.all` call — TASK-358
+- `api/dashboard.html`: "Health" tab button + `tab-health` content div + `health-detailed-content` inner div added to sidebar — TASK-358
+- `tests/test_health_dashboard_widget.py`: 21 tests — HTML (tab button/data-tab/content div), `dashboard_panels.js` (export/endpoint-call/labels/favicon/replaceChildren), `dashboard.js` (import/tick-call/import-regex), endpoint integration (accessible/ok/drift/content-type) — TASK-358
+
+---
+
 ## v5.47.0 — 2026-03-10  BackendHealthEndpoint — /health/detailed aggregating three gate checks + 31 tests (TASK-357)
 
 - **357 tasks** merged to master; **1640 tests**, all passing

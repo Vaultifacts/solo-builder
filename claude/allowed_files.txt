@@ -193,3 +193,4 @@ tools/dep_severity_check.py
 solo_builder/tests/test_dep_severity_check.py
 solo_builder/api/blueprints/health_detailed.py
 solo_builder/tests/test_health_detailed.py
+solo_builder/tests/test_health_dashboard_widget.py
