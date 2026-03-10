@@ -212,3 +212,5 @@ solo_builder/api/blueprints/executor_gates.py
 solo_builder/tests/test_executor_gates_api.py
 solo_builder/tests/test_slo_dashboard_widget.py
 solo_builder/tests/test_gates_dashboard_widget.py
+solo_builder/api/blueprints/context_window.py
+solo_builder/tests/test_context_window_api.py
