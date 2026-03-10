@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.72.0 — 2026-03-10  SLODashboardWidget — GET /health/slo endpoint + Health tab widget + 29 tests (TASK-375)
+
+- **375 tasks** merged to master; **2104 tests**, all passing
+- `api/blueprints/slo.py`: `GET /health/slo` calls `slo_check._load_records()`, `_check_slo003()`, `_check_slo005()`; returns `{ok, records, results:[{slo,target,value,status,detail}]}`; insufficient data → `ok:true` (OM-035 to OM-040) — TASK-375
+- `api/app.py`: registered `slo_bp` — TASK-375
+- `api/static/dashboard_panels.js`: `pollSloDetailed()` renders header with records count, per-SLO rows with status badge and target/value details — TASK-375
+- `api/dashboard.html`: `slo-detailed-content` div after threat-model section — TASK-375
+- `tests/test_slo_dashboard_widget.py`: 29 tests — TASK-375
+
+---
+
+
 ## v5.70.0 — 2026-03-10  ThreatModelDashboardWidget — GET /health/threat-model + Health tab widget + 31 tests (TASK-374)
 
 - **374 tasks** merged to master; **2075 tests**, all passing
