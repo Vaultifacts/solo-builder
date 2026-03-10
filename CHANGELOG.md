@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.26.0 — 2026-03-10  TechnicalDebtRegister — debt_scan.py + 16 tests (TASK-336)
+
+- **336 tasks** merged to master; **427 tests**, all passing
+- `tools/debt_scan.py`: scans .py/.js for TODO/FIXME/HACK/XXX/NOQA markers; auto-updates `docs/TECH_DEBT_REGISTER.md`; found 8 markers in current codebase; --dry-run/--json/--quiet flags (ME-003) — TASK-336
+- `docs/TECH_DEBT_REGISTER.md`: initial auto-generated code-level scan section appended — TASK-336
+- `tests/test_debt_scan.py`: 16 tests — _scan_file, _format_register_section, _update_register, main() — TASK-336
+
+---
+
 ## v5.25.0 — 2026-03-10  SLODefinitions — slo_check.py + 17 tests (TASK-335)
 
 - **335 tasks** merged to master; **411 tests**, all passing
