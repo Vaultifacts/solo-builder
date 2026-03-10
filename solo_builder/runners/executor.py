@@ -16,6 +16,7 @@ from .claude_runner import ClaudeRunner
 from .anthropic_runner import AnthropicRunner
 from .sdk_tool_runner import SdkToolRunner, validate_tools as _validate_tools
 from .hitl_gate import evaluate as _hitl_evaluate, level_name as _hitl_level_name
+from utils.hitl_policy import load_policy as _load_hitl_policy, evaluate_with_policy as _hitl_policy_evaluate
 
 # ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
 _SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -73,6 +74,7 @@ class Executor:
         self.review_mode      = REVIEW_MODE
         self._project_context = project_context
         self._append_journal  = append_journal or (lambda *a, **kw: None)
+        self._hitl_policy     = _load_hitl_policy()
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
         # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
         _cache = make_cache()
@@ -157,7 +159,10 @@ class Executor:
                                      step, task_name, st_name, _vt_err)
                         continue  # subtask stays Running; config must be fixed
 
-                    _hl = _hitl_evaluate(st_tools, description)
+                    _hl = max(
+                        _hitl_evaluate(st_tools, description),
+                        _hitl_policy_evaluate(self._hitl_policy, st_tools, description),
+                    )
                     if _hl == 3:
                         logger.warning("hitl_blocked step=%d task=%s subtask=%s tools=%s",
                                        step, task_name, st_name, st_tools)
