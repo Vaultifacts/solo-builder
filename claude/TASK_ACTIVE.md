@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-359
+TASK-360
 
-ContextWindowAutoCompact: trigger compaction when context_window_budget reports critical/over_budget
+Extend threat_model_check.py to validate SE-007 to SE-015 controls + integrate into pre_release_check.py

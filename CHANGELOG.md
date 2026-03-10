@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.50.0 — 2026-03-10  ThreatModelValidator — SE-007 to SE-015 extended checks + pre_release gate + 19 new tests (TASK-360)
+
+- **360 tasks** merged to master; **2156 tests**, all passing
+- `tools/threat_model_check.py`: added `EXTENDED_GAP_IDS` (SE-007 to SE-015) + `EXTENDED_CONTROLS` (dep_severity_check, context_window_compact); `run_checks()` now accepts `extended`, `path`, `gap_max` params; `--extended`, `--path`, `--gap-max` CLI flags; JSON output includes `extended` field (SE-007 to SE-015) — TASK-360
+- `tools/pre_release_check.py`: added optional `threat-model` built-in gate running `threat_model_check.py --extended --quiet` — TASK-360
+- `docs/THREAT_MODEL.md`: extended Known Gaps table with SE-007 to SE-015 entries + changelog entry — TASK-360
+- `tests/test_threat_model_check.py`: 19 new tests — extended gap IDs (list/pass/fail/no-extended-flag/json-checks), extended controls (list/pass/fail/json-names), path override (custom/nonexistent), gap_max (10 passes/fails), extended JSON (field present/false-by-default), main extended flags, live-document extended check — TASK-360
+
+---
+
 ## v5.49.0 — 2026-03-10  ContextWindowAutoCompact — compaction trigger for critical/over_budget files + 33 tests (TASK-359)
 
 - **359 tasks** merged to master; **2096 tests**, all passing

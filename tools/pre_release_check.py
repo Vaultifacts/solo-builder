@@ -97,6 +97,12 @@ def _builtin_gates() -> list[dict]:
             "required": False,
             "timeout_sec": 10,
         },
+        {
+            "name":     "threat-model",
+            "command":  f'"{_PYTHON}" tools/threat_model_check.py --extended --quiet',
+            "required": False,
+            "timeout_sec": 10,
+        },
     ]
 
 

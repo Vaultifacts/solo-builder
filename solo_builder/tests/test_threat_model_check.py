@@ -283,5 +283,190 @@ class TestLiveDocument(unittest.TestCase):
         self.assertEqual(code, 0)
 
 
+# ---------------------------------------------------------------------------
+# TASK-360: Extended checks (SE-007 to SE-015)
+# ---------------------------------------------------------------------------
+
+# Re-import new symbols added by TASK-360
+EXTENDED_GAP_IDS  = _mod.EXTENDED_GAP_IDS
+EXTENDED_CONTROLS = _mod.EXTENDED_CONTROLS
+
+
+def _full_doc() -> str:
+    """Document passing baseline + extended checks."""
+    lines = ["Last updated: 2026-03-10"]
+    for gid in REQUIRED_GAP_IDS + EXTENDED_GAP_IDS:
+        lines.append(f"| {gid} | desc | Resolved |")
+    for ctrl in REQUIRED_CONTROLS + EXTENDED_CONTROLS:
+        lines.append(f"Mentions {ctrl} control.")
+    for n in range(1, 7):
+        lines.append(f"### T-{n:03d} — threat")
+    return "\n".join(lines)
+
+
+class TestExtendedGapIds(unittest.TestCase):
+
+    def test_extended_gap_ids_list_length(self):
+        self.assertEqual(len(EXTENDED_GAP_IDS), 9)   # SE-007 … SE-015
+
+    def test_first_and_last_extended_id(self):
+        self.assertEqual(EXTENDED_GAP_IDS[0], "SE-007")
+        self.assertEqual(EXTENDED_GAP_IDS[-1], "SE-015")
+
+    def test_extended_check_passes_when_present(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_full_doc(), encoding="utf-8")
+            code = run_checks(quiet=True, extended=True, path=p)
+        self.assertEqual(code, 0)
+
+    def test_extended_check_fails_when_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            # Only baseline gap IDs, no SE-007 to SE-015
+            p.write_text(_minimal_doc(), encoding="utf-8")
+            code = run_checks(quiet=True, extended=True, path=p)
+        self.assertEqual(code, 1)
+
+    def test_baseline_still_passes_without_extended_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_minimal_doc(), encoding="utf-8")
+            code = run_checks(quiet=True, extended=False, path=p)
+        self.assertEqual(code, 0)
+
+    def test_extended_check_includes_check_in_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_full_doc(), encoding="utf-8")
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                run_checks(as_json=True, extended=True, path=p)
+                data = json.loads(mock_out.getvalue())
+        check_names = [c["name"] for c in data["checks"]]
+        self.assertIn("extended-gap-ids", check_names)
+
+
+class TestExtendedControls(unittest.TestCase):
+
+    def test_extended_controls_list(self):
+        self.assertIn("dep_severity_check", EXTENDED_CONTROLS)
+        self.assertIn("context_window_compact", EXTENDED_CONTROLS)
+
+    def test_ext_controls_pass_when_mentioned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_full_doc(), encoding="utf-8")
+            code = run_checks(quiet=True, extended=True, path=p)
+        self.assertEqual(code, 0)
+
+    def test_ext_controls_fail_when_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            # Include extended gap IDs but NOT extended controls
+            lines = ["Last updated: 2026-03-10"]
+            for gid in REQUIRED_GAP_IDS + EXTENDED_GAP_IDS:
+                lines.append(f"| {gid} | desc |")
+            for ctrl in REQUIRED_CONTROLS:
+                lines.append(f"Mentions {ctrl}.")
+            # No dep_severity_check or context_window_compact
+            for n in range(1, 7):
+                lines.append(f"### T-{n:03d} — threat")
+            p.write_text("\n".join(lines), encoding="utf-8")
+            code = run_checks(quiet=True, extended=True, path=p)
+        self.assertEqual(code, 1)
+
+    def test_ext_control_names_in_json_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_full_doc(), encoding="utf-8")
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                run_checks(as_json=True, extended=True, path=p)
+                data = json.loads(mock_out.getvalue())
+        names = [c["name"] for c in data["checks"]]
+        self.assertIn("ext-control-dep_severity_check", names)
+        self.assertIn("ext-control-context_window_compact", names)
+
+
+class TestPathOverride(unittest.TestCase):
+
+    def test_custom_path_used(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "custom_threat_model.md"
+            p.write_text(_minimal_doc(), encoding="utf-8")
+            code = run_checks(quiet=True, path=p)
+        self.assertEqual(code, 0)
+
+    def test_nonexistent_custom_path_fails(self):
+        code = run_checks(quiet=True, path="/nonexistent/TM.md")
+        self.assertEqual(code, 1)
+
+
+class TestGapMax(unittest.TestCase):
+
+    def test_gap_max_10_checks_se001_to_se010(self):
+        content = "2026-03-10\n" + "\n".join(
+            f"SE-{n:03d}" for n in range(1, 11)
+        ) + "\n" + "\n".join(REQUIRED_CONTROLS) + "\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(content, encoding="utf-8")
+            code = run_checks(quiet=True, path=p, gap_max=10)
+        self.assertEqual(code, 0)
+
+    def test_gap_max_10_fails_when_missing_se008(self):
+        content = "2026-03-10\n" + "\n".join(
+            f"SE-{n:03d}" for n in range(1, 8)  # only SE-001 to SE-007
+        ) + "\n" + "\n".join(REQUIRED_CONTROLS) + "\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(content, encoding="utf-8")
+            code = run_checks(quiet=True, path=p, gap_max=10)
+        self.assertEqual(code, 1)
+
+
+class TestExtendedJsonOutput(unittest.TestCase):
+
+    def test_json_includes_extended_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_full_doc(), encoding="utf-8")
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                run_checks(as_json=True, extended=True, path=p)
+                data = json.loads(mock_out.getvalue())
+        self.assertIn("extended", data)
+        self.assertTrue(data["extended"])
+
+    def test_json_extended_false_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_minimal_doc(), encoding="utf-8")
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                run_checks(as_json=True, path=p)
+                data = json.loads(mock_out.getvalue())
+        self.assertFalse(data.get("extended", False))
+
+
+class TestMainExtended(unittest.TestCase):
+
+    def test_main_extended_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_full_doc(), encoding="utf-8")
+            rc = _mod.main(["--extended", "--quiet", "--path", str(p)])
+        self.assertEqual(rc, 0)
+
+    def test_main_path_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "TM.md"
+            p.write_text(_minimal_doc(), encoding="utf-8")
+            rc = _mod.main(["--quiet", "--path", str(p)])
+        self.assertEqual(rc, 0)
+
+    def test_actual_threat_model_extended_passes(self):
+        """The real docs/THREAT_MODEL.md should pass extended checks after TASK-360."""
+        code = run_checks(quiet=True, extended=True)
+        self.assertEqual(code, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
