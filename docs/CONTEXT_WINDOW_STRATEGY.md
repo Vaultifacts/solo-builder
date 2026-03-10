@@ -115,8 +115,8 @@ The following monitoring improvements are tracked but not yet implemented:
 |---|---|---|
 | AI-008 | No context window size monitoring | **Resolved — TASK-332** (`tools/context_window_check.py`) |
 | AI-009 | No journal archival script | **Resolved — TASK-333** (`tools/archive_journal.py`) |
-| AI-010 | No MEMORY.md line-count enforcement | Open |
-| AI-011 | No CLAUDE.md size lint rule | Open |
+| AI-010 | No MEMORY.md line-count enforcement | **Resolved — TASK-332** (`tools/context_window_check.py`) |
+| AI-011 | No CLAUDE.md size lint rule | **Resolved — TASK-332** (`tools/context_window_check.py`) |
 | AI-012 | No compaction trigger in pre-commit hook | Open |
 | AI-013 | No session context usage tracking | Open |
 
@@ -138,3 +138,4 @@ The strategy is defined. Automated enforcement tools are follow-on tasks.
 |---|---|
 | 2026-03-10 | Initial strategy document (TASK-316). Compaction triggers, MEMORY.md discipline, JOURNAL.md archival rules defined. AI-008 to AI-013 strategy resolved. |
 | 2026-03-10 | AI-008 resolved: `tools/context_window_check.py` (TASK-332) — warns at 150 lines, errors at 200; JOURNAL.md override 500/1000. AI-009 resolved: `tools/archive_journal.py` (TASK-333) — archives entries >30 days to `claude/journal_archive/YYYY-MM.md`. Both added to VERIFY.json. |
+| 2026-03-10 | AI-010 and AI-011 resolved: same `tools/context_window_check.py` (TASK-332) already checks MEMORY.md and CLAUDE.md at 150/200 line thresholds. No additional tools required. |
