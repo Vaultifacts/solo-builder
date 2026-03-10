@@ -183,3 +183,5 @@ tools/release_notes_gen.py
 solo_builder/tests/test_release_notes_gen.py
 tools/version_bump.py
 solo_builder/tests/test_version_bump.py
+tools/prompt_regression_check.py
+solo_builder/tests/test_prompt_regression_check.py
