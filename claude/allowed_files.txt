@@ -143,3 +143,5 @@ solo_builder/tests/test_executor_timing.py
 solo_builder/tests/test_mutation_runner.py
 tools/run_mutation_tests.py
 pyproject.toml
+tools/slo_check.py
+solo_builder/tests/test_slo_check.py
