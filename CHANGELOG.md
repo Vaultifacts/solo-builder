@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.58.0 — 2026-03-10  ExecutorGateSummaryAPI — GET /executor/gates endpoint + 33 tests (TASK-368)
+
+- **368 tasks** merged to master; **1942 tests**, all passing
+- `api/blueprints/executor_gates.py`: `GET /executor/gates` evaluates HITL, scope, and tool-validation gates for every Running subtask in the DAG; returns `{ok, running_count, blocked_count, gates:[{task,branch,subtask,tools,action_type,hitl_level,hitl_name,scope_ok,scope_denied,tools_valid,blocked}]}`; always 200; empty DAG → `ok:true` (AI-026, AI-033) — TASK-368
+- `api/app.py`: registered `executor_gates_bp` — TASK-368
+- `tests/test_executor_gates_api.py`: 33 tests — status/shape (200/json/all keys), empty DAG (ok-true/counts-zero/empty-gates), row fields (all 11 fields present/correct values), pending/verified excluded, valid tool (not blocked/tools_valid-true/ok-true), no-tools (not blocked/hitl-0), multiple subtasks (all listed/running_count matches), corrupt/missing state (200 returned) — TASK-368
+
+---
+
 ## v5.57.0 — 2026-03-10  PolicyAPI — /policy/hitl + /policy/scope endpoints + 44 tests (TASK-366, TASK-367)
 
 - **367 tasks** merged to master; **1909 tests**, all passing
