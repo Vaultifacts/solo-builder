@@ -72,7 +72,8 @@ class DagCommandsMixin:
         if self.executor.claude.available:
             print(f"  {CYAN}Claude decomposing into subtasks…{RESET}", flush=True)
             decomp_prompt = (
-                f"Break this task into 2-5 concrete subtasks for a solo developer AI project.\n\n"
+                self.executor._project_context
+                + f"Break this task into 2-5 concrete subtasks for a solo developer AI project.\n\n"
                 f"Task: {spec}\n\n"
                 f"Reply with a JSON array only — no explanation, no markdown fences:\n"
                 f'[{{"name": "{letter}1", "description": "actionable prompt"}}, ...]\n\n'
@@ -190,7 +191,8 @@ class DagCommandsMixin:
         if self.executor.claude.available:
             print(f"  {CYAN}Claude decomposing {branch_name}…{RESET}", flush=True)
             decomp_prompt = (
-                f"Break this concern into 2-4 concrete subtasks for a solo developer project.\n\n"
+                self.executor._project_context
+                + f"Break this concern into 2-4 concrete subtasks for a solo developer project.\n\n"
                 f"Concern: {spec}\n\n"
                 f"Reply with a JSON array only — no explanation, no markdown fences:\n"
                 f'[{{"name": "{branch_letter}1", "description": "actionable prompt"}}, ...]\n\n'

@@ -209,8 +209,9 @@ class Executor:
             print(f"  {CYAN}Claude executing {names}…{RESET}", flush=True)
             with ThreadPoolExecutor(max_workers=len(claude_jobs)) as pool:
                 futures = {
-                    pool.submit(self.claude.run, st_data.get("description", ""), st_name,
-                                st_tools): (task_name, branch_name, st_name, st_data)
+                    pool.submit(self.claude.run,
+                                self._project_context + st_data.get("description", ""),
+                                st_name, st_tools): (task_name, branch_name, st_name, st_data)
                     for task_name, branch_name, st_name, st_data, st_tools in claude_jobs
                 }
                 for future in as_completed(futures):

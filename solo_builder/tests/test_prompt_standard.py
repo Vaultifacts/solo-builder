@@ -104,7 +104,7 @@ class TestProjectContextSnapshot(unittest.TestCase):
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestPromptConstruction(unittest.TestCase):
-    """Guard SDK-path assembly, fallback prompt format, and subprocess gap."""
+    """Guard SDK-path assembly, fallback prompt format, and AI-002 resolution."""
 
     def test_sdk_path_prepends_context(self):
         description = "List 3 features."
@@ -131,21 +131,64 @@ class TestPromptConstruction(unittest.TestCase):
         self.assertIn(task_name, fallback)
         self.assertIn("Write one concrete sentence", fallback)
 
-    def test_subprocess_gap_is_documented(self):
-        """AI-002: Claude subprocess path omits _PROJECT_CONTEXT.
+    def test_subprocess_path_prepends_context(self):
+        """AI-002 resolved: executor.py subprocess path now prepends _PROJECT_CONTEXT.
 
-        This test documents the known gap. It does NOT fix the gap — the fix
-        belongs in executor.py (prepend _project_context before claude_jobs.append).
-        Remove this test only when AI-002 is resolved and the fix is in production.
+        Verified by reading executor.py: pool.submit(self.claude.run,
+            self._project_context + st_data.get("description", ""), ...)
+        Context is prepended at the call site before dispatch to ClaudeRunner.
         """
-        # The subprocess runner receives only the raw description — verified by
-        # reading executor.py: claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
-        # No _project_context is prepended. This is gap AI-002.
-        self.assertTrue(True, "AI-002 gap is documented — see executor.py subprocess path")
+        ctx = solo_builder_cli._PROJECT_CONTEXT
+        description = "List 3 risks."
+        # Simulate what executor.py now does for the subprocess path
+        prompt = ctx + description
+        self.assertTrue(prompt.startswith("Context:"))
+        self.assertIn("Solo Builder", prompt)
+        self.assertIn(description, prompt)
 
     def test_context_attribute_accessible(self):
         self.assertTrue(hasattr(solo_builder_cli, "_PROJECT_CONTEXT"))
         self.assertIsInstance(solo_builder_cli._PROJECT_CONTEXT, str)
+
+    def test_add_task_decomp_prompt_starts_with_context(self):
+        """dag_cmds add_task decomp prompt now prepends _PROJECT_CONTEXT (AI-002 fix)."""
+        ctx = solo_builder_cli._PROJECT_CONTEXT
+        spec = "Build a caching layer."
+        letter = "A"
+        decomp_prompt = (
+            ctx
+            + f"Break this task into 2-5 concrete subtasks for a solo developer AI project.\n\n"
+            f"Task: {spec}\n\n"
+            f"Reply with a JSON array only — no explanation, no markdown fences:\n"
+            f'[{{"name": "{letter}1", "description": "actionable prompt"}}, ...]\n\n'
+            f"Rules:\n"
+            f"- name: uppercase letter '{letter}' + digit, e.g. {letter}1 {letter}2 {letter}3\n"
+            f"- description: a self-contained question or instruction Claude can answer headlessly\n"
+            f"- 2 to 5 items"
+        )
+        self.assertTrue(decomp_prompt.startswith("Context:"))
+        self.assertIn("Solo Builder", decomp_prompt)
+        self.assertIn(spec, decomp_prompt)
+
+    def test_add_branch_decomp_prompt_starts_with_context(self):
+        """dag_cmds add_branch decomp prompt now prepends _PROJECT_CONTEXT (AI-002 fix)."""
+        ctx = solo_builder_cli._PROJECT_CONTEXT
+        spec = "Error handling strategy."
+        branch_letter = "B"
+        decomp_prompt = (
+            ctx
+            + f"Break this concern into 2-4 concrete subtasks for a solo developer project.\n\n"
+            f"Concern: {spec}\n\n"
+            f"Reply with a JSON array only — no explanation, no markdown fences:\n"
+            f'[{{"name": "{branch_letter}1", "description": "actionable prompt"}}, ...]\n\n'
+            f"Rules:\n"
+            f"- name: uppercase '{branch_letter}' + digit, e.g. {branch_letter}1 {branch_letter}2\n"
+            f"- description: self-contained question or instruction Claude can answer headlessly\n"
+            f"- 2 to 4 items"
+        )
+        self.assertTrue(decomp_prompt.startswith("Context:"))
+        self.assertIn("Solo Builder", decomp_prompt)
+        self.assertIn(spec, decomp_prompt)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

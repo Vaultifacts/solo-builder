@@ -105,3 +105,4 @@ tools/requirements.txt
 tools/task_orchestrator.py
 tools/verify_permissions.py
 .claude/settings.local.json
+docs/HITL_TRIGGER_DESIGN.md
