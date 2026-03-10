@@ -4943,6 +4943,113 @@ class TestGetTaskExport(_Base):
 
 
 # ---------------------------------------------------------------------------
+# Middleware unit tests (TASK-322)
+# ---------------------------------------------------------------------------
+
+from api.middleware import SecurityHeadersMiddleware, ApiRateLimiter
+
+
+class _FakeResponse:
+    """Minimal fake Flask response for SecurityHeadersMiddleware tests."""
+    def __init__(self):
+        self.headers = {}
+
+    def __eq__(self, other):
+        return isinstance(other, _FakeResponse) and self.headers == other.headers
+
+
+class TestSecurityHeadersMiddleware(unittest.TestCase):
+
+    def setUp(self):
+        self.mw = SecurityHeadersMiddleware()
+        self.resp = _FakeResponse()
+
+    def test_returns_response(self):
+        result = self.mw.apply(self.resp)
+        self.assertIs(result, self.resp)
+
+    def test_x_frame_options_deny(self):
+        self.mw.apply(self.resp)
+        self.assertEqual(self.resp.headers["X-Frame-Options"], "DENY")
+
+    def test_x_content_type_options_nosniff(self):
+        self.mw.apply(self.resp)
+        self.assertEqual(self.resp.headers["X-Content-Type-Options"], "nosniff")
+
+    def test_referrer_policy(self):
+        self.mw.apply(self.resp)
+        self.assertEqual(self.resp.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
+
+    def test_csp_default_src_self(self):
+        self.mw.apply(self.resp)
+        self.assertIn("default-src 'self'", self.resp.headers["Content-Security-Policy"])
+
+    def test_hsts_present(self):
+        self.mw.apply(self.resp)
+        self.assertEqual(self.resp.headers["Strict-Transport-Security"], "max-age=31536000; includeSubDomains")
+
+    def test_cors_allow_origin(self):
+        self.mw.apply(self.resp)
+        self.assertEqual(self.resp.headers["Access-Control-Allow-Origin"], "*")
+
+
+class TestApiRateLimiter(unittest.TestCase):
+
+    def _limiter(self, read_limit=5, write_limit=3, window=60.0):
+        return ApiRateLimiter(read_limit=read_limit, write_limit=write_limit, window=window)
+
+    def test_read_allowed_within_limit(self):
+        rl = self._limiter(read_limit=3)
+        for _ in range(3):
+            self.assertTrue(rl.check("1.2.3.4", is_write=False))
+
+    def test_read_denied_at_limit(self):
+        rl = self._limiter(read_limit=2)
+        rl.check("1.2.3.4", is_write=False)
+        rl.check("1.2.3.4", is_write=False)
+        self.assertFalse(rl.check("1.2.3.4", is_write=False))
+
+    def test_write_allowed_within_limit(self):
+        rl = self._limiter(write_limit=2)
+        self.assertTrue(rl.check("10.0.0.1", is_write=True))
+        self.assertTrue(rl.check("10.0.0.1", is_write=True))
+
+    def test_write_denied_at_limit(self):
+        rl = self._limiter(write_limit=1)
+        rl.check("10.0.0.1", is_write=True)
+        self.assertFalse(rl.check("10.0.0.1", is_write=True))
+
+    def test_read_and_write_counters_independent(self):
+        rl = self._limiter(read_limit=1, write_limit=1)
+        rl.check("5.5.5.5", is_write=False)   # exhaust read
+        self.assertFalse(rl.check("5.5.5.5", is_write=False))
+        self.assertTrue(rl.check("5.5.5.5", is_write=True))   # write still free
+
+    def test_different_ips_independent(self):
+        rl = self._limiter(read_limit=1)
+        rl.check("1.1.1.1", is_write=False)
+        self.assertFalse(rl.check("1.1.1.1", is_write=False))
+        self.assertTrue(rl.check("2.2.2.2", is_write=False))
+
+    def test_window_prunes_old_entries(self):
+        import time
+        rl = ApiRateLimiter(read_limit=1, window=0.01)
+        rl.check("9.9.9.9", is_write=False)
+        time.sleep(0.02)
+        self.assertTrue(rl.check("9.9.9.9", is_write=False))
+
+    def test_current_count_reflects_requests(self):
+        rl = self._limiter(read_limit=10)
+        rl.check("3.3.3.3", is_write=False)
+        rl.check("3.3.3.3", is_write=False)
+        self.assertEqual(rl.current_count("3.3.3.3", is_write=False), 2)
+
+    def test_current_count_zero_for_unknown_ip(self):
+        rl = self._limiter()
+        self.assertEqual(rl.current_count("0.0.0.0", is_write=False), 0)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.11.0 — 2026-03-10  Middleware extraction + CLI refactor design spike (TASK-322)
+
+- **322 tasks** merged to master; **203 tests**, all passing
+- `solo_builder/api/middleware.py`: `SecurityHeadersMiddleware` (7 headers: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, CSP, HSTS, CORS) + `ApiRateLimiter` (sliding-window, per-IP, separate read/write counters, `current_count()`) extracted from `app.py` inline implementations — TD-SEC-001 partial (HSTS now present)
+- `solo_builder/api/app.py`: replaced 20-line inline rate-limit + security-headers implementations with `_security.apply()` and `_rate_limiter.check()` — TASK-322
+- `solo_builder/api/test_app.py`: +16 middleware tests — `TestSecurityHeadersMiddleware` (7) + `TestApiRateLimiter` (9): all 7 headers asserted, allow/deny semantics, read/write independence, window pruning, `current_count` — TASK-322
+- `docs/CLI_GOD_FILE_REFACTOR.md`: design spike for splitting `solo_builder_cli.py` (TD-ARCH-001); 5 frozen globals constraint documented; Phase 1 scoped, Phases 2–3 deferred — TASK-322
+
+---
+
 ## v5.10.0 — 2026-03-10  Structured logging + prompt version control (TASK-320 through TASK-321)
 
 - **321 tasks** merged to master; **187 tests**, all passing

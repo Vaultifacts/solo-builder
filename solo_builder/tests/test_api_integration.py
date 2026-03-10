@@ -559,5 +559,94 @@ class TestDagSummary(_Base):
         self.assertEqual(len(d["tasks"]), 2)
 
 
+class TestSecurityHeaders(_Base):
+    """TASK-322: Flask security headers present on every response (SE-021, SE-025)."""
+
+    def test_x_frame_options(self):
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        self.assertEqual(resp.headers.get("X-Frame-Options"), "DENY")
+
+    def test_x_content_type_options(self):
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        self.assertEqual(resp.headers.get("X-Content-Type-Options"), "nosniff")
+
+    def test_referrer_policy(self):
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        self.assertEqual(resp.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
+
+    def test_content_security_policy_present(self):
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        csp = resp.headers.get("Content-Security-Policy", "")
+        self.assertIn("default-src", csp)
+
+    def test_cors_header_still_present(self):
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        self.assertEqual(resp.headers.get("Access-Control-Allow-Origin"), "*")
+
+
+class TestRateLimit(_Base):
+    """TASK-322: In-memory rate limiter returns 429 when limit exceeded (SE-022, SE-023)."""
+
+    def _reset_rl(self):
+        import api.app as _app
+        _app._rate_limiter._read.clear()
+        _app._rate_limiter._write.clear()
+
+    def test_read_under_limit_allowed(self):
+        self._reset_rl()
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_write_under_limit_allowed(self):
+        self._reset_rl()
+        self._write_state(self._make_state())
+        import api.app as _app
+        original = _app._rate_limiter.write_limit
+        _app._rate_limiter.write_limit = 200
+        resp = self.client.post("/config/reset")
+        _app._rate_limiter.write_limit = original
+        self.assertIn(resp.status_code, (200, 400, 404))  # not 429
+
+    def test_read_rate_limit_triggers_429(self):
+        self._reset_rl()
+        import api.app as _app
+        original = _app._rate_limiter.read_limit
+        _app._rate_limiter.read_limit = 2
+        self._write_state(self._make_state())
+        self.client.get("/status")
+        self.client.get("/status")
+        resp = self.client.get("/status")  # 3rd should be blocked
+        _app._rate_limiter.read_limit = original
+        self.assertEqual(resp.status_code, 429)
+
+    def test_write_rate_limit_triggers_429(self):
+        self._reset_rl()
+        import api.app as _app
+        original = _app._rate_limiter.write_limit
+        _app._rate_limiter.write_limit = 1
+        self._write_state(self._make_state())
+        self.client.post("/config/reset")
+        resp = self.client.post("/config/reset")  # 2nd should be blocked
+        _app._rate_limiter.write_limit = original
+        self.assertEqual(resp.status_code, 429)
+
+    def test_429_response_has_error_key(self):
+        self._reset_rl()
+        import api.app as _app
+        original = _app._rate_limiter.read_limit
+        _app._rate_limiter.read_limit = 0  # block immediately
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        _app._rate_limiter.read_limit = original
+        self.assertEqual(resp.status_code, 429)
+        self.assertIn("error", resp.get_json())
+
+
 if __name__ == "__main__":
     unittest.main()

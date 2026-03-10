@@ -93,6 +93,8 @@ tools/lint_dashboard_handlers.js
 .githooks/post-commit
 docs/PROMPT_STANDARD.md
 docs/PROMPT_REGISTRY.md
+docs/CLI_REFACTOR_DESIGN.md
+solo_builder/api/middleware.py
 generated/next_task.json
 generated/notion_feedback.json
 generated/.ai_log_db_id
@@ -119,3 +121,4 @@ docs/TECH_DEBT_REGISTER.md
 solo_builder/runners/hitl_gate.py
 solo_builder/metrics.jsonl
 solo_builder/tests/test_hitl_gate.py
+solo_builder/api/middleware.py
