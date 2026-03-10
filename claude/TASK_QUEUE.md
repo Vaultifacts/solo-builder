@@ -1914,3 +1914,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-322
+Goal: CliGodFileRefactor spike — design doc for splitting solo_builder_cli.py; implement SecurityHeadersMiddleware (Flask X-Frame-Options, CSP, HSTS) and ApiRateLimiting as the concrete cycle-2 deliverables
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

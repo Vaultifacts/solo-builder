@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-321
+TASK-322
 
-PromptVersionControl — create docs/PROMPT_REGISTRY.md with versioned snapshot of all prompt templates; add hash-based regression test to detect prompt drift across releases
+CliGodFileRefactor spike — design doc for splitting solo_builder_cli.py; implement SecurityHeadersMiddleware (Flask X-Frame-Options, CSP, HSTS) and ApiRateLimiting as the concrete cycle-2 deliverables
