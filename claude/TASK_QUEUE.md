@@ -1918,11 +1918,14 @@ Constraints:
 ## TASK-322
 Goal: CliGodFileRefactor spike — design doc for splitting solo_builder_cli.py; implement SecurityHeadersMiddleware (Flask X-Frame-Options, CSP, HSTS) and ApiRateLimiting as the concrete cycle-2 deliverables
 
-Acceptance criteria:
-- <define criterion 1>
-- <define criterion 2>
+Status: COMPLETE (cef0f98)
 
-Constraints:
-- Keep scope narrow
-- Do not modify product code unless explicitly required
-- Preserve deterministic workflow conventions
+## TASK-323
+Goal: Security header integration tests + CLI refactor analysis correction — 5 Flask test-client integration tests for all security headers; corrected Phase 1 read-only/mutable analysis in CLI_REFACTOR_DESIGN.md; TD-SEC-003 and TD-TEST-003 resolved
+
+Status: COMPLETE (4167249)
+
+## TASK-324
+Goal: Rate limiter 429 integration test, EXEC_VERIFY_PROB global drift fix, Phase 2 do_* test-patch audit, TASK_QUEUE.md backfill
+
+Status: COMPLETE (see master)

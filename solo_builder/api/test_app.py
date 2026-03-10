@@ -93,6 +93,10 @@ class _Base(unittest.TestCase):
 
         app_module.app.config["TESTING"] = True
         self.client = app_module.app.test_client()
+        # Reset rate limiter counters so tests don't cross-contaminate each other
+        import collections
+        app_module._rate_limiter._read  = collections.defaultdict(collections.deque)
+        app_module._rate_limiter._write = collections.defaultdict(collections.deque)
 
     def tearDown(self):
         for p in self._patches:

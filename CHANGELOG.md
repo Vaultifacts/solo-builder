@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.13.0 — 2026-03-10  Rate limiter 429 tests, EXEC_VERIFY_PROB fix, Phase 2 audit (TASK-324)
+
+- **324 tasks** merged to master; **1249 tests** (excl. flaky Windows log-lock), all passing
+- `solo_builder/solo_builder_cli.py`: fixed `EXEC_VERIFY_PROB` global drift — `do_set VERIFY_PROB` now writes `global EXEC_VERIFY_PROB; EXEC_VERIFY_PROB = v` so the module-level global stays in sync with `self.executor.verify_prob` — TASK-324
+- `solo_builder/api/test_app.py`: +4 `TestRateLimiterIntegration` tests — assert 429 via `_rate_limiter.check` mock, error key in body, write method triggers 429, under-limit returns 200; reset rate limiter counters in `_Base.setUp` to prevent cross-test contamination — TASK-324
+- `docs/CLI_REFACTOR_DESIGN.md`: Phase 2 risk downgraded to Low — audit confirmed 0 tests patch `do_*` methods; Phase 2 now blocked by implementation time only — TASK-324
+- `claude/TASK_QUEUE.md`: backfilled TASK-322, TASK-323, TASK-324 entries with completion status — TASK-324
+
+---
+
 ## v5.12.0 — 2026-03-10  CLI refactor analysis + security header integration tests (TASK-323)
 
 - **323 tasks** merged to master; **208 tests**, all passing

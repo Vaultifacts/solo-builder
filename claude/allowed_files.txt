@@ -100,6 +100,8 @@ generated/notion_feedback.json
 generated/.ai_log_db_id
 solo_builder/tests/test_prompt_standard.py
 solo_builder/tests/test_prompt_registry.py
+solo_builder/tests/factories.py
+solo_builder/tests/test_factories.py
 tools/NOTION_WORKFLOW.md
 tools/notion_ai_log.py
 tools/notion_client.py
