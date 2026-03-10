@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.33.0 — 2026-03-10  CiQualityGate — 6-tool quality runner + 21 tests (TASK-343)
+
+- **343 tasks** merged to master; **1206 tests**, all passing
+- `tools/ci_quality_gate.py`: runs 6 quality tools in sequence (threat-model, context-window, slo-check, dep-audit, debt-scan, pre-release); `--skip TOOL[,TOOL]`, `--json`, `--quiet`; exits 0=all pass, 1=any fail (DX, DevOps) — TASK-343
+- `tests/test_ci_quality_gate.py`: 21 tests — tool definitions, pass/fail/skip logic, JSON structure/counts, text output, timeout, main() flags — TASK-343
+
+---
+
 ## v5.32.0 — 2026-03-10  ThreatModelDocument — updated model + validator + 21 tests (TASK-342)
 
 - **342 tasks** merged to master; **1185 tests**, all passing
