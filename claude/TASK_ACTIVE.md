@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-365
+TASK-366
 
-AIActionScopeEnforcement: Wire ToolScopePolicy into executor.py to enforce per-action-type tool allowlists at dispatch time (AI-033)
+HitlPolicyValidationAPI: GET /policy/hitl endpoint returning loaded HitlPolicy as JSON with validation warnings (AI-026)
