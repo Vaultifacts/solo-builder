@@ -185,6 +185,15 @@ dependency audit tool configured.
 | SE-004 | No path allowlist on Read tool | Open |
 | SE-005 | No lockfile / SBOM | Open |
 | SE-006 | No role-based access on Discord bot | Open |
+| SE-007 | No dependency audit tool | Partially resolved — `dep_audit.py` + `dep_severity_check.py` added (TASK-356) |
+| SE-008 | No CVE severity filtering | **Resolved by TASK-356** — `dep_severity_check.py` filters by CRITICAL/HIGH/MEDIUM/LOW |
+| SE-009 | No unpinned constraint detection | **Resolved by TASK-356** — `check_unpinned()` flags `>=`/`~=`/name-only constraints |
+| SE-010 | No structured dependency report | **Resolved by TASK-356** — `SeverityReport.to_dict()` JSON output |
+| SE-011 | No context window overrun protection | **Resolved by TASK-355/359** — `context_window_budget.py` + `context_window_compact.py` |
+| SE-012 | No pre-release gate for dep vulnerabilities | Open — `dep_severity_check` not yet wired into `pre_release_check.py` |
+| SE-013 | No threat model freshness gate in CI | Partially resolved — `threat_model_check.py` validates doc on demand (TASK-342) |
+| SE-014 | No automated threat model staleness alert | Open |
+| SE-015 | No SBOM / lockfile for tools/ dependencies | Open — `tools/requirements-lock.txt` exists but not auto-verified |
 
 ---
 
@@ -194,3 +203,4 @@ dependency audit tool configured.
 |---|---|
 | 2026-03-10 | Baseline threat model created (TASK-314). Six threats documented. SE-001 resolved. |
 | 2026-03-10 | Updated T-003 mitigations: HitlPolicy (TASK-338) + ToolScopePolicy (TASK-341) added. Residual risk lowered. |
+| 2026-03-10 | Extended Known Gaps to SE-007 to SE-015: dep auditing + context window controls (TASK-360). |
