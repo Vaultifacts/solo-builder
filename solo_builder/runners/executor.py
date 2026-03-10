@@ -43,7 +43,7 @@ def _write_step_metrics(step: int, t0: float, sdk_dispatched: int,
     """Append one JSONL metrics record for this execute_step call (TD-OPS-001)."""
     elapsed = round(time.monotonic() - t0, 3)
     record = {
-        "ts":            datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ts":            datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "step":          step,
         "elapsed_s":     elapsed,
         "sdk_dispatched": sdk_dispatched,

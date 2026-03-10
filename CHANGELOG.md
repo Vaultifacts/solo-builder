@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.14.0 — 2026-03-10  datetime deprecation fix, flaky test fix, Phase 2 design complete (TASK-325)
+
+- **325 tasks** merged to master; **1275 tests**, all passing, zero warnings
+- `runners/executor.py`: replaced deprecated `datetime.utcnow()` with `datetime.now(datetime.timezone.utc)` — fixes Python 3.13 DeprecationWarning — TASK-325
+- `tests/test_cli_utils.py`: fixed flaky `test_clear_stale_triggers_*` — replaced `TemporaryDirectory()` with `mkdtemp()` + `rmtree(ignore_errors=True)`; `_close_sb_log_handlers` now explicitly flushes and closes the underlying stream before calling `handler.close()` to release Windows file locks — TASK-325
+- `api/test_app.py`: added docstring to `_Base._make_state` pointing new test authors to `tests/factories.py` — TASK-325
+- `docs/CLI_REFACTOR_DESIGN.md`: Phase 2 documented as ~95% complete (TASK-107); `_cmd_set` is the only remaining method, blocked by module-global mutation pattern; path forward via `self._runtime_cfg` instance dict documented — TASK-325
+
+---
+
 ## v5.13.0 — 2026-03-10  Rate limiter 429 tests, EXEC_VERIFY_PROB fix, Phase 2 audit (TASK-324)
 
 - **324 tasks** merged to master; **1249 tests** (excl. flaky Windows log-lock), all passing

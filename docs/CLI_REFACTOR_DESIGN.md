@@ -76,16 +76,21 @@ Re-import them in `solo_builder_cli.py` for backwards compatibility.
 
 ### Phase 2 — CLI command dispatch
 
-Move `do_*` command methods to `solo_builder/commands/dispatcher.py`. The
-`solo_builder_cli.py` entry point delegates to the dispatcher.
+**Status: ~95% complete (TASK-107).** `commands/dispatcher.py` already contains
+`DispatcherMixin.handle_command()` and `start()` with dispatch to all `_cmd_*`
+methods. Only one `_cmd_*` implementation remains in `solo_builder_cli.py`:
 
-**Phase 2 test-patch audit (TASK-324):** Grepped all test files for direct
-calls to `do_*` methods via `solo_builder_cli.do_*` or `SoloBuilderCLI.do_*`.
-Result: **0 hits**. No test patches or directly invokes `do_*` by name.
-The test-patch risk for Phase 2 is therefore **Low**, not Medium as originally stated.
-The remaining risk is functional correctness of the delegation chain.
+| Method | Location | Blocker |
+|---|---|---|
+| `_cmd_set` | `solo_builder_cli.py` | Uses `global STALL_THRESHOLD, SNAPSHOT_INTERVAL, ...` — `global` writes to defining module's namespace; moving breaks mutation semantics |
 
-**Revised Risk:** Low — no test patches target `do_*` methods.
+**Phase 2 test-patch audit (TASK-324):** 0 tests patch or invoke `_cmd_*`
+methods by name. Test-patch risk is Low.
+
+**Remaining work:** Move `_cmd_set` by replacing the module-global mutation
+pattern with a mutable config dict (`_runtime_cfg`) stored on the `SoloBuilderCLI`
+instance. `_cmd_set` can then live anywhere and modify `self._runtime_cfg`
+instead of raw module globals. Estimated scope: Small (1–2 hours).
 
 ### Phase 3 — Mixin host refactor
 
@@ -101,10 +106,11 @@ Phases 1, 2, and 3 deferred. Phase 1 requires correcting the initial
 is low-value without a second consumer. Phases 2–3 require the patch-update
 task estimated at 3–5 hours.
 
-**Status:** Design spike complete. TD-ARCH-001 remains open. Phase 2 risk
-downgraded to Low after audit confirmed 0 test patches targeting `do_*` methods.
-Phase 2 is now the highest-value next step — blocked only by implementation time,
-not test-patch risk. Phase 1 remains low-priority (no second consumer).
+**Status:** Design spike complete. TD-ARCH-001 remains open. Phase 2 is ~95%
+done from TASK-107 — only `_cmd_set` remains, blocked by the module-global
+mutation pattern. Path forward: introduce `self._runtime_cfg` dict on
+`SoloBuilderCLI` and route all `_cmd_set` mutations through it. Phase 1
+remains low-priority (no second consumer for read-only constants).
 
 ---
 
@@ -115,3 +121,4 @@ not test-patch risk. Phase 1 remains low-priority (no second consumer).
 | 2026-03-10 | Initial design spike (TASK-322). TD-ARCH-001 constraint analysis complete. Phase 1 scoped; Phases 2–3 deferred. |
 | 2026-03-10 | TASK-323: corrected Phase 1 — `do_set` mutates 6 constants originally listed as read-only. Three-category classification added. Phase 1 demoted to low-priority. |
 | 2026-03-10 | TASK-324: Phase 2 risk downgraded — 0 tests patch `do_*` methods. EXEC_VERIFY_PROB global drift fixed. |
+| 2026-03-10 | TASK-325: Phase 2 found ~95% done from TASK-107; only _cmd_set remains, blocked by module-global mutation; path forward via self._runtime_cfg documented. |

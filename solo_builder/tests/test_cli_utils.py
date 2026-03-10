@@ -292,27 +292,69 @@ def test_build_arg_parser_export_flag():
     assert args.export is True
 
 
+def _close_sb_log_handlers():
+    """Close and remove all handlers on the solo_builder logger.
+
+    On Windows, RotatingFileHandler may hold an OS file lock even after
+    handler.close() returns.  Explicitly closing the underlying stream first
+    releases the lock before shutil.rmtree touches the directory.
+    """
+    import logging
+    lg = logging.getLogger("solo_builder")
+    for h in list(lg.handlers):
+        try:
+            if hasattr(h, "stream") and h.stream is not None:
+                try:
+                    h.stream.flush()
+                    h.stream.close()
+                except Exception:
+                    pass
+                h.stream = None
+        except Exception:
+            pass
+        h.close()
+        lg.removeHandler(h)
+
+
+def _tmp_cleanup(tmp: str) -> None:
+    """Remove a temp directory, silently ignoring Windows file-lock races."""
+    import shutil
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_clear_stale_triggers_creates_state_dir():
     import tempfile, os
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp = tempfile.mkdtemp()
+    try:
         lock = cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
         assert os.path.isdir(os.path.join(tmp, "state"))
         assert lock.endswith("solo_builder.lock")
+    finally:
+        _close_sb_log_handlers()
+        _tmp_cleanup(tmp)
 
 
 def test_clear_stale_triggers_removes_existing_trigger():
     import tempfile, os
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp = tempfile.mkdtemp()
+    try:
         state_dir = os.path.join(tmp, "state")
         os.makedirs(state_dir)
         trigger = os.path.join(state_dir, "stop_trigger")
         open(trigger, "w").close()
         cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
         assert not os.path.exists(trigger)
+    finally:
+        _close_sb_log_handlers()
+        _tmp_cleanup(tmp)
 
 
 def test_clear_stale_triggers_ok_when_no_triggers():
     import tempfile, os
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp = tempfile.mkdtemp()
+    try:
         lock = cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
         assert os.path.basename(lock) == "solo_builder.lock"
+    finally:
+        _close_sb_log_handlers()
+        _tmp_cleanup(tmp)
