@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-329
+TASK-330
 
-SubtaskToolsFieldFix — propagate CLAUDE_ALLOWED_TOOLS to newly created subtasks so sdk_tool routing is reachable
+AnthropicMaxTokensIncrease — raise ANTHROPIC_MAX_TOKENS default from 256 to 4096
