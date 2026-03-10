@@ -45,3 +45,21 @@ include = ["solo_builder*"]
 
 [tool.setuptools.package-data]
 solo_builder = ["config/*.json", "api/*.html"]
+
+# ---------------------------------------------------------------------------
+# mutmut — mutation testing configuration (QA-035, TASK-334)
+# ---------------------------------------------------------------------------
+[tool.mutmut]
+# Paths to mutate — core business logic only; skip CLI entry-point and tests
+paths_to_mutate = [
+    "solo_builder/runners/",
+    "solo_builder/api/",
+    "solo_builder/commands/",
+    "solo_builder/utils/",
+]
+# Test runner invoked after each mutation
+runner = "python -m pytest solo_builder/tests/ -x -q --tb=no"
+# File patterns to exclude from mutation
+dict_synonyms = "Arg, Kwarg"
+# Cache-friendly test selection — fastest tests first
+tests_dir = "solo_builder/tests/"
