@@ -2356,3 +2356,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-361
+Goal: Wire dep_severity_check into pre_release_check as REQUIRED gate + auto-generate requirements-lock.txt (SE-012, SE-015)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
