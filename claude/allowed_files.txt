@@ -204,3 +204,4 @@ solo_builder/tests/test_context_window_compact.py
 tools/lock_file_gen.py
 solo_builder/tests/test_lock_file_gen.py
 solo_builder/tests/test_hitl_gate_wiring.py
+solo_builder/tests/test_prompt_regression.py

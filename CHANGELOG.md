@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.54.0 — 2026-03-10  PromptRegressionTests — 41 regression tests pinning PromptTemplate outputs (TASK-364)
+
+- **364 tasks** merged to master; **1849 tests**, all passing
+- `tests/test_prompt_regression.py`: 41 tests — registry integrity (3 templates registered, correct count, all PromptTemplate instances), structural invariants (subtask_execution: description/context/Complete/no-preamble/Task-label; verification: YES-NO/previously-executed/Output-was; stall-recovery: subtask-name/status/steps/Diagnose/Original-description), regression snapshots (exact rendered output for all 3 templates with canonical inputs), required-var behaviour (missing-required raises with field name in message, optional defaults to empty, extra kwargs ignored), placeholder_names property (correct sets for all 3), empty-{} rejection, duplicate-name rejection, convenience-function delegation (build_subtask_prompt/build_verification_prompt/build_stall_recovery_prompt match direct render) (AI-003) — TASK-364
+
+---
+
 ## v5.53.0 — 2026-03-10  SLODashboardPanel — SLO-003/SLO-005 status in /health/detailed + dashboard Health tab + 16 new tests (TASK-363)
 
 - **363 tasks** merged to master; **1808 tests**, all passing
