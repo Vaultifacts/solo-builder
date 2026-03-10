@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-338
+TASK-339
 
-HitlTriggerConfig — formalize HITL thresholds in settings.json + solo_builder/utils/hitl_policy.py + tests (AI-026, AI-032)
+ApiHealthEndpoint — GET /health endpoint returning version + uptime + test counts (OM-001, OM-002)

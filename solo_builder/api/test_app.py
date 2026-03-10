@@ -684,6 +684,21 @@ class TestHealth(_Base):
         d = self.client.get("/health").get_json()
         self.assertTrue(d["ok"])
 
+    def test_version_field_present(self):
+        """TASK-339: /health returns version string (OM-002)."""
+        self._write_state(self._make_state())
+        d = self.client.get("/health").get_json()
+        self.assertIn("version", d)
+        self.assertIsInstance(d["version"], str)
+        self.assertTrue(d["version"])  # non-empty
+
+    def test_total_subtasks_field_present(self):
+        """TASK-339: /health returns total_subtasks count."""
+        self._write_state(self._make_state())
+        d = self.client.get("/health").get_json()
+        self.assertIn("total_subtasks", d)
+        self.assertIsInstance(d["total_subtasks"], int)
+
 
 # ---------------------------------------------------------------------------
 # POST /export + GET /export
