@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-370
+TASK-371
 
-Add GET /health/context-window endpoint exposing context_window_budget check results for dashboard visibility (AI-008 to AI-013)
+Add Policy section to Health tab showing HITL + scope policy summaries from /policy/hitl and /policy/scope
