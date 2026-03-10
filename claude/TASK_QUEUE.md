@@ -1991,3 +1991,15 @@ Delivered:
 - `claude/TASK_QUEUE.md`: backfilled TASK-325 through TASK-329 with actual completion details
 
 Status: COMPLETE
+
+## TASK-331
+Goal: CorrelationIdMiddleware — X-Request-ID + X-API-Version headers on all API responses (OM-041, BE-040)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
