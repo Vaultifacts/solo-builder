@@ -118,7 +118,7 @@ The following monitoring improvements are tracked but not yet implemented:
 | AI-010 | No MEMORY.md line-count enforcement | **Resolved — TASK-332** (`tools/context_window_check.py`) |
 | AI-011 | No CLAUDE.md size lint rule | **Resolved — TASK-332** (`tools/context_window_check.py`) |
 | AI-012 | No compaction trigger in pre-commit hook | **Resolved** (`tools/context_window_warn.ps1` in `dev_gate.ps1`) |
-| AI-013 | No session context usage tracking | Open |
+| AI-013 | No session context usage tracking | **Resolved — TASK-359** (`tools/session_context_report.py`) |
 
 ---
 

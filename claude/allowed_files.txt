@@ -194,3 +194,7 @@ solo_builder/tests/test_dep_severity_check.py
 solo_builder/api/blueprints/health_detailed.py
 solo_builder/tests/test_health_detailed.py
 solo_builder/tests/test_health_dashboard_widget.py
+tools/session_context_report.py
+solo_builder/tests/test_session_context_report.py
+tools/session_context_report.py
+solo_builder/tests/test_session_context_report.py
