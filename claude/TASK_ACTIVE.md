@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-368
+TASK-369
 
-ExecutorGateSummaryAPI: GET /executor/gates endpoint summarizing HITL/scope/validation gate status for queued subtasks (AI-026, AI-033)
+GatesDashboardWidget: Add Gates section to Health tab showing live /executor/gates data with blocked/allowed status
