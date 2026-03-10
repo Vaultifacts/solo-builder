@@ -116,11 +116,11 @@ hook exits 0 on `RuntimeError` to never block a commit.
 
 | SLO | Target | Current | Status |
 |---|---|---|---|
-| SLO-001 API tests | 100% | 600/600 (100%) | ✅ |
+| SLO-001 API tests | 100% | 394/394 (100%) | ✅ |
 | SLO-002 Discord tests | 100% | 305/305 (100%) | ✅ |
-| SLO-003 SDK success rate | ≥ 95% | Not yet instrumented | ⚠️ |
+| SLO-003 SDK success rate | ≥ 95% | 100% — tools/slo_check.py | ✅ |
 | SLO-004 Gate checks | 14/14 | 14/14 | ✅ |
-| SLO-005 Step latency | ≤ 10 s median | Not yet instrumented | ⚠️ |
+| SLO-005 Step latency | ≤ 10 s median | 0.001 s — tools/slo_check.py | ✅ |
 | SLO-006 Notion sync | ≥ 99% | Not yet instrumented | ⚠️ |
 
 Items marked ⚠️ have defined targets but no automated measurement yet.
@@ -133,8 +133,8 @@ Instrumentation is the next step (tracked under OM-035 to OM-040).
 | Gap ID | Description | Resolution |
 |---|---|---|
 | OM-035 | No SLO definitions | **Resolved by TASK-315** |
-| OM-036 | SDK success rate not instrumented | Open — requires executor metrics log |
-| OM-037 | Step latency not measured | Open — requires timing instrumentation |
+| OM-036 | SDK success rate not instrumented | **Resolved by TASK-335** — `tools/slo_check.py` reads `metrics.jsonl` sdk_dispatched/sdk_succeeded fields |
+| OM-037 | Step latency not measured | **Resolved by TASK-333 + TASK-335** — `execute_step` logs `elapsed_ms`; `slo_check.py` validates median |
 | OM-038 | Notion sync success rate not tracked | Open — requires hook exit code log |
 | OM-039 | No SLO dashboard UI | Open — future dashboard widget |
 | OM-040 | No alerting on SLO breach | Open — future Discord notification |

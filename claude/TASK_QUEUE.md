@@ -2044,3 +2044,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-335
+Goal: SLODefinitions — docs/SLO.md + tools/slo_check.py that validates metrics.jsonl step timing against targets (OM-035 to OM-040)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
