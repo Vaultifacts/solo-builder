@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.68.0 — 2026-03-10  PromptRegressionCI — prompt-regression as required pre-release gate + 6 tests (TASK-373)
+
+- **373 tasks** merged to master; **2044 tests**, all passing
+- `tools/pre_release_check.py`: added `prompt-regression` to `_builtin_gates()` as `required=True`; runs `prompt_regression_check.py --quiet`; blocks release when any PromptTemplate fails regression checks (AI-002, AI-003) — TASK-373
+- `claude/VERIFY.json`: added `prompt-regression` entry (`required:true`) for tooling visibility — TASK-373
+- `tests/test_pre_release_check.py`: 6 new tests — builtin gate (present/required/command has script) + VERIFY.json (prompt-regression in file/required/command) — TASK-373
+
+---
+
+
 ## v5.66.0 — 2026-03-10  ContextWindowDashboardWidget — pollContextWindowDetailed in Health tab + 24 tests (TASK-372)
 
 - **372 tasks** merged to master; **2038 tests**, all passing
