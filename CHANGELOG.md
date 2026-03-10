@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.28.0 — 2026-03-10  HitlTriggerConfig — hitl_policy.py + settings.json + 19 tests (TASK-338)
+
+- **338 tasks** merged to master; **466 tests**, all passing
+- `config/settings.json`: HITL_PAUSE_TOOLS, HITL_NOTIFY_TOOLS, HITL_BLOCK_KEYWORDS, HITL_PAUSE_KEYWORDS now configurable (previously hardcoded in hitl_gate.py) (AI-026, AI-032) — TASK-338
+- `utils/hitl_policy.py`: `HitlPolicy` frozen dataclass + `load_policy()` + `evaluate_with_policy()` + `validate()`; config-driven HITL evaluation with custom settings path for testability — TASK-338
+- `tests/test_hitl_policy.py`: 19 tests — csv parsing, load, validate warnings, evaluate (auto/notify/pause/block, path traversal, tool priority) — TASK-338
+
+---
+
 ## v5.27.0 — 2026-03-10  PromptTemplateStandard — prompt_builder.py + 20 tests (TASK-337)
 
 - **337 tasks** merged to master; **447 tests**, all passing
