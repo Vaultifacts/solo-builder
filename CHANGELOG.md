@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.64.0 — 2026-03-10  PolicyDashboardWidget — pollPolicyDetailed in Health tab + 26 tests (TASK-371)
+
+- **371 tasks** merged to master; **2013 tests**, all passing
+- `api/static/dashboard_panels.js`: `export async function pollPolicyDetailed()` fetches `/policy/hitl` and `/policy/scope` in parallel, renders HITL section (pause_tools, block_keywords, warnings) and Scope section (default_action_type, action_types, warnings) with OK/WARN badges (AI-026, AI-033) — TASK-371
+- `api/dashboard.html`: `policy-detailed-content` div added inside Health tab after gates section, with "Loading policy…" placeholder — TASK-371
+- `api/static/dashboard.js`: `pollPolicyDetailed` added to import from `./dashboard_panels.js` and called in `tick()` Promise.all — TASK-371
+- `tests/test_policy_dashboard_widget.py`: 26 tests — HTML (div present/inside health/after gates/loading placeholder), panels JS (exported/hitl+scope endpoints/content div/pause_tools/block_keywords/default_action_type/allowlists/warnings/replaceChildren/HITL+Scope labels/Promise.all), main JS (imported/called in tick/import regex), endpoint integration (hitl+scope 200/ok+policy keys) — TASK-371
+
+---
+
+
 ## v5.62.0 — 2026-03-10  ContextWindowBudgetAPI — GET /health/context-window endpoint + 26 tests (TASK-370)
 
 - **370 tasks** merged to master; **1987 tests**, all passing
