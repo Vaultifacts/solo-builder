@@ -1,17 +1,9 @@
 {
-  "selected_at": "2026-03-10T03:49:55.966859+00:00",
+  "selected_at": "2026-03-10T03:57:18.307952+00:00",
   "layer1_pct": 100,
-  "open_count": 4,
+  "open_count": 3,
   "task": {
     "suggested_task_id": "TASK-311",
-    "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
-    "audit_refs": "AI-004, AI-005",
-    "safety_score": 65,
-    "risk_level": "Low-Medium",
-    "rationale": "Adds tests only \u2014 does not modify production code paths.",
-    "estimated_scope": "Scope to be determined; start with a design spike."
-  },
-  "runner_up": {
     "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py",
     "audit_refs": "TD-ARCH-001",
     "safety_score": 40,
@@ -19,15 +11,15 @@
     "rationale": "Scope unclear from title; recommend a spike or design doc first.",
     "estimated_scope": "Scope to be determined; start with a design spike."
   },
+  "runner_up": {
+    "title": "SecurityHeadersMiddleware \u2014 add Flask security headers (X-Frame-Options, CSP, HSTS) to API",
+    "audit_refs": "SE-021, SE-025",
+    "safety_score": 40,
+    "risk_level": "Medium",
+    "rationale": "Scope unclear from title; recommend a spike or design doc first.",
+    "estimated_scope": "Scope to be determined; start with a design spike."
+  },
   "all_scored": [
-    {
-      "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
-      "audit_refs": "AI-004, AI-005",
-      "safety_score": 65,
-      "risk_level": "Low-Medium",
-      "rationale": "Adds tests only \u2014 does not modify production code paths.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
     {
       "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py",
       "audit_refs": "TD-ARCH-001",

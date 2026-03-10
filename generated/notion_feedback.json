@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-10T03:49:55.873661+00:00",
+  "generated_at": "2026-03-10T03:57:18.212472+00:00",
   "layer1_completion": {
     "complete": 8,
     "total": 8,
@@ -68,7 +68,7 @@
     },
     {
       "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
-      "checked": false,
+      "checked": true,
       "audit_refs": "AI-004, AI-005",
       "raw_text": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases (AI-004, AI-005)"
     },
@@ -256,6 +256,6 @@
       "Observability & Monitoring",
       "Security Engineering"
     ],
-    "open_priorities": 4
+    "open_priorities": 3
   }
 }
