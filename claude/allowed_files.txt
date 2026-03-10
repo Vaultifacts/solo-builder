@@ -166,3 +166,5 @@ solo_builder/utils/discord_role_guard.py
 solo_builder/tests/test_discord_role_guard.py
 tools/state_backup.py
 solo_builder/tests/test_state_backup.py
+tools/config_drift.py
+solo_builder/tests/test_config_drift.py
