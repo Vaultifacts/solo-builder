@@ -48,6 +48,7 @@ from .blueprints.dag import dag_bp
 from .blueprints.webhook import webhook_bp
 from .blueprints.core import core_bp
 from .blueprints.health_detailed import health_detailed_bp
+from .blueprints.policy import policy_bp
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -63,6 +64,7 @@ app.register_blueprint(dag_bp)
 app.register_blueprint(webhook_bp)
 app.register_blueprint(core_bp)
 app.register_blueprint(health_detailed_bp)
+app.register_blueprint(policy_bp)
 
 
 @app.before_request
