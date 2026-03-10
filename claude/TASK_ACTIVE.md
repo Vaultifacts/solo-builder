@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-353
+TASK-354
 
-version bump tool — semver bump with CHANGELOG.md and version file update (RD-020 to RD-025)
+prompt regression check — validate prompt templates against schema + regression checklist (AI-002 to AI-005)
