@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.60.0 — 2026-03-10  GatesDashboardWidget — pollGatesDetailed in Health tab + 19 tests (TASK-369)
+
+- **369 tasks** merged to master; **1961 tests**, all passing
+- `api/static/dashboard_panels.js`: `export async function pollGatesDetailed()` fetches `/executor/gates`, renders header with running/blocked counts, per-gate rows with OK/BLOCKED badges, hitl_name, scope_denied tools, empty-state "No Running subtasks." message (AI-026, AI-033) — TASK-369
+- `api/dashboard.html`: `gates-detailed-content` div added inside Health tab below health-detailed-content, with "Loading gates…" placeholder — TASK-369
+- `api/static/dashboard.js`: `pollGatesDetailed` added to import from `./dashboard_panels.js` and called in `tick()` Promise.all — TASK-369
+- `tests/test_gates_dashboard_widget.py`: 19 tests — HTML (div present/inside health tab/Loading placeholder), panels JS (exported/endpoint/content div/BLOCKED/hitl_name/scope_denied/running_count/replaceChildren/empty message), main JS (imported/called in tick/import regex), endpoint integration (200/ok-true/gates key/json content-type) — TASK-369
+
+---
+
+
 ## v5.58.0 — 2026-03-10  ExecutorGateSummaryAPI — GET /executor/gates endpoint + 33 tests (TASK-368)
 
 - **368 tasks** merged to master; **1942 tests**, all passing
