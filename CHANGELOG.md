@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.76.0 — 2026-03-10  DebtScanDashboardWidget — GET /health/debt-scan + Health tab widget + 35 tests (TASK-377)
+
+- **377 tasks** merged to master; **2168 tests**, all passing
+- `api/blueprints/debt_scan.py`: `GET /health/debt-scan` calls `debt_scan.scan()`; returns `{ok, count, results:[{path,line,marker,text}]}` capped at 20 — TASK-377
+- `api/app.py`: registered `debt_scan_bp` — TASK-377
+- `api/static/dashboard_panels.js`: `pollDebtScanDetailed()` renders debt count + per-item marker/path/text rows — TASK-377
+- `api/dashboard.html`: `debt-scan-detailed-content` div after prompt-regression section — TASK-377
+- `tests/test_debt_scan_dashboard_widget.py`: 35 tests — TASK-377
+
+---
+
 ## v5.74.0 — 2026-03-10  PromptRegressionAPI — GET /health/prompt-regression + Health tab widget + 29 tests (TASK-376)
 
 - **376 tasks** merged to master; **2133 tests**, all passing
