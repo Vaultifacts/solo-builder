@@ -4943,6 +4943,40 @@ class TestGetTaskExport(_Base):
 
 
 # ---------------------------------------------------------------------------
+# Security-headers integration tests (TD-TEST-001, TASK-323)
+# Verify headers arrive end-to-end through the real Flask @after_request hook.
+# ---------------------------------------------------------------------------
+
+class TestSecurityHeadersIntegration(_Base):
+    """Flask test-client requests — assert headers on real HTTP responses."""
+
+    def _get(self):
+        self._write_state(self._make_state())
+        return self.client.get("/status")
+
+    def test_hsts_end_to_end(self):
+        r = self._get()
+        self.assertEqual(r.headers.get("Strict-Transport-Security"),
+                         "max-age=31536000; includeSubDomains")
+
+    def test_x_frame_options_end_to_end(self):
+        r = self._get()
+        self.assertEqual(r.headers.get("X-Frame-Options"), "DENY")
+
+    def test_csp_end_to_end(self):
+        r = self._get()
+        self.assertIn("default-src 'self'", r.headers.get("Content-Security-Policy", ""))
+
+    def test_x_content_type_options_end_to_end(self):
+        r = self._get()
+        self.assertEqual(r.headers.get("X-Content-Type-Options"), "nosniff")
+
+    def test_referrer_policy_end_to_end(self):
+        r = self._get()
+        self.assertEqual(r.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
+
+
+# ---------------------------------------------------------------------------
 # Middleware unit tests (TASK-322)
 # ---------------------------------------------------------------------------
 

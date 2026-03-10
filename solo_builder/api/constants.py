@@ -76,3 +76,5 @@ _SHORTCUTS = [
 
 _AVG_TOKENS_PER_ENTRY = 550  # matches ResponseCache._AVG_TOKENS_PER_ENTRY
 _STATS_FILE = "session_stats.json"
+
+METRICS_JSONL_PATH = _PROJECT_ROOT / "metrics.jsonl"

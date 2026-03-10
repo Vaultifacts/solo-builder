@@ -559,6 +559,93 @@ class TestDagSummary(_Base):
         self.assertEqual(len(d["tasks"]), 2)
 
 
+class TestMetricsSummaryEndpoint(_Base):
+    """TASK-323: GET /metrics/summary reads metrics.jsonl (OM-021 to OM-030)."""
+
+    def _patch_metrics_path(self, path):
+        import api.blueprints.metrics as _m
+        from unittest.mock import patch as _p
+        return _p.object(_m, "METRICS_JSONL_PATH", new=path)
+
+    def test_empty_file_returns_nulls(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as tf:
+            tmp = Path(tf.name)
+        tmp.write_text("", encoding="utf-8")
+        with self._patch_metrics_path(tmp):
+            resp = self.client.get("/metrics/summary")
+        self.assertEqual(resp.status_code, 200)
+        d = resp.get_json()
+        self.assertEqual(d["record_count"], 0)
+        self.assertIsNone(d["avg_elapsed_s"])
+
+    def test_missing_file_returns_empty(self):
+        from pathlib import Path
+        with self._patch_metrics_path(Path("/nonexistent/metrics.jsonl")):
+            resp = self.client.get("/metrics/summary")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json()["record_count"], 0)
+
+    def test_records_aggregate_correctly(self):
+        import json, tempfile
+        from pathlib import Path
+        records = [
+            {"ts": "2026-03-10T00:00:00Z", "step": 1, "elapsed_s": 1.0,
+             "sdk_dispatched": 2, "sdk_succeeded": 2, "sdk_success_rate": 1.0,
+             "started": 1, "verified": 2},
+            {"ts": "2026-03-10T00:01:00Z", "step": 2, "elapsed_s": 3.0,
+             "sdk_dispatched": 1, "sdk_succeeded": 0, "sdk_success_rate": 0.0,
+             "started": 0, "verified": 1},
+        ]
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", mode="w",
+                                         delete=False, encoding="utf-8") as tf:
+            for r in records:
+                tf.write(json.dumps(r) + "\n")
+            tmp = Path(tf.name)
+        with self._patch_metrics_path(tmp):
+            resp = self.client.get("/metrics/summary")
+        d = resp.get_json()
+        self.assertEqual(d["record_count"], 2)
+        self.assertAlmostEqual(d["avg_elapsed_s"], 2.0, places=2)
+        self.assertEqual(d["total_started"], 1)
+        self.assertEqual(d["total_verified"], 3)
+        self.assertAlmostEqual(d["sdk_success_rate"], 2/3, places=3)
+
+    def test_no_sdk_dispatches_returns_null_rate(self):
+        import json, tempfile
+        from pathlib import Path
+        records = [{"ts": "t", "step": 1, "elapsed_s": 0.5,
+                    "sdk_dispatched": 0, "sdk_succeeded": 0,
+                    "sdk_success_rate": None, "started": 1, "verified": 1}]
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", mode="w",
+                                         delete=False, encoding="utf-8") as tf:
+            for r in records:
+                tf.write(json.dumps(r) + "\n")
+            tmp = Path(tf.name)
+        with self._patch_metrics_path(tmp):
+            resp = self.client.get("/metrics/summary")
+        self.assertIsNone(resp.get_json()["sdk_success_rate"])
+
+    def test_response_has_all_expected_keys(self):
+        import json, tempfile
+        from pathlib import Path
+        records = [{"ts": "t", "step": 1, "elapsed_s": 1.0,
+                    "sdk_dispatched": 1, "sdk_succeeded": 1,
+                    "sdk_success_rate": 1.0, "started": 1, "verified": 1}]
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", mode="w",
+                                         delete=False, encoding="utf-8") as tf:
+            for r in records:
+                tf.write(json.dumps(r) + "\n")
+            tmp = Path(tf.name)
+        with self._patch_metrics_path(tmp):
+            resp = self.client.get("/metrics/summary")
+        d = resp.get_json()
+        for key in ("record_count", "avg_elapsed_s", "p95_elapsed_s",
+                    "sdk_success_rate", "total_started", "total_verified"):
+            self.assertIn(key, d, f"Missing key: {key}")
+
+
 class TestSecurityHeaders(_Base):
     """TASK-322: Flask security headers present on every response (SE-021, SE-025)."""
 

@@ -62,7 +62,9 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 | TD-ARCH-005 | Unknown tool names silently no-op in SdkToolRunner | TASK-318 |
 | TD-SEC-001 | No path allowlist on Read tool | TASK-318 |
 | TD-SEC-002 | No dependency lockfile for tools/ | TASK-318 |
+| TD-SEC-003 | API `@after_request` hook missing HSTS header | TASK-322 |
 | TD-TEST-001 | No integration tests for executor routing logic | TASK-318 |
+| TD-TEST-003 | No end-to-end Flask test-client assertions for security headers | TASK-323 |
 | TD-TEST-002 | No tests for hitl_gate.py | TASK-317 |
 | TD-DEP-001 | anthropic SDK version unpinned in solo_builder/ | TASK-318 |
 | TD-OPS-001 | No executor metrics instrumentation | TASK-319 |
@@ -105,3 +107,5 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 | 2026-03-10 | Initial register (TASK-317). 9 open items across 5 categories. ME-003 resolved. |
 | 2026-03-10 | TASK-318: Resolved 8 items — TD-ARCH-002/003/005, TD-SEC-001/002, TD-TEST-001/002, TD-DEP-001. 2 open items remain. |
 | 2026-03-10 | TASK-319: Resolved TD-OPS-001 — executor metrics JSONL (elapsed_s, sdk_success_rate). 1 open item remains (TD-ARCH-001). |
+| 2026-03-10 | TASK-322: Resolved TD-SEC-003 — HSTS header added to SecurityHeadersMiddleware. |
+| 2026-03-10 | TASK-323: Resolved TD-TEST-003 — 5 Flask test-client integration tests assert all security headers end-to-end. TD-ARCH-001 Phase 1 analysis corrected: 6 of 8 "read-only" constants are mutable via do_set. |
