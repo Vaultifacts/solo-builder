@@ -1024,6 +1024,61 @@ export async function pollGatesDetailed() {
   } catch (_) {}
 }
 
+export async function pollThreatModelDetailed() {
+  try {
+    const d = await api("/health/threat-model");
+    const el = document.getElementById("threat-model-detailed-content");
+    if (!el) return;
+
+    const checks = d.checks || [];
+
+    const mkBadge = (passed) => {
+      const b = document.createElement("span");
+      b.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;font-weight:bold;margin-right:8px;flex-shrink:0;color:#000;background:${passed ? "var(--green)" : "var(--red)"}`;
+      b.textContent = passed ? "OK" : "FAIL";
+      return b;
+    };
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${d.ok ? "var(--green)" : "var(--red)"}`;
+    hdrText.textContent = `Threat Model${d.ok ? " — OK" : " — issues found"}`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    checks.forEach(c => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px";
+      const info = document.createElement("div");
+      info.style.cssText = "flex:1;min-width:0";
+      const name = document.createElement("div");
+      name.style.cssText = "color:var(--text)";
+      name.textContent = c.name + (c.required ? "" : " (advisory)");
+      if (c.detail) {
+        const det = document.createElement("div");
+        det.style.cssText = "color:var(--dim);font-size:9px;margin-top:2px;word-break:break-word";
+        det.textContent = c.detail;
+        info.append(name, det);
+      } else {
+        info.append(name);
+      }
+      row.append(mkBadge(c.passed), info);
+      nodes.push(row);
+    });
+
+    if (checks.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";
+      empty.textContent = "No threat model checks available.";
+      nodes.push(empty);
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
 export async function pollContextWindowDetailed() {
   try {
     const d = await api("/health/context-window");
