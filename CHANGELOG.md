@@ -1,5 +1,35 @@
 # Changelog
 
+## v5.82.0 — 2026-03-10  HealthTabRefactor — 2-column grid layout for Health tab (TASK-380)
+
+- **380 tasks** merged to master; **2242 tests**, all passing
+- `api/dashboard.html`: Health tab widgets wrapped in `id="health-widget-grid"` 2-column CSS grid (`grid-template-columns:1fr 1fr`) — TASK-380
+- `tests/test_health_tab_grid.py`: 10 tests verifying grid structure + all 9 widget IDs — TASK-380
+
+---
+
+## v5.80.0 — 2026-03-10  PreReleaseDashboardWidget — GET /health/pre-release + Health tab widget + 36 tests (TASK-379)
+
+- **379 tasks** merged to master; **2232 tests**, all passing
+- `api/blueprints/pre_release.py`: `GET /health/pre-release` returns gate inventory from `_builtin_gates()` + `_load_verify_gates()`; `{ok, total, required, gates:[{name,required}]}` — TASK-379
+- `api/app.py`: registered `pre_release_bp` — TASK-379
+- `api/static/dashboard_panels.js`: `pollPreReleaseDetailed()` renders REQ/OPT badges per gate — TASK-379
+- `api/dashboard.html`: `pre-release-detailed-content` div added — TASK-379
+- `tests/test_pre_release_dashboard_widget.py`: 36 tests — TASK-379
+
+---
+
+## v5.78.0 — 2026-03-10  CIQualityDashboardWidget — GET /health/ci-quality + Health tab widget + 28 tests (TASK-378)
+
+- **378 tasks** merged to master; **2196 tests**, all passing
+- `api/blueprints/ci_quality.py`: `GET /health/ci-quality` returns tool inventory from `_tool_definitions()`; `{ok, count, tools:[{name}]}` — TASK-378
+- `api/app.py`: registered `ci_quality_bp` — TASK-378
+- `api/static/dashboard_panels.js`: `pollCiQualityDetailed()` renders configured tool count + names — TASK-378
+- `api/dashboard.html`: `ci-quality-detailed-content` div added — TASK-378
+- `tests/test_ci_quality_dashboard_widget.py`: 28 tests — TASK-378
+
+---
+
 ## v5.76.0 — 2026-03-10  DebtScanDashboardWidget — GET /health/debt-scan + Health tab widget + 35 tests (TASK-377)
 
 - **377 tasks** merged to master; **2168 tests**, all passing
