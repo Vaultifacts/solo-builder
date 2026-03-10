@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-358
+TASK-359
 
-Add health status card to dashboard.html polling /health/detailed
+ContextWindowAutoCompact: trigger compaction when context_window_budget reports critical/over_budget

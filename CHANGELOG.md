@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.49.0 — 2026-03-10  ContextWindowAutoCompact — compaction trigger for critical/over_budget files + 33 tests (TASK-359)
+
+- **359 tasks** merged to master; **2096 tests**, all passing
+- `tools/context_window_compact.py`: `compact()` evaluates `context_window_budget` and dispatches JOURNAL.md → `archive_journal.run()`, MEMORY.md → `_truncate_file()`, CLAUDE.md → `warning_only`; `CompactionReport` + `CompactionAction` dataclasses with `to_dict()`; `--dry-run`, `--threshold warn|critical|over_budget`, `--older-than`, `--json`, `--quiet` flags; exits 0=clean, 1=compacted, 2=error (AI-014 to AI-016) — TASK-359
+- `tests/test_context_window_compact.py`: 33 tests — `CompactionAction`/`CompactionReport` (to_dict/has_actions), `_truncate_file` (over/within/dry-run/missing/actual-size), `_compact_journal` (dry-run/missing/lines-before/run-called), `compact()` (all-ok/claude-warning/memory-truncated/warn-threshold/dry-run-preserves-file/has-actions), `run()` (exit-codes/json/quiet/text/dry-run/exception), `main()` (dry-run/json/threshold/older-than flags) — TASK-359
+
+---
+
 ## v5.48.0 — 2026-03-10  HealthDashboardWidget — Health tab polling /health/detailed + 21 tests (TASK-358)
 
 - **358 tasks** merged to master; **2063 tests**, all passing
