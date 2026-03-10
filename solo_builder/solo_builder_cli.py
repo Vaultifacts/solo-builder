@@ -286,7 +286,7 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
 
     def _cmd_set(self, args: str) -> None:
         """set KEY=VALUE — update runtime config."""
-        global STALL_THRESHOLD, SNAPSHOT_INTERVAL, VERBOSITY
+        global STALL_THRESHOLD, SNAPSHOT_INTERVAL, VERBOSITY, EXEC_VERIFY_PROB
         global AUTO_STEP_DELAY, AUTO_SAVE_INTERVAL, CLAUDE_ALLOWED_TOOLS, WEBHOOK_URL
 
         parts = args.split("=", 1)
@@ -345,9 +345,10 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
                 v = float(val)
                 if not 0.0 <= v <= 1.0:
                     raise ValueError("must be between 0.0 and 1.0")
+                EXEC_VERIFY_PROB = v
                 self.executor.verify_prob = v
                 print(f"  {GREEN}VERIFY_PROB = {val}{RESET}")
-                self._persist_setting("EXECUTOR_VERIFY_PROBABILITY", self.executor.verify_prob)
+                self._persist_setting("EXECUTOR_VERIFY_PROBABILITY", v)
 
             elif key == "AUTO_STEP_DELAY":
                 v = float(val)

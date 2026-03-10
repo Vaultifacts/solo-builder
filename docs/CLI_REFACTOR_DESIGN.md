@@ -47,9 +47,13 @@ Investigation of `do_set()` and `global` declarations reveals three categories:
 
 **Truly read-only after init — not patched, not mutated by `do_set`:**
 `DAG_UPDATE_INTERVAL`, `PDF_OUTPUT_PATH`, `BAR_WIDTH`, `MAX_ALERTS`,
-`EXEC_MAX_PER_STEP`, `EXEC_VERIFY_PROB`, `MAX_SUBTASKS_PER_BRANCH`,
-`MAX_BRANCHES_PER_TASK`, `CLAUDE_TIMEOUT`, `ANTHROPIC_MODEL`,
-`ANTHROPIC_MAX_TOKENS`, `REVIEW_MODE`, `_PROJECT_CONTEXT`
+`EXEC_MAX_PER_STEP`, `MAX_SUBTASKS_PER_BRANCH`, `MAX_BRANCHES_PER_TASK`,
+`CLAUDE_TIMEOUT`, `ANTHROPIC_MODEL`, `ANTHROPIC_MAX_TOKENS`, `REVIEW_MODE`,
+`_PROJECT_CONTEXT`
+
+**Bug fixed (TASK-324):** `EXEC_VERIFY_PROB` was listed as read-only but
+`do_set VERIFY_PROB` only updated `self.executor.verify_prob`, not the global.
+Fixed: `EXEC_VERIFY_PROB` now declared in the `global` statement and kept in sync.
 
 The read-only subset could be moved to `solo_builder/config/loader.py` and
 re-imported in `solo_builder_cli.py` to preserve `solo_builder_cli.X` access.
@@ -75,7 +79,13 @@ Re-import them in `solo_builder_cli.py` for backwards compatibility.
 Move `do_*` command methods to `solo_builder/commands/dispatcher.py`. The
 `solo_builder_cli.py` entry point delegates to the dispatcher.
 
-**Risk:** Medium — requires verifying all 534+ tests still patch the right module.
+**Phase 2 test-patch audit (TASK-324):** Grepped all test files for direct
+calls to `do_*` methods via `solo_builder_cli.do_*` or `SoloBuilderCLI.do_*`.
+Result: **0 hits**. No test patches or directly invokes `do_*` by name.
+The test-patch risk for Phase 2 is therefore **Low**, not Medium as originally stated.
+The remaining risk is functional correctness of the delegation chain.
+
+**Revised Risk:** Low — no test patches target `do_*` methods.
 
 ### Phase 3 — Mixin host refactor
 
@@ -91,8 +101,10 @@ Phases 1, 2, and 3 deferred. Phase 1 requires correcting the initial
 is low-value without a second consumer. Phases 2–3 require the patch-update
 task estimated at 3–5 hours.
 
-**Status:** Design spike complete. TD-ARCH-001 remains open. Extraction deferred
-until there is a concrete second-module consumer for the read-only constants.
+**Status:** Design spike complete. TD-ARCH-001 remains open. Phase 2 risk
+downgraded to Low after audit confirmed 0 test patches targeting `do_*` methods.
+Phase 2 is now the highest-value next step — blocked only by implementation time,
+not test-patch risk. Phase 1 remains low-priority (no second consumer).
 
 ---
 
@@ -102,3 +114,4 @@ until there is a concrete second-module consumer for the read-only constants.
 |---|---|
 | 2026-03-10 | Initial design spike (TASK-322). TD-ARCH-001 constraint analysis complete. Phase 1 scoped; Phases 2–3 deferred. |
 | 2026-03-10 | TASK-323: corrected Phase 1 — `do_set` mutates 6 constants originally listed as read-only. Three-category classification added. Phase 1 demoted to low-priority. |
+| 2026-03-10 | TASK-324: Phase 2 risk downgraded — 0 tests patch `do_*` methods. EXEC_VERIFY_PROB global drift fixed. |

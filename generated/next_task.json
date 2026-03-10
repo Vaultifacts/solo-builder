@@ -1,17 +1,9 @@
 {
-  "selected_at": "2026-03-10T04:17:31.388042+00:00",
+  "selected_at": "2026-03-10T04:24:08.938988+00:00",
   "layer1_pct": 100,
-  "open_count": 5,
+  "open_count": 4,
   "task": {
     "suggested_task_id": "TASK-311",
-    "title": "MetricsDashboardEndpoint \u2014 expose GET /metrics/summary returning step latency and SDK success rate from metrics.jsonl",
-    "audit_refs": "OM-021 to OM-030",
-    "safety_score": 75,
-    "risk_level": "Low",
-    "rationale": "Lightweight specification task \u2014 output is a document or config file.",
-    "estimated_scope": "Scope to be determined; start with a design spike."
-  },
-  "runner_up": {
     "title": "TestDataFactory \u2014 centralise test state builders (_make_state, _make_multi_task_state) into a shared fixture module",
     "audit_refs": "TD-TEST-003",
     "safety_score": 65,
@@ -19,15 +11,15 @@
     "rationale": "Adds tests only \u2014 does not modify production code paths.",
     "estimated_scope": "Scope to be determined; start with a design spike."
   },
+  "runner_up": {
+    "title": "StructuredLogFormatter \u2014 configure Python logging with JSON formatter for machine-readable log output",
+    "audit_refs": "OM-011 to OM-020",
+    "safety_score": 40,
+    "risk_level": "Medium",
+    "rationale": "Scope unclear from title; recommend a spike or design doc first.",
+    "estimated_scope": "Scope to be determined; start with a design spike."
+  },
   "all_scored": [
-    {
-      "title": "MetricsDashboardEndpoint \u2014 expose GET /metrics/summary returning step latency and SDK success rate from metrics.jsonl",
-      "audit_refs": "OM-021 to OM-030",
-      "safety_score": 75,
-      "risk_level": "Low",
-      "rationale": "Lightweight specification task \u2014 output is a document or config file.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
     {
       "title": "TestDataFactory \u2014 centralise test state builders (_make_state, _make_multi_task_state) into a shared fixture module",
       "audit_refs": "TD-TEST-003",

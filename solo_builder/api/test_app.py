@@ -93,6 +93,10 @@ class _Base(unittest.TestCase):
 
         app_module.app.config["TESTING"] = True
         self.client = app_module.app.test_client()
+        # Reset rate limiter counters so tests don't cross-contaminate each other
+        import collections
+        app_module._rate_limiter._read  = collections.defaultdict(collections.deque)
+        app_module._rate_limiter._write = collections.defaultdict(collections.deque)
 
     def tearDown(self):
         for p in self._patches:
@@ -4940,6 +4944,37 @@ class TestGetTaskExport(_Base):
         self._write_state(self._make_state({"A1": "Pending"}))
         r = self.client.get("/tasks/Task 0/export")
         self.assertIn("attachment", r.headers.get("Content-Disposition", ""))
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter integration tests (TASK-324)
+# Verify the @before_request hook returns 429 when the limiter denies.
+# ---------------------------------------------------------------------------
+
+class TestRateLimiterIntegration(_Base):
+    """Flask test-client integration — assert 429 when rate limit is hit."""
+
+    def test_under_limit_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/status")
+        self.assertEqual(r.status_code, 200)
+
+    def test_429_returned_when_limiter_denies(self):
+        self._write_state(self._make_state())
+        with patch.object(app_module._rate_limiter, "check", return_value=False):
+            r = self.client.get("/status")
+        self.assertEqual(r.status_code, 429)
+
+    def test_429_body_contains_error_key(self):
+        self._write_state(self._make_state())
+        with patch.object(app_module._rate_limiter, "check", return_value=False):
+            r = self.client.get("/status")
+        self.assertIn("error", r.get_json())
+
+    def test_write_method_triggers_429(self):
+        with patch.object(app_module._rate_limiter, "check", return_value=False):
+            r = self.client.post("/trigger/verify", json={})
+        self.assertEqual(r.status_code, 429)
 
 
 # ---------------------------------------------------------------------------

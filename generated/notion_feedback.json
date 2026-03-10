@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-10T04:17:31.288424+00:00",
+  "generated_at": "2026-03-10T04:24:08.842787+00:00",
   "layer1_completion": {
     "complete": 8,
     "total": 8,
@@ -104,7 +104,7 @@
     },
     {
       "title": "MetricsDashboardEndpoint \u2014 expose GET /metrics/summary returning step latency and SDK success rate from metrics.jsonl",
-      "checked": false,
+      "checked": true,
       "audit_refs": "OM-021 to OM-030",
       "raw_text": "MetricsDashboardEndpoint \u2014 expose GET /metrics/summary returning step latency and SDK success rate from metrics.jsonl (OM-021 to OM-030)"
     }
@@ -286,6 +286,6 @@
       "Observability & Monitoring",
       "Security Engineering"
     ],
-    "open_priorities": 5
+    "open_priorities": 4
   }
 }
