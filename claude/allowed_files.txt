@@ -149,3 +149,5 @@ tools/debt_scan.py
 solo_builder/tests/test_debt_scan.py
 solo_builder/utils/prompt_builder.py
 solo_builder/tests/test_prompt_builder.py
+solo_builder/utils/hitl_policy.py
+solo_builder/tests/test_hitl_policy.py
