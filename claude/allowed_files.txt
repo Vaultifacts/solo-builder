@@ -106,3 +106,10 @@ tools/task_orchestrator.py
 tools/verify_permissions.py
 .claude/settings.local.json
 docs/HITL_TRIGGER_DESIGN.md
+docs/AI_ACTION_SCOPE.md
+docs/THREAT_MODEL.md
+docs/SLO_DEFINITIONS.md
+docs/CONTEXT_WINDOW_STRATEGY.md
+docs/TECH_DEBT_REGISTER.md
+solo_builder/runners/hitl_gate.py
+solo_builder/tests/test_hitl_gate.py
