@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-319
+TASK-320
 
-executor step metrics, CHANGELOG v5.9.0 — Layer 3 audit complete
+StructuredLoggingMigration — replace executor print() calls with Python logging; emit structured JSON events per step for SLO measurement
