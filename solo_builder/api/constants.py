@@ -53,7 +53,7 @@ _CONFIG_DEFAULTS = {
     "CLAUDE_TIMEOUT": 60,
     "CLAUDE_ALLOWED_TOOLS": "",
     "ANTHROPIC_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_MAX_TOKENS": 256,
+    "ANTHROPIC_MAX_TOKENS": 4096,
     "REVIEW_MODE": False,
     "WEBHOOK_URL": "",
 }
