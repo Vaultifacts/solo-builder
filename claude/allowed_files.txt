@@ -220,3 +220,5 @@ solo_builder/api/blueprints/threat_model.py
 solo_builder/tests/test_threat_model_dashboard_widget.py
 solo_builder/api/blueprints/slo.py
 solo_builder/tests/test_slo_dashboard_widget.py
+solo_builder/api/blueprints/prompt_regression.py
+solo_builder/tests/test_prompt_regression_api.py
