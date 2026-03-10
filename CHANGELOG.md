@@ -1,5 +1,40 @@
 # Changelog
 
+## v5.18.0 — 2026-03-10  DependencyAuditCheck — pip-audit script + 16 tests (TASK-328)
+
+- **328 tasks** merged to master; **1323 tests**, all passing
+- `tools/dep_audit.py`: version drift detection vs requirements-lock.txt + pip-audit CVE scan; writes dep_audit_result.json; non-zero exit on drift or vulns — TASK-328
+- `claude/VERIFY.json`: added non-required `dep-audit` step (`python tools/dep_audit.py --check-only`) — TASK-328
+- `tests/test_dep_audit.py`: 16 unit tests covering _parse_lock, _check_drift, _run_pip_audit (mocked), main() — TASK-328
+- `.gitignore`: dep_audit_result.json excluded — TASK-328
+
+---
+
+## v5.17.0 — 2026-03-10  ApiInputValidation — validators.py + 20 tests (TASK-327)
+
+- **327 tasks** merged to master; **1307 tests**, all passing
+- `api/validators.py`: `require_string_fields(*required, optional=())` — validates JSON dict body, required fields non-blank strings, optional fields type-checked, MAX_FIELD_LEN=4096 — TASK-327
+- `api/blueprints/triggers.py`: 6 endpoints (/heal, /add_task, /add_branch, /prioritize_branch, /depends, /undepends) now use `require_string_fields` — type confusion + oversized payload protection — TASK-327
+- `tests/test_validators.py`: 11 unit tests for validator helper + 9 endpoint integration tests (missing fields, wrong types, oversized input) — TASK-327
+
+---
+
+## v5.16.0 — 2026-03-10  StructuredLogFormatter — JsonLogFormatter + use_json flag (TASK-326)
+
+- **326 tasks** merged to master; **1287 tests**, all passing
+- `utils/log_formatter.py`: `JsonLogFormatter(logging.Formatter)` — emits one JSON object per line with ts/level/logger/msg fields; exc key added on exception — TASK-326
+- `cli_utils._setup_logging`: new `use_json=False` parameter; selects JsonLogFormatter when True, preserving text format as default — TASK-326
+- `tests/test_log_formatter.py`: 12 unit tests covering JSON output, ISO-8601 ts, exc field, one-line output, formatter selection — TASK-326
+
+---
+
+## v5.15.0 — 2026-03-10  Windows log-lock test fix (TASK-325b)
+
+- **1275 tests**, all passing (0 failures — Windows file-lock race fixed)
+- `tests/test_cli_utils.py`: `_close_sb_log_handlers()` flushes and closes RotatingFileHandler stream before `rmtree` to release Windows OS lock on log file — TASK-325
+
+---
+
 ## v5.14.0 — 2026-03-10  datetime deprecation fix, flaky test fix, Phase 2 design complete (TASK-325)
 
 - **325 tasks** merged to master; **1275 tests**, all passing, zero warnings
