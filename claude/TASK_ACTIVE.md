@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-357
+TASK-358
 
-Add /health/detailed endpoint aggregating state-validator, config-drift, metrics-alert-check results
+Add health status card to dashboard.html polling /health/detailed
