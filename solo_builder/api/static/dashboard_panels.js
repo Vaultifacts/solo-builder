@@ -1385,6 +1385,50 @@ export async function pollPolicyDetailed() {
   } catch (_) {}
 }
 
+export async function pollLiveSummaryDetailed() {
+  try {
+    const d = await api("/health/live-summary");
+    const el = document.getElementById("live-summary-detailed-content");
+    if (!el) return;
+
+    const checks  = d.checks || [];
+    const passed  = d.passed ?? 0;
+    const total   = d.total  ?? 0;
+
+    const allOk = d.ok !== false;
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:6px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${allOk ? "var(--green)" : "var(--red)"}`;
+    hdrText.textContent = `Live: ${passed}/${total} checks passing`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    if (checks.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";
+      empty.textContent = "No live checks configured.";
+      nodes.push(empty);
+    } else {
+      checks.forEach(c => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:6px;padding:2px 0;font-size:10px";
+        const badge = document.createElement("span");
+        badge.style.cssText = `font-size:9px;padding:1px 5px;border-radius:3px;font-weight:bold;flex-shrink:0;color:#fff;background:${c.ok ? "var(--green)" : "var(--red)"}`;
+        badge.textContent = c.ok ? "OK" : "FAIL";
+        const name = document.createElement("span");
+        name.style.cssText = "color:var(--text)";
+        name.textContent = c.name;
+        row.append(badge, name);
+        nodes.push(row);
+      });
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
 export async function pollHealthDetailed() {
   try {
     const d = await api("/health/detailed");

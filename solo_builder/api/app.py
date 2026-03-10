@@ -57,6 +57,7 @@ from .blueprints.prompt_regression import prompt_regression_bp
 from .blueprints.debt_scan import debt_scan_bp
 from .blueprints.ci_quality import ci_quality_bp
 from .blueprints.pre_release import pre_release_bp
+from .blueprints.live_summary import live_summary_bp
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -81,6 +82,7 @@ app.register_blueprint(prompt_regression_bp)
 app.register_blueprint(debt_scan_bp)
 app.register_blueprint(ci_quality_bp)
 app.register_blueprint(pre_release_bp)
+app.register_blueprint(live_summary_bp)
 
 
 @app.before_request
