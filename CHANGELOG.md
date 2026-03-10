@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.44.0 — 2026-03-10  PromptRegressionCheck — template validation + 32 tests (TASK-354)
+
+- **354 tasks** merged to master; **1546 tests**, all passing
+- `tools/prompt_regression_check.py`: `run_checks()` validates all REGISTRY templates; per-template checks: required_vars declared+used, optional_vars used, render() succeeds, no empty `{}`, length bounds, no secrets; `RegressionReport` + `TemplateResult` dataclasses; `--json`, `--quiet`, `--settings`, `--prompt-builder` flags; exits 0=pass, 1=fail, 2=error (AI-002 to AI-005) — TASK-354
+- `tests/test_prompt_regression_check.py`: 32 tests — `_check_template` (good/no-required/missing-var/optional-bad/render-fail/too-short/too-long/secret), `TemplateResult`/`RegressionReport` (pass/fail/to_dict), `run_checks` (good/bad/count/settings-override/empty/live-registry), `run()` (exit codes/JSON/quiet/text), `main()` flags — TASK-354
+
+---
+
 ## v5.43.0 — 2026-03-10  VersionBump — semver bump tool + 37 tests (TASK-353)
 
 - **353 tasks** merged to master; **1514 tests**, all passing
