@@ -168,3 +168,7 @@ tools/state_backup.py
 solo_builder/tests/test_state_backup.py
 tools/config_drift.py
 solo_builder/tests/test_config_drift.py
+tools/state_validator.py
+solo_builder/tests/test_state_validator.py
+tools/state_validator.py
+solo_builder/tests/test_state_validator.py

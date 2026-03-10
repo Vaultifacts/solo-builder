@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-348
+TASK-349
 
-ConfigDriftDetector: detect settings.json drift from defaults (PW-010 to PW-015)
+StateIntegrityValidator: validate state.json schema + orphan + dependency cycle detection (PW-020 to PW-025)

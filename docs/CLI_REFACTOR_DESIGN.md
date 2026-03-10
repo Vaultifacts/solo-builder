@@ -167,7 +167,7 @@ across 3 files + corresponding test updates).
 **Prerequisite:** `self._runtime_cfg` (done — TASK-330).
 **Trigger:** Implement when a user reports `do_set` not taking effect mid-session,
 or as a low-risk cleanup task (~30 min scope).
-**Status:** Designed, not yet implemented. TD-ARCH-001 Phase 3 open.
+**Status:** COMPLETE. All 6 read-sites migrated. TD-ARCH-001 Phase 3 closed.
 
 ---
 
@@ -197,3 +197,4 @@ fix) is the next architectural milestone.
 | 2026-03-10 | TASK-330: self._runtime_cfg (8 keys) added to SoloBuilderCLI.__init__; dual-writes in all 8 _cmd_set branches. |
 | 2026-03-10 | TASK-331: _cmd_set extracted to commands/dispatcher.py; solo_builder_cli.py 665→478 lines; TD-ARCH-001 Phase 2 CLOSED. |
 | 2026-03-10 | Phase 3 design: stale-injection root cause documented; Option A (_runtime_cfg passthrough) chosen; 6 read-sites identified across 3 mixin files. |
+| 2026-03-10 | Phase 3 CLOSED: 6 stale-global reads in step_runner/auto_cmds/query_cmds replaced with self._runtime_cfg["KEY"]. do_set changes now take effect mid-session. |
