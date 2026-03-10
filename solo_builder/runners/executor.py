@@ -10,7 +10,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Dict, List, Optional, Tuple
 
-from utils.helper_functions import add_memory_snapshot, BLUE, CYAN, RESET
+from utils.helper_functions import add_memory_snapshot
 
 from .cache import make_cache
 from .claude_runner import ClaudeRunner
@@ -221,7 +221,7 @@ class Executor:
         # ── SDK tool-use jobs (async, no subprocess) ─────────────────────────
         if sdk_tool_jobs:
             names = ", ".join(j[2] for j in sdk_tool_jobs)
-            print(f"  {BLUE}SDK+tools executing {names}…{RESET}", flush=True)
+            logger.info("sdk_tool_dispatch step=%d jobs=%s", step, names)
             _sdktool_results = asyncio.run(
                 self._gather_sdktool(self.sdk_tool, sdk_tool_jobs)
             )
@@ -270,7 +270,7 @@ class Executor:
         # ── Run Claude jobs in parallel ───────────────────────────────────────
         if claude_jobs:
             names = ", ".join(j[2] for j in claude_jobs)
-            print(f"  {CYAN}Claude executing {names}…{RESET}", flush=True)
+            logger.info("claude_dispatch step=%d jobs=%s", step, names)
             with ThreadPoolExecutor(max_workers=len(claude_jobs)) as pool:
                 futures = {
                     pool.submit(self.claude.run,
@@ -302,7 +302,7 @@ class Executor:
         # ── SDK jobs (async Anthropic API, no subprocess) ─────────────────────
         if sdk_jobs:
             names = ", ".join(j[2] for j in sdk_jobs)
-            print(f"  {BLUE}SDK executing {names}…{RESET}", flush=True)
+            logger.info("sdk_dispatch step=%d jobs=%s", step, names)
             _sdk_results = asyncio.run(
                 self._gather_sdk(self.anthropic, sdk_jobs)
             )
