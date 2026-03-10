@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.42.0 — 2026-03-10  ReleaseNotesGen — CHANGELOG parser + release notes generator + 32 tests (TASK-352)
+
+- **352 tasks** merged to master; **1477 tests**, all passing
+- `tools/release_notes_gen.py`: `parse_changelog()` extracts structured entries from CHANGELOG.md; `get_entry()` returns specific version or latest; `ReleaseEntry` dataclass with `to_dict()` + `to_markdown()`; `--json`, `--quiet`, `--output`, `--changelog` flags; exits 0=success, 1=version not found, 2=file error (RD-010 to RD-015) — TASK-352
+- `tests/test_release_notes_gen.py`: 32 tests — `ReleaseEntry` (to_dict/to_markdown with/without bullets), `parse_changelog` (multiple/single/no-bullets/missing/empty/dates/title), `get_entry` (latest/specific/missing/empty), `run()` (exit codes/JSON/markdown/quiet/file-output/version), `main()` flags — TASK-352
+
+---
+
 ## v5.41.0 — 2026-03-10  LintCheck — flake8 runner with configurable thresholds + 33 tests (TASK-351)
 
 - **351 tasks** merged to master; **1445 tests**, all passing

@@ -179,3 +179,5 @@ solo_builder/config/loader.py
 solo_builder/tests/test_config_loader.py
 tools/lint_check.py
 solo_builder/tests/test_lint_check.py
+tools/release_notes_gen.py
+solo_builder/tests/test_release_notes_gen.py
