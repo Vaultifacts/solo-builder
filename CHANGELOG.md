@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.35.0 — 2026-03-10  OpenApiSpec — generate_openapi.py + 30 tests (TASK-345)
+
+- **345 tasks** merged to master; **1265 tests**, all passing
+- `tools/generate_openapi.py`: generates OpenAPI 3.0 spec for all 38 routes across 10 tags (Core, Metrics, Tasks, Branches, History, Subtasks, Triggers, Control, Config, DAG, Cache, Webhook); `--output PATH`, `--format json|yaml`, `--quiet`; `build_spec()` and `_operation_id()` helpers (DK-005, DK-006) — TASK-345
+- `tests/test_generate_openapi.py`: 30 tests — operationId generation, spec structure (openapi version, info, servers, tags, paths), paths completeness, routes catalogue validation, main() output modes — TASK-345
+
+---
+
 ## v5.34.0 — 2026-03-10  PerformanceLatencyMetrics — p50/p99/min/max/buckets + 29 tests (TASK-344)
 
 - **344 tasks** merged to master; **1235 tests**, all passing
