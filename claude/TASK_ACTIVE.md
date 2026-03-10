@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-375
+TASK-376
 
-Add GET /health/slo endpoint + Health tab widget showing SLO-003/SLO-005 check results
+Add GET /health/prompt-regression endpoint + Health tab widget showing prompt template regression check results
