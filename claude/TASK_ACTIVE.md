@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-320
+TASK-321
 
-StructuredLoggingMigration — replace executor print() calls with Python logging; emit structured JSON events per step for SLO measurement
+PromptVersionControl — create docs/PROMPT_REGISTRY.md with versioned snapshot of all prompt templates; add hash-based regression test to detect prompt drift across releases
