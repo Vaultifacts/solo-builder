@@ -244,6 +244,22 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
                                         stall_threshold=STALL_THRESHOLD)
         self.running  = True
 
+        # Mutable runtime config — mirrors the 8 module globals that _cmd_set
+        # may change at runtime.  Written alongside the module globals so that
+        # code inspecting self._runtime_cfg always sees the current values.
+        # This is step 1 of TD-ARCH-001 Phase 2b: the dict is the prerequisite
+        # for moving _cmd_set to commands/dispatcher.py without circular imports.
+        self._runtime_cfg: dict = {
+            "STALL_THRESHOLD":     STALL_THRESHOLD,
+            "SNAPSHOT_INTERVAL":   SNAPSHOT_INTERVAL,
+            "VERBOSITY":           VERBOSITY,
+            "EXEC_VERIFY_PROB":    EXEC_VERIFY_PROB,
+            "AUTO_STEP_DELAY":     AUTO_STEP_DELAY,
+            "AUTO_SAVE_INTERVAL":  AUTO_SAVE_INTERVAL,
+            "CLAUDE_ALLOWED_TOOLS": CLAUDE_ALLOWED_TOOLS,
+            "WEBHOOK_URL":         WEBHOOK_URL,
+        }
+
         os.makedirs(PDF_OUTPUT_PATH, exist_ok=True)
 
         # Validate initial DAG
@@ -319,33 +335,37 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
                 if v < 1:
                     raise ValueError("must be >= 1")
                 STALL_THRESHOLD = v
-                self.healer.stall_threshold  = STALL_THRESHOLD
-                self.planner.stall_threshold = STALL_THRESHOLD
-                self.display.stall_threshold = STALL_THRESHOLD
-                print(f"  {GREEN}STALL_THRESHOLD = {STALL_THRESHOLD}{RESET}")
-                self._persist_setting("STALL_THRESHOLD", STALL_THRESHOLD)
+                self._runtime_cfg["STALL_THRESHOLD"] = v
+                self.healer.stall_threshold  = v
+                self.planner.stall_threshold = v
+                self.display.stall_threshold = v
+                print(f"  {GREEN}STALL_THRESHOLD = {v}{RESET}")
+                self._persist_setting("STALL_THRESHOLD", v)
 
             elif key == "SNAPSHOT_INTERVAL":
                 v = int(val)
                 if v < 1:
                     raise ValueError("must be >= 1")
                 SNAPSHOT_INTERVAL = v
-                print(f"  {GREEN}SNAPSHOT_INTERVAL = {SNAPSHOT_INTERVAL}{RESET}")
-                self._persist_setting("SNAPSHOT_INTERVAL", SNAPSHOT_INTERVAL)
+                self._runtime_cfg["SNAPSHOT_INTERVAL"] = v
+                print(f"  {GREEN}SNAPSHOT_INTERVAL = {v}{RESET}")
+                self._persist_setting("SNAPSHOT_INTERVAL", v)
 
             elif key == "VERBOSITY":
                 v = val.upper()
                 if v not in ("DEBUG", "INFO", "WARNING", "ERROR"):
                     raise ValueError("must be one of DEBUG, INFO, WARNING, ERROR")
                 VERBOSITY = v
-                print(f"  {GREEN}VERBOSITY = {VERBOSITY}{RESET}")
-                self._persist_setting("VERBOSITY", VERBOSITY)
+                self._runtime_cfg["VERBOSITY"] = v
+                print(f"  {GREEN}VERBOSITY = {v}{RESET}")
+                self._persist_setting("VERBOSITY", v)
 
             elif key == "VERIFY_PROB":
                 v = float(val)
                 if not 0.0 <= v <= 1.0:
                     raise ValueError("must be between 0.0 and 1.0")
                 EXEC_VERIFY_PROB = v
+                self._runtime_cfg["EXEC_VERIFY_PROB"] = v
                 self.executor.verify_prob = v
                 print(f"  {GREEN}VERIFY_PROB = {val}{RESET}")
                 self._persist_setting("EXECUTOR_VERIFY_PROBABILITY", v)
@@ -355,19 +375,22 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
                 if v < 0:
                     raise ValueError("must be >= 0")
                 AUTO_STEP_DELAY = v
-                print(f"  {GREEN}AUTO_STEP_DELAY = {AUTO_STEP_DELAY}s{RESET}")
-                self._persist_setting("AUTO_STEP_DELAY", AUTO_STEP_DELAY)
+                self._runtime_cfg["AUTO_STEP_DELAY"] = v
+                print(f"  {GREEN}AUTO_STEP_DELAY = {v}s{RESET}")
+                self._persist_setting("AUTO_STEP_DELAY", v)
 
             elif key == "AUTO_SAVE_INTERVAL":
                 v = int(val)
                 if v < 1:
                     raise ValueError("must be >= 1")
                 AUTO_SAVE_INTERVAL = v
-                print(f"  {GREEN}AUTO_SAVE_INTERVAL = {AUTO_SAVE_INTERVAL}{RESET}")
-                self._persist_setting("AUTO_SAVE_INTERVAL", AUTO_SAVE_INTERVAL)
+                self._runtime_cfg["AUTO_SAVE_INTERVAL"] = v
+                print(f"  {GREEN}AUTO_SAVE_INTERVAL = {v}{RESET}")
+                self._persist_setting("AUTO_SAVE_INTERVAL", v)
 
             elif key == "CLAUDE_ALLOWED_TOOLS":
                 CLAUDE_ALLOWED_TOOLS = val
+                self._runtime_cfg["CLAUDE_ALLOWED_TOOLS"] = val
                 self.executor.claude.allowed_tools = val
                 label = val if val else "(none — headless)"
                 print(f"  {GREEN}CLAUDE_ALLOWED_TOOLS = {label}{RESET}")
@@ -405,6 +428,7 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
                     print(f"  {YELLOW}Warning: WEBHOOK_URL should start with http/https "
                           f"(got {val!r}). Setting anyway.{RESET}")
                 WEBHOOK_URL = val
+                self._runtime_cfg["WEBHOOK_URL"] = val
                 print(f"  {GREEN}WEBHOOK_URL = {val or '(cleared)'}{RESET}")
                 self._persist_setting("WEBHOOK_URL", val)
 
