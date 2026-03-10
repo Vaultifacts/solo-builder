@@ -978,6 +978,7 @@ export async function pollHealthDetailed() {
     const sv  = checks.state_valid    || {};
     const cd  = checks.config_drift   || {};
     const ma  = checks.metrics_alerts || {};
+    const slo = checks.slo_status     || {};
 
     const mkBadge = (ok) => {
       const b = document.createElement("span");
@@ -1007,6 +1008,10 @@ export async function pollHealthDetailed() {
     const maDetail = ma.ok
       ? "no alerts"
       : `${ma.alert_count || 0} alert(s) active`;
+    const sloResults = slo.results || [];
+    const sloDetail = sloResults.length
+      ? sloResults.map(r => `${r.slo} ${r.status}`).join(" · ")
+      : `${slo.records || 0} records (insufficient data)`;
 
     const hdr = document.createElement("div");
     hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
@@ -1017,8 +1022,20 @@ export async function pollHealthDetailed() {
 
     const nodes = [hdr, mkRow("State Valid", sv.ok, svDetail),
                         mkRow("Config Drift", cd.ok, cdDetail),
-                        mkRow("Metrics Alerts", ma.ok, maDetail)];
+                        mkRow("Metrics Alerts", ma.ok, maDetail),
+                        mkRow("SLO Status", slo.ok !== false, sloDetail)];
 
+    if (sloResults.length) {
+      sloResults.forEach(r => {
+        const sub = document.createElement("div");
+        sub.style.cssText = "display:flex;align-items:center;padding:3px 0 3px 16px;font-size:9px;color:var(--dim)";
+        const badge = mkBadge(r.status === "ok");
+        const txt = document.createElement("span");
+        txt.textContent = `${r.slo}  target: ${r.target}  value: ${r.value ?? "—"}  (${r.detail || ""})`;
+        sub.append(badge, txt);
+        nodes.push(sub);
+      });
+    }
     if (!sv.ok && (sv.errors || []).length) {
       const errDiv = document.createElement("div");
       errDiv.style.cssText = "margin-top:5px;font-size:9px;color:var(--red)";

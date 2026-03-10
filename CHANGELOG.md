@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.53.0 — 2026-03-10  SLODashboardPanel — SLO-003/SLO-005 status in /health/detailed + dashboard Health tab + 16 new tests (TASK-363)
+
+- **363 tasks** merged to master; **1808 tests**, all passing
+- `api/blueprints/health_detailed.py`: added `slo_status` check — calls `slo_check._check_slo003/005`, returns `{ok, records, results[{slo, target, value, status, detail}]}`; insufficient records treated as ok (no breach possible); slo breach makes overall `ok: false` (OM-035 to OM-040) — TASK-363
+- `api/static/dashboard_panels.js`: updated `pollHealthDetailed()` to render SLO Status row + per-SLO sub-rows showing target/value/detail with OK/FAIL badges — TASK-363
+- `tests/test_health_detailed.py`: 16 new tests — `TestHealthDetailedSloStatus` (ok-true-all-ok, breach-ok-false, results-list, slo-key, target-value, insufficient-records, records-count, breach-overall-ok-false, exception-ok-false) + `TestSloStatusPanelJs` (slo_status key, sloResults, SLO Status label, target, value); updated `_mock_tools` to include slo_check default-OK mock — TASK-363
+- `tests/test_health_dashboard_widget.py`: updated `_mock_tools` to include slo_check mock so existing widget integration tests remain green — TASK-363
+
+---
+
 ## v5.52.0 — 2026-03-10  HitlGateWiring — HitlPolicy config-driven gate wired into executor + 14 tests (TASK-362)
 
 - **362 tasks** merged to master; **1792 tests**, all passing

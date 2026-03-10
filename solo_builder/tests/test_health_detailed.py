@@ -42,6 +42,24 @@ def _mac_report(has_alerts=False, alerts=None):
     return r
 
 
+_SLO_OK_RESULTS = [
+    {"slo": "SLO-003", "target": ">=95%", "value": 1.0, "status": "ok",
+     "detail": "40/40 SDK calls succeeded (100.0%)"},
+    {"slo": "SLO-005", "target": "<=10.0s median", "value": 0.001, "status": "ok",
+     "detail": "median=0.001s over 10 records"},
+]
+
+
+def _slo_mod(records=None, results=None, min_records=5):
+    m = MagicMock()
+    m.METRICS_PATH       = MagicMock()
+    m.DEFAULT_MIN_RECORDS = min_records
+    m._load_records      = MagicMock(return_value=records if records is not None else [{}]*10)
+    m._check_slo003      = MagicMock(return_value=(results or _SLO_OK_RESULTS)[0])
+    m._check_slo005      = MagicMock(return_value=(results or _SLO_OK_RESULTS)[1])
+    return m
+
+
 # ---------------------------------------------------------------------------
 # Base test class — Flask test client with patched paths
 # ---------------------------------------------------------------------------
@@ -76,7 +94,7 @@ class _Base(unittest.TestCase):
     def _get(self):
         return self.client.get("/health/detailed")
 
-    def _mock_tools(self, sv=None, cd=None, mac=None):
+    def _mock_tools(self, sv=None, cd=None, mac=None, sc=None):
         """Patch _load_tool to return controlled mock modules."""
         sv_mod  = MagicMock()
         cd_mod  = MagicMock()
@@ -84,11 +102,13 @@ class _Base(unittest.TestCase):
         sv_mod.validate      = MagicMock(return_value=sv   or _sv_report())
         cd_mod.detect_drift  = MagicMock(return_value=cd   or _cd_report())
         mac_mod.check_alerts = MagicMock(return_value=mac  or _mac_report())
+        sc_mod = sc if sc is not None else _slo_mod()
 
         def _fake_load(name):
-            return {"state_validator": sv_mod,
-                    "config_drift":    cd_mod,
-                    "metrics_alert_check": mac_mod}[name]
+            return {"state_validator":     sv_mod,
+                    "config_drift":        cd_mod,
+                    "metrics_alert_check": mac_mod,
+                    "slo_check":           sc_mod}[name]
 
         return patch.object(hd_mod, "_load_tool", side_effect=_fake_load)
 
@@ -149,6 +169,18 @@ class TestHealthDetailedShape(_Base):
         ma = checks["metrics_alerts"]
         for k in ("ok", "has_alerts", "alert_count", "alerts"):
             self.assertIn(k, ma)
+
+    def test_checks_has_slo_status(self):
+        with self._mock_tools():
+            data = json.loads(self._get().data)
+        self.assertIn("slo_status", data["checks"])
+
+    def test_slo_status_shape(self):
+        with self._mock_tools():
+            checks = json.loads(self._get().data)["checks"]
+        slo = checks["slo_status"]
+        for k in ("ok", "records", "results"):
+            self.assertIn(k, slo)
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +312,9 @@ class TestHealthDetailedExceptions(_Base):
                 raise RuntimeError("tool unavailable")
             if name == "config_drift":
                 m = MagicMock(); m.detect_drift = MagicMock(return_value=_cd_report()); return m
-            m = MagicMock(); m.check_alerts = MagicMock(return_value=_mac_report()); return m
+            if name == "metrics_alert_check":
+                m = MagicMock(); m.check_alerts = MagicMock(return_value=_mac_report()); return m
+            return _slo_mod()
 
         with patch.object(hd_mod, "_load_tool", side_effect=_bad_load):
             data = json.loads(self._get().data)
@@ -292,7 +326,9 @@ class TestHealthDetailedExceptions(_Base):
                 raise RuntimeError("drift tool broken")
             if name == "state_validator":
                 m = MagicMock(); m.validate = MagicMock(return_value=_sv_report()); return m
-            m = MagicMock(); m.check_alerts = MagicMock(return_value=_mac_report()); return m
+            if name == "metrics_alert_check":
+                m = MagicMock(); m.check_alerts = MagicMock(return_value=_mac_report()); return m
+            return _slo_mod()
 
         with patch.object(hd_mod, "_load_tool", side_effect=_bad_load):
             data = json.loads(self._get().data)
@@ -304,7 +340,9 @@ class TestHealthDetailedExceptions(_Base):
                 raise RuntimeError("metrics broken")
             if name == "state_validator":
                 m = MagicMock(); m.validate = MagicMock(return_value=_sv_report()); return m
-            m = MagicMock(); m.detect_drift = MagicMock(return_value=_cd_report()); return m
+            if name == "config_drift":
+                m = MagicMock(); m.detect_drift = MagicMock(return_value=_cd_report()); return m
+            return _slo_mod()
 
         with patch.object(hd_mod, "_load_tool", side_effect=_bad_load):
             data = json.loads(self._get().data)
@@ -319,6 +357,120 @@ class TestHealthDetailedExceptions(_Base):
         with patch.object(hd_mod, "_load_tool", side_effect=RuntimeError("all bad")):
             data = json.loads(self._get().data)
         self.assertFalse(data["ok"])
+
+
+# ---------------------------------------------------------------------------
+# SLO status check (TASK-363, OM-035 to OM-040)
+# ---------------------------------------------------------------------------
+
+class TestHealthDetailedSloStatus(_Base):
+
+    def test_slo_ok_true_when_all_ok(self):
+        with self._mock_tools():
+            checks = json.loads(self._get().data)["checks"]
+        self.assertTrue(checks["slo_status"]["ok"])
+
+    def test_slo_ok_false_when_breach(self):
+        breach_results = [
+            {"slo": "SLO-003", "target": ">=95%", "value": 0.5, "status": "breach",
+             "detail": "50% success rate"},
+            {"slo": "SLO-005", "target": "<=10.0s median", "value": 0.001, "status": "ok",
+             "detail": "fast"},
+        ]
+        sc = _slo_mod(results=breach_results)
+        sc._check_slo003.return_value = breach_results[0]
+        sc._check_slo005.return_value = breach_results[1]
+        with self._mock_tools(sc=sc):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertFalse(checks["slo_status"]["ok"])
+
+    def test_slo_results_list_present(self):
+        with self._mock_tools():
+            checks = json.loads(self._get().data)["checks"]
+        self.assertIsInstance(checks["slo_status"]["results"], list)
+
+    def test_slo_results_have_slo_key(self):
+        with self._mock_tools():
+            slo_results = json.loads(self._get().data)["checks"]["slo_status"]["results"]
+        self.assertTrue(len(slo_results) > 0)
+        self.assertIn("slo", slo_results[0])
+
+    def test_slo_results_have_target_and_value(self):
+        with self._mock_tools():
+            slo_results = json.loads(self._get().data)["checks"]["slo_status"]["results"]
+        for r in slo_results:
+            self.assertIn("target", r)
+            self.assertIn("value", r)
+
+    def test_slo_ok_true_when_insufficient_records(self):
+        sc = _slo_mod(records=[], min_records=5)
+        with self._mock_tools(sc=sc):
+            checks = json.loads(self._get().data)["checks"]
+        # Insufficient records → slo_ok=True (no breach possible)
+        self.assertTrue(checks["slo_status"]["ok"])
+
+    def test_slo_records_count_returned(self):
+        sc = _slo_mod(records=[{}] * 7)
+        with self._mock_tools(sc=sc):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertEqual(checks["slo_status"]["records"], 7)
+
+    def test_slo_breach_makes_overall_ok_false(self):
+        breach_results = [
+            {"slo": "SLO-003", "target": ">=95%", "value": 0.5, "status": "breach",
+             "detail": "50%"},
+            {"slo": "SLO-005", "target": "<=10.0s median", "value": 0.001, "status": "ok",
+             "detail": "fast"},
+        ]
+        sc = _slo_mod(results=breach_results)
+        sc._check_slo003.return_value = breach_results[0]
+        sc._check_slo005.return_value = breach_results[1]
+        with self._mock_tools(sc=sc):
+            data = json.loads(self._get().data)
+        self.assertFalse(data["ok"])
+
+    def test_slo_exception_ok_false(self):
+        def _bad_load(name):
+            if name == "slo_check":
+                raise RuntimeError("slo broken")
+            if name == "state_validator":
+                m = MagicMock(); m.validate = MagicMock(return_value=_sv_report()); return m
+            if name == "config_drift":
+                m = MagicMock(); m.detect_drift = MagicMock(return_value=_cd_report()); return m
+            m = MagicMock(); m.check_alerts = MagicMock(return_value=_mac_report()); return m
+
+        with patch.object(hd_mod, "_load_tool", side_effect=_bad_load):
+            data = json.loads(self._get().data)
+        self.assertFalse(data["checks"]["slo_status"]["ok"])
+
+
+# ---------------------------------------------------------------------------
+# Dashboard JS SLO panel (TASK-363)
+# ---------------------------------------------------------------------------
+
+class TestSloStatusPanelJs(unittest.TestCase):
+
+    def _panels_js(self):
+        return (Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_panels.js"
+                ).read_text(encoding="utf-8")
+
+    def test_slo_status_key_referenced(self):
+        self.assertIn("slo_status", self._panels_js())
+
+    def test_slo_results_rendered(self):
+        self.assertIn("sloResults", self._panels_js())
+
+    def test_slo_row_label(self):
+        self.assertIn("SLO Status", self._panels_js())
+
+    def test_slo_target_shown(self):
+        self.assertIn("target", self._panels_js())
+
+    def test_slo_value_shown(self):
+        # value field displayed per SLO result row
+        js = self._panels_js()
+        # check the sub-row rendering includes value
+        self.assertIn("r.value", js)
 
 
 if __name__ == "__main__":

@@ -105,7 +105,26 @@ def health_detailed():
             "error":       str(exc),
         }
 
-    overall_ok = state_check["ok"] and drift_check["ok"] and alert_check["ok"]
+    # --- slo_status ---
+    try:
+        sc = _load_tool("slo_check")
+        records = sc._load_records(sc.METRICS_PATH)
+        if len(records) >= sc.DEFAULT_MIN_RECORDS:
+            slo_results = [sc._check_slo003(records), sc._check_slo005(records)]
+            slo_ok = all(r["status"] == "ok" for r in slo_results)
+        else:
+            slo_results = []
+            slo_ok = True  # insufficient data — not a failure
+        slo_check_result = {
+            "ok":      slo_ok,
+            "records": len(records),
+            "results": slo_results,
+        }
+    except Exception as exc:
+        slo_check_result = {"ok": False, "records": 0, "results": [], "error": str(exc)}
+
+    overall_ok = (state_check["ok"] and drift_check["ok"]
+                  and alert_check["ok"] and slo_check_result["ok"])
 
     return jsonify({
         "ok": overall_ok,
@@ -113,5 +132,6 @@ def health_detailed():
             "state_valid":    state_check,
             "config_drift":   drift_check,
             "metrics_alerts": alert_check,
+            "slo_status":     slo_check_result,
         },
     })

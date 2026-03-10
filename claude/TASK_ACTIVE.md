@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-362
+TASK-363
 
-Wire HitlPolicy + hitl_gate.py into executor.py dispatch as hard gate (Phase 3 of HITL design)
+SLODashboardPanel: Add SLO status widget to Health tab showing SLO-003/SLO-005 pass/fail + current values (OM-035 to OM-040)
