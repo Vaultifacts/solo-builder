@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.40.0 — 2026-03-10  MetricsAlertCheck — alert threshold checker + 35 tests (TASK-350)
+
+- **350 tasks** merged to master; **1412 tests**, all passing
+- `tools/metrics_alert_check.py`: `check_alerts()` evaluates failure_rate, avg/p99 latency, stall_rate, min_rows thresholds against metrics.jsonl; `AlertThresholds` frozen dataclass; `load_thresholds()` reads `ALERT_*` keys from settings.json; `--json`, `--quiet`, `--metrics`, `--max-failure-rate`, `--max-avg-latency`, `--max-p99-latency` flags; exits 0=all clear, 1=alert triggered (OM-020 to OM-025) — TASK-350
+- `tests/test_metrics_alert_check.py`: 35 tests — AlertThresholds (defaults/immutable/none-skip), AlertReport (empty/with-alert/to_dict), load_thresholds (missing/override/partial), check_alerts (no-data, latency ok/alert/p99, stall rate, failure rate, min_rows), run() (exit codes/JSON/quiet/text), main() flags — TASK-350
+
+---
+
 ## v5.39.0 — 2026-03-10  StateIntegrityValidator — schema + orphan + cycle detection + 43 tests (TASK-349)
 
 - **349 tasks** merged to master; **1377 tests**, all passing

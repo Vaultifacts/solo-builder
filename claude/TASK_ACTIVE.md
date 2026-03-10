@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-349
+TASK-350
 
-StateIntegrityValidator: validate state.json schema + orphan + dependency cycle detection (PW-020 to PW-025)
+metrics alert threshold checker — failure rate, latency, stall thresholds (OM-020 to OM-025)
