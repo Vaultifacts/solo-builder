@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.39.0 — 2026-03-10  StateIntegrityValidator — schema + orphan + cycle detection + 43 tests (TASK-349)
+
+- **349 tasks** merged to master; **1377 tests**, all passing
+- `tools/state_validator.py`: `validate()` checks schema (required keys, types), task `branches`/`depends_on` validity, dependency cycle detection via DFS, subtask status validation; `ValidationReport` dataclass with errors/warnings; `--json`, `--quiet`, `--state` flags; exits 0=valid, 1=invalid (PW-020 to PW-025) — TASK-349
+- `tests/test_state_validator.py`: 43 tests — `_detect_cycle` (empty/linear/self-loop/two-node/three-node/disconnected), `ValidationReport` (valid/invalid/warnings/to_dict), schema (missing keys, wrong types, branches/subtasks), dependencies (valid/unknown/not-list/cycles/chain), statuses (valid/unknown/missing), file loading (valid/missing/bad-json), run() (exit codes/JSON/quiet/text), main() flags — TASK-349
+
+---
+
 ## v5.38.0 — 2026-03-10  ConfigDriftDetector — settings.json drift detection + 20 tests (TASK-348)
 
 - **348 tasks** merged to master; **1334 tests**, all passing
