@@ -228,3 +228,4 @@ solo_builder/api/blueprints/ci_quality.py
 solo_builder/tests/test_ci_quality_dashboard_widget.py
 solo_builder/api/blueprints/pre_release.py
 solo_builder/tests/test_pre_release_dashboard_widget.py
+solo_builder/tests/test_health_tab_grid.py
