@@ -45,15 +45,15 @@ description references a Solo Builder concept without explaining it.
 |---|---|---|---|
 | SDK tool-use | `SdkToolRunner.arun()` | `_project_context + description` | ✅ Yes |
 | SDK direct | `AnthropicRunner.arun()` | `_project_context + description` | ✅ Yes |
-| Claude subprocess | `ClaudeRunner.run()` | `description` only | ❌ No — **known gap AI-002** |
+| Claude subprocess | `ClaudeRunner.run()` | `_project_context + description` | ✅ Yes — **resolved d9f96e1** |
 
 The subprocess path is the fallback when the Anthropic SDK is unavailable
-or when `CLAUDE_LOCAL=1` is set. It receives only the raw description,
-making it more likely to produce context-blind responses.
+or when `CLAUDE_LOCAL=1` is set. Context is prepended at the `pool.submit`
+call site in `executor.py` line 213: `self._project_context + st_data.get("description", "")`.
 
-**Resolution:** AI-002 is tracked. Fix: prepend `_project_context` in
-`executor.py` before the `claude_jobs.append()` call. Do not fix here;
-this document records the gap only.
+**Decomposition prompts** in `dag_cmds.py` (`add_task` and `add_branch`) also
+prepend `self.executor._project_context` before calling the Anthropic API.
+AI-002 is fully resolved across all execution paths.
 
 ---
 
@@ -169,7 +169,7 @@ must explain why the prompt changed and whether quality was verified.
 
 | Gap ID | Description | Status |
 |---|---|---|
-| AI-002 | Claude subprocess path does not prepend `_PROJECT_CONTEXT` | Open — see Layer 3 |
+| AI-002 | Claude subprocess path does not prepend `_PROJECT_CONTEXT` | **Resolved by d9f96e1** |
 | AI-003 | No prompt regression testing before this task | **Resolved by TASK-311** |
 
 ---
@@ -179,3 +179,4 @@ must explain why the prompt changed and whether quality was verified.
 | Date | Change |
 |---|---|
 | 2026-03-09 | Initial standard created (TASK-311). Snapshot tests added. Gaps AI-002, AI-003 documented. |
+| 2026-03-09 | AI-002 marked resolved (d9f96e1). Executor subprocess path and dag_cmds decomp prompts confirmed to prepend `_PROJECT_CONTEXT`. All 23 regression tests pass. |
