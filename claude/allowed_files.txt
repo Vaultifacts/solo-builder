@@ -147,3 +147,5 @@ tools/slo_check.py
 solo_builder/tests/test_slo_check.py
 tools/debt_scan.py
 solo_builder/tests/test_debt_scan.py
+solo_builder/utils/prompt_builder.py
+solo_builder/tests/test_prompt_builder.py

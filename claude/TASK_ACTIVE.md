@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-336
+TASK-337
 
-TechnicalDebtRegister — tools/debt_scan.py auto-populates docs/TECH_DEBT.md from TODO/FIXME/HACK comments (ME-003)
+PromptTemplateStandard — solo_builder/utils/prompt_builder.py structured template class + regression fixture + tests (AI-002)
