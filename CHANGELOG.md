@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.22.0 — 2026-03-10  ContextWindowMonitor — context_window_check.py + 16 tests (TASK-332)
+
+- **332 tasks** merged to master; **360 tests**, all passing
+- `tools/context_window_check.py`: checks CLAUDE.md, MEMORY.md, JOURNAL.md line counts against configurable warn/error thresholds; per-file override support (JOURNAL.md at 500/1000); exits 0=ok, 1=error, 2=usage error; `--json` and `--quiet` flags — TASK-332 (AI-008)
+- `tests/test_context_window_check.py`: 16 tests — _count_lines, check(), main(), per-file overrides, JSON output, quiet mode, threshold validation — TASK-332
+- `claude/VERIFY.json`: added non-required `context-window-check` step — TASK-332
+
+---
+
 ## v5.21.0 — 2026-03-10  CorrelationIdMiddleware — X-Request-ID + X-API-Version headers (TASK-331)
 
 - **331 tasks** merged to master; **344 tests**, all passing

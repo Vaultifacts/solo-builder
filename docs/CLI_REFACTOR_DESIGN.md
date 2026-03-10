@@ -99,10 +99,75 @@ namespaces within the same session. This is pre-existing behaviour — changes
 take effect on next startup. Fix scoped to Phase 3 (`_inject_host_globals_into_mixins`
 rewrite).
 
-### Phase 3 — Mixin host refactor
+### Phase 3 — Live-globals: fix stale mixin injection
 
-The `_inject_host_globals_into_mixins` function and the five frozen globals stay
-in `solo_builder_cli.py` until a separate task updates all test patches.
+**Problem:** `_inject_host_globals_into_mixins()` uses `setdefault` — it copies
+scalar values once at module-load time. Runtime `do_set` changes update
+`self._runtime_cfg` and `solo_builder_cli`'s own namespace, but the copy in
+each mixin module's `__dict__` never changes. Consequence:
+
+| Mixin | Stale globals read at runtime (not just display) |
+|---|---|
+| `commands/step_runner.py` | `VERBOSITY` (debug branch), `SNAPSHOT_INTERVAL` (auto-snapshot), `AUTO_SAVE_INTERVAL` (auto-save) |
+| `commands/auto_cmds.py` | `AUTO_STEP_DELAY` (sleep loop) |
+| `commands/query_cmds.py` | `STALL_THRESHOLD`, `AUTO_STEP_DELAY` (ETA display only) |
+
+`settings_cmds._cmd_config` was fixed in TASK-331 to read `self._runtime_cfg`.
+The remaining three modules above still read stale injected copies.
+
+**Root cause:** Python `global` declarations bind to the defining module's
+`__dict__`. After `setdefault`, `step_runner.VERBOSITY` and
+`solo_builder_cli.VERBOSITY` are different bindings — updating one doesn't
+update the other.
+
+**Fix option A — `self._runtime_cfg` passthrough (recommended):**
+Replace bare-name reads in each mixin with `self._runtime_cfg["KEY"]`.
+No change to `_inject_host_globals_into_mixins`. Scope: 3 files, ~8 read sites.
+
+```python
+# step_runner.py BEFORE
+if VERBOSITY == "DEBUG":
+
+# step_runner.py AFTER
+if self._runtime_cfg["VERBOSITY"] == "DEBUG":
+```
+
+Risk: Low — `self._runtime_cfg` already exists and is always in sync.
+Test impact: 0 tests patch `VERBOSITY`/`SNAPSHOT_INTERVAL`/`AUTO_SAVE_INTERVAL`
+in mixin modules (confirmed in Phase 2 audit).
+
+**Fix option B — live-reference dict injection:**
+Replace each scalar global with a shared mutable container
+(`_CFG = {"VERBOSITY": "INFO", ...}`) in `solo_builder_cli.py`.
+`_inject_host_globals_into_mixins` injects the dict (reference, not copy);
+mixins read `_CFG["VERBOSITY"]`. `_cmd_set` updates the dict in place.
+Scope: Larger; requires changing all read sites AND `_cmd_set`.
+`_runtime_cfg` already serves this role — Option A is preferred.
+
+**Fix option C — re-inject on each `_cmd_set` call:**
+After `_cmd_set` updates `self._runtime_cfg`, call a helper that writes
+the new value directly to each mixin module's `__dict__`:
+`sys.modules["commands.step_runner"].VERBOSITY = v`. Works but fragile —
+requires maintaining an explicit list of (module, var) pairs.
+
+**Decision:** Implement Option A in a single small TASK (scope: ~8 line changes
+across 3 files + corresponding test updates).
+
+**Affected read sites:**
+
+| File | Line (approx) | Variable | Fix |
+|---|---|---|---|
+| `commands/step_runner.py` | 55, 66 | `VERBOSITY` | `self._runtime_cfg["VERBOSITY"]` |
+| `commands/step_runner.py` | 70 | `SNAPSHOT_INTERVAL` | `self._runtime_cfg["SNAPSHOT_INTERVAL"]` |
+| `commands/step_runner.py` | 74 | `AUTO_SAVE_INTERVAL` | `self._runtime_cfg["AUTO_SAVE_INTERVAL"]` |
+| `commands/auto_cmds.py` | 87 | `AUTO_STEP_DELAY` | `self._runtime_cfg["AUTO_STEP_DELAY"]` |
+| `commands/query_cmds.py` | 83, 94 | `STALL_THRESHOLD` | `self._runtime_cfg["STALL_THRESHOLD"]` |
+| `commands/query_cmds.py` | 152 | `AUTO_STEP_DELAY` | `self._runtime_cfg["AUTO_STEP_DELAY"]` |
+
+**Prerequisite:** `self._runtime_cfg` (done — TASK-330).
+**Trigger:** Implement when a user reports `do_set` not taking effect mid-session,
+or as a low-risk cleanup task (~30 min scope).
+**Status:** Designed, not yet implemented. TD-ARCH-001 Phase 3 open.
 
 ---
 
@@ -131,3 +196,4 @@ fix) is the next architectural milestone.
 | 2026-03-10 | TASK-325: Phase 2 found ~95% done from TASK-107; only _cmd_set remains, blocked by module-global mutation; path forward via self._runtime_cfg documented. |
 | 2026-03-10 | TASK-330: self._runtime_cfg (8 keys) added to SoloBuilderCLI.__init__; dual-writes in all 8 _cmd_set branches. |
 | 2026-03-10 | TASK-331: _cmd_set extracted to commands/dispatcher.py; solo_builder_cli.py 665→478 lines; TD-ARCH-001 Phase 2 CLOSED. |
+| 2026-03-10 | Phase 3 design: stale-injection root cause documented; Option A (_runtime_cfg passthrough) chosen; 6 read-sites identified across 3 mixin files. |
