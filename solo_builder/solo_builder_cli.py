@@ -305,6 +305,11 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
 #     STATE_PATH    → load_state / save_state  (in step_runner but re-injected)
 #     JOURNAL_PATH  → _append_journal / _append_cache_session_stats
 #     WEBHOOK_URL   → _fire_completion / main()
+#
+# NOTE — direct-import constants (setdefault is a no-op for these):
+#   DAG_UPDATE_INTERVAL, MAX_ALERTS  → step_runner.py imports from config.loader
+#   BAR_WIDTH, DAG_UPDATE_INTERVAL   → auto_cmds.py imports from config.loader
+#   These names are already bound before injection runs; setdefault skips them.
 def _inject_host_globals_into_mixins():
     """Inject host module globals into mixin modules so their methods resolve names correctly."""
     import sys as _s
