@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-379
+TASK-380
 
-PreReleaseDashboardWidget — GET /health/pre-release endpoint + Health tab widget
+HealthTabRefactor — 2-column responsive grid layout for Health tab widgets
