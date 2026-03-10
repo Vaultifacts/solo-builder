@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.30.0 — 2026-03-10  PreReleaseCheck — gate runner with 30 unit tests (TASK-340)
+
+- **340 tasks** merged to master; **1126 tests**, all passing
+- `tools/pre_release_check.py`: runs all verification gates from VERIFY.json + 4 built-in gates (python-tests [required], git-clean, context-window, slo-check); `--json` and `--quiet` flags; exits 0=all required pass, 1=required gate failed (RD-001, RD-002) — TASK-340
+- `tests/test_pre_release_check.py`: 30 tests — _run_gate (pass/fail/timeout/truncate), _builtin_gates presence/required flags, _load_verify_gates (missing/valid/invalid JSON), run_checks exit codes/JSON structure/text output/quiet mode/gate merging/unittest-discover exclusion — TASK-340
+
+---
+
 ## v5.29.0 — 2026-03-10  ApiHealthEndpoint — version + X-Response-Time + 5 tests (TASK-339)
 
 - **339 tasks** merged to master; **1096 tests**, all passing

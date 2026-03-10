@@ -151,3 +151,5 @@ solo_builder/utils/prompt_builder.py
 solo_builder/tests/test_prompt_builder.py
 solo_builder/utils/hitl_policy.py
 solo_builder/tests/test_hitl_policy.py
+tools/pre_release_check.py
+solo_builder/tests/test_pre_release_check.py
