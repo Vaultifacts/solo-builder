@@ -174,3 +174,6 @@ tools/state_validator.py
 solo_builder/tests/test_state_validator.py
 tools/metrics_alert_check.py
 solo_builder/tests/test_metrics_alert_check.py
+solo_builder/config/__init__.py
+solo_builder/config/loader.py
+solo_builder/tests/test_config_loader.py
