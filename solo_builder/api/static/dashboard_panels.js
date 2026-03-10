@@ -1515,3 +1515,46 @@ export async function pollCiQualityDetailed() {
   } catch (_) {}
 }
 
+export async function pollPreReleaseDetailed() {
+  try {
+    const d = await api("/health/pre-release");
+    const el = document.getElementById("pre-release-detailed-content");
+    if (!el) return;
+
+    const gates    = d.gates || [];
+    const total    = d.total || 0;
+    const required = d.required || 0;
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = "font-size:12px;font-weight:bold;color:var(--green)";
+    hdrText.textContent = `Release Gates: ${total} (${required} required)`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    if (gates.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";
+      empty.textContent = "No release gates configured.";
+      nodes.push(empty);
+    } else {
+      gates.forEach(g => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:6px;padding:3px 0;font-size:10px;border-bottom:1px solid var(--border)";
+        const badge = document.createElement("span");
+        badge.style.cssText = `font-size:9px;padding:1px 5px;border-radius:3px;font-weight:bold;flex-shrink:0;color:#000;background:${g.required ? "var(--yellow, #e6a817)" : "var(--dim)"}`;
+        badge.textContent = g.required ? "REQ" : "OPT";
+        const name = document.createElement("span");
+        name.style.cssText = "color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        name.textContent = g.name;
+        row.append(badge, name);
+        nodes.push(row);
+      });
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
