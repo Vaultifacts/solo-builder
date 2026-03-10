@@ -162,3 +162,5 @@ solo_builder/tests/test_ci_quality_gate.py
 solo_builder/tests/test_latency_helpers.py
 tools/generate_openapi.py
 solo_builder/tests/test_generate_openapi.py
+solo_builder/utils/discord_role_guard.py
+solo_builder/tests/test_discord_role_guard.py
