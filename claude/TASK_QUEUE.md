@@ -1993,11 +1993,28 @@ Delivered:
 Status: COMPLETE
 
 ## TASK-331
-Goal: CorrelationIdMiddleware — X-Request-ID + X-API-Version headers on all API responses (OM-041, BE-040)
+Goal: CorrelationIdMiddleware + TD-ARCH-001 Phase 2c — X-Request-ID/X-API-Version headers; extract _cmd_set to dispatcher.py
 
-Acceptance criteria:
-- <define criterion 1>
-- <define criterion 2>
+Delivered:
+- `solo_builder/api/middleware.py`: `SecurityHeadersMiddleware.apply()` now sets `X-Request-ID` (echo incoming or generate UUID4) and `X-API-Version` on every response
+- `solo_builder/tests/test_middleware.py`: 8 unit tests for X-Request-ID generation, echo, uniqueness, and X-API-Version value
+- `commands/dispatcher.py`: `_cmd_set` (145 lines) extracted from `solo_builder_cli.py`; bare globals replaced with `self._runtime_cfg`; explicit color imports added
+- `solo_builder/tests/test_runtime_cfg.py`: 13 unit tests for _runtime_cfg sync + validation
+- `solo_builder_cli.py`: 665→478 lines; TD-ARCH-001 Phase 2 CLOSED
+- `commands/settings_cmds.py`: `_cmd_config` migrated to read `self._runtime_cfg` (live values)
+- `docs/CLI_REFACTOR_DESIGN.md`: Phase 2 marked COMPLETE
+
+Status: COMPLETE (88a140a, 6f79dfd, 06481a0)
+
+## TASK-332
+Goal: ContextWindowMonitor — tools/context_window_check.py script checking CLAUDE.md + MEMORY.md line counts with configurable thresholds (AI-008)
+
+Delivered:
+- `tools/context_window_check.py`: checks CLAUDE.md (threshold 200), MEMORY.md (200), JOURNAL.md (1000 per-file override); `--warn`, `--error`, `--json`, `--quiet` flags; exits 0/1/2
+- `claude/VERIFY.json`: added `context-window-check` step (`required: false`)
+- `solo_builder/tests/test_context_window_check.py`: 16 unit tests covering _count_lines, check(), main(), per-file overrides, JSON output, quiet mode
+
+Status: COMPLETE
 
 Constraints:
 - Keep scope narrow

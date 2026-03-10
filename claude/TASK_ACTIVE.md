@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-331
+TASK-332
 
-CorrelationIdMiddleware — X-Request-ID + X-API-Version headers on all API responses (OM-041, BE-040)
+ContextWindowMonitor — tools/context_window_check.py script checking CLAUDE.md + MEMORY.md line counts with configurable thresholds (AI-008)
