@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-346
+TASK-347
 
-DiscordBotRoleGuard: role-based access for destructive slash commands (SE-030)
+StateBackupRestore: backup/restore script for workflow state (ME-010 to ME-015)

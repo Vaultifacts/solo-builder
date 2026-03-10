@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.37.0 — 2026-03-10  StateBackupRestore — backup/restore script + 25 tests (TASK-347)
+
+- **347 tasks** merged to master; **1314 tests**, all passing
+- `tools/state_backup.py`: backup (ZIP with manifest), restore (full or --dry-run), list, prune (keep-N); backs up state.json, step.txt, metrics.jsonl, settings.json; microsecond-precision archive names prevent collisions (ME-010 to ME-015) — TASK-347
+- `tests/test_state_backup.py`: 25 tests — archive naming, backup (creates/manifest/included/label/skipped), restore (files restored/dry-run/missing raises), list (empty/sorted), prune (keeps-most-recent/returns-deleted/nothing-when-under), main() subcommands — TASK-347
+
+---
+
 ## v5.36.0 — 2026-03-10  DiscordBotRoleGuard — role-based access for destructive commands + 24 tests (TASK-346)
 
 - **346 tasks** merged to master; **1289 tests**, all passing
