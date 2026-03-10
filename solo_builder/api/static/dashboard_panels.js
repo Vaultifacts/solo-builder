@@ -968,6 +968,62 @@ export async function pollMetrics() {
 }
 
 /* ── Health detailed (OM-001 to OM-005) ──────────────────── */
+export async function pollGatesDetailed() {
+  try {
+    const d = await api("/executor/gates");
+    const el = document.getElementById("gates-detailed-content");
+    if (!el) return;
+
+    const gates = d.gates || [];
+    const blocked = d.blocked_count || 0;
+
+    const mkBadge = (ok, label) => {
+      const b = document.createElement("span");
+      b.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;font-weight:bold;margin-right:8px;flex-shrink:0;color:#000;background:${ok ? "var(--green)" : "var(--red)"}`;
+      b.textContent = label || (ok ? "OK" : "BLOCKED");
+      return b;
+    };
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${d.ok ? "var(--green)" : "var(--red)"}`;
+    hdrText.textContent = `Gates: ${d.running_count || 0} running · ${blocked} blocked`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    if (gates.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";
+      empty.textContent = "No Running subtasks.";
+      nodes.push(empty);
+    } else {
+      gates.forEach(g => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px";
+        const info = document.createElement("div");
+        info.style.cssText = "flex:1;min-width:0";
+        const name = document.createElement("div");
+        name.style.cssText = "color:var(--text);font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        name.textContent = `${g.task} / ${g.subtask}`;
+        const detail = document.createElement("div");
+        detail.style.cssText = "color:var(--dim);font-size:9px;margin-top:2px";
+        const parts = [`HITL:${g.hitl_name || "Auto"}`];
+        if (!g.scope_ok) parts.push(`scope denied: ${(g.scope_denied || []).join(",")}`);
+        if (!g.tools_valid) parts.push("invalid tools");
+        if (g.action_type) parts.push(`type:${g.action_type}`);
+        detail.textContent = parts.join(" · ");
+        info.append(name, detail);
+        row.append(mkBadge(!g.blocked, g.blocked ? "BLOCKED" : "OK"), info);
+        nodes.push(row);
+      });
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
 export async function pollHealthDetailed() {
   try {
     const d = await api("/health/detailed");
