@@ -177,3 +177,5 @@ solo_builder/tests/test_metrics_alert_check.py
 solo_builder/config/__init__.py
 solo_builder/config/loader.py
 solo_builder/tests/test_config_loader.py
+tools/lint_check.py
+solo_builder/tests/test_lint_check.py

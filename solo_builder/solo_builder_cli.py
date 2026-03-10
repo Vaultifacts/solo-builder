@@ -63,36 +63,22 @@ _CFG = load_settings(_CFG_PATH)
 
 STALL_THRESHOLD    : int   = _CFG["STALL_THRESHOLD"]
 SNAPSHOT_INTERVAL  : int   = _CFG["SNAPSHOT_INTERVAL"]
-DAG_UPDATE_INTERVAL: int   = _CFG["DAG_UPDATE_INTERVAL"]
-PDF_OUTPUT_PATH    : str   = _CFG["PDF_OUTPUT_PATH"]
 STATE_PATH         : str   = _CFG.get("STATE_PATH", "./state/solo_builder_state.json")
 AUTO_SAVE_INTERVAL : int   = _CFG.get("AUTO_SAVE_INTERVAL", 5)
 AUTO_STEP_DELAY    : float = _CFG.get("AUTO_STEP_DELAY", 0.4)
 VERBOSITY          : str   = _CFG["VERBOSITY"]
-BAR_WIDTH          : int   = _CFG["BAR_WIDTH"]
-MAX_ALERTS         : int   = _CFG["MAX_ALERTS"]
-EXEC_MAX_PER_STEP  : int   = _CFG["EXECUTOR_MAX_PER_STEP"]
 EXEC_VERIFY_PROB   : float = _CFG["EXECUTOR_VERIFY_PROBABILITY"]
-MAX_SUBTASKS_PER_BRANCH: int = _CFG.get("MAX_SUBTASKS_PER_BRANCH", 20)
-MAX_BRANCHES_PER_TASK  : int = _CFG.get("MAX_BRANCHES_PER_TASK",   10)
-CLAUDE_TIMEOUT        : int = _CFG.get("CLAUDE_TIMEOUT", 60)
 CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
-ANTHROPIC_MODEL       : str  = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
-ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 4096)
-REVIEW_MODE           : bool = bool(_CFG.get("REVIEW_MODE",       False))
 WEBHOOK_URL           : str  = _CFG.get("WEBHOOK_URL",            "")
 
-# One-liner context injected at the front of every Claude prompt so the model
-# knows what project it is working within, avoiding "I don't know what X is"
-_PROJECT_CONTEXT = (
-    "Context: Solo Builder is a Python terminal CLI that uses six AI agents "
-    "(Planner, ShadowAgent, SelfHealer, Executor, Verifier, MetaOptimizer) "
-    "and the Anthropic SDK to manage DAG-based software project tasks. "
+# Read-only constants — loaded from config/loader.py; re-imported here so that
+# solo_builder_cli.DAG_UPDATE_INTERVAL etc. remain accessible to injected mixins.
+from config.loader import (
+    DAG_UPDATE_INTERVAL, PDF_OUTPUT_PATH, BAR_WIDTH, MAX_ALERTS,
+    EXEC_MAX_PER_STEP, MAX_SUBTASKS_PER_BRANCH, MAX_BRANCHES_PER_TASK,
+    CLAUDE_TIMEOUT, ANTHROPIC_MODEL, ANTHROPIC_MAX_TOKENS, REVIEW_MODE,
+    _PROJECT_CONTEXT,
 )
-
-# Resolve relative paths to script location
-if not os.path.isabs(PDF_OUTPUT_PATH):
-    PDF_OUTPUT_PATH = os.path.join(_HERE, PDF_OUTPUT_PATH)
 if not os.path.isabs(STATE_PATH):
     STATE_PATH = os.path.join(_HERE, STATE_PATH)
 _JOURNAL_RAW = _CFG.get("JOURNAL_PATH", "journal.md")

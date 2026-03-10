@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.41.0 — 2026-03-10  LintCheck — flake8 runner with configurable thresholds + 33 tests (TASK-351)
+
+- **351 tasks** merged to master; **1445 tests**, all passing
+- `tools/lint_check.py`: `run_lint()` runs flake8 and parses per-severity counts (E/W/F/C); `LintThresholds` frozen dataclass; `load_lint_thresholds()` reads `LINT_MAX_*` from settings.json; `--json`, `--quiet`, `--source`, `--max-e/w/f/c` flags; exits 0=pass, 1=threshold exceeded, 2=flake8 error (DX-010 to DX-015) — TASK-351
+- `tests/test_lint_check.py`: 33 tests — `_parse_counts` (empty/mixed/errors/violations/unknown), `LintThresholds` (defaults/immutable/custom), `LintReport` (pass/fail/to_dict), `load_lint_thresholds` (missing/override/partial), `run_lint` (clean/exceed/within/violations/not-found/timeout/counts), `run()` (exit codes/JSON/quiet/text), `main()` flags — TASK-351
+
+---
+
 ## v5.40.0 — 2026-03-10  MetricsAlertCheck — alert threshold checker + 35 tests (TASK-350)
 
 - **350 tasks** merged to master; **1412 tests**, all passing

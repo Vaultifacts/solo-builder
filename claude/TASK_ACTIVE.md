@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-350
+TASK-351
 
-metrics alert threshold checker — failure rate, latency, stall thresholds (OM-020 to OM-025)
+lint check runner — flake8 violations with configurable thresholds and JSON output (DX-010 to DX-015)
