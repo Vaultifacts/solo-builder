@@ -109,3 +109,20 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 | 2026-03-10 | TASK-319: Resolved TD-OPS-001 — executor metrics JSONL (elapsed_s, sdk_success_rate). 1 open item remains (TD-ARCH-001). |
 | 2026-03-10 | TASK-322: Resolved TD-SEC-003 — HSTS header added to SecurityHeadersMiddleware. |
 | 2026-03-10 | TASK-323: Resolved TD-TEST-003 — 5 Flask test-client integration tests assert all security headers end-to-end. TD-ARCH-001 Phase 1 analysis corrected: 6 of 8 "read-only" constants are mutable via do_set. |
+
+---
+
+## Code-Level Debt Scan (auto-generated 2026-03-10)
+
+Scanned 8 files; found 8 inline debt markers.
+
+| File | Line | Marker | Note |
+|---|---|---|---|
+| `solo_builder/api/blueprints/webhook.py` | 56 | NOQA | S310  # nosec B310 |
+| `solo_builder/cli_utils.py` | 9 | NOQA | dag_stats used by _handle_watch/_status |
+| `solo_builder/discord_bot/test_bot.py` | 46 | NOQA | E402 |
+| `solo_builder/runners/anthropic_runner.py` | 41 | NOQA | PLC0415 |
+| `solo_builder/solo_builder_cli.py` | 357 | NOQA | S310  # nosec B310 |
+| `solo_builder/tests/test_cache.py` | 419 | NOQA | — needed to pick up patched JOURNAL_PATH |
+| `tools/cache_stats.py` | 26 | NOQA | E402 |
+| `tools/debt_scan.py` | 36 | TODO | |FIXME|HACK|XXX|NOQA)\b[:\s]*(.*)", re.IGNORECASE) |
