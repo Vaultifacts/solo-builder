@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-330
+TASK-331
 
-AnthropicMaxTokensIncrease — raise ANTHROPIC_MAX_TOKENS default from 256 to 4096
+CorrelationIdMiddleware — X-Request-ID + X-API-Version headers on all API responses (OM-041, BE-040)
