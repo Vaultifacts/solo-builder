@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-382
+TASK-383
 
-DashboardE2ESmoke — Flask test-client smoke tests for dashboard HTML and key API endpoints
+OpenAPIHealthRoutes — add 11 new health endpoints to generate_openapi.py spec
