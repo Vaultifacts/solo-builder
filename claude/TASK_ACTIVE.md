@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-354
+TASK-355
 
-prompt regression check — validate prompt templates against schema + regression checklist (AI-002 to AI-005)
+context window budget — per-file line count budgets with % utilization and alert thresholds (AI-008 to AI-013)
