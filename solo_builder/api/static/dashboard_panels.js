@@ -1024,6 +1024,67 @@ export async function pollGatesDetailed() {
   } catch (_) {}
 }
 
+export async function pollDebtScanDetailed() {
+  try {
+    const d = await api("/health/debt-scan");
+    const el = document.getElementById("debt-scan-detailed-content");
+    if (!el) return;
+
+    const results = d.results || [];
+    const count   = d.count || 0;
+
+    const _MARKER_COLOR = {
+      FIXME: "var(--red)",
+      HACK:  "var(--orange, #e07020)",
+      TODO:  "var(--yellow, #e6a817)",
+      XXX:   "var(--red)",
+      NOQA:  "var(--dim)",
+    };
+
+    const mkBadge = (marker) => {
+      const b = document.createElement("span");
+      const color = _MARKER_COLOR[marker] || "var(--dim)";
+      b.style.cssText = `font-size:9px;padding:1px 5px;border-radius:3px;font-weight:bold;margin-right:6px;flex-shrink:0;color:#000;background:${color}`;
+      b.textContent = marker;
+      return b;
+    };
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${d.ok ? "var(--green)" : "var(--yellow, #e6a817)"}`;
+    hdrText.textContent = `Debt: ${count} item${count !== 1 ? "s" : ""}${d.ok ? " — clean" : ""}`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    if (results.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";
+      empty.textContent = count > 0 ? `${count} items (showing 0 — see TECH_DEBT_REGISTER.md)` : "No debt items found.";
+      nodes.push(empty);
+    } else {
+      results.forEach(r => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px";
+        const info = document.createElement("div");
+        info.style.cssText = "flex:1;min-width:0";
+        const loc = document.createElement("div");
+        loc.style.cssText = "color:var(--dim);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        loc.textContent = `${r.path}:${r.line}`;
+        const txt = document.createElement("div");
+        txt.style.cssText = "color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        txt.textContent = r.text || "—";
+        info.append(loc, txt);
+        row.append(mkBadge(r.marker), info);
+        nodes.push(row);
+      });
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
 export async function pollPromptRegressionDetailed() {
   try {
     const d = await api("/health/prompt-regression");

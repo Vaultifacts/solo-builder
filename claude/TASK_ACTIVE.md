@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-376
+TASK-377
 
-Add GET /health/prompt-regression endpoint + Health tab widget showing prompt template regression check results
+Add GET /health/debt-scan endpoint + Health tab widget showing debt_scan.py TODO/FIXME/HACK results
