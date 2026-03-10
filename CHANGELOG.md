@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.24.0 — 2026-03-10  MutationTestingSetup — mutmut config + runner script (TASK-334)
+
+- **334 tasks** merged to master; **394 tests**, all passing
+- `pyproject.toml`: added `[tool.mutmut]` section — targets runners/, api/, commands/, utils/; runner = pytest -x -q; establishes baseline mutation testing infrastructure (QA-035) — TASK-334
+- `tools/run_mutation_tests.py`: thin mutmut wrapper with --dry-run, --max-survivors, --path; exits 0=pass, 1=survivors exceed threshold, 2=mutmut not installed — TASK-334
+- `tests/test_mutation_runner.py`: 13 tests — availability check, parse_results, main() scenarios including threshold enforcement and dry-run isolation — TASK-334
+
+---
+
 ## v5.23.0 — 2026-03-10  ExecutorStepTimingLog — step elapsed_ms in structured log (TASK-333)
 
 - **333 tasks** merged to master; **381 tests**, all passing
