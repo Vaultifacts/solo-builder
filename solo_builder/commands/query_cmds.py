@@ -80,7 +80,8 @@ class QueryCommandsMixin:
     def _cmd_stalled(self) -> None:
         """stalled — show subtasks stuck longer than STALL_THRESHOLD."""
         stalled = self.healer.find_stalled(self.dag, self.step)
-        print(f"\n  {BOLD}{YELLOW}Stalled Subtasks{RESET}  (threshold: {STALL_THRESHOLD} steps)")
+        _st = self._runtime_cfg["STALL_THRESHOLD"]
+        print(f"\n  {BOLD}{YELLOW}Stalled Subtasks{RESET}  (threshold: {_st} steps)")
         print(f"  {'─' * 55}")
         if not stalled:
             print(f"  {DIM}None — all Running subtasks are progressing normally.{RESET}")
@@ -91,7 +92,7 @@ class QueryCommandsMixin:
                 print(f"  {YELLOW}{st_name:<5}{RESET} stalled {RED}{age}{RESET} steps  "
                       f"{DIM}{task_name} — {desc}{RESET}")
         print(f"  {'─' * 55}")
-        print(f"  {DIM}SelfHealer auto-resets after {STALL_THRESHOLD} steps{RESET}\n")
+        print(f"  {DIM}SelfHealer auto-resets after {_st} steps{RESET}\n")
 
     def _cmd_agents(self) -> None:
         """agents — show agent stats (healer count, planner cache, executor, meta)."""
@@ -149,7 +150,7 @@ class QueryCommandsMixin:
             eta_steps = remaining / vr
             print(f"  {CYAN}ETA{RESET}           ~{eta_steps:.0f} steps remaining")
             if self.executor.max_per_step > 0:
-                mins = eta_steps * AUTO_STEP_DELAY / 60
+                mins = eta_steps * self._runtime_cfg["AUTO_STEP_DELAY"] / 60
                 print(f"  {CYAN}Wall time{RESET}     ~{mins:.1f} min at current pace")
         else:
             print(f"  {CYAN}ETA{RESET}           {DIM}insufficient data{RESET}")

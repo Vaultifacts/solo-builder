@@ -84,7 +84,7 @@ class AutoCommandsMixin:
                 _waited  = 0.0
                 _stopped = False
                 _vtrigger = os.path.join(_HERE, "state", "verify_trigger.json")
-                while _waited < AUTO_STEP_DELAY:
+                while _waited < self._runtime_cfg["AUTO_STEP_DELAY"]:
                     if os.path.exists(_stoptrig):
                         try:
                             os.remove(_stoptrig)

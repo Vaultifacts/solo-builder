@@ -52,7 +52,7 @@ class StepRunnerMixin:
 
         # 5. Verifier: fix any status inconsistencies
         fixes = self.verifier.verify(self.dag)
-        if VERBOSITY == "DEBUG":
+        if self._runtime_cfg["VERBOSITY"] == "DEBUG":
             for fix in fixes:
                 step_alerts.append(f"  {DIM}Verifier: {fix}{RESET}")
 
@@ -63,15 +63,15 @@ class StepRunnerMixin:
         verified_count = sum(1 for a in actions.values() if a == "verified")
         self.meta.record(healed, verified_count)
         opt_note = self.meta.optimize(self.planner)
-        if opt_note and VERBOSITY == "DEBUG":
+        if opt_note and self._runtime_cfg["VERBOSITY"] == "DEBUG":
             step_alerts.append(f"  {DIM}{opt_note}{RESET}")
 
         # 8. Auto-snapshot
-        if self.step % SNAPSHOT_INTERVAL == 0:
+        if self.step % self._runtime_cfg["SNAPSHOT_INTERVAL"] == 0:
             self._take_snapshot(auto=True)
 
         # 9. Auto-save state
-        if self.step % AUTO_SAVE_INTERVAL == 0:
+        if self.step % self._runtime_cfg["AUTO_SAVE_INTERVAL"] == 0:
             self.save_state(silent=True)
 
         # Heartbeat: write live counters every step for Discord bot real-time tracking
