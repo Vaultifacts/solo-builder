@@ -109,7 +109,13 @@ class _Base(unittest.TestCase):
         self._state_path.write_text(json.dumps(state), encoding="utf-8")
 
     def _make_state(self, subtasks: dict | None = None, step: int = 5) -> dict:
-        """Build a minimal DAG state with Task 0 / Branch A."""
+        """Build a minimal DAG state with Task 0 / Branch A.
+
+        NOTE: New tests outside this file should use the canonical factories at
+        solo_builder/tests/factories.py (make_state, make_subtask, make_dag)
+        instead of defining inline helpers.  This helper predates factories.py
+        and is retained to avoid mass-refactoring ~200 existing test assertions.
+        """
         sts = subtasks or {"A1": "Verified", "A2": "Pending"}
         return {
             "step": step,
