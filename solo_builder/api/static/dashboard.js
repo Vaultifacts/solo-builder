@@ -2,7 +2,7 @@ import { state } from "./dashboard_state.js";
 import { api, esc, statusClass, toast, flash, updateNotifBadge } from "./dashboard_utils.js";
 import { svgEl } from "./dashboard_svg.js";
 import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats, pollTaskProgress } from "./dashboard_tasks.js";
-import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory, pollHealthDetailed, pollGatesDetailed, pollPolicyDetailed, pollContextWindowDetailed, pollThreatModelDetailed, pollSloDetailed } from "./dashboard_panels.js";
+import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory, pollHealthDetailed, pollGatesDetailed, pollPolicyDetailed, pollContextWindowDetailed, pollThreatModelDetailed, pollSloDetailed, pollPromptRegressionDetailed } from "./dashboard_panels.js";
 
 /* ── Health / uptime ─────────────────────────────────────── */
 async function pollHealth() {
@@ -28,7 +28,7 @@ async function pollHealth() {
 async function tick() {
   if (state.pollPaused) return;
   const progressPoll = state.selectedTask ? pollTaskProgress(state.selectedTask) : Promise.resolve();
-  await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory(), pollHealth(), pollHealthDetailed(), pollGatesDetailed(), pollPolicyDetailed(), pollContextWindowDetailed(), pollThreatModelDetailed(), pollSloDetailed(), progressPoll]);
+  await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory(), pollHealth(), pollHealthDetailed(), pollGatesDetailed(), pollPolicyDetailed(), pollContextWindowDetailed(), pollThreatModelDetailed(), pollSloDetailed(), pollPromptRegressionDetailed(), progressPoll]);
   if (state.selectedTask && state.tasksCache[state.selectedTask]) {
     try {
       const fresh = await api("/tasks/" + encodeURIComponent(state.selectedTask));

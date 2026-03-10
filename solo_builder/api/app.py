@@ -53,6 +53,7 @@ from .blueprints.executor_gates import executor_gates_bp
 from .blueprints.context_window import context_window_bp
 from .blueprints.threat_model import threat_model_bp
 from .blueprints.slo import slo_bp
+from .blueprints.prompt_regression import prompt_regression_bp
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -73,6 +74,7 @@ app.register_blueprint(executor_gates_bp)
 app.register_blueprint(context_window_bp)
 app.register_blueprint(threat_model_bp)
 app.register_blueprint(slo_bp)
+app.register_blueprint(prompt_regression_bp)
 
 
 @app.before_request
