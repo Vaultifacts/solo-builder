@@ -2152,3 +2152,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-344
+Goal: PerformanceLatencyMetrics: p50/p95/p99 latency buckets in /metrics endpoint (PE-001 to PE-005)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
