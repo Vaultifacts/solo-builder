@@ -1,5 +1,29 @@
 # Changelog
 
+## v5.9.0 — 2026-03-10  Layer 3 audit: prompt standard, HITL gate, security hardening (TASK-311 through TASK-319)
+
+- **319 tasks** merged to master; **187 tests** (182 non-API + 5 metrics), all passing
+- `docs/PROMPT_STANDARD.md`: prompt engineering standard — context prefix rules, template, regression testing guidelines — TASK-311
+- `test_prompt_standard.py`: 23 regression tests guarding `_PROJECT_CONTEXT`, DAG description quality, all 3 execution paths — TASK-311
+- AI-002 resolved: `executor.py` subprocess path + `dag_cmds.py` decomp prompts now prepend `_PROJECT_CONTEXT` — TASK-312
+- `docs/HITL_TRIGGER_DESIGN.md`: formal HITL trigger levels (0=Auto, 1=Notify, 2=Pause, 3=Block), trigger criteria, 3-phase plan — TASK-312
+- `docs/AI_ACTION_SCOPE.md`: tool policy table (Read/Glob/Grep=Auto, Bash/Write/Edit=Pause, Web=Notify) — TASK-313
+- `runners/hitl_gate.py`: `evaluate(tools, description)` + `HITLBlockError` + `level_name()`; 28 tests in `test_hitl_gate.py` — TASK-313
+- `docs/THREAT_MODEL.md`: 6 threats (T-001..T-006); SE-001 resolved, SE-002..006 tracked — TASK-314
+- `docs/SLO_DEFINITIONS.md`: 6 SLOs — API tests 100%, Discord tests 100%, SDK success ≥95%, gate checks 14/14, step latency ≤10s, Notion sync ≥99% — TASK-315
+- `docs/CONTEXT_WINDOW_STRATEGY.md`: compaction triggers, 200-line MEMORY.md limit, journal archival procedure — TASK-316
+- `docs/TECH_DEBT_REGISTER.md`: 9 initial open items across 5 categories — TASK-317
+- `runners/executor.py`: HITL gate wired (TD-ARCH-002); validate_tools called before dispatch (TD-ARCH-005); subprocess fallback warns — TASK-318
+- `runners/sdk_tool_runner.py`: `validate_tools()` function (TD-ARCH-005); `Read` path allowlist restricts to repo root (TD-SEC-001) — TASK-318
+- `runners/test_runners.py`: +15 tests — TestValidateTools, TestSdkToolRunnerPathAllowlist, TestExecutorRouting — TASK-318
+- `tools/requirements-lock.txt`: pinned dependencies for tools/ (TD-SEC-002) — TASK-318
+- `solo_builder/requirements.txt`: explicit dependency file with `anthropic>=0.40` (TD-DEP-001) — TASK-318
+- `runners/executor.py`: `_write_step_metrics()` — per-step JSONL: elapsed_s, sdk_dispatched, sdk_succeeded, sdk_success_rate (TD-OPS-001) — TASK-319
+- `docs/TECH_DEBT_REGISTER.md` updated: 9 of 10 items resolved; 1 remaining (TD-ARCH-001 god file) — TASK-319
+- Post-commit hook installed at `.githooks/post-commit` (Notion sync on every commit)
+
+---
+
 ## v5.8.0 — 2026-03-09  Branch pct fields + Discord min_age + stalled clear button (TASK-301 through TASK-310)
 
 - **310 tasks** merged to master (TASK-001 through TASK-310); **600 API tests**, **305 Discord tests**
