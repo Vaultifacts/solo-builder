@@ -7,19 +7,32 @@ import logging
 import logging.handlers
 
 from utils.helper_functions import BOLD, CYAN, GREEN, RESET, YELLOW, dag_stats  # noqa: dag_stats used by _handle_watch/_status
+from solo_builder.utils.log_formatter import JsonLogFormatter
 
 
-def _setup_logging(log_path: str) -> None:
-    """Configure a rotating file handler for structured log output."""
+def _setup_logging(log_path: str, use_json: bool = False) -> None:
+    """Configure a rotating file handler for structured log output.
+
+    Parameters
+    ----------
+    log_path:
+        Destination log file path.
+    use_json:
+        When True the handler emits one JSON object per line (machine-readable).
+        When False (default) it emits the traditional human-readable text format.
+    """
     _logger = logging.getLogger("solo_builder")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     handler = logging.handlers.RotatingFileHandler(
         log_path, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8"
     )
-    handler.setFormatter(logging.Formatter(
-        "%(asctime)s %(levelname)-8s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-    ))
+    if use_json:
+        handler.setFormatter(JsonLogFormatter())
+    else:
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)-8s %(message)s",
+            datefmt="%Y-%m-%dT%H:%M:%S",
+        ))
     _logger.setLevel(logging.DEBUG)
     _logger.addHandler(handler)
     _logger.propagate = False
