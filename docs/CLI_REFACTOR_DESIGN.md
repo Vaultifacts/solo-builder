@@ -67,12 +67,19 @@ until another module needs them directly.
 
 ### Phase 1 — Extract truly read-only config constants
 
-Move the 13 read-only constants listed above to `solo_builder/config/loader.py`.
-Re-import them in `solo_builder_cli.py` for backwards compatibility.
+**Status: COMPLETE.**
 
-**Risk:** Low — no test patches target them; no `global` mutations involved.
-**Value:** Low — no other module currently needs them.
-**Trigger:** Promote to active when a second consumer appears.
+- `solo_builder/config/__init__.py` + `solo_builder/config/loader.py` created.
+- 12 read-only constants extracted: `DAG_UPDATE_INTERVAL`, `PDF_OUTPUT_PATH`,
+  `BAR_WIDTH`, `MAX_ALERTS`, `EXEC_MAX_PER_STEP`, `MAX_SUBTASKS_PER_BRANCH`,
+  `MAX_BRANCHES_PER_TASK`, `CLAUDE_TIMEOUT`, `ANTHROPIC_MODEL`,
+  `ANTHROPIC_MAX_TOKENS`, `REVIEW_MODE`, `_PROJECT_CONTEXT`.
+- `solo_builder_cli.py` re-imports all 12 via `from config.loader import (...)`,
+  preserving `solo_builder_cli.X` access for injected mixins.
+- `step_runner.py` and `auto_cmds.py` now import `DAG_UPDATE_INTERVAL`,
+  `MAX_ALERTS`, and `BAR_WIDTH` directly — no longer injection-dependent.
+- `test_prompt_registry.py` updated to scan `config/loader.py` for `_PROJECT_CONTEXT`.
+- 17 new tests in `test_config_loader.py`. `solo_builder_cli.py`: 478 → 465 lines.
 
 ### Phase 2 — CLI command dispatch
 
@@ -173,16 +180,18 @@ or as a low-risk cleanup task (~30 min scope).
 
 ## Decision
 
-Phases 1, 2, and 3 deferred. Phase 1 requires correcting the initial
-"read-only" premise: only 13 truly read-only constants qualify, and extraction
-is low-value without a second consumer. Phases 2–3 require the patch-update
-task estimated at 3–5 hours.
+**All three phases are now CLOSED.**
 
-**Status:** TD-ARCH-001 Phase 2 CLOSED (TASK-331). `solo_builder_cli.py` is now
-a thin host — entry point, config loader, frozen globals, and mixin glue only.
-All dispatch logic lives in `commands/`. Phase 1 remains deferred (no second
-consumer for read-only constants). Phase 3 (frozen globals / stale injection
-fix) is the next architectural milestone.
+**Status:** TD-ARCH-001 Phases 1, 2, and 3 CLOSED.
+
+- `solo_builder_cli.py` is a thin host: entry point, config loader, frozen
+  globals, and mixin glue only. All dispatch logic lives in `commands/`.
+- `solo_builder/config/loader.py` owns 12 read-only constants; mixins
+  (`step_runner.py`, `auto_cmds.py`) import directly.
+- `do_set` changes propagate to all mixin read-sites within the same session
+  via `self._runtime_cfg`.
+
+`solo_builder_cli.py`: 665 → 465 lines (−200 lines total across all phases).
 
 ---
 
@@ -198,3 +207,4 @@ fix) is the next architectural milestone.
 | 2026-03-10 | TASK-331: _cmd_set extracted to commands/dispatcher.py; solo_builder_cli.py 665→478 lines; TD-ARCH-001 Phase 2 CLOSED. |
 | 2026-03-10 | Phase 3 design: stale-injection root cause documented; Option A (_runtime_cfg passthrough) chosen; 6 read-sites identified across 3 mixin files. |
 | 2026-03-10 | Phase 3 CLOSED: 6 stale-global reads in step_runner/auto_cmds/query_cmds replaced with self._runtime_cfg["KEY"]. do_set changes now take effect mid-session. |
+| 2026-03-10 | Phase 1 CLOSED: config/loader.py created with 12 read-only constants; solo_builder_cli.py re-imports via from config.loader import (...); step_runner.py and auto_cmds.py import directly. 478→465 lines. 17 new tests. TD-ARCH-001 all phases CLOSED. |
