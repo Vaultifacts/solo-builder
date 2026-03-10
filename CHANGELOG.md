@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.74.0 — 2026-03-10  PromptRegressionAPI — GET /health/prompt-regression + Health tab widget + 29 tests (TASK-376)
+
+- **376 tasks** merged to master; **2133 tests**, all passing
+- `api/blueprints/prompt_regression.py`: `GET /health/prompt-regression` calls `run_checks()`; returns `{ok, passed, total, failed, results:[{name,passed,errors}]}` (AI-002, AI-003) — TASK-376
+- `api/app.py`: registered `prompt_regression_bp` — TASK-376
+- `api/static/dashboard_panels.js`: `pollPromptRegressionDetailed()` renders template count + per-template OK/FAIL rows — TASK-376
+- `api/dashboard.html`: `prompt-regression-detailed-content` div after SLO section — TASK-376
+- `tests/test_prompt_regression_api.py`: 29 tests — TASK-376
+
+---
+
+
 ## v5.72.0 — 2026-03-10  SLODashboardWidget — GET /health/slo endpoint + Health tab widget + 29 tests (TASK-375)
 
 - **375 tasks** merged to master; **2104 tests**, all passing
