@@ -1,5 +1,18 @@
 # Changelog
 
+## v5.70.0 — 2026-03-10  ThreatModelDashboardWidget — GET /health/threat-model + Health tab widget + 31 tests (TASK-374)
+
+- **374 tasks** merged to master; **2075 tests**, all passing
+- `api/blueprints/threat_model.py`: `GET /health/threat-model` calls `threat_model_check` internal functions and returns `{ok, checks:[{name,required,passed,detail}]}`; always 200 (SE-001 to SE-006) — TASK-374
+- `api/app.py`: registered `threat_model_bp` — TASK-374
+- `api/static/dashboard_panels.js`: `export async function pollThreatModelDetailed()` fetches `/health/threat-model`, renders per-check rows with OK/FAIL badges, check name, advisory label, detail text — TASK-374
+- `api/dashboard.html`: `threat-model-detailed-content` div added after context-window section in Health tab — TASK-374
+- `api/static/dashboard.js`: `pollThreatModelDetailed` added to import and `tick()` Promise.all — TASK-374
+- `tests/test_threat_model_dashboard_widget.py`: 31 tests — TASK-374
+
+---
+
+
 ## v5.68.0 — 2026-03-10  PromptRegressionCI — prompt-regression as required pre-release gate + 6 tests (TASK-373)
 
 - **373 tasks** merged to master; **2044 tests**, all passing
