@@ -1,17 +1,9 @@
 {
-  "selected_at": "2026-03-10T03:34:27.914512+00:00",
+  "selected_at": "2026-03-10T03:49:55.966859+00:00",
   "layer1_pct": 100,
-  "open_count": 5,
+  "open_count": 4,
   "task": {
     "suggested_task_id": "TASK-311",
-    "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
-    "audit_refs": "OM-001 to OM-010",
-    "safety_score": 75,
-    "risk_level": "Low",
-    "rationale": "Lightweight specification task \u2014 output is a document or config file.",
-    "estimated_scope": "Scope to be determined; start with a design spike."
-  },
-  "runner_up": {
     "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
     "audit_refs": "AI-004, AI-005",
     "safety_score": 65,
@@ -19,15 +11,15 @@
     "rationale": "Adds tests only \u2014 does not modify production code paths.",
     "estimated_scope": "Scope to be determined; start with a design spike."
   },
+  "runner_up": {
+    "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py",
+    "audit_refs": "TD-ARCH-001",
+    "safety_score": 40,
+    "risk_level": "Medium",
+    "rationale": "Scope unclear from title; recommend a spike or design doc first.",
+    "estimated_scope": "Scope to be determined; start with a design spike."
+  },
   "all_scored": [
-    {
-      "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
-      "audit_refs": "OM-001 to OM-010",
-      "safety_score": 75,
-      "risk_level": "Low",
-      "rationale": "Lightweight specification task \u2014 output is a document or config file.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
     {
       "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
       "audit_refs": "AI-004, AI-005",

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-10T03:34:27.816276+00:00",
+  "generated_at": "2026-03-10T03:49:55.873661+00:00",
   "layer1_completion": {
     "complete": 8,
     "total": 8,
@@ -56,7 +56,7 @@
     },
     {
       "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
-      "checked": false,
+      "checked": true,
       "audit_refs": "OM-001 to OM-010",
       "raw_text": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement (OM-001 to OM-010)"
     },
@@ -256,6 +256,6 @@
       "Observability & Monitoring",
       "Security Engineering"
     ],
-    "open_priorities": 5
+    "open_priorities": 4
   }
 }
