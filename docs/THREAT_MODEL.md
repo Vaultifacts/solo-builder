@@ -90,10 +90,13 @@ or shell execution without a human checkpoint, leading to unintended side-effect
 - `SdkToolRunner._SCHEMAS` hard-codes only Read/Glob/Grep — no write tools in SDK path
 - `hitl_gate.py` returns Pause (level 2) for Bash/Write/Edit subtasks
 - `ClaudeRunner` uses `--allowedTools` to limit to declared tools only
-- HITL design document (TASK-312) defines formal criteria
+- `HitlPolicy` (TASK-338) — configurable pause/notify/block thresholds loaded from settings.json
+- `ToolScopePolicy` (TASK-341) — per-action-type allowlists enforce tool constraints pre-dispatch
+- HITL design document (TASK-312, TASK-338) defines formal criteria
 
-**Residual risk:** `hitl_gate.py` is not yet wired into `executor.py` dispatch
-(Phase 3 of HITL design). Pause gates are not enforced at runtime yet.
+**Residual risk:** `hitl_gate.py` / `HitlPolicy` evaluate at request time but are not
+yet wired into `executor.py` dispatch as a hard gate (Phase 3 of HITL design).
+Pause/block decisions are advisory until that phase completes.
 
 ---
 
@@ -153,7 +156,7 @@ dependency audit tool configured.
 |---|---|---|---|
 | T-001 Secret leakage | Medium | Critical | Low (mitigated by hooks) |
 | T-002 Prompt injection | Low | Medium | Low (static DAG; HITL pending) |
-| T-003 Unscoped tool grant | Medium | High | Medium (hitl_gate not wired yet) |
+| T-003 Unscoped tool grant | Medium | High | Low-Medium (HitlPolicy + ToolScopePolicy added; executor wiring pending) |
 | T-004 Webhook payload | Low | Medium | Low (localhost only) |
 | T-005 Key exfiltration | Very Low | Critical | Low (no tracked .env) |
 | T-006 Supply chain | Low | High | Medium (no lockfile) |
@@ -190,3 +193,4 @@ dependency audit tool configured.
 | Date | Change |
 |---|---|
 | 2026-03-10 | Baseline threat model created (TASK-314). Six threats documented. SE-001 resolved. |
+| 2026-03-10 | Updated T-003 mitigations: HitlPolicy (TASK-338) + ToolScopePolicy (TASK-341) added. Residual risk lowered. |

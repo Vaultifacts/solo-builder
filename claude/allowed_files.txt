@@ -155,3 +155,5 @@ tools/pre_release_check.py
 solo_builder/tests/test_pre_release_check.py
 solo_builder/utils/tool_scope_policy.py
 solo_builder/tests/test_tool_scope_policy.py
+tools/threat_model_check.py
+solo_builder/tests/test_threat_model_check.py
