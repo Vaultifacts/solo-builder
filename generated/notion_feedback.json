@@ -1,0 +1,231 @@
+{
+  "generated_at": "2026-03-10T02:13:58.135097+00:00",
+  "layer1_completion": {
+    "complete": 8,
+    "total": 8,
+    "pct": 100
+  },
+  "layer3_priorities": [
+    {
+      "title": "PromptEngineeringStandard \u2014 structured template + regression testing",
+      "checked": false,
+      "audit_refs": "AI-002, AI-003",
+      "raw_text": "PromptEngineeringStandard \u2014 structured template + regression testing (AI-002, AI-003)"
+    },
+    {
+      "title": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions",
+      "checked": false,
+      "audit_refs": "AI-026, AI-032",
+      "raw_text": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions (AI-026, AI-032)"
+    },
+    {
+      "title": "AIActionScopeEnforcementDesign \u2014 constrain tool permissions per task type",
+      "checked": false,
+      "audit_refs": "AI-033",
+      "raw_text": "AIActionScopeEnforcementDesign \u2014 constrain tool permissions per task type (AI-033)"
+    },
+    {
+      "title": "ThreatModelDocument \u2014 baseline threat model before next security-sensitive feature",
+      "checked": false,
+      "audit_refs": "SE-001 to SE-006",
+      "raw_text": "ThreatModelDocument \u2014 baseline threat model before next security-sensitive feature (SE-001 to SE-006)"
+    },
+    {
+      "title": "SLODefinitions \u2014 define measurable reliability targets",
+      "checked": false,
+      "audit_refs": "OM-035 to OM-040",
+      "raw_text": "SLODefinitions \u2014 define measurable reliability targets (OM-035 to OM-040)"
+    },
+    {
+      "title": "ContextWindowManagementStrategy \u2014 CLAUDE.md growth + compaction triggers",
+      "checked": false,
+      "audit_refs": "AI-008 to AI-013",
+      "raw_text": "ContextWindowManagementStrategy \u2014 CLAUDE.md growth + compaction triggers (AI-008 to AI-013)"
+    },
+    {
+      "title": "TechnicalDebtRegister \u2014 make debt visible and manageable",
+      "checked": false,
+      "audit_refs": "ME-003",
+      "raw_text": "TechnicalDebtRegister \u2014 make debt visible and manageable (ME-003)"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "--dangerouslySkipPermissions with no formal HITL triggers",
+      "audit_ref": "AI-026, AI-032",
+      "severity": "High"
+    },
+    {
+      "risk": "No prompt regression testing \u2014 prompt quality unverified",
+      "audit_ref": "AI-003",
+      "severity": "High"
+    },
+    {
+      "risk": "No context window management \u2014 CLAUDE.md growth risk",
+      "audit_ref": "AI-008 to AI-013",
+      "severity": "Medium"
+    },
+    {
+      "risk": "No SLO definitions \u2014 no measurable reliability targets",
+      "audit_ref": "OM-035 to OM-040",
+      "severity": "Medium"
+    },
+    {
+      "risk": "No threat model \u2014 security vulnerabilities undetected pre-code",
+      "audit_ref": "SE-001 to SE-006",
+      "severity": "High"
+    },
+    {
+      "risk": "No technical debt register \u2014 debt invisible and unmanaged",
+      "audit_ref": "ME-003",
+      "severity": "Medium"
+    }
+  ],
+  "gap_domains": [
+    {
+      "domain": "AI Assisted Development",
+      "gap_count": 78,
+      "gap_ids": "AI-001 to AI-078",
+      "severity": "High",
+      "status": "Open",
+      "notes": "No prompt regression testing (AI-003), HITL triggers (AI-026/032), context window mgmt (AI-008-013), action scope enforcement (AI-033)"
+    },
+    {
+      "domain": "Observability & Monitoring",
+      "gap_count": 74,
+      "gap_ids": "OM-001 to OM-074",
+      "severity": "High",
+      "status": "Open",
+      "notes": "No SLO definitions, no structured logging, no distributed tracing, no alerting policy"
+    },
+    {
+      "domain": "Security Engineering",
+      "gap_count": 63,
+      "gap_ids": "SE-001 to SE-063",
+      "severity": "High",
+      "status": "Open",
+      "notes": "No threat model, no SAST/DAST, --dangerouslySkipPermissions risk, no security review gates"
+    },
+    {
+      "domain": "Performance Engineering",
+      "gap_count": 80,
+      "gap_ids": "PE-001 to PE-080",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "No load testing, no perf baselines, no profiling in CI, no perf regression gates"
+    },
+    {
+      "domain": "Maintenance & Evolution",
+      "gap_count": 72,
+      "gap_ids": "ME-001 to ME-072",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "No technical debt register (ME-003), dependency upgrade cadence, deprecation policy, long-term evolution roadmap"
+    },
+    {
+      "domain": "Release & Deployment",
+      "gap_count": 70,
+      "gap_ids": "RD-001 to RD-070",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Release notes automation, canary/blue-green strategy, feature flags, changelog generation gaps"
+    },
+    {
+      "domain": "Infrastructure Engineering",
+      "gap_count": 60,
+      "gap_ids": "IE-001 to IE-060",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Environment parity, secrets management, infrastructure-as-code coverage, networking gaps"
+    },
+    {
+      "domain": "Testing & QA",
+      "gap_count": 53,
+      "gap_ids": "QA-001 to QA-053",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Integration test coverage, contract testing, mutation testing, test data management"
+    },
+    {
+      "domain": "DevOps & CI/CD",
+      "gap_count": 53,
+      "gap_ids": "DO-001 to DO-053",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Deployment pipeline coverage, rollback procedures, artifact provenance, environment promotion gates"
+    },
+    {
+      "domain": "Backend",
+      "gap_count": 53,
+      "gap_ids": "BE-001 to BE-053",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Input validation at boundaries, API versioning, rate limiting, error response standardization"
+    },
+    {
+      "domain": "Database & Data Engineering",
+      "gap_count": 50,
+      "gap_ids": "DB-001 to DB-050",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Schema migration strategy, data retention policy, backup/restore validation, query optimization"
+    },
+    {
+      "domain": "System Architecture",
+      "gap_count": 38,
+      "gap_ids": "SA-001 to SA-038",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "ADR documentation, service boundary definitions, scalability design gaps"
+    },
+    {
+      "domain": "Product & Requirements",
+      "gap_count": 31,
+      "gap_ids": "PRD-001 to PRD-031",
+      "severity": "Medium",
+      "status": "Open",
+      "notes": "Requirements traceability, user story coverage, acceptance criteria gaps"
+    },
+    {
+      "domain": "Documentation & Knowledge",
+      "gap_count": 77,
+      "gap_ids": "DK-001 to DK-077",
+      "severity": "Low",
+      "status": "Open",
+      "notes": "API reference docs, runbook coverage, onboarding guide, architecture diagrams"
+    },
+    {
+      "domain": "Tooling & Developer Experience",
+      "gap_count": 77,
+      "gap_ids": "DX-001 to DX-077",
+      "severity": "Low",
+      "status": "Open",
+      "notes": "Dev container, editor config parity, CLI UX, local test runner ergonomics"
+    },
+    {
+      "domain": "Project & Workflow Management",
+      "gap_count": 75,
+      "gap_ids": "PW-001 to PW-075",
+      "severity": "Low",
+      "status": "Open",
+      "notes": "Sprint planning, WIP limits, retrospective cadence, dependency tracking"
+    },
+    {
+      "domain": "Frontend",
+      "gap_count": 48,
+      "gap_ids": "FE-001 to FE-048",
+      "severity": "Low",
+      "status": "Open",
+      "notes": "Accessibility, component testing, error boundary coverage, responsive design"
+    }
+  ],
+  "summary": {
+    "total_gaps": 1052,
+    "high_severity_domains": [
+      "AI Assisted Development",
+      "Observability & Monitoring",
+      "Security Engineering"
+    ],
+    "open_priorities": 7
+  }
+}

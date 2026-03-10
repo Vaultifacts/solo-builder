@@ -1,0 +1,80 @@
+{
+  "selected_at": "2026-03-10T02:13:58.298184+00:00",
+  "layer1_pct": 100,
+  "open_count": 7,
+  "task": {
+    "suggested_task_id": "TASK-311",
+    "title": "PromptEngineeringStandard \u2014 structured template + regression testing",
+    "audit_refs": "AI-002, AI-003",
+    "safety_score": 90,
+    "risk_level": "Low",
+    "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+    "estimated_scope": "Scope to be determined; start with a design spike."
+  },
+  "runner_up": {
+    "title": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions",
+    "audit_refs": "AI-026, AI-032",
+    "safety_score": 90,
+    "risk_level": "Low",
+    "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+    "estimated_scope": "Scope to be determined; start with a design spike."
+  },
+  "all_scored": [
+    {
+      "title": "PromptEngineeringStandard \u2014 structured template + regression testing",
+      "audit_refs": "AI-002, AI-003",
+      "safety_score": 90,
+      "risk_level": "Low",
+      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions",
+      "audit_refs": "AI-026, AI-032",
+      "safety_score": 90,
+      "risk_level": "Low",
+      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "AIActionScopeEnforcementDesign \u2014 constrain tool permissions per task type",
+      "audit_refs": "AI-033",
+      "safety_score": 90,
+      "risk_level": "Low",
+      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "ThreatModelDocument \u2014 baseline threat model before next security-sensitive feature",
+      "audit_refs": "SE-001 to SE-006",
+      "safety_score": 90,
+      "risk_level": "Low",
+      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "ContextWindowManagementStrategy \u2014 CLAUDE.md growth + compaction triggers",
+      "audit_refs": "AI-008 to AI-013",
+      "safety_score": 90,
+      "risk_level": "Low",
+      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "TechnicalDebtRegister \u2014 make debt visible and manageable",
+      "audit_refs": "ME-003",
+      "safety_score": 90,
+      "risk_level": "Low",
+      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "SLODefinitions \u2014 define measurable reliability targets",
+      "audit_refs": "OM-035 to OM-040",
+      "safety_score": 75,
+      "risk_level": "Low",
+      "rationale": "Lightweight specification task \u2014 output is a document or config file.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    }
+  ]
+}

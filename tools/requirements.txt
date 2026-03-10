@@ -1,0 +1,11 @@
+# Notion automation tools — tools/notion_*.py, tools/task_orchestrator.py
+# Install with: pip install -r tools/requirements.txt
+
+# HTTP client for Notion REST API
+requests>=2.32
+
+# Character detection — required by requests to suppress RequestsDependencyWarning
+charset-normalizer>=3.0
+
+# .env file loading — load NOTION_INTEGRATION_TOKEN from .env automatically
+python-dotenv>=1.0
