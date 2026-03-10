@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-351
+TASK-352
 
-lint check runner — flake8 violations with configurable thresholds and JSON output (DX-010 to DX-015)
+release notes generator — auto-generate release notes from CHANGELOG.md (RD-010 to RD-015)
