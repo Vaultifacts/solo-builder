@@ -134,3 +134,6 @@ claude/VERIFY.json
 solo_builder/tests/test_dag_cmds_tools.py
 solo_builder/tests/test_middleware.py
 solo_builder/tests/test_runtime_cfg.py
+solo_builder/tests/test_context_window_check.py
+tools/context_window_check.py
+docs/CLI_REFACTOR_DESIGN.md
