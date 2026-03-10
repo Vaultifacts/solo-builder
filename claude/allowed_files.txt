@@ -189,3 +189,5 @@ tools/context_window_warn.ps1
 tools/dev_gate.ps1
 tools/context_window_budget.py
 solo_builder/tests/test_context_window_budget.py
+tools/dep_severity_check.py
+solo_builder/tests/test_dep_severity_check.py

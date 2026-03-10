@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-355
+TASK-356
 
-context window budget — per-file line count budgets with % utilization and alert thresholds (AI-008 to AI-013)
+dep severity check — CVE severity filtering + unpinned constraint detection (SE-010 to SE-015)

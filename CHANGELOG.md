@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.46.0 — 2026-03-10  DepSeverityCheck — CVE severity filtering + unpinned detection + 34 tests (TASK-356)
+
+- **356 tasks** merged to master; **1609 tests**, all passing
+- `tools/dep_severity_check.py`: `check_unpinned()` detects `>=`/`~=`/name-only constraints; `_parse_pip_audit_json()` filters by severity; `SeverityReport` with `has_issues(min_severity)` + `severity_counts`; `--check-only`, `--min-severity`, `--json`, `--quiet`, `--lock-file` flags; exits 0=clean, 1=issues, 2=error (SE-010 to SE-015) — TASK-356
+- `tests/test_dep_severity_check.py`: 34 tests — `UnpinnedEntry`/`CveEntry` (to_dict), `SeverityReport` (no-issues/unpinned/high-cve/severity-filter/counts/to_dict), `check_unpinned` (pinned/loose/tilde/name-only/comments/missing), `_parse_pip_audit_json` (filter/empty/invalid/critical), `check` (clean/unpinned/check-only), `run()` (exit codes/JSON/quiet/missing-file/text), `main()` flags — TASK-356
+
+---
+
 ## v5.45.0 — 2026-03-10  ContextWindowBudget — per-file utilization budgets + 29 tests (TASK-355)
 
 - **355 tasks** merged to master; **1575 tests**, all passing
