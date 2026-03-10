@@ -21,6 +21,7 @@ from pathlib import Path
 _REPO   = Path(__file__).resolve().parent.parent.parent
 _SB     = _REPO / "solo_builder"
 _CLI    = _SB / "solo_builder_cli.py"
+_LOADER = _SB / "config" / "loader.py"
 _EXEC   = _SB / "runners" / "executor.py"
 _DAGCMD = _SB / "commands" / "dag_cmds.py"
 
@@ -48,9 +49,9 @@ class TestPromptRegistry(unittest.TestCase):
     """Regression guard — detect unintentional prompt drift."""
 
     def test_prompt_001_project_context(self):
-        """PROMPT-001: _PROJECT_CONTEXT in solo_builder_cli.py."""
+        """PROMPT-001: _PROJECT_CONTEXT in config/loader.py."""
         # Line-by-line extraction handles nested parens in the string value
-        lines = _read(_CLI).splitlines()
+        lines = _read(_LOADER).splitlines()
         start = next(
             (i for i, ln in enumerate(lines) if ln.strip().startswith("_PROJECT_CONTEXT")),
             None,
