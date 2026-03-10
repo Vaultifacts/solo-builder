@@ -1,5 +1,20 @@
 # Changelog
 
+## v5.20.0 — 2026-03-10  AnthropicMaxTokensIncrease — 256→4096 across all locations (TASK-330)
+
+- **330 tasks** merged to master; **1329 tests**, all passing
+- `config/settings.json`, `api/constants.py`, `runners/anthropic_runner.py`, `runners/executor.py`, `solo_builder_cli.py`: ANTHROPIC_MAX_TOKENS raised from 256 → 4096 — 256 tokens (~200 words) was insufficient for meaningful subtask outputs from the plain SDK execution path — TASK-330
+
+---
+
+## v5.19.0 — 2026-03-10  SubtaskToolsFieldFix — CLAUDE_ALLOWED_TOOLS propagated to new subtasks (TASK-329)
+
+- **329 tasks** merged to master; **1329 tests**, all passing
+- `commands/dag_cmds.py`: `_cmd_add_task` and `_cmd_add_branch` now call `st.setdefault("tools", CLAUDE_ALLOWED_TOOLS)` after subtask creation; previously the tools field was never set at creation time, making the `sdk_tool_jobs` routing branch in `executor.py` permanently unreachable — TASK-329
+- `tests/test_dag_cmds_tools.py`: 6 unit tests covering tools propagation in `add_task`, `add_branch`, `setdefault` idempotency, and sdk_tool routing reachability smoke test — TASK-329
+
+---
+
 ## v5.18.0 — 2026-03-10  DependencyAuditCheck — pip-audit script + 16 tests (TASK-328)
 
 - **328 tasks** merged to master; **1323 tests**, all passing
