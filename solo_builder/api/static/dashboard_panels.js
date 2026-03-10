@@ -1024,6 +1024,75 @@ export async function pollGatesDetailed() {
   } catch (_) {}
 }
 
+export async function pollPolicyDetailed() {
+  try {
+    const [dh, ds] = await Promise.all([api("/policy/hitl"), api("/policy/scope")]);
+    const el = document.getElementById("policy-detailed-content");
+    if (!el) return;
+
+    const mkBadge = (ok) => {
+      const b = document.createElement("span");
+      b.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;font-weight:bold;margin-right:8px;flex-shrink:0;color:#000;background:${ok ? "var(--green)" : "var(--red)"}`;
+      b.textContent = ok ? "OK" : "WARN";
+      return b;
+    };
+
+    const mkRow = (label, value) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px;gap:6px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = "color:var(--dim);min-width:90px;flex-shrink:0";
+      lbl.textContent = label;
+      const val = document.createElement("span");
+      val.style.cssText = "color:var(--text);word-break:break-all";
+      val.textContent = value;
+      row.append(lbl, val);
+      return row;
+    };
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = "font-size:12px;font-weight:bold;color:var(--text)";
+    hdrText.textContent = "Policy";
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    // HITL section
+    const hitlHdr = document.createElement("div");
+    hitlHdr.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;font-weight:bold;color:var(--text)";
+    hitlHdr.append(mkBadge(dh.ok), Object.assign(document.createElement("span"), {textContent: "HITL"}));
+    nodes.push(hitlHdr);
+
+    const hp = dh.policy || {};
+    const pauseTools = (hp.pause_tools || []).join(", ") || "—";
+    const blockKw    = (hp.block_keywords || []).join(", ") || "—";
+    nodes.push(mkRow("pause tools:", pauseTools));
+    nodes.push(mkRow("block kw:", blockKw));
+    if (dh.warnings && dh.warnings.length > 0) {
+      nodes.push(mkRow("warnings:", dh.warnings.join("; ")));
+    }
+
+    // Scope section
+    const scopeHdr = document.createElement("div");
+    scopeHdr.style.cssText = "display:flex;align-items:center;gap:6px;padding:6px 0 4px 0;font-size:11px;font-weight:bold;color:var(--text)";
+    scopeHdr.append(mkBadge(ds.ok), Object.assign(document.createElement("span"), {textContent: "Scope"}));
+    nodes.push(scopeHdr);
+
+    const sp = ds.policy || {};
+    const defaultType = sp.default_action_type || "—";
+    const actionTypes = Object.keys(sp.allowlists || {}).join(", ") || "—";
+    nodes.push(mkRow("default type:", defaultType));
+    nodes.push(mkRow("action types:", actionTypes));
+    if (ds.warnings && ds.warnings.length > 0) {
+      nodes.push(mkRow("warnings:", ds.warnings.join("; ")));
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
 export async function pollHealthDetailed() {
   try {
     const d = await api("/health/detailed");
