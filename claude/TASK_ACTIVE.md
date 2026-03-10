@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-322
+TASK-326
 
-CliGodFileRefactor spike — design doc for splitting solo_builder_cli.py; implement SecurityHeadersMiddleware (Flask X-Frame-Options, CSP, HSTS) and ApiRateLimiting as the concrete cycle-2 deliverables
+StructuredLogFormatter — JSON formatter for machine-readable log output (OM-011)

@@ -1929,3 +1929,15 @@ Status: COMPLETE (4167249)
 Goal: Rate limiter 429 integration test, EXEC_VERIFY_PROB global drift fix, Phase 2 do_* test-patch audit, TASK_QUEUE.md backfill
 
 Status: COMPLETE (see master)
+
+## TASK-326
+Goal: StructuredLogFormatter — JSON formatter for machine-readable log output (OM-011)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
