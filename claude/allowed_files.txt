@@ -94,6 +94,7 @@ tools/lint_dashboard_handlers.js
 docs/PROMPT_STANDARD.md
 generated/next_task.json
 generated/notion_feedback.json
+generated/.ai_log_db_id
 solo_builder/tests/test_prompt_standard.py
 tools/NOTION_WORKFLOW.md
 tools/notion_ai_log.py
@@ -114,4 +115,5 @@ docs/SLO_DEFINITIONS.md
 docs/CONTEXT_WINDOW_STRATEGY.md
 docs/TECH_DEBT_REGISTER.md
 solo_builder/runners/hitl_gate.py
+solo_builder/metrics.jsonl
 solo_builder/tests/test_hitl_gate.py

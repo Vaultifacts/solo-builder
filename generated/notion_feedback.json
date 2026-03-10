@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-10T02:13:58.135097+00:00",
+  "generated_at": "2026-03-10T03:34:27.816276+00:00",
   "layer1_completion": {
     "complete": 8,
     "total": 8,
@@ -8,45 +8,75 @@
   "layer3_priorities": [
     {
       "title": "PromptEngineeringStandard \u2014 structured template + regression testing",
-      "checked": false,
+      "checked": true,
       "audit_refs": "AI-002, AI-003",
       "raw_text": "PromptEngineeringStandard \u2014 structured template + regression testing (AI-002, AI-003)"
     },
     {
       "title": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions",
-      "checked": false,
+      "checked": true,
       "audit_refs": "AI-026, AI-032",
       "raw_text": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions (AI-026, AI-032)"
     },
     {
       "title": "AIActionScopeEnforcementDesign \u2014 constrain tool permissions per task type",
-      "checked": false,
+      "checked": true,
       "audit_refs": "AI-033",
       "raw_text": "AIActionScopeEnforcementDesign \u2014 constrain tool permissions per task type (AI-033)"
     },
     {
       "title": "ThreatModelDocument \u2014 baseline threat model before next security-sensitive feature",
-      "checked": false,
+      "checked": true,
       "audit_refs": "SE-001 to SE-006",
       "raw_text": "ThreatModelDocument \u2014 baseline threat model before next security-sensitive feature (SE-001 to SE-006)"
     },
     {
       "title": "SLODefinitions \u2014 define measurable reliability targets",
-      "checked": false,
+      "checked": true,
       "audit_refs": "OM-035 to OM-040",
       "raw_text": "SLODefinitions \u2014 define measurable reliability targets (OM-035 to OM-040)"
     },
     {
       "title": "ContextWindowManagementStrategy \u2014 CLAUDE.md growth + compaction triggers",
-      "checked": false,
+      "checked": true,
       "audit_refs": "AI-008 to AI-013",
       "raw_text": "ContextWindowManagementStrategy \u2014 CLAUDE.md growth + compaction triggers (AI-008 to AI-013)"
     },
     {
       "title": "TechnicalDebtRegister \u2014 make debt visible and manageable",
-      "checked": false,
+      "checked": true,
       "audit_refs": "ME-003",
       "raw_text": "TechnicalDebtRegister \u2014 make debt visible and manageable (ME-003)"
+    },
+    {
+      "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py",
+      "checked": false,
+      "audit_refs": "TD-ARCH-001",
+      "raw_text": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py (TD-ARCH-001)"
+    },
+    {
+      "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
+      "checked": false,
+      "audit_refs": "OM-001 to OM-010",
+      "raw_text": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement (OM-001 to OM-010)"
+    },
+    {
+      "title": "SecurityHeadersMiddleware \u2014 add Flask security headers (X-Frame-Options, CSP, HSTS) to API",
+      "checked": false,
+      "audit_refs": "SE-021, SE-025",
+      "raw_text": "SecurityHeadersMiddleware \u2014 add Flask security headers (X-Frame-Options, CSP, HSTS) to API (SE-021, SE-025)"
+    },
+    {
+      "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
+      "checked": false,
+      "audit_refs": "AI-004, AI-005",
+      "raw_text": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases (AI-004, AI-005)"
+    },
+    {
+      "title": "ApiRateLimiting \u2014 protect API endpoints from abuse with per-IP rate limiting",
+      "checked": false,
+      "audit_refs": "SE-022, SE-023",
+      "raw_text": "ApiRateLimiting \u2014 protect API endpoints from abuse with per-IP rate limiting (SE-022, SE-023)"
     }
   ],
   "risks": [
@@ -226,6 +256,6 @@
       "Observability & Monitoring",
       "Security Engineering"
     ],
-    "open_priorities": 7
+    "open_priorities": 5
   }
 }

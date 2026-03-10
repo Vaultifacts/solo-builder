@@ -1,79 +1,63 @@
 {
-  "selected_at": "2026-03-10T02:13:58.298184+00:00",
+  "selected_at": "2026-03-10T03:34:27.914512+00:00",
   "layer1_pct": 100,
-  "open_count": 7,
+  "open_count": 5,
   "task": {
     "suggested_task_id": "TASK-311",
-    "title": "PromptEngineeringStandard \u2014 structured template + regression testing",
-    "audit_refs": "AI-002, AI-003",
-    "safety_score": 90,
+    "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
+    "audit_refs": "OM-001 to OM-010",
+    "safety_score": 75,
     "risk_level": "Low",
-    "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+    "rationale": "Lightweight specification task \u2014 output is a document or config file.",
     "estimated_scope": "Scope to be determined; start with a design spike."
   },
   "runner_up": {
-    "title": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions",
-    "audit_refs": "AI-026, AI-032",
-    "safety_score": 90,
-    "risk_level": "Low",
-    "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
+    "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
+    "audit_refs": "AI-004, AI-005",
+    "safety_score": 65,
+    "risk_level": "Low-Medium",
+    "rationale": "Adds tests only \u2014 does not modify production code paths.",
     "estimated_scope": "Scope to be determined; start with a design spike."
   },
   "all_scored": [
     {
-      "title": "PromptEngineeringStandard \u2014 structured template + regression testing",
-      "audit_refs": "AI-002, AI-003",
-      "safety_score": 90,
-      "risk_level": "Low",
-      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
-    {
-      "title": "HumanInTheLoopTriggerDesign \u2014 formal HITL criteria to replace --dangerouslySkipPermissions",
-      "audit_refs": "AI-026, AI-032",
-      "safety_score": 90,
-      "risk_level": "Low",
-      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
-    {
-      "title": "AIActionScopeEnforcementDesign \u2014 constrain tool permissions per task type",
-      "audit_refs": "AI-033",
-      "safety_score": 90,
-      "risk_level": "Low",
-      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
-    {
-      "title": "ThreatModelDocument \u2014 baseline threat model before next security-sensitive feature",
-      "audit_refs": "SE-001 to SE-006",
-      "safety_score": 90,
-      "risk_level": "Low",
-      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
-    {
-      "title": "ContextWindowManagementStrategy \u2014 CLAUDE.md growth + compaction triggers",
-      "audit_refs": "AI-008 to AI-013",
-      "safety_score": 90,
-      "risk_level": "Low",
-      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
-    {
-      "title": "TechnicalDebtRegister \u2014 make debt visible and manageable",
-      "audit_refs": "ME-003",
-      "safety_score": 90,
-      "risk_level": "Low",
-      "rationale": "Pure design/documentation work \u2014 no code changes required, minimal blast radius.",
-      "estimated_scope": "Scope to be determined; start with a design spike."
-    },
-    {
-      "title": "SLODefinitions \u2014 define measurable reliability targets",
-      "audit_refs": "OM-035 to OM-040",
+      "title": "StructuredLoggingMigration \u2014 replace executor print() with structured JSON log for SLO measurement",
+      "audit_refs": "OM-001 to OM-010",
       "safety_score": 75,
       "risk_level": "Low",
       "rationale": "Lightweight specification task \u2014 output is a document or config file.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "PromptVersionControl \u2014 version-track prompt templates to detect regressions across releases",
+      "audit_refs": "AI-004, AI-005",
+      "safety_score": 65,
+      "risk_level": "Low-Medium",
+      "rationale": "Adds tests only \u2014 does not modify production code paths.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "CliGodFileRefactor \u2014 split solo_builder_cli.py (~665 lines) into config/loader.py + commands/dispatcher.py",
+      "audit_refs": "TD-ARCH-001",
+      "safety_score": 40,
+      "risk_level": "Medium",
+      "rationale": "Scope unclear from title; recommend a spike or design doc first.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "SecurityHeadersMiddleware \u2014 add Flask security headers (X-Frame-Options, CSP, HSTS) to API",
+      "audit_refs": "SE-021, SE-025",
+      "safety_score": 40,
+      "risk_level": "Medium",
+      "rationale": "Scope unclear from title; recommend a spike or design doc first.",
+      "estimated_scope": "Scope to be determined; start with a design spike."
+    },
+    {
+      "title": "ApiRateLimiting \u2014 protect API endpoints from abuse with per-IP rate limiting",
+      "audit_refs": "SE-022, SE-023",
+      "safety_score": 40,
+      "risk_level": "Medium",
+      "rationale": "Scope unclear from title; recommend a spike or design doc first.",
       "estimated_scope": "Scope to be determined; start with a design spike."
     }
   ]
