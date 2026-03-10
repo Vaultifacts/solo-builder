@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.57.0 — 2026-03-10  PolicyAPI — /policy/hitl + /policy/scope endpoints + 44 tests (TASK-366, TASK-367)
+
+- **367 tasks** merged to master; **1909 tests**, all passing
+- `api/blueprints/policy.py`: `GET /policy/hitl` returns loaded HitlPolicy as JSON (`{ok, policy:{pause_tools,notify_tools,block_keywords,pause_keywords}, warnings, settings_path}`); `GET /policy/scope` returns loaded ToolScopePolicy as JSON (`{ok, policy:{allowlists,default_action_type}, warnings, settings_path}`); always 200, use `ok` for gate decisions (AI-026, AI-033) — TASK-366, TASK-367
+- `api/app.py`: registered `policy_bp` — TASK-366
+- `tests/test_policy_api.py`: 44 tests — `/policy/hitl` (status/content-type, shape: ok/policy/warnings/settings_path, content: pause_tools list/Bash default/ok-true, custom settings: pause_tools reflected/missing-Bash warns/empty warns, coexistence); `/policy/scope` (status/content-type, shape: ok/policy/warnings/settings_path/allowlists/default_action_type, content: allowlists dict/full_execution/read_only/Bash in full/ok-true, allowlists: read_only excludes Write/includes Grep/all-nonempty/multiple types, both endpoints coexist) — TASK-366, TASK-367
+
+---
+
 ## v5.55.0 — 2026-03-10  AIActionScopeEnforcement — ToolScopePolicy wired into executor as hard gate + 16 tests (TASK-365)
 
 - **365 tasks** merged to master; **1865 tests**, all passing

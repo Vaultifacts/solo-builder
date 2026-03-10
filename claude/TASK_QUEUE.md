@@ -2416,3 +2416,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-366
+Goal: HitlPolicyValidationAPI: GET /policy/hitl endpoint returning loaded HitlPolicy as JSON with validation warnings (AI-026)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
