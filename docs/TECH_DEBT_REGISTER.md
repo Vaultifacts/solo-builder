@@ -46,20 +46,6 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 
 ---
 
-### TD-OPS-001 — No executor metrics instrumentation
-**Priority:** Medium | **Added:** 2026-03-10
-
-SLO-003 (SDK success rate) and SLO-005 (step latency) cannot be measured
-because `executor.py` emits no structured metrics. Only human-readable
-`print()` output exists.
-
-**Impact:** SLOs defined but not measurable.
-
-**Resolution path:** Add timing and outcome counters to `execute_step()`;
-write to a JSON metrics log after each session. Estimated scope: Small.
-
----
-
 ## Resolved Debt
 
 | ID | Description | Resolved in |
@@ -79,6 +65,7 @@ write to a JSON metrics log after each session. Estimated scope: Small.
 | TD-TEST-001 | No integration tests for executor routing logic | TASK-318 |
 | TD-TEST-002 | No tests for hitl_gate.py | TASK-317 |
 | TD-DEP-001 | anthropic SDK version unpinned in solo_builder/ | TASK-318 |
+| TD-OPS-001 | No executor metrics instrumentation | TASK-319 |
 
 ---
 
@@ -89,9 +76,9 @@ write to a JSON metrics log after each session. Estimated scope: Small.
 | TD-ARCH | 1 | 0 |
 | TD-TEST | 0 | 0 |
 | TD-SEC | 0 | 0 |
-| TD-OPS | 1 | 0 |
+| TD-OPS | 0 | 0 |
 | TD-DEP | 0 | 0 |
-| **Total** | **2** | **0** |
+| **Total** | **1** | **0** |
 
 ---
 
@@ -117,3 +104,4 @@ write to a JSON metrics log after each session. Estimated scope: Small.
 |---|---|
 | 2026-03-10 | Initial register (TASK-317). 9 open items across 5 categories. ME-003 resolved. |
 | 2026-03-10 | TASK-318: Resolved 8 items — TD-ARCH-002/003/005, TD-SEC-001/002, TD-TEST-001/002, TD-DEP-001. 2 open items remain. |
+| 2026-03-10 | TASK-319: Resolved TD-OPS-001 — executor metrics JSONL (elapsed_s, sdk_success_rate). 1 open item remains (TD-ARCH-001). |

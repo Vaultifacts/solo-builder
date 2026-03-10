@@ -1,10 +1,12 @@
 """Executor — advances subtasks through Pending → Running → Verified."""
 import asyncio
+import datetime
 import json as _json
 import logging
 import os
 import random
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -32,6 +34,29 @@ ANTHROPIC_MAX_TOKENS : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
 REVIEW_MODE          : bool = bool(_CFG.get("REVIEW_MODE", False))
 
 logger = logging.getLogger("solo_builder")
+
+_METRICS_PATH = os.path.join(_SOLO, "metrics.jsonl")
+
+
+def _write_step_metrics(step: int, t0: float, sdk_dispatched: int,
+                        sdk_succeeded: int, actions: dict) -> None:
+    """Append one JSONL metrics record for this execute_step call (TD-OPS-001)."""
+    elapsed = round(time.monotonic() - t0, 3)
+    record = {
+        "ts":            datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "step":          step,
+        "elapsed_s":     elapsed,
+        "sdk_dispatched": sdk_dispatched,
+        "sdk_succeeded":  sdk_succeeded,
+        "sdk_success_rate": round(sdk_succeeded / sdk_dispatched, 3) if sdk_dispatched else None,
+        "started":       sum(1 for v in actions.values() if v == "started"),
+        "verified":      sum(1 for v in actions.values() if v in ("verified", "review")),
+    }
+    try:
+        with open(_METRICS_PATH, "a", encoding="utf-8") as _mf:
+            _mf.write(_json.dumps(record) + "\n")
+    except OSError:
+        pass  # never block execution on metrics write failure
 
 
 class Executor:
@@ -94,6 +119,9 @@ class Executor:
         sdk_tool_jobs: list = []   # SDK tool-use (preferred for tool-bearing subtasks)
         claude_jobs:   list = []   # subprocess fallback when SDK unavailable
         sdk_jobs:      list = []   # SDK direct (no tools)
+        _step_t0         = time.monotonic()
+        _sdk_dispatched  = 0
+        _sdk_succeeded   = 0
 
         # CLAUDE_LOCAL=1: route all Running subtasks through the local claude CLI
         # instead of the Anthropic API, reducing cloud token consumption.
@@ -158,6 +186,7 @@ class Executor:
                         # SDK tool-use (preferred — no subprocess overhead)
                         sdk_tool_jobs.append((task_name, branch_name, st_name, st_data, st_tools, self._project_context))
                         advanced += 1
+                        _sdk_dispatched += 1
                     elif self.claude.available:
                         # Subprocess fallback when SDK unavailable (TD-ARCH-003)
                         logger.warning("subprocess_fallback step=%d task=%s subtask=%s "
@@ -175,6 +204,7 @@ class Executor:
                     auto_prompt = self._project_context + raw_prompt
                     sdk_jobs.append((task_name, branch_name, st_name, st_data, auto_prompt))
                     advanced += 1
+                    _sdk_dispatched += 1
                 elif random.random() < self.verify_prob:
                         new_status             = "Review" if self.review_mode else "Verified"
                         st_data["status"]      = new_status
@@ -200,6 +230,7 @@ class Executor:
                 success, output = (False, str(result)[:200]) \
                     if isinstance(result, Exception) else result
                 if success:
+                    _sdk_succeeded += 1
                     new_status             = "Review" if self.review_mode else "Verified"
                     st_data["status"]      = new_status
                     st_data["shadow"]      = "Done"
@@ -280,6 +311,7 @@ class Executor:
                 success, output = (False, str(result)[:200]) \
                     if isinstance(result, Exception) else result
                 if success:
+                    _sdk_succeeded += 1
                     new_status             = "Review" if self.review_mode else "Verified"
                     st_data["status"]      = new_status
                     st_data["shadow"]      = "Done"
@@ -305,6 +337,7 @@ class Executor:
                         actions[st_name] = "verified"
                         self._roll_up(dag, task_name, branch_name)
 
+        _write_step_metrics(step, _step_t0, _sdk_dispatched, _sdk_succeeded, actions)
         return actions
 
     @staticmethod

@@ -540,5 +540,80 @@ class TestExecutorRouting(unittest.TestCase):
         self.assertTrue(any("hitl_pause" in line for line in cm.output))
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Executor metrics (TD-OPS-001)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import time
+from runners.executor import _write_step_metrics, _METRICS_PATH
+
+
+class TestWriteStepMetrics(unittest.TestCase):
+
+    def test_writes_jsonl_record(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            tmp = f.name
+        try:
+            with patch("runners.executor._METRICS_PATH", tmp):
+                t0 = time.monotonic()
+                _write_step_metrics(5, t0, sdk_dispatched=2, sdk_succeeded=2,
+                                    actions={"A1": "verified", "A2": "started"})
+            with open(tmp, encoding="utf-8") as f:
+                record = json.loads(f.readline())
+            self.assertEqual(record["step"], 5)
+            self.assertEqual(record["sdk_dispatched"], 2)
+            self.assertEqual(record["sdk_succeeded"], 2)
+            self.assertEqual(record["sdk_success_rate"], 1.0)
+            self.assertEqual(record["verified"], 1)
+            self.assertEqual(record["started"], 1)
+            self.assertIn("ts", record)
+            self.assertGreaterEqual(record["elapsed_s"], 0)
+        finally:
+            os.unlink(tmp)
+
+    def test_sdk_success_rate_none_when_zero_dispatched(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            tmp = f.name
+        try:
+            with patch("runners.executor._METRICS_PATH", tmp):
+                _write_step_metrics(1, time.monotonic(), 0, 0, {})
+            with open(tmp, encoding="utf-8") as f:
+                record = json.loads(f.readline())
+            self.assertIsNone(record["sdk_success_rate"])
+        finally:
+            os.unlink(tmp)
+
+    def test_appends_multiple_records(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            tmp = f.name
+        try:
+            with patch("runners.executor._METRICS_PATH", tmp):
+                _write_step_metrics(1, time.monotonic(), 1, 1, {"A1": "verified"})
+                _write_step_metrics(2, time.monotonic(), 1, 0, {"B1": "verified"})
+            with open(tmp, encoding="utf-8") as f:
+                lines = f.read().splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertEqual(json.loads(lines[0])["step"], 1)
+            self.assertEqual(json.loads(lines[1])["step"], 2)
+        finally:
+            os.unlink(tmp)
+
+    def test_oserror_does_not_raise(self):
+        with patch("runners.executor._METRICS_PATH", "/nonexistent_dir/metrics.jsonl"):
+            _write_step_metrics(1, time.monotonic(), 0, 0, {})  # no exception
+
+    def test_sdk_success_rate_partial(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            tmp = f.name
+        try:
+            with patch("runners.executor._METRICS_PATH", tmp):
+                _write_step_metrics(1, time.monotonic(), 4, 3, {})
+            with open(tmp, encoding="utf-8") as f:
+                record = json.loads(f.readline())
+            self.assertEqual(record["sdk_success_rate"], 0.75)
+        finally:
+            os.unlink(tmp)
+
+
 if __name__ == "__main__":
     unittest.main()
