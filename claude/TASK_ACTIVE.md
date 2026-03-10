@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-340
+TASK-341
 
-PreReleaseCheck — tools/pre_release_check.py runs all verification gates and generates release checklist (RD-001, RD-002)
+AIActionScopeEnforcement: tool allowlist per task type (AI-033)
