@@ -19,5 +19,9 @@
     "ANTHROPIC_MODEL": "claude-sonnet-4-6",
     "ANTHROPIC_MAX_TOKENS": 4096,
     "REVIEW_MODE": true,
-    "WEBHOOK_URL": "not-a-url"
+    "WEBHOOK_URL": "not-a-url",
+    "HITL_PAUSE_TOOLS": "Bash,Write,Edit",
+    "HITL_NOTIFY_TOOLS": "WebFetch,WebSearch",
+    "HITL_BLOCK_KEYWORDS": "force-push,branch -D,reset --hard",
+    "HITL_PAUSE_KEYWORDS": "delete,drop,purge,rm -rf,truncate,wipe,overwrite,format"
 }
