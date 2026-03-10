@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-374
+TASK-375
 
-Add GET /health/threat-model endpoint + Health tab widget showing threat model check status (SE-001 to SE-006)
+Add GET /health/slo endpoint + Health tab widget showing SLO-003/SLO-005 check results
