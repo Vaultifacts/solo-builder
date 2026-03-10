@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-369
+TASK-370
 
-GatesDashboardWidget: Add Gates section to Health tab showing live /executor/gates data with blocked/allowed status
+Add GET /health/context-window endpoint exposing context_window_budget check results for dashboard visibility (AI-008 to AI-013)
