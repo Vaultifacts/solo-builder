@@ -282,6 +282,26 @@ class TestCompact(unittest.TestCase):
             )
         self.assertTrue(report.has_actions)
 
+    def test_journal_md_dispatches_to_compact_journal(self):
+        """compact() with JOURNAL.md label routes to _compact_journal, not _truncate_file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "JOURNAL.md"
+            p.write_text("- [2020-01-01T00:00:00Z] old entry\n", encoding="utf-8")
+            aj_mock = MagicMock()
+            aj_mock.run = MagicMock(return_value=0)
+            with patch.dict(_sys.modules, {"archive_journal": aj_mock}):
+                report = compact(
+                    budget_report=_budget_report(
+                        _file_result("JOURNAL.md", p, 1, 500, "over_budget")
+                    ),
+                    dry_run=False,
+                )
+        # The action should come from _compact_journal ("archived"), not _truncate_file
+        actions = [a for a in report.actions if a.action != "skipped"]
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0].label, "JOURNAL.md")
+        self.assertEqual(actions[0].action, "archived")
+
 
 # ---------------------------------------------------------------------------
 # run() — exit codes and output
