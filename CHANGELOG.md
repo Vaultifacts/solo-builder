@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.27.0 — 2026-03-10  PromptTemplateStandard — prompt_builder.py + 20 tests (TASK-337)
+
+- **337 tasks** merged to master; **447 tests**, all passing
+- `utils/prompt_builder.py`: `PromptTemplate` dataclass with render(), placeholder_names, required/optional vars, duplicate name guard; 3 standard templates — subtask_execution, subtask_verification, stall_recovery — registered at import for regression testing (AI-002) — TASK-337
+- `tests/test_prompt_builder.py`: 20 tests — construction, render, missing var raises, optional defaults, standard template regression checks — TASK-337
+
+---
+
 ## v5.26.0 — 2026-03-10  TechnicalDebtRegister — debt_scan.py + 16 tests (TASK-336)
 
 - **336 tasks** merged to master; **427 tests**, all passing
