@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-337
+TASK-338
 
-PromptTemplateStandard — solo_builder/utils/prompt_builder.py structured template class + regression fixture + tests (AI-002)
+HitlTriggerConfig — formalize HITL thresholds in settings.json + solo_builder/utils/hitl_policy.py + tests (AI-026, AI-032)
