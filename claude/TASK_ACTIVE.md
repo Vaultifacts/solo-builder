@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-356
+TASK-357
 
-dep severity check — CVE severity filtering + unpinned constraint detection (SE-010 to SE-015)
+Add /health/detailed endpoint aggregating state-validator, config-drift, metrics-alert-check results

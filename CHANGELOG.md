@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.47.0 — 2026-03-10  BackendHealthEndpoint — /health/detailed aggregating three gate checks + 31 tests (TASK-357)
+
+- **357 tasks** merged to master; **1640 tests**, all passing
+- `api/blueprints/health_detailed.py`: `GET /health/detailed` endpoint aggregates `state_validator.validate()`, `config_drift.detect_drift()`, `metrics_alert_check.check_alerts()` into a single JSON health payload; `ok` reflects all three checks; per-check detail (errors/warnings, drift keys, alert list); exception-safe — each check degraded independently; tools loaded via `importlib` with `sys.modules` caching (OM-001 to OM-005) — TASK-357
+- `api/app.py`: registered `health_detailed_bp`
+- `tests/test_health_detailed.py`: 31 tests — response shape (top-level ok/checks/sub-keys), overall ok flag (all-pass/state-invalid/drift/alerts/all-fail), per-check detail propagation (errors/warnings/overridden-count/unknown-keys/alert-count/list), exception resilience (each tool broken → ok=False, status 200 always) — TASK-357
+
+---
+
 ## v5.46.0 — 2026-03-10  DepSeverityCheck — CVE severity filtering + unpinned detection + 34 tests (TASK-356)
 
 - **356 tasks** merged to master; **1609 tests**, all passing
