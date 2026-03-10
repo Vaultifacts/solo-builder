@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-342
+TASK-343
 
-ThreatModelDocument: baseline threat model (SE-001 to SE-006)
+CiQualityGate: single script running all 6 quality tools (DX, DevOps)
