@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-363
+TASK-364
 
-SLODashboardPanel: Add SLO status widget to Health tab showing SLO-003/SLO-005 pass/fail + current values (OM-035 to OM-040)
+PromptRegressionTests: regression test suite for PromptTemplate outputs to catch prompt drift (AI-003)
