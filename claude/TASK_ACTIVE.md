@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-327
+TASK-328
 
-ApiInputValidation — centralized request body schema validation for POST endpoints (SE-030)
+DependencyAuditCheck — pip-audit vulnerability scan script + VERIFY.json integration (TD-SEC-002)

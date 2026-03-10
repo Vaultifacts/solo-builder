@@ -128,3 +128,6 @@ solo_builder/utils/log_formatter.py
 solo_builder/tests/test_log_formatter.py
 solo_builder/api/validators.py
 solo_builder/tests/test_validators.py
+tools/dep_audit.py
+solo_builder/tests/test_dep_audit.py
+claude/VERIFY.json
