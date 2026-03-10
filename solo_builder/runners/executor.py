@@ -4,6 +4,7 @@ import json as _json
 import logging
 import os
 import random
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -12,7 +13,8 @@ from utils.helper_functions import add_memory_snapshot, BLUE, CYAN, RESET
 from .cache import make_cache
 from .claude_runner import ClaudeRunner
 from .anthropic_runner import AnthropicRunner
-from .sdk_tool_runner import SdkToolRunner
+from .sdk_tool_runner import SdkToolRunner, validate_tools as _validate_tools
+from .hitl_gate import evaluate as _hitl_evaluate, level_name as _hitl_level_name
 
 # ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
 _SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -118,6 +120,34 @@ class Executor:
             elif status == "Running":
                 st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
+
+                # ── Tool validation + HITL gate ────────────────────────────
+                if st_tools:
+                    try:
+                        _validate_tools(st_tools)
+                    except ValueError as _vt_err:
+                        logger.error("invalid_tools step=%d task=%s subtask=%s error=%s",
+                                     step, task_name, st_name, _vt_err)
+                        continue  # subtask stays Running; config must be fixed
+
+                    _hl = _hitl_evaluate(st_tools, description)
+                    if _hl == 3:
+                        logger.warning("hitl_blocked step=%d task=%s subtask=%s tools=%s",
+                                       step, task_name, st_name, st_tools)
+                        continue  # subtask stays Running; re-evaluated each step
+                    elif _hl == 2 and sys.stdin.isatty():
+                        _yn = input(
+                            f"\n  [HITL] Approve '{st_name}' tools={st_tools!r}? [y/N] "
+                        ).strip().lower()
+                        if _yn != "y":
+                            logger.warning("hitl_denied step=%d task=%s subtask=%s",
+                                           step, task_name, st_name)
+                            continue
+                    elif _hl >= 1:
+                        logger.warning("hitl_%s step=%d task=%s subtask=%s tools=%s",
+                                       _hitl_level_name(_hl).lower(), step,
+                                       task_name, st_name, st_tools)
+
                 if _use_local and self.claude.available:
                     # Local CLI mode: bypass API runners entirely.
                     # tools string is passed through so ClaudeRunner can forward it.
@@ -129,7 +159,10 @@ class Executor:
                         sdk_tool_jobs.append((task_name, branch_name, st_name, st_data, st_tools, self._project_context))
                         advanced += 1
                     elif self.claude.available:
-                        # Subprocess fallback when SDK unavailable
+                        # Subprocess fallback when SDK unavailable (TD-ARCH-003)
+                        logger.warning("subprocess_fallback step=%d task=%s subtask=%s "
+                                       "(SDK unavailable — ClaudeRunner subprocess used)",
+                                       step, task_name, st_name)
                         claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
                         advanced += 1
                 elif self.anthropic.available:

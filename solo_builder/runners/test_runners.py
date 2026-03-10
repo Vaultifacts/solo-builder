@@ -164,7 +164,10 @@ class TestSdkToolRunner(unittest.TestCase):
 
     def test_exec_read_real_file(self):
         r = self._runner()
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        # Temp file must be inside the repo root to pass the path allowlist
+        from runners.sdk_tool_runner import _REPO_ROOT
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False,
+                                         dir=_REPO_ROOT) as f:
             f.write("hello world")
             tmp = f.name
         try:
@@ -296,6 +299,245 @@ class TestExecutor(unittest.TestCase):
         # so verify the lambda works when called directly
         ex._append_journal("A1", "Task 0", "A", "desc", "output", 5)
         self.assertEqual(len(journal_calls), 1)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# validate_tools
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import solo_builder_cli as _cli_mod
+from runners.sdk_tool_runner import validate_tools, _VALID_TOOLS
+
+
+class TestValidateTools(unittest.TestCase):
+
+    def test_empty_string_is_valid(self):
+        validate_tools("")  # no exception
+
+    def test_whitespace_only_is_valid(self):
+        validate_tools("   ")
+
+    def test_known_tools_are_valid(self):
+        for name in _VALID_TOOLS:
+            validate_tools(name)  # no exception
+
+    def test_all_known_tools_together(self):
+        validate_tools(",".join(_VALID_TOOLS))
+
+    def test_unknown_tool_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_tools("Bash")
+        self.assertIn("Bash", str(ctx.exception))
+        self.assertIn("Valid tools", str(ctx.exception))
+
+    def test_mixed_known_unknown_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_tools("Read,Bash,Write")
+        msg = str(ctx.exception)
+        self.assertIn("Bash", msg)
+        self.assertIn("Write", msg)
+        self.assertNotIn("'Read'", msg)
+
+    def test_error_message_lists_valid_tools(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_tools("UnknownTool")
+        msg = str(ctx.exception)
+        for tool in _VALID_TOOLS:
+            self.assertIn(tool, msg)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SdkToolRunner — Read path allowlist
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from runners.sdk_tool_runner import _REPO_ROOT
+
+
+class TestSdkToolRunnerPathAllowlist(unittest.TestCase):
+
+    def _runner(self):
+        return SdkToolRunner(client=MagicMock(), async_client=MagicMock(),
+                             model="m", max_tokens=100)
+
+    def test_read_within_repo_root_succeeds(self):
+        r = self._runner()
+        # Read a known file within the repo — should succeed
+        result = r._exec("Read", {"file_path": "solo_builder_cli.py"})
+        self.assertNotIn("Error: Read access restricted", result)
+
+    def test_read_outside_repo_root_blocked(self):
+        r = self._runner()
+        import tempfile, os
+        # Write a temp file outside the repo root
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt",
+                                         dir=tempfile.gettempdir(),
+                                         delete=False) as f:
+            f.write("secret")
+            tmp = f.name
+        try:
+            result = r._exec("Read", {"file_path": tmp})
+            self.assertIn("Error: Read access restricted", result)
+        finally:
+            os.unlink(tmp)
+
+    def test_repo_root_constant_is_parent_of_solo(self):
+        import os
+        from runners.sdk_tool_runner import _SOLO
+        self.assertEqual(os.path.dirname(_SOLO), _REPO_ROOT)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Executor routing (TD-TEST-001)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _make_dag_tools(status="Running", tools="", description="do A1", last_update=0):
+    return {
+        "Task 0": {
+            "status": "Running",
+            "depends_on": [],
+            "branches": {
+                "A": {
+                    "status": "Running",
+                    "subtasks": {
+                        "A1": {"status": status, "last_update": last_update,
+                               "shadow": "Pending", "tools": tools,
+                               "description": description},
+                    },
+                }
+            },
+        }
+    }
+
+
+class TestExecutorRouting(unittest.TestCase):
+
+    def _executor(self):
+        ex = Executor(max_per_step=6, verify_prob=0.0,
+                      project_context=_cli_mod._PROJECT_CONTEXT)
+        ex.claude.available    = False
+        ex.anthropic.available = False
+        ex.sdk_tool.available  = False
+        return ex
+
+    def _plist(self, dag, step=1):
+        from agents.planner import Planner
+        return Planner(5).prioritize(dag, step=step)
+
+    def test_sdk_direct_path_prompt_includes_context(self):
+        """No-tools subtask → sdk_jobs built with context + description."""
+        ex = self._executor()
+        ex.anthropic.available = True
+        captured_prompts = []
+
+        async def _mock_arun(prompt):
+            captured_prompts.append(prompt)
+            return True, "ok"
+
+        ex.anthropic.arun = _mock_arun
+
+        dag = _make_dag_tools(status="Running", tools="", description="List 3 features.")
+        with patch("runners.executor.add_memory_snapshot"):
+            ex.execute_step(dag, self._plist(dag), step=1, memory_store={})
+
+        self.assertEqual(len(captured_prompts), 1)
+        self.assertTrue(captured_prompts[0].startswith("Context:"),
+                        "SDK direct path must prepend project context")
+        self.assertIn("List 3 features.", captured_prompts[0])
+
+    def test_sdk_tool_path_fires_when_tools_set(self):
+        """Tool-bearing subtask + sdk_tool available → sdk_tool_jobs populated."""
+        ex = self._executor()
+        ex.sdk_tool.available = True
+        sdk_calls = []
+
+        async def _mock_arun(prompt, tools_str):
+            sdk_calls.append((prompt, tools_str))
+            return True, "result"
+
+        ex.sdk_tool.arun = _mock_arun
+
+        dag = _make_dag_tools(status="Running", tools="Read,Glob",
+                               description="List 3 features.")
+        with patch("runners.executor.add_memory_snapshot"):
+            ex.execute_step(dag, self._plist(dag), step=1, memory_store={})
+
+        self.assertEqual(len(sdk_calls), 1)
+        prompt, tools = sdk_calls[0]
+        self.assertTrue(prompt.startswith("Context:"), "SDK tool path must prepend project context")
+        self.assertEqual(tools, "Read,Glob")
+
+    def test_subprocess_fallback_fires_when_sdk_unavailable(self):
+        """Tool-bearing subtask + sdk_tool unavailable + claude available → ClaudeRunner used."""
+        ex = self._executor()
+        ex.claude.available = True
+        claude_calls = []
+
+        def _mock_run(description, st_name, tools=""):
+            claude_calls.append((description, st_name, tools))
+            return True, "result"
+
+        ex.claude.run = _mock_run
+
+        dag = _make_dag_tools(status="Running", tools="Read",
+                               description="List files.")
+        with patch("runners.executor.add_memory_snapshot"):
+            ex.execute_step(dag, self._plist(dag), step=1, memory_store={})
+
+        self.assertEqual(len(claude_calls), 1)
+        desc, st_name, _ = claude_calls[0]
+        self.assertTrue(desc.startswith("Context:"), "Subprocess path must prepend project context")
+
+    def test_unknown_tools_skipped_with_error_log(self):
+        """Subtask with unknown tool stays Running and emits error log (TD-ARCH-005)."""
+        ex = self._executor()
+        ex.sdk_tool.available = True
+        sdk_calls = []
+
+        async def _mock_arun(prompt, tools_str):
+            sdk_calls.append((prompt, tools_str))
+            return True, "result"
+
+        ex.sdk_tool.arun = _mock_arun
+
+        dag = _make_dag_tools(status="Running", tools="Bash",
+                               description="Run a script.")
+        with patch("runners.executor.add_memory_snapshot"):
+            with self.assertLogs("solo_builder", level="ERROR") as cm:
+                ex.execute_step(dag, self._plist(dag), step=1, memory_store={})
+
+        self.assertEqual(len(sdk_calls), 0, "Unknown tool must not be dispatched")
+        self.assertTrue(any("invalid_tools" in line for line in cm.output))
+
+    def test_hitl_level2_headless_proceeds_with_warning(self):
+        """Bash tool in headless mode: HITL level 2 downgrades to warning + proceeds.
+
+        pytest runs non-interactively (sys.stdin.isatty() == False), so level 2
+        is treated as headless and the job proceeds after a warning log.
+        BUT: Bash is also an unknown tool (not in _SCHEMAS), so it fails validation
+        first. Use a valid tool + description with destructive keyword instead.
+        """
+        ex = self._executor()
+        ex.sdk_tool.available = True
+        sdk_calls = []
+
+        async def _mock_arun(prompt, tools_str):
+            sdk_calls.append((prompt, tools_str))
+            return True, "result"
+
+        ex.sdk_tool.arun = _mock_arun
+
+        # Use a valid tool (Read) but destructive keyword in description (HITL rule 4)
+        dag = _make_dag_tools(status="Running", tools="Read",
+                               description="delete the old log files.")
+        with patch("runners.executor.add_memory_snapshot"), \
+             patch("runners.executor.sys") as _mock_sys:
+            _mock_sys.stdin.isatty.return_value = False  # simulate headless
+            with self.assertLogs("solo_builder", level="WARNING") as cm:
+                ex.execute_step(dag, self._plist(dag), step=1, memory_store={})
+
+        # Job should still dispatch (headless mode downgrade)
+        self.assertEqual(len(sdk_calls), 1)
+        self.assertTrue(any("hitl_pause" in line for line in cm.output))
 
 
 if __name__ == "__main__":

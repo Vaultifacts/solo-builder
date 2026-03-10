@@ -4,6 +4,8 @@ import os
 
 # Resolve solo_builder/ directory (one level up from this runners/ package)
 _SOLO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Repo root (one level above solo_builder/) — used for Read tool path allowlist
+_REPO_ROOT = os.path.dirname(_SOLO)
 
 
 class SdkToolRunner:
@@ -159,6 +161,11 @@ class SdkToolRunner:
                 path = args.get("file_path", "")
                 if not os.path.isabs(path):
                     path = os.path.join(_SOLO, path)
+                # Security: restrict reads to within the project repo root (TD-SEC-001)
+                real_path = os.path.realpath(path)
+                real_root = os.path.realpath(_REPO_ROOT)
+                if not (real_path == real_root or real_path.startswith(real_root + os.sep)):
+                    return f"Error: Read access restricted to project root. Path outside scope: {real_path}"
                 with open(path, encoding="utf-8", errors="ignore") as f:
                     return f.read()[:12_000]
             if name == "Glob":
@@ -194,3 +201,31 @@ class SdkToolRunner:
         except Exception as exc:
             return f"Error: {exc}"
         return f"Unknown tool: {name}"
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers (used by executor and dag_cmds at creation time)
+# ---------------------------------------------------------------------------
+
+_VALID_TOOLS: frozenset = frozenset(s["name"] for s in SdkToolRunner._SCHEMAS)
+
+
+def validate_tools(tools_str: str) -> None:
+    """Raise ValueError if tools_str contains names not registered in SdkToolRunner._SCHEMAS.
+
+    Called at subtask-execution time to surface misconfigured tool lists
+    before they silently become no-op calls (TD-ARCH-005).
+
+    An empty string is valid (no tools requested).
+    """
+    if not tools_str or not tools_str.strip():
+        return
+    invalid = [
+        t.strip() for t in tools_str.split(",")
+        if t.strip() and t.strip() not in _VALID_TOOLS
+    ]
+    if invalid:
+        raise ValueError(
+            f"Unknown tool(s): {', '.join(repr(t) for t in invalid)}. "
+            f"Valid tools: {', '.join(sorted(_VALID_TOOLS))}"
+        )
