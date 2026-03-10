@@ -104,6 +104,18 @@ class TestBuiltinGates(unittest.TestCase):
         names = [g["name"] for g in _builtin_gates()]
         self.assertIn("slo-check", names)
 
+    def test_prompt_regression_present(self):
+        names = [g["name"] for g in _builtin_gates()]
+        self.assertIn("prompt-regression", names)
+
+    def test_prompt_regression_required(self):
+        gates = {g["name"]: g for g in _builtin_gates()}
+        self.assertTrue(gates["prompt-regression"]["required"])
+
+    def test_prompt_regression_command_contains_script(self):
+        gates = {g["name"]: g for g in _builtin_gates()}
+        self.assertIn("prompt_regression_check.py", gates["prompt-regression"]["command"])
+
     def test_each_gate_has_command(self):
         for g in _builtin_gates():
             self.assertIn("command", g)
@@ -150,6 +162,29 @@ class TestLoadVerifyGates(unittest.TestCase):
             with patch.object(_mod, "VERIFY_JSON", p):
                 result = _load_verify_gates()
         self.assertEqual(result, [])
+
+
+# ---------------------------------------------------------------------------
+# VERIFY.json prompt-regression entry
+# ---------------------------------------------------------------------------
+
+class TestVerifyJsonPromptRegression(unittest.TestCase):
+    """VERIFY.json must declare prompt-regression as a required gate."""
+
+    def _verify_gates(self):
+        return _load_verify_gates()
+
+    def test_prompt_regression_in_verify_json(self):
+        names = [g["name"] for g in self._verify_gates()]
+        self.assertIn("prompt-regression", names)
+
+    def test_prompt_regression_required_in_verify_json(self):
+        gates = {g["name"]: g for g in self._verify_gates()}
+        self.assertTrue(gates["prompt-regression"]["required"])
+
+    def test_prompt_regression_command_in_verify_json(self):
+        gates = {g["name"]: g for g in self._verify_gates()}
+        self.assertIn("prompt_regression_check.py", gates["prompt-regression"]["command"])
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-372
+TASK-373
 
-Add pollContextWindowDetailed() to Health tab showing per-file budget status from GET /health/context-window
+Add tools/prompt_regression_check.py as a pre-release gate step in VERIFY.json so prompt regressions fail the release check
