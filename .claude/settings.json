@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python tools/session_context_report.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
