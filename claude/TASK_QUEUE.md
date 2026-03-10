@@ -2380,3 +2380,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-363
+Goal: SLODashboardPanel: Add SLO status widget to Health tab showing SLO-003/SLO-005 pass/fail + current values (OM-035 to OM-040)
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
