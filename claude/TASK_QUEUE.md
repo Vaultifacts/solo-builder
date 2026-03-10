@@ -1902,3 +1902,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-321
+Goal: PromptVersionControl — create docs/PROMPT_REGISTRY.md with versioned snapshot of all prompt templates; add hash-based regression test to detect prompt drift across releases
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
