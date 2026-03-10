@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-334
+TASK-335
 
-MutationTestingSetup — add mutmut config + baseline mutation score run on solo_builder core modules (QA-035)
+SLODefinitions — docs/SLO.md + tools/slo_check.py that validates metrics.jsonl step timing against targets (OM-035 to OM-040)
