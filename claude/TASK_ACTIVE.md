@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-328
+TASK-329
 
-DependencyAuditCheck — pip-audit vulnerability scan script + VERIFY.json integration (TD-SEC-002)
+SubtaskToolsFieldFix — propagate CLAUDE_ALLOWED_TOOLS to newly created subtasks so sdk_tool routing is reachable
