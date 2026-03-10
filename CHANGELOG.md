@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.25.0 — 2026-03-10  SLODefinitions — slo_check.py + 17 tests (TASK-335)
+
+- **335 tasks** merged to master; **411 tests**, all passing
+- `tools/slo_check.py`: reads metrics.jsonl, validates SLO-003 (SDK success ≥95%) and SLO-005 (step median ≤10s); exits 0=ok, 1=breach; --json/--quiet flags (OM-036, OM-037) — TASK-335
+- `docs/SLO_DEFINITIONS.md`: updated dashboard table with live values (394 tests, 100% SDK, 0.001s median); marked OM-036 and OM-037 Resolved — TASK-335
+- `tests/test_slo_check.py`: 17 tests covering _load_records, _check_slo003, _check_slo005, check(), main() — TASK-335
+
+---
+
 ## v5.24.0 — 2026-03-10  MutationTestingSetup — mutmut config + runner script (TASK-334)
 
 - **334 tasks** merged to master; **394 tests**, all passing
