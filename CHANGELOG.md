@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.23.0 — 2026-03-10  ExecutorStepTimingLog — step elapsed_ms in structured log (TASK-333)
+
+- **333 tasks** merged to master; **381 tests**, all passing
+- `runners/executor.py`: after `_write_step_metrics()`, emit `logger.info("step_complete step=N elapsed_ms=N actions=N")` — structured timing record for every execute_step call (OM-042) — TASK-333
+- `tools/archive_journal.py`: journal archival script (15 unit tests) auto-added by pre-commit hook (AI-009)
+- `tests/test_executor_timing.py`: 6 tests — presence, elapsed_ms field, step field, actions field, non-negative, INFO level — TASK-333
+
+---
+
 ## v5.22.0 — 2026-03-10  ContextWindowMonitor — context_window_check.py + 16 tests (TASK-332)
 
 - **332 tasks** merged to master; **360 tests**, all passing
