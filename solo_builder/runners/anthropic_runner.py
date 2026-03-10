@@ -26,7 +26,7 @@ class AnthropicRunner:
     def __init__(
         self,
         model: str = "claude-sonnet-4-6",
-        max_tokens: int = 300,
+        max_tokens: int = 4096,
         cache: Optional[ResponseCache] = None,
     ) -> None:
         self.model        = model

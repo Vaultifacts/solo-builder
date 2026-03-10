@@ -78,7 +78,7 @@ MAX_BRANCHES_PER_TASK  : int = _CFG.get("MAX_BRANCHES_PER_TASK",   10)
 CLAUDE_TIMEOUT        : int = _CFG.get("CLAUDE_TIMEOUT", 60)
 CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
 ANTHROPIC_MODEL       : str  = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
-ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
+ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 4096)
 REVIEW_MODE           : bool = bool(_CFG.get("REVIEW_MODE",       False))
 WEBHOOK_URL           : str  = _CFG.get("WEBHOOK_URL",            "")
 
