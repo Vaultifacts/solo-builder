@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-366
+TASK-368
 
-HitlPolicyValidationAPI: GET /policy/hitl endpoint returning loaded HitlPolicy as JSON with validation warnings (AI-026)
+ExecutorGateSummaryAPI: GET /executor/gates endpoint summarizing HITL/scope/validation gate status for queued subtasks (AI-026, AI-033)
