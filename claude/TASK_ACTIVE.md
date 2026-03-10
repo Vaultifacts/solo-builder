@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-377
+TASK-378
 
-Add GET /health/debt-scan endpoint + Health tab widget showing debt_scan.py TODO/FIXME/HACK results
+CIQualityGateDashboardWidget — GET /health/ci-quality endpoint + Health tab widget

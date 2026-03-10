@@ -1476,3 +1476,42 @@ export async function pollHealthDetailed() {
   } catch (_) {}
 }
 
+export async function pollCiQualityDetailed() {
+  try {
+    const d = await api("/health/ci-quality");
+    const el = document.getElementById("ci-quality-detailed-content");
+    if (!el) return;
+
+    const tools = d.tools || [];
+    const count = d.count || 0;
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = "font-size:12px;font-weight:bold;color:var(--green)";
+    hdrText.textContent = `CI Gate: ${count} tool${count !== 1 ? "s" : ""} configured`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    if (tools.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";
+      empty.textContent = "No CI tools configured.";
+      nodes.push(empty);
+    } else {
+      tools.forEach(t => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;padding:3px 0;font-size:10px;border-bottom:1px solid var(--border)";
+        const name = document.createElement("span");
+        name.style.cssText = "color:var(--text)";
+        name.textContent = t.name;
+        row.append(name);
+        nodes.push(row);
+      });
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
