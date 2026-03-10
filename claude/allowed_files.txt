@@ -191,3 +191,5 @@ tools/context_window_budget.py
 solo_builder/tests/test_context_window_budget.py
 tools/dep_severity_check.py
 solo_builder/tests/test_dep_severity_check.py
+solo_builder/api/blueprints/health_detailed.py
+solo_builder/tests/test_health_detailed.py

@@ -47,6 +47,7 @@ from .blueprints.export_routes import export_bp
 from .blueprints.dag import dag_bp
 from .blueprints.webhook import webhook_bp
 from .blueprints.core import core_bp
+from .blueprints.health_detailed import health_detailed_bp
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -61,6 +62,7 @@ app.register_blueprint(export_bp)
 app.register_blueprint(dag_bp)
 app.register_blueprint(webhook_bp)
 app.register_blueprint(core_bp)
+app.register_blueprint(health_detailed_bp)
 
 
 @app.before_request
