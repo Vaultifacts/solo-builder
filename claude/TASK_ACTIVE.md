@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-364
+TASK-365
 
-PromptRegressionTests: regression test suite for PromptTemplate outputs to catch prompt drift (AI-003)
+AIActionScopeEnforcement: Wire ToolScopePolicy into executor.py to enforce per-action-type tool allowlists at dispatch time (AI-033)
