@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-335
+TASK-336
 
-SLODefinitions — docs/SLO.md + tools/slo_check.py that validates metrics.jsonl step timing against targets (OM-035 to OM-040)
+TechnicalDebtRegister — tools/debt_scan.py auto-populates docs/TECH_DEBT.md from TODO/FIXME/HACK comments (ME-003)
