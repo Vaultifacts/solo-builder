@@ -104,6 +104,25 @@ Estimated scope: Small–Medium.
 
 ---
 
+### TD-ARCH-005 — Unknown tool names silently become no-ops in `SdkToolRunner`
+**Priority:** High | **Added:** 2026-03-10
+
+`SdkToolRunner` filters declared tools against `_SCHEMAS` at dispatch time:
+`schemas = [s for s in self._SCHEMAS if s["name"] in allowed]`. If a subtask
+declares `"tools": "Bash,Write"`, neither name matches any schema, so `schemas`
+is empty and the API call proceeds as a no-tool call — no error is raised.
+
+**Impact:** Misconfigured subtasks silently degrade to no-tool execution with no
+warning. A developer who expects `Bash` to run gets a text-only response.
+Also means the tool policy table in `AI_ACTION_SCOPE.md` is not enforced at
+runtime — unknown tool names bypass the HITL gate entirely.
+
+**Resolution path:** Add `validate_tools(tools_str)` called at subtask-creation
+time (in `dag_cmds.add_task`, `add_branch`, and the API `POST /tasks` endpoint)
+that raises `ValueError` for any tool name not in `_SCHEMAS`. Estimated scope: Small.
+
+---
+
 ### TD-SEC-001 — No path allowlist on `Read` tool
 **Priority:** Medium | **Added:** 2026-03-10
 
@@ -177,12 +196,12 @@ Estimated scope: Trivial.
 
 | Category | Open items | High priority |
 |---|---|---|
-| TD-ARCH | 3 | 1 (hitl_gate not wired) |
+| TD-ARCH | 4 | 2 (hitl_gate not wired; unknown tools silent no-op) |
 | TD-TEST | 2 | 1 (hitl_gate tests missing) |
 | TD-SEC | 2 | 0 |
 | TD-OPS | 1 | 0 |
 | TD-DEP | 1 | 0 |
-| **Total** | **9** | **2** |
+| **Total** | **10** | **3** |
 
 ---
 

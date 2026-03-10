@@ -142,6 +142,19 @@ dispatch site is the remaining step.
 
 ---
 
+## Known Runtime Behaviour — Silent No-Op on Unknown Tools
+
+**Important:** `SdkToolRunner` filters declared tools against `_SCHEMAS` at
+dispatch time. If a subtask declares tools not in `_SCHEMAS` (e.g. `"Bash,Write"`),
+the schema list becomes empty and the call proceeds as a no-tool API call.
+No error is raised. This means the policy table above is **not enforced at
+runtime** for the SDK path — it is a design contract only.
+
+**Fix (tracked as TD-ARCH-005):** Add `validate_tools(tools_str)` at
+subtask-creation time to reject unknown tool names before they reach the executor.
+
+---
+
 ## What Is NOT in Scope
 
 - Tool schemas for `Write`, `Edit`, `Bash` — these are not registered in
