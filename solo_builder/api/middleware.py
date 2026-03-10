@@ -7,6 +7,14 @@ Provides two reusable classes:
 """
 import collections
 import time
+import uuid
+
+try:
+    from flask import request as _flask_request
+except ImportError:  # pragma: no cover — only absent in pure-unit tests
+    _flask_request = None  # type: ignore[assignment]
+
+API_VERSION = "1"
 
 
 class SecurityHeadersMiddleware:
@@ -20,6 +28,8 @@ class SecurityHeadersMiddleware:
       Strict-Transport-Security  max-age=31536000; includeSubDomains  (HSTS)
       Access-Control-Allow-Origin  *
       Access-Control-Allow-Headers  Content-Type
+      X-Request-ID             UUID per request (echoed from incoming header if present)
+      X-API-Version            API version string (currently "1")
     """
 
     CSP = (
@@ -41,6 +51,17 @@ class SecurityHeadersMiddleware:
         h["Referrer-Policy"]              = "strict-origin-when-cross-origin"
         h["Content-Security-Policy"]      = self.CSP
         h["Strict-Transport-Security"]    = self.HSTS
+        h["X-API-Version"]                = API_VERSION
+        # Echo incoming X-Request-ID if present; otherwise generate a new UUID4.
+        req_id = None
+        if _flask_request is not None:
+            try:
+                req_id = _flask_request.headers.get("X-Request-ID")
+            except RuntimeError:
+                pass  # outside request context (e.g. direct unit-test calls)
+        if not req_id:
+            req_id = str(uuid.uuid4())
+        h["X-Request-ID"] = req_id
         return response
 
 

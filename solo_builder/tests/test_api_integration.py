@@ -675,6 +675,41 @@ class TestSecurityHeaders(_Base):
         resp = self.client.get("/status")
         self.assertEqual(resp.headers.get("Access-Control-Allow-Origin"), "*")
 
+    def test_x_api_version_present(self):
+        """TASK-331: X-API-Version header is set to '1' on every response (BE-040)."""
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        self.assertEqual(resp.headers.get("X-API-Version"), "1")
+
+    def test_x_request_id_generated_when_absent(self):
+        """TASK-331: X-Request-ID is a UUID4 when not provided by caller (OM-041)."""
+        import re
+        self._write_state(self._make_state())
+        resp = self.client.get("/status")
+        req_id = resp.headers.get("X-Request-ID", "")
+        self.assertRegex(
+            req_id,
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            f"X-Request-ID not a valid UUID4: {req_id!r}",
+        )
+
+    def test_x_request_id_echoed_from_request(self):
+        """TASK-331: X-Request-ID is echoed back when caller supplies one (OM-041)."""
+        self._write_state(self._make_state())
+        supplied = "my-trace-abc-123"
+        resp = self.client.get("/status", headers={"X-Request-ID": supplied})
+        self.assertEqual(resp.headers.get("X-Request-ID"), supplied)
+
+    def test_x_request_id_unique_per_request(self):
+        """TASK-331: Two requests without X-Request-ID get different UUIDs (OM-041)."""
+        self._write_state(self._make_state())
+        r1 = self.client.get("/status")
+        r2 = self.client.get("/status")
+        self.assertNotEqual(
+            r1.headers.get("X-Request-ID"),
+            r2.headers.get("X-Request-ID"),
+        )
+
 
 class TestRateLimit(_Base):
     """TASK-322: In-memory rate limiter returns 429 when limit exceeded (SE-022, SE-023)."""
