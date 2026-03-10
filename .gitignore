@@ -43,3 +43,4 @@ pypi Recovery Codes.txt
 *.key
 tools/auto_batch.log
 audit_reports/
+dep_audit_result.json
