@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-360
+TASK-361
 
-Extend threat_model_check.py to validate SE-007 to SE-015 controls + integrate into pre_release_check.py
+Wire dep_severity_check into pre_release_check as REQUIRED gate + auto-generate requirements-lock.txt (SE-012, SE-015)

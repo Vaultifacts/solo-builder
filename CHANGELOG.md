@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.51.0 — 2026-03-10  DepAuditGate — dep-audit REQUIRED in pre_release + lock_file_gen.py + 33 tests (TASK-361)
+
+- **361 tasks** merged to master; **2163 tests**, all passing
+- `tools/lock_file_gen.py`: `generate()` runs `pip freeze` filtered to `tools/requirements.txt` packages; `is_stale()` compares lock to current freeze; `--check`, `--dry-run`, `--json`, `--quiet`, `--req`, `--lock` flags; exits 0=ok, 1=stale, 2=error (SE-015) — TASK-361
+- `tools/pre_release_check.py`: `dep-audit` added as REQUIRED builtin gate (`dep_severity_check --check-only`); `lock-file-fresh` added as optional gate — TASK-361
+- `tests/test_lock_file_gen.py`: 33 tests — `_parse_requirements` (names/comments/missing/normalize), `_filter_freeze` (keep/exclude/empty/sorted), `_build_lock_content` (header/date/packages), `generate()` (writes/dry-run/filters/pip-fail/missing-req), `is_stale()` (missing/fresh/outdated/pip-fail), `run()` (exit-codes/json/quiet/check-modes), `main()` flags, pre_release integration (dep-audit required/lock-fresh present/cmd has --check-only) — TASK-361
+
+---
+
 ## v5.50.0 — 2026-03-10  ThreatModelValidator — SE-007 to SE-015 extended checks + pre_release gate + 19 new tests (TASK-360)
 
 - **360 tasks** merged to master; **2156 tests**, all passing

@@ -103,6 +103,21 @@ def _builtin_gates() -> list[dict]:
             "required": False,
             "timeout_sec": 10,
         },
+        {
+            "name":     "dep-audit",
+            "command":  (
+                f'"{_PYTHON}" tools/dep_severity_check.py --check-only --quiet'
+                f' --lock-file tools/requirements-lock.txt'
+            ),
+            "required": True,
+            "timeout_sec": 15,
+        },
+        {
+            "name":     "lock-file-fresh",
+            "command":  f'"{_PYTHON}" tools/lock_file_gen.py --check --quiet',
+            "required": False,
+            "timeout_sec": 30,
+        },
     ]
 
 
