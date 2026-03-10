@@ -172,3 +172,5 @@ tools/state_validator.py
 solo_builder/tests/test_state_validator.py
 tools/state_validator.py
 solo_builder/tests/test_state_validator.py
+tools/metrics_alert_check.py
+solo_builder/tests/test_metrics_alert_check.py
