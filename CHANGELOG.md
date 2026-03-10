@@ -1,5 +1,15 @@
 # Changelog
 
+## v5.62.0 — 2026-03-10  ContextWindowBudgetAPI — GET /health/context-window endpoint + 26 tests (TASK-370)
+
+- **370 tasks** merged to master; **1987 tests**, all passing
+- `api/blueprints/context_window.py`: `GET /health/context-window` calls `context_window_budget.check_budget()` and returns `{ok, has_issues, results:[{label,path,lines,budget,utilization,status}]}`; always 200 (AI-008 to AI-013) — TASK-370
+- `api/app.py`: registered `context_window_bp` — TASK-370
+- `tests/test_context_window_api.py`: 26 tests — status/content-type, shape (ok/has_issues/results keys), ok/has_issues flags (true/false/inverse), results fields (label/path/lines/budget/utilization/status), label+status+utilization values, check_budget called with settings_path, empty results case — TASK-370
+
+---
+
+
 ## v5.60.0 — 2026-03-10  GatesDashboardWidget — pollGatesDetailed in Health tab + 19 tests (TASK-369)
 
 - **369 tasks** merged to master; **1961 tests**, all passing
