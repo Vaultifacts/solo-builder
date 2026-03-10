@@ -9,8 +9,9 @@ Run:      python api/app.py
 
 import time
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
+from .middleware import SecurityHeadersMiddleware, ApiRateLimiter
 from .constants import (
     STATE_PATH, TRIGGER_PATH, VERIFY_TRIGGER, DESCRIBE_TRIGGER,
     TOOLS_TRIGGER, SET_TRIGGER, SETTINGS_PATH, RENAME_TRIGGER,
@@ -29,6 +30,9 @@ from .helpers import (
 
 app = Flask(__name__)
 _APP_START_TIME = time.time()
+
+_security = SecurityHeadersMiddleware()
+_rate_limiter = ApiRateLimiter()
 
 from .blueprints.cache import cache_bp
 from .blueprints.metrics import metrics_bp
@@ -59,11 +63,17 @@ app.register_blueprint(webhook_bp)
 app.register_blueprint(core_bp)
 
 
+@app.before_request
+def rate_limit():
+    ip    = request.remote_addr or "unknown"
+    write = request.method in ("POST", "DELETE", "PUT", "PATCH")
+    if not _rate_limiter.check(ip=ip, is_write=write):
+        return jsonify({"error": "Rate limit exceeded. Try again shortly."}), 429
+
+
 @app.after_request
-def cors(resp):
-    resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    return resp
+def security_headers(resp):
+    return _security.apply(resp)
 
 
 # ---------------------------------------------------------------------------
