@@ -160,3 +160,5 @@ solo_builder/tests/test_threat_model_check.py
 tools/ci_quality_gate.py
 solo_builder/tests/test_ci_quality_gate.py
 solo_builder/tests/test_latency_helpers.py
+tools/generate_openapi.py
+solo_builder/tests/test_generate_openapi.py
