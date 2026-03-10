@@ -51,6 +51,7 @@ from .blueprints.health_detailed import health_detailed_bp
 from .blueprints.policy import policy_bp
 from .blueprints.executor_gates import executor_gates_bp
 from .blueprints.context_window import context_window_bp
+from .blueprints.threat_model import threat_model_bp
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -69,6 +70,7 @@ app.register_blueprint(health_detailed_bp)
 app.register_blueprint(policy_bp)
 app.register_blueprint(executor_gates_bp)
 app.register_blueprint(context_window_bp)
+app.register_blueprint(threat_model_bp)
 
 
 @app.before_request
