@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.31.0 — 2026-03-10  AIActionScopeEnforcement — tool allowlist per task type + 38 tests (TASK-341)
+
+- **341 tasks** merged to master; **1164 tests**, all passing
+- `utils/tool_scope_policy.py`: `ToolScopePolicy` frozen dataclass + 6 built-in action-type allowlists (read_only, analysis, file_edit, full_execution, verification, planning); `load_scope_policy()` reads settings.json SCOPE_* overrides; `evaluate_scope()` returns `ScopeResult` (allowed, denied, action_type) (AI-033) — TASK-341
+- `tests/test_tool_scope_policy.py`: 38 tests — csv parsing, default allowlist constraints, policy construction/validate/to_dict/immutability, load_scope_policy (missing/valid/override/invalid JSON), evaluate_scope (allow/deny/empty/full-execution/unknown-type/planning) — TASK-341
+
+---
+
 ## v5.30.0 — 2026-03-10  PreReleaseCheck — gate runner with 30 unit tests (TASK-340)
 
 - **340 tasks** merged to master; **1126 tests**, all passing
