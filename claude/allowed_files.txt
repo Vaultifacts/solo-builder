@@ -199,3 +199,5 @@ solo_builder/tests/test_session_context_report.py
 tools/session_context_report.py
 solo_builder/tests/test_session_context_report.py
 .claude/settings.json
+tools/context_window_compact.py
+solo_builder/tests/test_context_window_compact.py
