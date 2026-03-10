@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-344
+TASK-345
 
-PerformanceLatencyMetrics: p50/p95/p99 latency buckets in /metrics endpoint (PE-001 to PE-005)
+OpenApiSpec: generate OpenAPI 3.0 spec from Flask routes (DK-005, DK-006)
