@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.66.0 — 2026-03-10  ContextWindowDashboardWidget — pollContextWindowDetailed in Health tab + 24 tests (TASK-372)
+
+- **372 tasks** merged to master; **2038 tests**, all passing
+- `api/static/dashboard_panels.js`: `export async function pollContextWindowDetailed()` fetches `/health/context-window`, renders per-file rows with status badge (ok/warn/critical/over_budget/missing), label, lines/budget/utilization%, empty state "No tracked files." (AI-008 to AI-013) — TASK-372
+- `api/dashboard.html`: `context-window-detailed-content` div added after policy section in Health tab, with "Loading context window…" placeholder — TASK-372
+- `api/static/dashboard.js`: `pollContextWindowDetailed` added to import and `tick()` Promise.all — TASK-372
+- `tests/test_context_window_dashboard_widget.py`: 24 tests — TASK-372
+
+---
+
+
 ## v5.64.0 — 2026-03-10  PolicyDashboardWidget — pollPolicyDetailed in Health tab + 26 tests (TASK-371)
 
 - **371 tasks** merged to master; **2013 tests**, all passing
