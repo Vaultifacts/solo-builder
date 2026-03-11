@@ -21,6 +21,7 @@ _WIDGET_IDS = [
     "debt-scan-detailed-content",
     "ci-quality-detailed-content",
     "pre-release-detailed-content",
+    "repo-health-detailed-content",
 ]
 
 

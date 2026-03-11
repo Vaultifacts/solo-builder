@@ -216,13 +216,16 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
         self._last_priority_step: int = -(DAG_UPDATE_INTERVAL + 1)  # force first run
         self._last_verified_tasks: int = 0   # triggers cache refresh when a task unblocks
 
+        # AAWO repo root: one level above solo_builder/ (the git root)
+        self._aawo_repo_path = os.path.dirname(_HERE)
+
         # Agents
         self.planner  = Planner(stall_threshold=STALL_THRESHOLD)
         self.executor = Executor(max_per_step=EXEC_MAX_PER_STEP,
                                  verify_prob=EXEC_VERIFY_PROB,
                                  project_context=_PROJECT_CONTEXT,
                                  append_journal=_append_journal,
-                                 aawo_repo_path=".")
+                                 aawo_repo_path=self._aawo_repo_path)
         self.shadow   = ShadowAgent()
         self.verifier = Verifier()
         self.healer   = SelfHealer(stall_threshold=STALL_THRESHOLD)

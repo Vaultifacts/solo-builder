@@ -82,6 +82,25 @@ def _run(args: list) -> Optional[dict]:
         return None
 
 
+def get_active_agents() -> Optional[list]:
+    """
+    Read AAWO's current active agent list from its storage file.
+
+    Returns a list of agent ID strings, or None if AAWO is unavailable or storage
+    has not been written yet (i.e. no cycle has run).
+    """
+    path = _aawo_path()
+    if path is None:
+        return None
+    storage_path = Path(path).parent / "storage" / "state" / "active-agents.json"
+    try:
+        data = json.loads(storage_path.read_text(encoding="utf-8"))
+        return data.get("active_agent_ids", [])
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.debug("aawo_bridge: get_active_agents error %s", exc)
+        return None
+
+
 def run_cycle(repo_path: str = ".") -> bool:
     """
     Run AAWO's full cycle (snapshot → score → select → lifecycle) for repo_path.

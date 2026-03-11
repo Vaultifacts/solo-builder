@@ -123,27 +123,29 @@ def health_detailed():
     except Exception as exc:
         slo_check_result = {"ok": False, "records": 0, "results": [], "error": str(exc)}
 
-    # --- repo_health (AAWO snapshot signals — informational only) ---
+    # --- repo_health (AAWO snapshot signals + active agents — informational only) ---
     try:
-        from utils.aawo_bridge import get_snapshot as _aawo_snapshot
-        _snap = _aawo_snapshot(repo_path=".")
+        from utils.aawo_bridge import get_snapshot as _aawo_snapshot, get_active_agents as _aawo_agents
+        _snap   = _aawo_snapshot(repo_path=".")
+        _agents = _aawo_agents()
         if _snap is not None:
             repo_health_check = {
-                "ok":           True,
-                "available":    True,
-                "signals":      _snap.get("signals", {}),
-                "complexity":   _snap.get("complexity", {}).get("value", "unknown"),
-                "file_count":   _snap.get("complexity", {}).get("file_count", 0),
-                "risk_factors": _snap.get("risk_factors", []),
-                "captured_at":  _snap.get("captured_at", ""),
+                "ok":            True,
+                "available":     True,
+                "signals":       _snap.get("signals", {}),
+                "complexity":    _snap.get("complexity", {}).get("value", "unknown"),
+                "file_count":    _snap.get("complexity", {}).get("file_count", 0),
+                "risk_factors":  _snap.get("risk_factors", []),
+                "captured_at":   _snap.get("captured_at", ""),
+                "active_agents": _agents or [],
             }
         else:
             repo_health_check = {
                 "ok": True, "available": False,
-                "signals": {}, "risk_factors": [],
+                "signals": {}, "risk_factors": [], "active_agents": _agents or [],
             }
     except Exception as exc:
-        repo_health_check = {"ok": True, "available": False, "error": str(exc)}
+        repo_health_check = {"ok": True, "available": False, "error": str(exc), "active_agents": []}
 
     overall_ok = (state_check["ok"] and drift_check["ok"]
                   and alert_check["ok"] and slo_check_result["ok"])

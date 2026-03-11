@@ -1602,3 +1602,55 @@ export async function pollPreReleaseDetailed() {
   } catch (_) {}
 }
 
+export async function pollRepoHealthDetailed() {
+  try {
+    const d = await api("/health/detailed");
+    const el = document.getElementById("repo-health-detailed-content");
+    if (!el) return;
+    const rh = (d.checks || {}).repo_health || {};
+    const mkBadge = (ok) => {
+      const b = document.createElement("span");
+      b.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;font-weight:bold;margin-right:8px;flex-shrink:0;color:#000;background:${ok ? "var(--green)" : "var(--red)"}`;
+      b.textContent = ok ? "OK" : "WARN";
+      return b;
+    };
+    const mkRow = (label, ok, detail) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = "color:var(--dim);width:110px;flex-shrink:0";
+      lbl.textContent = label;
+      const det = document.createElement("span");
+      det.style.color = ok ? "var(--text)" : "var(--yellow)";
+      det.textContent = detail;
+      row.append(mkBadge(ok), lbl, det);
+      return row;
+    };
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = "font-size:12px;font-weight:bold;color:var(--text)";
+    hdrText.textContent = rh.available ? `AAWO · ${rh.complexity || "?"}` : "AAWO Repo Health";
+    hdr.append(hdrText);
+    const nodes = [hdr];
+    if (rh.available) {
+      const sigs = rh.signals || {};
+      const active = Object.entries(sigs).filter(([, v]) => v).map(([k]) => k.replace(/^has_/, ""));
+      nodes.push(mkRow("Signals", true, active.length ? active.join(", ") : "none"));
+      nodes.push(mkRow("Complexity", true, `${rh.complexity || "?"} · ${rh.file_count || 0} files`));
+      if ((rh.risk_factors || []).length) {
+        nodes.push(mkRow("Risk Factors", false, rh.risk_factors.join(", ")));
+      }
+      if ((rh.active_agents || []).length) {
+        const names = rh.active_agents.map(a => a.replace(/_agent$/, "")).join(", ");
+        nodes.push(mkRow("Active Agents", true, names));
+      }
+    } else {
+      const msg = document.createElement("div");
+      msg.style.cssText = "font-size:10px;color:var(--dim);padding:8px 0";
+      msg.textContent = rh.error ? `unavailable: ${rh.error}` : "not configured — set AAWO_PATH in settings.json";
+      nodes.push(msg);
+    }
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}

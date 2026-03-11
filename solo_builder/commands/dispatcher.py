@@ -351,11 +351,12 @@ class DispatcherMixin:
         import logging, threading
         if _aawo_path() is None:
             return
+        repo_path = getattr(self, "_aawo_repo_path", ".")
         print(f"  {DIM}AAWO: refreshing agent selection...{RESET}")
         def _bg():
-            ok = _aawo_cycle(repo_path=".")
+            ok = _aawo_cycle(repo_path=repo_path)
             logging.getLogger("solo_builder").info(
-                "aawo_session_start: cycle %s", "ok" if ok else "failed"
+                "aawo_session_start: cycle %s repo=%s", "ok" if ok else "failed", repo_path
             )
         threading.Thread(target=_bg, daemon=True, name="aawo-cycle").start()
 
