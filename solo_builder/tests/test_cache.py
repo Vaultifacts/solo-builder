@@ -760,5 +760,60 @@ class TestPersistStats(unittest.TestCase):
         self.assertEqual(data["sessions"][1]["misses"], 1)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Exception-path coverage (TASK-398)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestResponseCacheExceptionPaths(unittest.TestCase):
+    """Cover the non-fatal exception branches in cache.py."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_init_mkdir_oserror_is_swallowed(self):
+        """lines 43-44: OSError from mkdir is silently swallowed."""
+        with patch("runners.cache.Path.mkdir", side_effect=OSError("no perms")):
+            cache = ResponseCache(cache_dir=self._tmp)
+        # Construction must not raise; get/set/size should no-op gracefully
+        self.assertIsNotNone(cache)
+
+    def test_set_write_failure_is_non_fatal(self):
+        """lines 125-126: write failure in set() is silently swallowed."""
+        cache = ResponseCache(cache_dir=self._tmp)
+        key = ResponseCache.make_key("test")
+        with patch("runners.cache.Path.write_text", side_effect=OSError("disk full")):
+            # Must not raise
+            cache.set(key, "value")
+
+    def test_clear_unlink_oserror_is_swallowed(self):
+        """lines 138-139: OSError on unlink in clear() is swallowed per file."""
+        cache = ResponseCache(cache_dir=self._tmp)
+        key = ResponseCache.make_key("x")
+        cache.set(key, "v")
+        with patch("pathlib.Path.unlink", side_effect=OSError("locked")):
+            count = cache.clear()
+        # Should return 0 (no files successfully deleted) but not raise
+        self.assertEqual(count, 0)
+
+    def test_size_glob_exception_returns_zero(self):
+        """lines 148-149: exception in size() glob returns 0."""
+        cache = ResponseCache(cache_dir=self._tmp)
+        with patch("runners.cache.Path.glob", side_effect=OSError("io error")):
+            result = cache.size()
+        self.assertEqual(result, 0)
+
+    def test_persist_stats_write_exception_is_swallowed(self):
+        """lines 80-81: write failure in _save_stats is silently swallowed."""
+        cache = ResponseCache(cache_dir=self._tmp)
+        cache.get("miss")  # generate some stats
+        with patch("runners.cache.Path.write_text", side_effect=OSError("no space")):
+            # Must not raise
+            cache.persist_stats()
+
+
 if __name__ == "__main__":
     unittest.main()

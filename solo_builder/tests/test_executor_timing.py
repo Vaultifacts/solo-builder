@@ -116,5 +116,87 @@ class TestStepCompleteLog(unittest.TestCase):
         self.assertEqual(step_records[0].levelno, logging.INFO)
 
 
+class TestFireOutcomeEdgeCases(unittest.TestCase):
+    """Cover _fire_outcome() edge cases — TASK-398."""
+
+    def test_fire_outcome_no_routing_key_returns_early(self):
+        """No _aawo_routing in st_data → early return (no import, no thread)."""
+        from runners.executor import _fire_outcome
+        # Should not raise and should not import threading
+        _fire_outcome({}, "success", 0.1, None)
+
+    def test_fire_outcome_routing_not_dict_returns_early(self):
+        """_aawo_routing is a string (not dict) → early return at isinstance check."""
+        from runners.executor import _fire_outcome
+        _fire_outcome({"_aawo_routing": "string_value"}, "success", 0.1, None)
+
+    def test_fire_outcome_no_agent_id_returns_early(self):
+        """line 73: routing dict exists but no agent_id → return early."""
+        from runners.executor import _fire_outcome
+        # routing is dict but agent_id key is absent → should exit without spawning thread
+        _fire_outcome({"_aawo_routing": {}}, "success", 0.1, None)
+
+    def test_fire_outcome_agent_id_none_returns_early(self):
+        """agent_id is explicitly None → falsy check returns early."""
+        from runners.executor import _fire_outcome
+        _fire_outcome({"_aawo_routing": {"agent_id": None}}, "success", 0.1, None)
+
+
+class TestUpdateTaskEdgeCases(unittest.TestCase):
+    """Cover Executor._update_task() Running branch — lines 421-422, TASK-398."""
+
+    def test_update_task_sets_running_when_branch_is_running(self):
+        """lines 421-422: task status → Running when branch is Running (not all Verified)."""
+        ex = _make_executor()
+        dag = {
+            "T0": {
+                "status": "Pending",
+                "branches": {
+                    "b1": {"status": "Running"},
+                    "b2": {"status": "Pending"},
+                },
+            }
+        }
+        with patch("runners.executor._write_step_metrics"):
+            ex._update_task(dag, "T0")
+        self.assertEqual(dag["T0"]["status"], "Running")
+
+    def test_update_task_sets_verified_when_all_branches_verified(self):
+        ex = _make_executor()
+        dag = {
+            "T0": {
+                "status": "Running",
+                "branches": {
+                    "b1": {"status": "Verified"},
+                    "b2": {"status": "Verified"},
+                },
+            }
+        }
+        with patch("runners.executor._write_step_metrics"):
+            ex._update_task(dag, "T0")
+        self.assertEqual(dag["T0"]["status"], "Verified")
+
+
+class TestExecuteStepMaxPerStep(unittest.TestCase):
+    """Cover the max_per_step break (line 159) — TASK-398."""
+
+    def test_max_per_step_one_limits_to_one_subtask(self):
+        """max_per_step=1: only first subtask in priority list is advanced."""
+        ex = _make_executor()
+        ex.max_per_step = 1
+        dag = {
+            "T0": {"status": "Pending", "branches": {"b0": {"subtasks": {
+                "s1": {"status": "Pending", "history": [], "last_update": 0},
+                "s2": {"status": "Pending", "history": [], "last_update": 0},
+            }}}},
+        }
+        plist = [("T0", "b0", "s1", 0), ("T0", "b0", "s2", 0)]
+        with patch("runners.executor._write_step_metrics"):
+            actions = ex.execute_step(dag, plist, step=1, memory_store={})
+        # Only s1 should be touched
+        self.assertIn("s1", actions)
+        self.assertNotIn("s2", actions)
+
+
 if __name__ == "__main__":
     unittest.main()
