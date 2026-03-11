@@ -495,3 +495,6 @@
 - [2026-03-10T23:44:51.0195393Z] Starting TASK-383 via tools/start_task.ps1 with automated preflight gating.
 - [2026-03-11T18:35:03.4067658Z] state transition: verify/ARCHITECT -> done/AUDITOR | note: TASK-383 already implemented in commit 6a11412; audit verified all 30 tests pass
 - [2026-03-11T18:44:09.8369368Z] Starting TASK-384 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-11T18:45:07.1123358Z] state transition: triage/RESEARCH -> plan/DEV | note: TASK-384: 5 export routes to add to generate_openapi.py
+- [2026-03-11T18:45:37.1386700Z] state transition: plan/DEV -> verify/AUDITOR | note: TASK-384: 5 export routes added; 35 tests pass
+- [2026-03-11T18:52:59.7839159Z] state transition: verify/ARCHITECT -> done/AUDITOR | note: TASK-384: all 35 tests pass, 1730 total passing
