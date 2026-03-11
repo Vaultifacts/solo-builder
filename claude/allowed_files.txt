@@ -245,3 +245,5 @@ solo_builder/tests/test_history_blueprint.py
 solo_builder/tests/test_tasks_blueprint.py
 solo_builder/tests/test_subtasks_blueprint.py
 solo_builder/tests/test_webhook_blueprint.py
+solo_builder/tests/test_export_routes_blueprint.py
+solo_builder/tests/test_branches_blueprint.py
