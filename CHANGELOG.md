@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.07.0 — 2026-03-11  TASK-389–392 sprint — 90 routes, live drift guard, path params, response schemas, 1795 tests
+
+- **1795 Solo Builder tests** (0 failures); 16 new tests in this sprint
+- **TASK-389 OpenAPIDriftGuard**: live Flask `app.url_map` test — cross-references _ROUTES at test time; fixed 3 residual mismatches (`/branches/{branch_id}`→`{task_id}`, `POST /trigger` phantom removed, duplicate `GET /branches/{task_id}` removed); spec: **90 routes**, zero drift
+- **TASK-390 OpenAPIPathParameters**: `build_spec()` auto-extracts `{param}` as required path parameters; added query params to `/history` (since/limit/page), `/metrics/export` (format), `/search` (q); **19 operations** now have `parameters` blocks; **5 new tests**
+- **TASK-391 OpenAPIResponseSchemas**: `build_spec()` emits `content/application/json/schema` in `200` responses when `"response"` key set; added schemas to `/status`, `/heartbeat`, `/health`, `/history`, `/history/count`, `/tasks`, `/tasks/{task_id}`, `/subtasks`; **4 new tests**; `test_generate_openapi.py`: **49→61 tests**
+- **TASK-392 CoveragePush2**: 16 new tests covering `_load_tool()` importlib path + cache-hit in 6 health blueprints; `format_status`, `format_shadow`, `validate_dag` missing-subtasks and invalid-shadow paths in `helper_functions.py`; overall coverage: **62%**
+
+---
+
 ## v6.03.0 — 2026-03-11  TASK-388 OpenAPIPhantomRoutes — 92 clean routes, 49 tests
 
 - **1779 Solo Builder tests** (0 failures)
