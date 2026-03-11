@@ -2800,3 +2800,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-399
+Goal: Blueprint coverage push — tasks.py, subtasks.py, webhook.py: Flask test-client tests to bring each from <40% to 80%+
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
