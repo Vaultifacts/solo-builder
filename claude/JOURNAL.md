@@ -529,3 +529,4 @@
 - [2026-03-11T21:22:59.8855409Z] Starting TASK-399 via tools/start_task.ps1 with automated preflight gating.
 - [2026-03-11T21:34:05.8736115Z] state transition: triage/RESEARCH -> verify/AUDITOR
 - [2026-03-11T21:42:47.2143658Z] state transition: done/AUDITOR -> done/AUDITOR
+- [2026-03-11T21:54:45.8994750Z] Starting TASK-400 via tools/start_task.ps1 with automated preflight gating.
