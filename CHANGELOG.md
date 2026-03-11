@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.20.0 — 2026-03-11  TASK-406 Deep coverage sprint — 2542 tests, commands/ 96%
+
+- **TASK-406 Deep coverage sprint**: 5 new test files + major additions to 3 existing files (67 new tests):
+  - **`test_query_cmds_deep.py`** (48 tests): `_cmd_branches`, `_cmd_search`, `_cmd_filter`, `_cmd_timeline`, `_cmd_log`, `_cmd_diff`, `_cmd_stats`, `_cmd_output`, `_cmd_help` — `query_cmds.py` 46% → **99%**
+  - **`test_subtask_cmds.py`** (31 tests): all subtask methods — `query_cmds.py` 60% → **99%**
+  - **`test_dispatcher.py`** (+22 tests): `_cmd_set` all branches, `start()`, `_run_aawo_session_start` — `dispatcher.py` 71% → **97%**
+  - **`test_auto_cmds.py`** (+8 tests): OSError exception paths, undepends trigger, pause gate — `auto_cmds.py` 86% → **100%**
+  - **`test_executor_timing.py`** (+15 tests): `_write_step_metrics` OSError, `_fire_outcome` edge cases, HITL TTY gate, subprocess fallback, sdk_tool fail escalate, sdk_direct fail dice-roll, roll_up paths — `executor.py` 89% → **99%**
+- Coverage totals: `auto_cmds.py` **100%**, `settings_cmds.py` **100%**, `__init__.py` **100%**, `query_cmds.py` **99%**, `subtask_cmds.py` **99%**, `dispatcher.py` **97%**, `executor.py` **99%**
+- **2542 tests total** (was 3475 before TASK-406, now correct count reflects full test suite)
+
 ## v6.18.0 — 2026-03-11  TASK-399 BlueprintCoverage — tasks 98%, subtasks 94%, webhook 100%
 
 - **TASK-399 BlueprintCoverage**: 159 new Flask test-client tests across 3 new test files:
