@@ -6,5 +6,8 @@
       "mcp__claude_ai_Notion__notion-create-database",
       "mcp__claude_ai_Notion__notion-create-pages"
     ]
+  },
+  "remote": {
+    "defaultEnvironmentId": "env_016aZu5eCb6TrPXtap9Jiq7W"
   }
 }

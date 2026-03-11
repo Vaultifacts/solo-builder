@@ -1,5 +1,31 @@
 # Changelog
 
+## v5.98.0 — 2026-03-11  AawoTests6 — 99% overall coverage; 22 modules at 100%
+
+- **1769 tests**, all passing; 0 failures (AAWO: 1076, Solo Builder: 1769)
+- AAWO v1.1.7 released
+- AAWO coverage milestone: **99% overall** (up from 91%) — 22 modules at 100%; 15 uncovered lines remain (all in `main.py`: specific output branches + `if __name__ == "__main__"` guard)
+- AAWO `test_adapters.py` NEW (15 tests): `TestBaseAdapter` (3: not-instantiable, concrete subclass, super()-call covers abstract `pass` bodies on lines 7+11), `TestClaudeAdapter` (6: env key, health check, run_task raises NotImplementedError), `TestCodexAdapter` (6) → `adapters/base.py`, `claude_adapter.py`, `codex_adapter.py` all at **100%**
+- AAWO `test_executors.py` NEW (22 tests): `TestFileExecutor` (8: read/write/search + OSError paths), `TestShellExecutor` (5: success/fail/stdout/timeout/FileNotFoundError), `TestGitExecutor` (5: log/status/diff args validation), `TestTestExecutor` (4: default/custom/coverage) → all 4 executor modules at **100%**
+- AAWO `test_main_gaps.py` NEW (25 tests): `TestMainDispatch` (16: patch `sys.argv` + mock cmd function → covers `main()` parser setup lines 643-724), `TestCmdSnapshot` (2: json/non-json modes with real repo → covers lines 29-50), `TestCmdHandoffAcceptReject` (2: covers lines 585-595), `TestCmdHistoryBranches` (5: patch `audit_logger.read_events_by_cycle` → covers overlaps/handoffs/events branches lines 499, 506-508, 518-522)
+- **Key patterns**: `patch("audit_logger.read_events_by_cycle", ...)` for cmd_history since import is local; `super().run_task(...)` call on abstract subclass to hit abstract method `pass` body; `patch.object(sys, "argv", [...])` + `patch("main.cmd_*")` for dispatch table coverage
+
+---
+
+## v5.97.0 — 2026-03-11  AawoTests5 — 91% overall coverage; 15 modules at 100%; security audit clean
+
+- **1769 tests**, all passing; 0 failures (AAWO: 1014, Solo Builder: 1769)
+- AAWO v1.1.6 released
+- AAWO coverage milestone: **91% overall** (up from 88%) — 15 modules now at 100%; security audit clean (32 files, no issues)
+- AAWO `test_dependency_resolver.py` +2: `TestLoadDependencyMapOSError` (OSError on schema open → `{}, {}`, covers lines 15-16) + `TestResolveDependenciesWeightOSError` (OSError on weights open → `dep_bonus=0.5` fallback, covers lines 43-44) → `dependency_resolver.py` **100%**
+- AAWO `test_overlap_resolver.py` +1: `test_existing_agent_loses_to_incoming_higher_priority` — first agent priority=3 processed first, second agent priority=1 comes in and wins, existing gets "lost to" annotation; covers lines 124-127 → `overlap_resolver.py` **100%**
+- AAWO `test_retention_manager.py` +1: `test_oserror_on_unlink_recorded_in_errors` — `patch.object(Path, "unlink", side_effect=OSError("read-only"))` → errors list populated, covers lines 111-112 → `retention_manager.py` **100%**
+- AAWO `test_handoff_manager.py` +3: `TestHandoffManagerDefensivePaths` — blank lines, malformed JSON, missing task_id, rejected event across `get_handoff_detail`/`count_pending_handoffs`/`list_handoff_statuses`; covers lines 134, 137-138, 174, 177-178, 181, 211, 214-215, 218, 234 → `handoff_manager.py` **100%**
+- AAWO `test_queue_manager.py` — new file, 17 tests: `TestEnqueue`/`TestDequeue`/`TestComplete`/`TestListQueue`/`TestItemConversion` — full CRUD coverage using `patch.object(state_store, "_STATE_DIR", tmp_path)` → `queue_manager.py` **100%**
+- **Key patterns**: direct `_write_jsonl` to JSONL files for defensive path testing; `patch.object(state_store, "_STATE_DIR", ...)` for queue isolation; `patch.object(dr, "_load_dependency_map", return_value=(...))` to isolate OSError on the second file open in `resolve_dependencies`
+
+---
+
 ## v5.96.0 — 2026-03-11  AawoTests4 — snapshot_builder + snapshot_detectors → 100%; 88% overall
 
 - **1769 tests**, all passing; 0 failures (AAWO: 990, Solo Builder: 1769)
