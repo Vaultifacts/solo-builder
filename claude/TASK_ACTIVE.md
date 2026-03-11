@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-394
+TASK-395
 
-AgentClassCoverage: add unit tests for verifier.py, shadow_agent.py, self_healer.py, meta_optimizer.py
+OpenAPIRequiredArrays: add required:[...] fields to all POST requestBody schemas in generate_openapi.py
