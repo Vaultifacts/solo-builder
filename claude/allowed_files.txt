@@ -242,3 +242,6 @@ solo_builder/tests/test_blueprint_load_tool.py
 solo_builder/tests/test_control_blueprint.py
 solo_builder/tests/test_cache_blueprint.py
 solo_builder/tests/test_history_blueprint.py
+solo_builder/tests/test_tasks_blueprint.py
+solo_builder/tests/test_subtasks_blueprint.py
+solo_builder/tests/test_webhook_blueprint.py
