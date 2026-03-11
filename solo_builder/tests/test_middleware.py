@@ -150,5 +150,26 @@ class TestApiRateLimiter(unittest.TestCase):
         self.assertTrue(lim.check("127.0.0.1", is_write=False))
 
 
+class TestRateLimiterCurrentCount(unittest.TestCase):
+    """Tests for ApiRateLimiter.current_count (monitoring helper)."""
+
+    def setUp(self):
+        from solo_builder.api.middleware import ApiRateLimiter
+        self.lim = ApiRateLimiter(read_limit=10, write_limit=5, window=60.0)
+
+    def test_current_count_read_increments(self):
+        self.lim.check("10.0.0.1", is_write=False)
+        self.lim.check("10.0.0.1", is_write=False)
+        self.assertEqual(self.lim.current_count("10.0.0.1", is_write=False), 2)
+
+    def test_current_count_write_tracked_separately(self):
+        self.lim.check("10.0.0.2", is_write=True)
+        self.assertEqual(self.lim.current_count("10.0.0.2", is_write=True), 1)
+        self.assertEqual(self.lim.current_count("10.0.0.2", is_write=False), 0)
+
+    def test_current_count_unseen_ip_returns_zero(self):
+        self.assertEqual(self.lim.current_count("99.99.99.99", is_write=False), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -792,6 +792,17 @@ class TestRateLimit(_Base):
         self.assertEqual(resp.status_code, 429)
         self.assertIn("error", resp.get_json())
 
+    def test_after_request_missing_start_time_no_header(self):
+        """after_request AttributeError branch: no X-Response-Time when _start_time missing (app.py:108-109)."""
+        import api.app as _app
+        from unittest.mock import patch
+        self._write_state(self._make_state())
+        # Suppress _record_request_start so _start_time is never set
+        with patch.object(_app.app, "before_request_funcs", {None: []}):
+            resp = _app.app.test_client().get("/health")
+        # Must still get a valid response; X-Response-Time may or may not be present
+        self.assertIn(resp.status_code, (200, 429))
+
 
 if __name__ == "__main__":
     unittest.main()

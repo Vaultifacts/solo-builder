@@ -125,6 +125,12 @@ class TestRequireStringFieldsUnit(unittest.TestCase):
         result = self._call({"spec": "ok"}, required=("spec",), optional=("note",))
         self.assertIsNone(result)
 
+    def test_optional_field_oversized_returns_400(self):
+        long_val = "x" * (MAX_FIELD_LEN + 1)
+        resp, code = self._call({"spec": "ok", "note": long_val}, required=("spec",), optional=("note",))
+        self.assertEqual(code, 400)
+        self.assertIn("maximum length", resp.get_json()["reason"])
+
     def test_multiple_required_fields(self):
         result = self._call({"task": "T0", "spec": "do it"}, required=("task", "spec"))
         self.assertIsNone(result)

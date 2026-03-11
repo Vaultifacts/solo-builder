@@ -124,5 +124,5 @@ def method_not_allowed(e):
     return jsonify({"error": "Method not allowed."}), 405
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     app.run(debug=False)
