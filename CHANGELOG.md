@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.90.0 — 2026-03-11  FeedbackLoop — bidirectional AAWO outcome recording + dashboard Outcomes row
+
+- **1769 tests**, all passing; 0 failures
+- `utils/aawo_bridge.py`: `record_outcome(agent_id, outcome, description, duration_s)` — fire-and-forget subprocess; `get_outcome_stats()` reads AAWO `outcomes.jsonl` directly
+- `runners/executor.py`: `_fire_outcome()` helper — daemon thread after sdk_tool/claude_subprocess/sdk_direct success paths; reads `_aawo_routing` metadata from st_data
+- `api/blueprints/health_detailed.py`: `outcome_stats` added to `repo_health` check payload
+- `api/static/dashboard_panels.js`: `pollRepoHealthDetailed()` shows Outcomes row (ok/fail count, success %)
+- `tests/test_aawo_bridge.py`: 7 new `TestGetOutcomeStats` tests; 37 total in file
+- `tests/test_executor_aawo_wiring.py`: 5 new `TestExecutorOutcomeRecording` tests; 11 total in file
+
+---
+
 ## v5.89.0 — 2026-03-11  AawoIntegration — AAWO subprocess bridge, executor enrichment, repo health widget
 
 - **1757 tests**, all passing; 0 failures
