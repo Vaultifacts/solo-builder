@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.01.0 — 2026-03-11  TASK-386 OpenAPIBlueprintGaps — 96 routes, 43 OpenAPI tests
+
+- **1779 Solo Builder tests** (0 failures)
+- TASK-386: OpenAPIBlueprintGaps — complete blueprint route audit + fill all gaps:
+  - Identified 40 routes in Flask blueprints missing from `generate_openapi.py` `_ROUTES`
+  - Added all 40 missing routes across new/extended tags: Cache, Tasks (branches/subtasks/timeline/export/bulk-ops), Branches (per-task/reset/export), Subtasks (by-id/output/reset/bulk-verify/export), History (export), Control (run/run-history), Triggers (add_task/add_branch/rename/depends/undepends/prioritize_branch/tools/webhook), Config (reset/export), misc (executor/gates, shortcuts, diff, dag/diff, graph, timeline, priority)
+  - Fixed stale `/health/gates` entry (never existed) → `/health/executor-gates` alias
+  - Spec: **56 → 96 routes**; `test_generate_openapi.py`: **35 → 43 tests**; threshold guard raised to 90 routes
+
+---
+
 ## v6.00.0 — 2026-03-11  TASK-385 CoverageGaps — 1779 tests, 5 new coverage tests
 
 - **1779 Solo Builder tests** (0 failures); 10 added vs v5.99.0
