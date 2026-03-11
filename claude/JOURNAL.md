@@ -534,3 +534,5 @@
 - [2026-03-11T22:00:49.4592524Z] state transition: verify/ARCHITECT -> done/AUDITOR
 - [2026-03-11T22:01:08.2093481Z] Starting TASK-401 via tools/start_task.ps1 with automated preflight gating.
 - [2026-03-11T22:02:28.1454746Z] state transition: triage/RESEARCH -> done/AUDITOR
+- [2026-03-11T22:02:49.6013588Z] Starting TASK-402 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-11T22:05:40.8473867Z] state transition: triage/RESEARCH -> done/AUDITOR
