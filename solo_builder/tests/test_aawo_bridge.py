@@ -218,6 +218,60 @@ class TestEnrichSubtask(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# get_active_agents — file-read path
+# ---------------------------------------------------------------------------
+
+class TestGetActiveAgents(unittest.TestCase):
+
+    def setUp(self):
+        import tempfile, shutil
+        self._tmp = tempfile.mkdtemp()
+        self._runtime_dir = Path(self._tmp) / "runtime"
+        self._runtime_dir.mkdir()
+        self._main_py = self._runtime_dir / "main.py"
+        self._main_py.touch()
+        self._storage_dir = self._runtime_dir / "storage" / "state"
+        self._storage_dir.mkdir(parents=True)
+        self._agents_file = self._storage_dir / "active-agents.json"
+        self._shutil = shutil
+
+    def tearDown(self):
+        self._shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_returns_list_when_file_present(self):
+        self._agents_file.write_text(
+            json.dumps({"active_agent_ids": ["testing_agent", "security_agent"]}),
+            encoding="utf-8",
+        )
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_active_agents()
+        self.assertEqual(result, ["testing_agent", "security_agent"])
+
+    def test_returns_none_when_aawo_not_configured(self):
+        with patch.object(bridge, "_aawo_path", return_value=None):
+            result = bridge.get_active_agents()
+        self.assertIsNone(result)
+
+    def test_returns_none_when_file_missing(self):
+        # agents file never created
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_active_agents()
+        self.assertIsNone(result)
+
+    def test_returns_none_when_json_invalid(self):
+        self._agents_file.write_text("not valid json", encoding="utf-8")
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_active_agents()
+        self.assertIsNone(result)
+
+    def test_returns_empty_list_when_key_missing_from_json(self):
+        self._agents_file.write_text(json.dumps({}), encoding="utf-8")
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_active_agents()
+        self.assertEqual(result, [])
+
+
+# ---------------------------------------------------------------------------
 # resolve_executor_config / _load_mapping
 # ---------------------------------------------------------------------------
 

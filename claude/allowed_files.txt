@@ -236,3 +236,4 @@ solo_builder/tests/test_openapi_health_routes.py
 solo_builder/utils/aawo_bridge.py
 solo_builder/tests/test_aawo_bridge.py
 solo_builder/tests/test_repo_health_dashboard_widget.py
+solo_builder/tests/test_executor_aawo_wiring.py
