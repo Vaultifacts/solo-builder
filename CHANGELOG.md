@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.00.0 — 2026-03-11  TASK-385 CoverageGaps — 1779 tests, 5 new coverage tests
+
+- **1779 Solo Builder tests** (0 failures); 10 added vs v5.99.0
+- TASK-385: CoverageGaps — 3 `# pragma: no cover` guards + 5 targeted tests:
+  - `agents/__init__.py` and `commands/__init__.py` sys.path guards marked `# pragma: no cover`
+  - `api/app.py` `if __name__ == "__main__"` guard marked `# pragma: no cover`
+  - `TestRateLimiterCurrentCount` (3 tests): `current_count()` read/write/unseen-ip paths (`middleware.py:107-114`)
+  - `test_optional_field_oversized_returns_400`: optional field > MAX_FIELD_LEN returns 400 (`validators.py:70-72`)
+  - `test_after_request_missing_start_time_no_header`: AttributeError branch when `_start_time` missing (`app.py:108-109`)
+
+---
+
 ## v5.99.0 — 2026-03-11  TASK-383/384 + AAWO 100% main.py coverage
 
 - **1730 Solo Builder tests** (0 failures); **1085 AAWO tests** (0 failures)
