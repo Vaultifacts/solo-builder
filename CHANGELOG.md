@@ -1,5 +1,19 @@
 # Changelog
 
+## v6.03.0 — 2026-03-11  TASK-388 OpenAPIPhantomRoutes — 92 clean routes, 49 tests
+
+- **1779 Solo Builder tests** (0 failures)
+- TASK-388: OpenAPIPhantomRoutes — audited spec against actual Flask blueprints; removed 4 phantom routes:
+  - `/cache/stats` (real: `GET /cache`)
+  - `/cache/clear` (real: `DELETE /cache`)
+  - `/webhook/test` (real: `POST /webhook`)
+  - `/health/executor-gates` (alias for non-existent path; real: `GET /executor/gates`)
+  - Spec: 96 → **92 routes** (all verified against blueprint sources)
+  - Added `test_phantom_routes_absent` regression guard — prevents phantom routes from reappearing
+  - Tests: 48 → **49**
+
+---
+
 ## v6.02.0 — 2026-03-11  TASK-387 OpenAPIRequestBodies — 13 POST schemas, 48 tests
 
 - **1779 Solo Builder tests** (0 failures)
