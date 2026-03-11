@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-388
+TASK-389
 
-OpenAPIPhantomRoutes: remove 4 phantom routes from _ROUTES that have no matching Flask blueprint
+OpenAPIDriftGuard: add test that imports Flask app.url_map and asserts every registered route appears in _ROUTES
