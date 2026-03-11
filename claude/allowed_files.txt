@@ -250,3 +250,8 @@ solo_builder/tests/test_branches_blueprint.py
 solo_builder/tests/test_config_blueprint.py
 solo_builder/tests/test_dispatcher.py
 solo_builder/tests/test_query_cmds.py
+solo_builder/tests/test_step_runner.py
+solo_builder/tests/test_auto_cmds.py
+solo_builder/tests/test_dag_cmds_deep.py
+solo_builder/api/blueprints/dag.py
+solo_builder/runners/test_runners.py
