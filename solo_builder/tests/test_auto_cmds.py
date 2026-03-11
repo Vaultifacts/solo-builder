@@ -311,5 +311,168 @@ class TestCmdAutoTriggers(unittest.TestCase):
         self.cli._cmd_undo.assert_called_once()
 
 
+class TestCmdAutoOSErrorPaths(unittest.TestCase):
+    """Cover the `except OSError: pass` branches inside the inner wait loop (lines 93-94,
+    179-180, 185-186, 191-192, 208-209)."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
+        self._ps = _patches(self._tmp)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _run(self, args="2"):
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_auto(args)
+
+    def test_stop_trigger_remove_oserror_is_silenced(self):
+        """Lines 93-94: os.remove(stop_trigger) raising OSError is swallowed."""
+        stoptrig = os.path.join(self._tmp, "state", "stop_trigger")
+        Path(stoptrig).write_text("stop")
+        real_remove = os.remove
+        def _bad_remove(p):
+            if "stop_trigger" in p:
+                raise OSError("denied")
+            real_remove(p)
+        with patch("os.remove", side_effect=_bad_remove):
+            self._run()  # must not raise
+
+    def test_reset_trigger_remove_oserror_is_silenced(self):
+        """Lines 179-180: os.remove(reset_trigger) raising OSError is swallowed."""
+        rtrig = os.path.join(self._tmp, "state", "reset_trigger")
+        Path(rtrig).write_text("reset")
+        real_remove = os.remove
+        def _bad_remove(p):
+            if "reset_trigger" in p:
+                raise OSError("denied")
+            real_remove(p)
+        with patch("os.remove", side_effect=_bad_remove):
+            self._run()
+        self.cli._cmd_reset.assert_called()
+
+    def test_snapshot_trigger_remove_oserror_is_silenced(self):
+        """Lines 185-186: os.remove(snapshot_trigger) raising OSError is swallowed."""
+        snaptrig = os.path.join(self._tmp, "state", "snapshot_trigger")
+        Path(snaptrig).write_text("snap")
+        real_remove = os.remove
+        def _bad_remove(p):
+            if "snapshot_trigger" in p:
+                raise OSError("denied")
+            real_remove(p)
+        with patch("os.remove", side_effect=_bad_remove):
+            self._run()
+        self.cli._take_snapshot.assert_called()
+
+    def test_undo_trigger_remove_oserror_is_silenced(self):
+        """Lines 191-192: os.remove(undo_trigger) raising OSError is swallowed."""
+        undotrig = os.path.join(self._tmp, "state", "undo_trigger")
+        Path(undotrig).write_text("undo")
+        real_remove = os.remove
+        def _bad_remove(p):
+            if "undo_trigger" in p:
+                raise OSError("denied")
+            real_remove(p)
+        with patch("os.remove", side_effect=_bad_remove):
+            self._run()
+        self.cli._cmd_undo.assert_called()
+
+    def test_run_trigger_remove_oserror_is_silenced(self):
+        """Lines 208-209: os.remove(run_trigger) raising OSError is swallowed."""
+        runtrig = os.path.join(self._tmp, "state", "run_trigger")
+        Path(runtrig).write_text("go")
+        real_remove = os.remove
+        def _bad_remove(p):
+            if "run_trigger" in p:
+                raise OSError("denied")
+            real_remove(p)
+        with patch("os.remove", side_effect=_bad_remove):
+            self._run()  # must not raise
+
+
+class TestCmdAutoUndepends(unittest.TestCase):
+    """Cover lines 165-175: undepends_trigger JSON file."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
+        self._ps = _patches(self._tmp)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_undepends_trigger_calls_cmd_undepends(self):
+        import json as _json
+        undeptrig = os.path.join(self._tmp, "state", "undepends_trigger.json")
+        Path(undeptrig).write_text(_json.dumps({"target": "Task 1", "dep": "Task 0"}))
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_auto("2")
+        self.cli._cmd_undepends.assert_called_with("Task 1 Task 0")
+
+    def test_undepends_trigger_bad_json_silenced(self):
+        """Lines 174-175: bad JSON is caught and swallowed."""
+        undeptrig = os.path.join(self._tmp, "state", "undepends_trigger.json")
+        Path(undeptrig).write_text("{bad json}")
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_auto("2")
+        self.cli._cmd_undepends.assert_not_called()
+
+
+class TestCmdAutoPauseGate(unittest.TestCase):
+    """Cover lines 99-105: pause gate in inner wait loop."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
+        self._ps = _patches(self._tmp)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_pause_gate_prints_paused_message(self):
+        """Lines 99-101: pause_trigger present → prints 'paused remotely' and waits."""
+        pausetrig = os.path.join(self._tmp, "state", "pause_trigger")
+        stoptrig = os.path.join(self._tmp, "state", "stop_trigger")
+        Path(pausetrig).write_text("1")
+        # Pause while loop: iteration 1 returns True, iteration 2 creates stop_trigger
+        # (covers line 105), iteration 3 returns False (exits pause while)
+        call_count = [0]
+        real_exists = os.path.exists
+        def _exists(p):
+            if "pause_trigger" in p:
+                call_count[0] += 1
+                if call_count[0] == 2:
+                    # Create stop_trigger so line 104-105 fires on this iteration
+                    Path(stoptrig).write_text("stop")
+                return call_count[0] <= 2  # True for first 2 checks, False after
+            return real_exists(p)
+        printed = []
+        with patch("os.path.exists", side_effect=_exists), \
+             patch("builtins.print", side_effect=lambda *a, **kw: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_auto("2")
+        combined = "\n".join(printed)
+        self.assertIn("paused", combined.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
