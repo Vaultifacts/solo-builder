@@ -2716,3 +2716,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-392
+Goal: CoveragePush2: cover _load_tool() in health blueprints, control.py execution paths, helper_functions.py, aawo_bridge.py easy paths
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
