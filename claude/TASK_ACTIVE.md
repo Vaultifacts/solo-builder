@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-393
+TASK-394
 
-BlueprintBodyCoverage: add Flask test client tests for control.py, history.py, cache.py blueprints to push coverage toward 70%
+AgentClassCoverage: add unit tests for verifier.py, shadow_agent.py, self_healer.py, meta_optimizer.py

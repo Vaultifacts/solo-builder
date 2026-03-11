@@ -2740,3 +2740,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-394
+Goal: AgentClassCoverage: add unit tests for verifier.py, shadow_agent.py, self_healer.py, meta_optimizer.py
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
