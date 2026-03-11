@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-387
+TASK-388
 
-OpenAPIRequestBodies: add requestBody schemas for POST endpoints (add_task, add_branch, rename, verify, describe, set, depends, undepends) in generate_openapi.py
+OpenAPIPhantomRoutes: remove 4 phantom routes from _ROUTES that have no matching Flask blueprint

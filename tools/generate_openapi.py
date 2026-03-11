@@ -79,11 +79,6 @@ _ROUTES: list[dict] = [
     {"path": "/dag/import",     "method": "POST",   "tag": "DAG",        "summary": "Import DAG from JSON",
      "body": {"dag": {"type": "object", "description": "DAG structure to import"}}},
     {"path": "/dag/export",     "method": "GET",    "tag": "DAG",        "summary": "Export DAG as JSON"},
-    # Cache
-    {"path": "/cache/stats",    "method": "GET",    "tag": "Cache",      "summary": "Priority cache statistics"},
-    {"path": "/cache/clear",    "method": "POST",   "tag": "Cache",      "summary": "Clear the priority cache"},
-    # Webhook
-    {"path": "/webhook/test",   "method": "POST",   "tag": "Webhook",    "summary": "Test Discord webhook"},
     # Export
     {"path": "/export",  "method": "GET",  "tag": "Export", "summary": "Download subtask outputs as Markdown"},
     {"path": "/export",  "method": "POST", "tag": "Export", "summary": "Regenerate outputs file then download"},
@@ -92,7 +87,6 @@ _ROUTES: list[dict] = [
     {"path": "/journal", "method": "GET",  "tag": "Export", "summary": "Last 30 journal entries"},
     # Health (detailed checks)
     {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts"},
-    {"path": "/health/executor-gates",   "method": "GET", "tag": "Health", "summary": "Alias: executor gate evaluation via health namespace"},
     {"path": "/health/context-window",   "method": "GET", "tag": "Health", "summary": "Context window line-count check (CLAUDE.md / MEMORY.md / JOURNAL.md)"},
     {"path": "/health/threat-model",     "method": "GET", "tag": "Health", "summary": "Threat model freshness check (SE-001 to SE-006)"},
     {"path": "/health/slo",              "method": "GET", "tag": "Health", "summary": "SLO status: SLO-003 success rate + SLO-005 latency median"},
