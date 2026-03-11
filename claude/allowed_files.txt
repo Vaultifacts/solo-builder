@@ -233,3 +233,5 @@ solo_builder/api/blueprints/live_summary.py
 solo_builder/tests/test_live_summary_dashboard_widget.py
 solo_builder/tests/test_dashboard_e2e_smoke.py
 solo_builder/tests/test_openapi_health_routes.py
+solo_builder/utils/aawo_bridge.py
+solo_builder/tests/test_aawo_bridge.py

@@ -69,12 +69,14 @@ class Executor:
         verify_prob: float,
         project_context: str = "",
         append_journal: Optional[Callable] = None,
+        aawo_repo_path: str = ".",
     ) -> None:
         self.max_per_step     = max_per_step
         self.verify_prob      = verify_prob
         self.review_mode      = REVIEW_MODE
         self._project_context = project_context
         self._append_journal  = append_journal or (lambda *a, **kw: None)
+        self._aawo_repo_path  = aawo_repo_path
         self._hitl_policy     = _load_hitl_policy()
         self._scope_policy    = _load_scope_policy()
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
@@ -152,6 +154,13 @@ class Executor:
                 st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
                 action_type = st_data.get("action_type", "").strip()
+
+                # ── AAWO routing enrichment (before HITL — only when tools unset) ──
+                if not st_tools:
+                    from utils.aawo_bridge import enrich_subtask as _aawo_enrich
+                    _aawo_enrich(st_data, description, repo_path=self._aawo_repo_path)
+                    st_tools    = st_data.get("tools", "").strip()
+                    action_type = st_data.get("action_type", "").strip()
 
                 # ── Tool validation + HITL gate ────────────────────────────
                 if st_tools:

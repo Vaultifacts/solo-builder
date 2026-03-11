@@ -473,5 +473,76 @@ class TestSloStatusPanelJs(unittest.TestCase):
         self.assertIn("r.value", js)
 
 
+# ---------------------------------------------------------------------------
+# repo_health check (AAWO integration)
+# ---------------------------------------------------------------------------
+
+class TestHealthDetailedRepoHealth(_Base):
+
+    _SNAP = {
+        "signals":      {"has_tests": True, "has_ci": False},
+        "complexity":   {"value": "medium", "file_count": 50},
+        "risk_factors": ["no_ci"],
+        "captured_at":  "2026-03-10T00:00:00Z",
+    }
+
+    def test_repo_health_key_present(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=None):
+            data = json.loads(self._get().data)
+        self.assertIn("repo_health", data["checks"])
+
+    def test_repo_health_available_false_when_none(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=None):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertFalse(checks["repo_health"]["available"])
+
+    def test_repo_health_available_true_when_snapshot_returned(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=self._SNAP):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertTrue(checks["repo_health"]["available"])
+
+    def test_repo_health_signals_propagated(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=self._SNAP):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertTrue(checks["repo_health"]["signals"]["has_tests"])
+        self.assertFalse(checks["repo_health"]["signals"]["has_ci"])
+
+    def test_repo_health_complexity_propagated(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=self._SNAP):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertEqual(checks["repo_health"]["complexity"], "medium")
+        self.assertEqual(checks["repo_health"]["file_count"], 50)
+
+    def test_repo_health_risk_factors_propagated(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=self._SNAP):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertIn("no_ci", checks["repo_health"]["risk_factors"])
+
+    def test_repo_health_ok_true_even_when_unavailable(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", return_value=None):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertTrue(checks["repo_health"]["ok"])
+
+    def test_repo_health_exception_does_not_affect_overall_ok(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", side_effect=RuntimeError("aawo down")):
+            data = json.loads(self._get().data)
+        self.assertTrue(data["ok"])
+        self.assertTrue(data["checks"]["repo_health"]["ok"])
+
+    def test_repo_health_error_key_set_on_exception(self):
+        with self._mock_tools(), \
+             patch("utils.aawo_bridge.get_snapshot", side_effect=RuntimeError("aawo down")):
+            checks = json.loads(self._get().data)["checks"]
+        self.assertIn("error", checks["repo_health"])
+
+
 if __name__ == "__main__":
     unittest.main()

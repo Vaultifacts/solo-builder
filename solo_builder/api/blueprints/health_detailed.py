@@ -123,8 +123,31 @@ def health_detailed():
     except Exception as exc:
         slo_check_result = {"ok": False, "records": 0, "results": [], "error": str(exc)}
 
+    # --- repo_health (AAWO snapshot signals — informational only) ---
+    try:
+        from utils.aawo_bridge import get_snapshot as _aawo_snapshot
+        _snap = _aawo_snapshot(repo_path=".")
+        if _snap is not None:
+            repo_health_check = {
+                "ok":           True,
+                "available":    True,
+                "signals":      _snap.get("signals", {}),
+                "complexity":   _snap.get("complexity", {}).get("value", "unknown"),
+                "file_count":   _snap.get("complexity", {}).get("file_count", 0),
+                "risk_factors": _snap.get("risk_factors", []),
+                "captured_at":  _snap.get("captured_at", ""),
+            }
+        else:
+            repo_health_check = {
+                "ok": True, "available": False,
+                "signals": {}, "risk_factors": [],
+            }
+    except Exception as exc:
+        repo_health_check = {"ok": True, "available": False, "error": str(exc)}
+
     overall_ok = (state_check["ok"] and drift_check["ok"]
                   and alert_check["ok"] and slo_check_result["ok"])
+    # repo_health is intentionally excluded from overall_ok — AAWO absence is informational
 
     return jsonify({
         "ok": overall_ok,
@@ -133,5 +156,6 @@ def health_detailed():
             "config_drift":   drift_check,
             "metrics_alerts": alert_check,
             "slo_status":     slo_check_result,
+            "repo_health":    repo_health_check,
         },
     })
