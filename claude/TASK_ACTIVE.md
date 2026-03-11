@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-385
+TASK-386
 
-CoverageGaps — cover app.py AttributeError branch, middleware.py current_count(), validators.py optional-field length, pragma no-cover path guards
+OpenAPIBlueprintGaps: add any routes missing from generate_openapi.py _ROUTES that exist in Flask blueprints
