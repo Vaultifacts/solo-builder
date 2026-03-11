@@ -32,7 +32,7 @@ app = Flask(__name__)
 _APP_START_TIME = time.time()
 
 _security = SecurityHeadersMiddleware()
-_rate_limiter = ApiRateLimiter()
+_rate_limiter = ApiRateLimiter(read_limit=300)
 
 from .blueprints.cache import cache_bp
 from .blueprints.metrics import metrics_bp
