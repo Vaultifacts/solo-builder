@@ -49,13 +49,12 @@ _ROUTES: list[dict] = [
     {"path": "/tasks/{task_id}/reset",    "method": "POST","tag": "Tasks", "summary": "Reset non-Verified subtasks"},
     # Branches
     {"path": "/branches",       "method": "GET",    "tag": "Branches",   "summary": "List all branches"},
-    {"path": "/branches/{branch_id}", "method": "GET", "tag": "Branches","summary": "Get branch detail"},
+    {"path": "/branches/{task_id}", "method": "GET", "tag": "Branches","summary": "Get branches and subtasks for a specific task"},
     # Subtasks
     {"path": "/subtasks",       "method": "GET",    "tag": "Subtasks",   "summary": "List all subtasks"},
     {"path": "/subtasks/bulk-reset", "method": "POST","tag": "Subtasks", "summary": "Bulk-reset selected subtasks"},
     {"path": "/stalled",        "method": "GET",    "tag": "Subtasks",   "summary": "List stalled subtasks (Running >= threshold)"},
     # Triggers
-    {"path": "/trigger",        "method": "POST",   "tag": "Triggers",   "summary": "Fire a named trigger"},
     {"path": "/verify",         "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask verification",
      "body": {"subtask": {"type": "string", "description": "Subtask name to verify"}}},
     {"path": "/describe",       "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask description update",
@@ -113,7 +112,6 @@ _ROUTES: list[dict] = [
     {"path": "/tasks/{task_id}/trigger",     "method": "POST", "tag": "Tasks", "summary": "Fire execution trigger for a task"},
     {"path": "/tasks/export",              "method": "GET",  "tag": "Tasks",  "summary": "Export all tasks as JSON"},
     # Branches (extended)
-    {"path": "/branches/{task_id}",        "method": "GET",  "tag": "Branches", "summary": "Get branches for a specific task"},
     {"path": "/branches/{task_id}/reset",  "method": "POST", "tag": "Branches", "summary": "Reset branches for a task"},
     {"path": "/branches/export",           "method": "GET",  "tag": "Branches", "summary": "Export all branches as JSON"},
     # Subtasks (extended)

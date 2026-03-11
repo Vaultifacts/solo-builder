@@ -243,8 +243,62 @@ class TestRoutesCatalogue(unittest.TestCase):
             seen.add(key)
 
     def test_at_least_90_routes(self):
-        # 92 real routes after removing 4 phantom entries (cache/stats, cache/clear, webhook/test, health/executor-gates)
+        # 90 real routes after removing phantom entries
         self.assertGreaterEqual(len(_ROUTES), 90)
+
+
+# ---------------------------------------------------------------------------
+# Live Flask url_map drift guard (TASK-389)
+# ---------------------------------------------------------------------------
+
+import re as _re
+import sys as _sys
+import tempfile as _tempfile
+
+_SOLO_DIR = Path(__file__).resolve().parents[1]
+
+
+def _flask_to_openapi(path: str) -> str:
+    """Convert Flask path params (<type:name>) to OpenAPI style ({name})."""
+    return _re.sub(r"<(?:[^:>]+:)?([^>]+)>", r"{\1}", path)
+
+
+class TestLiveUrlMapDriftGuard(unittest.TestCase):
+    """TASK-389: Live Flask url_map must match _ROUTES exactly (no drift)."""
+
+    @classmethod
+    def setUpClass(cls):
+        _sys.path.insert(0, str(_SOLO_DIR))
+        import api.app as _app_mod  # noqa: PLC0415
+        cls._app = _app_mod.app
+        cls._spec_routes: set[tuple[str, str]] = {
+            (r["method"].upper(), r["path"]) for r in _ROUTES
+        }
+        cls._flask_routes: set[tuple[str, str]] = set()
+        for rule in cls._app.url_map.iter_rules():
+            if rule.rule.startswith("/static"):
+                continue
+            for method in rule.methods - {"HEAD", "OPTIONS"}:
+                cls._flask_routes.add((method, _flask_to_openapi(rule.rule)))
+
+    def test_no_blueprint_route_missing_from_spec(self):
+        """Every live Flask route must appear in _ROUTES."""
+        missing = self._flask_routes - self._spec_routes
+        self.assertEqual(
+            missing, set(),
+            f"Blueprint routes not in _ROUTES: {sorted(missing)}"
+        )
+
+    def test_no_phantom_routes_in_spec(self):
+        """Every _ROUTES entry must correspond to a real Flask route."""
+        phantoms = self._spec_routes - self._flask_routes
+        self.assertEqual(
+            phantoms, set(),
+            f"Spec routes with no matching Flask blueprint: {sorted(phantoms)}"
+        )
+
+    def test_route_counts_match(self):
+        self.assertEqual(len(self._flask_routes), len(self._spec_routes))
 
 
 # ---------------------------------------------------------------------------
