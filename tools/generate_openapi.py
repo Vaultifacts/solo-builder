@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,11 +37,15 @@ _ROUTES: list[dict] = [
     # Metrics
     {"path": "/metrics",        "method": "GET",    "tag": "Metrics",    "summary": "Run health + analytics history"},
     {"path": "/metrics/summary","method": "GET",    "tag": "Metrics",    "summary": "Executor step metrics (p50/p95/p99/latency buckets)"},
-    {"path": "/metrics/export", "method": "GET",    "tag": "Metrics",    "summary": "Export step history as CSV or JSON"},
+    {"path": "/metrics/export", "method": "GET",    "tag": "Metrics",    "summary": "Export step history as CSV or JSON",
+     "query": [("format", "string", "Output format: csv or json (default json)")]},
     {"path": "/agents",         "method": "GET",    "tag": "Metrics",    "summary": "Agent statistics and ETA forecast"},
     {"path": "/forecast",       "method": "GET",    "tag": "Metrics",    "summary": "Detailed completion forecast"},
     # History
-    {"path": "/history",        "method": "GET",    "tag": "History",    "summary": "Paged activity log"},
+    {"path": "/history",        "method": "GET",    "tag": "History",    "summary": "Paged activity log",
+     "query": [("since", "integer", "Return events after this step number"),
+               ("limit", "integer", "Max events to return (default 50)"),
+               ("page",  "integer", "Page number (1-based)")]},
     {"path": "/history/count",  "method": "GET",    "tag": "History",    "summary": "Activity log counts by status"},
     # Tasks
     {"path": "/tasks",          "method": "GET",    "tag": "Tasks",      "summary": "List all tasks"},
@@ -82,7 +87,8 @@ _ROUTES: list[dict] = [
     {"path": "/export",  "method": "GET",  "tag": "Export", "summary": "Download subtask outputs as Markdown"},
     {"path": "/export",  "method": "POST", "tag": "Export", "summary": "Regenerate outputs file then download"},
     {"path": "/stats",   "method": "GET",  "tag": "Export", "summary": "Per-task verified/total/pct/avg-steps breakdown"},
-    {"path": "/search",  "method": "GET",  "tag": "Export", "summary": "Search subtasks by keyword in name, description, or output"},
+    {"path": "/search",  "method": "GET",  "tag": "Export", "summary": "Search subtasks by keyword in name, description, or output",
+     "query": [("q", "string", "Keyword to search for")]},
     {"path": "/journal", "method": "GET",  "tag": "Export", "summary": "Last 30 journal entries"},
     # Health (detailed checks)
     {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts"},
@@ -178,6 +184,27 @@ def build_spec() -> dict:
         method = route["method"].lower()
         if path not in paths:
             paths[path] = {}
+        # Auto-extract path parameters from {param} segments
+        path_params = re.findall(r"\{([^}]+)\}", path)
+        parameters: list[dict] = [
+            {
+                "name": param,
+                "in": "path",
+                "required": True,
+                "schema": {"type": "string"},
+            }
+            for param in path_params
+        ]
+        # Add explicit query parameters if declared
+        for qname, qtype, qdesc in route.get("query", []):
+            parameters.append({
+                "name": qname,
+                "in": "query",
+                "required": False,
+                "description": qdesc,
+                "schema": {"type": qtype},
+            })
+
         operation: dict = {
             "tags":    [route["tag"]],
             "summary": route["summary"],
@@ -188,6 +215,8 @@ def build_spec() -> dict:
                 "429": {"description": "Rate limit exceeded"},
             },
         }
+        if parameters:
+            operation["parameters"] = parameters
         if "body" in route:
             operation["requestBody"] = {
                 "required": True,

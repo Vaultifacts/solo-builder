@@ -218,6 +218,41 @@ class TestBuildSpecPaths(unittest.TestCase):
                     self.assertIn("400", op.get("responses", {}),
                                   f"{method.upper()} {path} has requestBody but missing 400 response")
 
+    def test_task_detail_has_path_param(self):
+        op = self.paths["/tasks/{task_id}"]["get"]
+        params = op.get("parameters", [])
+        names = [p["name"] for p in params]
+        self.assertIn("task_id", names)
+        path_param = next(p for p in params if p["name"] == "task_id")
+        self.assertEqual(path_param["in"], "path")
+        self.assertTrue(path_param["required"])
+
+    def test_subtask_detail_has_path_param(self):
+        op = self.paths["/subtask/{subtask_id}"]["get"]
+        params = op.get("parameters", [])
+        self.assertTrue(any(p["name"] == "subtask_id" and p["in"] == "path" for p in params))
+
+    def test_history_has_query_params(self):
+        op = self.paths["/history"]["get"]
+        params = op.get("parameters", [])
+        query_names = {p["name"] for p in params if p["in"] == "query"}
+        self.assertIn("since", query_names)
+        self.assertIn("limit", query_names)
+        self.assertIn("page", query_names)
+
+    def test_search_has_query_param(self):
+        op = self.paths["/search"]["get"]
+        params = op.get("parameters", [])
+        self.assertTrue(any(p["name"] == "q" and p["in"] == "query" for p in params))
+
+    def test_path_params_are_required(self):
+        for path, methods in self.paths.items():
+            for op in methods.values():
+                for param in op.get("parameters", []):
+                    if param["in"] == "path":
+                        self.assertTrue(param["required"],
+                                        f"Path param {param['name']} in {path} must be required")
+
 
 # ---------------------------------------------------------------------------
 # _ROUTES catalogue completeness
