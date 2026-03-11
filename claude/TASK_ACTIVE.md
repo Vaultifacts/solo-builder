@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-384
+TASK-385
 
-OpenAPIExportRoutes — add 4 missing export routes (/export GET+POST, /stats, /search, /journal) to generate_openapi.py spec
+CoverageGaps — cover app.py AttributeError branch, middleware.py current_count(), validators.py optional-field length, pragma no-cover path guards
