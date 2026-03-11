@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-383
+TASK-384
 
-OpenAPIHealthRoutes — add 11 new health endpoints to generate_openapi.py spec
+OpenAPIExportRoutes — add 4 missing export routes (/export GET+POST, /stats, /search, /journal) to generate_openapi.py spec

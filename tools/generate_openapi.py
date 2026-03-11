@@ -79,6 +79,12 @@ _ROUTES: list[dict] = [
     {"path": "/cache/clear",    "method": "POST",   "tag": "Cache",      "summary": "Clear the priority cache"},
     # Webhook
     {"path": "/webhook/test",   "method": "POST",   "tag": "Webhook",    "summary": "Test Discord webhook"},
+    # Export
+    {"path": "/export",  "method": "GET",  "tag": "Export", "summary": "Download subtask outputs as Markdown"},
+    {"path": "/export",  "method": "POST", "tag": "Export", "summary": "Regenerate outputs file then download"},
+    {"path": "/stats",   "method": "GET",  "tag": "Export", "summary": "Per-task verified/total/pct/avg-steps breakdown"},
+    {"path": "/search",  "method": "GET",  "tag": "Export", "summary": "Search subtasks by keyword in name, description, or output"},
+    {"path": "/journal", "method": "GET",  "tag": "Export", "summary": "Last 30 journal entries"},
     # Health (detailed checks)
     {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts"},
     {"path": "/health/gates",            "method": "GET", "tag": "Health", "summary": "Executor gate inventory (schema + policies)"},
