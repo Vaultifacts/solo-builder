@@ -187,6 +187,32 @@ class TestBuildSpecPaths(unittest.TestCase):
         self.assertIn("/config/reset", self.paths)
         self.assertIn("post", self.paths["/config/reset"])
 
+    def test_add_task_has_request_body(self):
+        op = self.paths["/add_task"]["post"]
+        self.assertIn("requestBody", op)
+        self.assertTrue(op["requestBody"]["required"])
+
+    def test_verify_has_request_body(self):
+        op = self.paths["/verify"]["post"]
+        self.assertIn("requestBody", op)
+
+    def test_dag_import_has_request_body(self):
+        op = self.paths["/dag/import"]["post"]
+        self.assertIn("requestBody", op)
+
+    def test_add_branch_has_request_body(self):
+        op = self.paths["/add_branch"]["post"]
+        self.assertIn("requestBody", op)
+        props = op["requestBody"]["content"]["application/json"]["schema"]["properties"]
+        self.assertIn("spec", props)
+
+    def test_each_post_with_body_has_400_response(self):
+        for path, methods in self.paths.items():
+            for method, op in methods.items():
+                if "requestBody" in op:
+                    self.assertIn("400", op.get("responses", {}),
+                                  f"{method.upper()} {path} has requestBody but missing 400 response")
+
 
 # ---------------------------------------------------------------------------
 # _ROUTES catalogue completeness
