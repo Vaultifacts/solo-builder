@@ -1,4 +1,4 @@
-"""DAG blueprint — GET /dag/summary, /tasks/export, /dag/export, POST /dag/import."""
+"""DAG blueprint — GET /dag/summary, /dag/export, POST /dag/import."""
 import io
 import json
 
@@ -85,7 +85,6 @@ def dag_summary():
     })
 
 
-@dag_bp.get("/tasks/export")
 @dag_bp.get("/dag/export")
 def dag_export():
     """Return the current DAG structure as a downloadable JSON file."""
