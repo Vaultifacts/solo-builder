@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-404
+TASK-405
 
-OpenAPI spec drift guard — add missing routes to generate_openapi.py and add test asserting all Flask routes are covered
+commands/ deep coverage — step_runner, auto_cmds, settings_cmds, dag_cmds uncovered lines
