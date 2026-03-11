@@ -1,5 +1,19 @@
 # Changelog
 
+## v6.02.0 — 2026-03-11  TASK-387 OpenAPIRequestBodies — 13 POST schemas, 48 tests
+
+- **1779 Solo Builder tests** (0 failures)
+- TASK-387: OpenAPIRequestBodies — added `requestBody` JSON schemas for 13 POST endpoints:
+  - Trigger endpoints: `/verify` (subtask), `/describe` (subtask), `/set` (key/value)
+  - DAG: `/dag/import` (dag object)
+  - Task management: `/add_task` (spec), `/add_branch` (task/spec), `/rename` (task/name), `/depends` (target/dep), `/undepends` (target/dep), `/prioritize_branch` (task/branch), `/tools` (subtask/tools)
+  - Config: `/config` POST (key/value)
+  - Webhook: `/webhook` (event/payload)
+  - `build_spec()` now emits `requestBody` + `400` response whenever route has `body` key
+  - `test_generate_openapi.py`: **43 → 48 tests**; new checks: requestBody presence, 400 response for body-carrying ops, add_branch properties
+
+---
+
 ## v6.01.0 — 2026-03-11  TASK-386 OpenAPIBlueprintGaps — 96 routes, 43 OpenAPI tests
 
 - **1779 Solo Builder tests** (0 failures)
