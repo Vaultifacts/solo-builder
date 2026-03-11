@@ -292,6 +292,38 @@ class TestMetaOptimizer(unittest.TestCase):
         result = self.mo.forecast(dag)
         self.assertIn("50", result)   # 1/2 = 50%
 
+    def test_forecast_with_verify_rate_returns_eta(self):
+        for _ in range(5):
+            self.mo.record(healed=0, verified=1)   # verify_rate=1.0 > 0
+        dag = {"T0": _task({"A": _branch({
+            "A1": _st("Verified"), "A2": _st("Pending")
+        })})}
+        result = self.mo.forecast(dag)
+        self.assertIn("steps", result)   # ETA branch
+
+    def test_optimize_returns_none_when_rates_moderate(self):
+        # heal_rate ≤ 0.5, verify_rate ≥ 0.2 → neither condition fires
+        for _ in range(5):
+            self.mo.record(healed=0, verified=1)   # heal_rate=0, verify_rate=1.0
+        result = self.mo.optimize(self.planner)
+        self.assertIsNone(result)
+
+
+class TestPlannerAdjustWeightsShadow(unittest.TestCase):
+
+    def setUp(self):
+        self.p = Planner(stall_threshold=5)
+
+    def test_adjust_weights_shadow_key_increases(self):
+        old = self.p.w_shadow
+        self.p.adjust_weights("shadow", 0.1)
+        self.assertGreater(self.p.w_shadow, old)
+
+    def test_adjust_weights_shadow_clamps_at_minimum(self):
+        for _ in range(100):
+            self.p.adjust_weights("shadow", -1.0)
+        self.assertGreaterEqual(self.p.w_shadow, 0.1)
+
 
 if __name__ == "__main__":
     unittest.main()
