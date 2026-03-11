@@ -1645,6 +1645,14 @@ export async function pollRepoHealthDetailed() {
         const names = rh.active_agents.map(a => a.replace(/_agent$/, "")).join(", ");
         nodes.push(mkRow("Active Agents", true, names));
       }
+      const os = rh.outcome_stats || {};
+      const osEntries = Object.entries(os);
+      if (osEntries.length) {
+        const total = osEntries.reduce((s, [, c]) => s + (c.total || 0), 0);
+        const ok    = osEntries.reduce((s, [, c]) => s + (c.success || 0), 0);
+        const rate  = total ? Math.round(ok / total * 100) : 0;
+        nodes.push(mkRow("Outcomes", rate >= 70, `${ok}/${total} success (${rate}%) across ${osEntries.length} agent(s)`));
+      }
     } else {
       const msg = document.createElement("div");
       msg.style.cssText = "font-size:10px;color:var(--dim);padding:8px 0";

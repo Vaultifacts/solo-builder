@@ -101,6 +101,46 @@ def get_active_agents() -> Optional[list]:
         return None
 
 
+def get_outcome_stats() -> Optional[dict]:
+    """
+    Read AAWO's outcomes.jsonl and return per-agent success/fail stats.
+
+    Returns dict like {"testing_agent": {"success": 5, "fail": 1, "total": 6, "success_rate": 0.833}}
+    or None if AAWO is unavailable or no outcomes have been recorded yet.
+    """
+    path = _aawo_path()
+    if path is None:
+        return None
+    log_path = Path(path).parent / "storage" / "logs" / "outcomes.jsonl"
+    if not log_path.exists():
+        return None
+    stats: dict = {}
+    try:
+        for line in log_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            agent_id = entry.get("agent_id")
+            outcome = entry.get("outcome")
+            if not agent_id or outcome not in ("success", "fail"):
+                continue
+            if agent_id not in stats:
+                stats[agent_id] = {"success": 0, "fail": 0}
+            stats[agent_id][outcome] += 1
+    except OSError as exc:
+        logger.debug("aawo_bridge: get_outcome_stats error %s", exc)
+        return None
+    for agent_id, counts in stats.items():
+        total = counts["success"] + counts["fail"]
+        counts["total"] = total
+        counts["success_rate"] = round(counts["success"] / total, 3) if total else None
+    return stats or None
+
+
 def run_cycle(repo_path: str = ".") -> bool:
     """
     Run AAWO's full cycle (snapshot → score → select → lifecycle) for repo_path.

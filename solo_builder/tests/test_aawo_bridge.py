@@ -308,5 +308,85 @@ class TestResolveExecutorConfig(unittest.TestCase):
         self.assertEqual(mapping, bridge._BUILTIN_MAPPING)
 
 
+# ---------------------------------------------------------------------------
+# get_outcome_stats — file-read path
+# ---------------------------------------------------------------------------
+
+class TestGetOutcomeStats(unittest.TestCase):
+
+    def setUp(self):
+        import tempfile, shutil
+        self._tmp = tempfile.mkdtemp()
+        self._runtime_dir = Path(self._tmp) / "runtime"
+        self._runtime_dir.mkdir()
+        self._main_py = self._runtime_dir / "main.py"
+        self._main_py.touch()
+        self._logs_dir = self._runtime_dir / "storage" / "logs"
+        self._logs_dir.mkdir(parents=True)
+        self._outcomes_file = self._logs_dir / "outcomes.jsonl"
+        self._shutil = shutil
+
+    def tearDown(self):
+        self._shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _write(self, records):
+        with open(self._outcomes_file, "w", encoding="utf-8") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+    def test_returns_none_when_not_configured(self):
+        with patch.object(bridge, "_aawo_path", return_value=None):
+            self.assertIsNone(bridge.get_outcome_stats())
+
+    def test_returns_none_when_file_missing(self):
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            self.assertIsNone(bridge.get_outcome_stats())
+
+    def test_returns_dict_with_counts(self):
+        self._write([
+            {"agent_id": "testing_agent", "outcome": "success"},
+            {"agent_id": "testing_agent", "outcome": "success"},
+            {"agent_id": "testing_agent", "outcome": "fail"},
+        ])
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_outcome_stats()
+        self.assertEqual(result["testing_agent"]["success"], 2)
+        self.assertEqual(result["testing_agent"]["fail"], 1)
+        self.assertEqual(result["testing_agent"]["total"], 3)
+
+    def test_success_rate_computed(self):
+        self._write([
+            {"agent_id": "testing_agent", "outcome": "success"},
+            {"agent_id": "testing_agent", "outcome": "fail"},
+        ])
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_outcome_stats()
+        self.assertAlmostEqual(result["testing_agent"]["success_rate"], 0.5, places=3)
+
+    def test_multiple_agents(self):
+        self._write([
+            {"agent_id": "testing_agent", "outcome": "success"},
+            {"agent_id": "security_agent", "outcome": "fail"},
+        ])
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_outcome_stats()
+        self.assertIn("testing_agent", result)
+        self.assertIn("security_agent", result)
+
+    def test_ignores_bad_json_lines(self):
+        with open(self._outcomes_file, "w", encoding="utf-8") as f:
+            f.write("not-json\n")
+            f.write(json.dumps({"agent_id": "testing_agent", "outcome": "success"}) + "\n")
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_outcome_stats()
+        self.assertEqual(result["testing_agent"]["total"], 1)
+
+    def test_returns_none_when_no_valid_records(self):
+        self._write([{"outcome": "success"}])  # no agent_id
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_outcome_stats()
+        self.assertIsNone(result)
+
+
 if __name__ == "__main__":
     unittest.main()

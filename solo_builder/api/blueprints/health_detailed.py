@@ -125,9 +125,12 @@ def health_detailed():
 
     # --- repo_health (AAWO snapshot signals + active agents — informational only) ---
     try:
-        from utils.aawo_bridge import get_snapshot as _aawo_snapshot, get_active_agents as _aawo_agents
-        _snap   = _aawo_snapshot(repo_path=".")
-        _agents = _aawo_agents()
+        from utils.aawo_bridge import (get_snapshot as _aawo_snapshot,
+                                       get_active_agents as _aawo_agents,
+                                       get_outcome_stats as _aawo_outcomes)
+        _snap    = _aawo_snapshot(repo_path=".")
+        _agents  = _aawo_agents()
+        _outcomes = _aawo_outcomes()
         if _snap is not None:
             repo_health_check = {
                 "ok":            True,
@@ -138,14 +141,17 @@ def health_detailed():
                 "risk_factors":  _snap.get("risk_factors", []),
                 "captured_at":   _snap.get("captured_at", ""),
                 "active_agents": _agents or [],
+                "outcome_stats": _outcomes or {},
             }
         else:
             repo_health_check = {
                 "ok": True, "available": False,
                 "signals": {}, "risk_factors": [], "active_agents": _agents or [],
+                "outcome_stats": _outcomes or {},
             }
     except Exception as exc:
-        repo_health_check = {"ok": True, "available": False, "error": str(exc), "active_agents": []}
+        repo_health_check = {"ok": True, "available": False, "error": str(exc),
+                             "active_agents": [], "outcome_stats": {}}
 
     overall_ok = (state_check["ok"] and drift_check["ok"]
                   and alert_check["ok"] and slo_check_result["ok"])
