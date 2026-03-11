@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-401
+TASK-402
 
-Blueprint coverage push — config.py (49%): Flask test-client tests to 90%+
+sdk_tool_runner.py coverage — mock Anthropic SDK to test run(), arun(), RateLimitError retry logic from 37% to 80%+
