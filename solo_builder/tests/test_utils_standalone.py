@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.helper_functions import (
     dag_stats, branch_stats, shadow_stats, make_bar,
     memory_depth, add_memory_snapshot, clamp, validate_dag,
-    load_settings,
+    load_settings, format_status, format_shadow,
 )
 
 
@@ -196,6 +196,44 @@ def test_load_settings_returns_defaults_when_no_file():
 def test_load_settings_stall_threshold_default():
     settings = load_settings("/nonexistent/path/settings.json")
     assert settings["STALL_THRESHOLD"] == 5
+
+
+# ── format_status / format_shadow ─────────────────────────────────────────────
+
+def test_format_status_contains_status_string():
+    result = format_status("Verified")
+    assert "Verified" in result
+
+
+def test_format_status_unknown_status_still_returns_string():
+    result = format_status("Unknown")
+    assert "Unknown" in result
+
+
+def test_format_shadow_contains_shadow_string():
+    result = format_shadow("Done")
+    assert "Done" in result
+
+
+def test_format_shadow_unknown_still_returns_string():
+    result = format_shadow("Other")
+    assert "Other" in result
+
+
+# ── validate_dag — missing/invalid branch cases ────────────────────────────────
+
+def test_validate_dag_branch_missing_subtasks():
+    dag = {"T0": {"branches": {"b0": {}}}}
+    warnings = validate_dag(dag)
+    assert any("subtasks" in w for w in warnings)
+
+
+def test_validate_dag_invalid_shadow_warns():
+    dag = {"T0": {"branches": {"b0": {"subtasks": {
+        "s1": {"status": "Pending", "shadow": "BadShadow"}
+    }}}}}
+    warnings = validate_dag(dag)
+    assert any("shadow" in w for w in warnings)
 
 
 if __name__ == "__main__":
