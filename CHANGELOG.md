@@ -1,5 +1,19 @@
 # Changelog
 
+## v6.10.0 — 2026-03-11  TASK-393–395 sprint — blueprint + agent coverage, OpenAPI required arrays
+
+- **TASK-393 BlueprintBodyCoverage**: 56 new Flask test-client tests across 11 test classes:
+  - `test_control_blueprint.py` (26 tests) — all 7 POST endpoints: `/run`, `/stop`, `/undo`, `/reset` (confirm guard + case-insensitive YES), `/snapshot`, `/pause`, `/resume` (removes pause_trigger file)
+  - `test_cache_blueprint.py` (30 tests) — `GET /cache` (entries/hit-rate/stats-file exclusion), `DELETE /cache` (clears files, preserves session_stats.json, nonexistent dir), `GET /cache/history` (no-file, since filter, hit-rate calc), `GET /cache/export` (CSV/JSON, since/limit, Content-Disposition)
+- **TASK-394 AgentClassCoverage**: 4 new tests → **100% coverage on all 5 agent modules** (`verifier.py`, `shadow_agent.py`, `self_healer.py`, `meta_optimizer.py`, `planner.py`):
+  - `test_forecast_with_verify_rate_returns_eta` — covers `forecast()` ETA branch (lines 55-57 of meta_optimizer.py)
+  - `test_optimize_returns_none_when_rates_moderate` — covers `optimize()` final `return None` (line 38)
+  - `TestPlannerAdjustWeightsShadow` (2 tests) — covers `adjust_weights("shadow", ...)` branch (lines 49-50 of planner.py)
+- **TASK-395 OpenAPIRequiredArrays**: `build_spec()` now emits `required: [field1, ...]` in all 13 POST requestBody schemas; 6 new tests in `TestRequestBodyRequired` assert required arrays are present, non-empty, and match property keys exactly; `test_generate_openapi.py`: **61→67 tests**
+- **AAWO coverage verified**: 1085 tests passing, `main.py` at **100% coverage** — no regressions
+
+---
+
 ## v6.07.0 — 2026-03-11  TASK-389–392 sprint — 90 routes, live drift guard, path params, response schemas, 1795 tests
 
 - **1795 Solo Builder tests** (0 failures); 16 new tests in this sprint
