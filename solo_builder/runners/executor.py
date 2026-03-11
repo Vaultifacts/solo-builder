@@ -60,6 +60,28 @@ def _write_step_metrics(step: int, t0: float, sdk_dispatched: int,
         pass  # never block execution on metrics write failure
 
 
+def _fire_outcome(st_data: dict, outcome: str, elapsed_s: float,
+                  aawo_repo_path: Optional[str]) -> None:
+    """Fire-and-forget AAWO outcome recording in a daemon thread."""
+    if aawo_repo_path is None:
+        return
+    routing = st_data.get("_aawo_routing")
+    if not isinstance(routing, dict):
+        return
+    agent_id = routing.get("agent_id")
+    if not agent_id:
+        return
+    import threading
+    from utils.aawo_bridge import record_outcome as _record_outcome
+    desc = st_data.get("description", "")
+    t = threading.Thread(
+        target=_record_outcome,
+        args=(agent_id, outcome, desc, elapsed_s),
+        daemon=True,
+    )
+    t.start()
+
+
 class Executor:
     """Advances subtasks through Pending → Running → Verified."""
 
@@ -275,6 +297,8 @@ class Executor:
                         st_name, task_name, branch_name,
                         st_data.get("description", ""), output, step,
                     )
+                    _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
+                                  self._aawo_repo_path)
                 else:
                     logger.warning("sdk_tool_failed step=%d task=%s subtask=%s error=%.100s", step, task_name, st_name, output)
                     # SDK tool run failed — escalate to subprocess or dice-roll
@@ -325,6 +349,8 @@ class Executor:
                             st_name, task_name, branch_name,
                             st_data.get("description", ""), output, step,
                         )
+                        _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
+                                      self._aawo_repo_path)
                     # On failure: stay Running → will retry next step or self-heal
 
         # ── SDK jobs (async Anthropic API, no subprocess) ─────────────────────
@@ -352,6 +378,8 @@ class Executor:
                     logger.info("subtask_%s step=%d task=%s subtask=%s via=sdk_direct", new_status.lower(), step, task_name, st_name)
                     if not self.review_mode:
                         self._roll_up(dag, task_name, branch_name)
+                    _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
+                                  self._aawo_repo_path)
                 else:
                     logger.warning("sdk_direct_failed step=%d task=%s subtask=%s error=%.100s", step, task_name, st_name, output)
                     # SDK failed — dice-roll so pipeline isn't blocked

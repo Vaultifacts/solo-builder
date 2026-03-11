@@ -160,6 +160,41 @@ def resolve_executor_config(agent_id: str) -> Optional[dict]:
     return _load_mapping().get(agent_id)
 
 
+def record_outcome(agent_id: str, outcome: str, description: str = "",
+                   duration_s: Optional[float] = None) -> bool:
+    """
+    Fire-and-forget: notify AAWO of a subtask outcome for agent feedback tuning.
+
+    outcome must be 'success' or 'fail'. Returns True if the subprocess exited 0,
+    False on any error. Always safe to call — never raises.
+    """
+    path = _aawo_path()
+    if path is None:
+        return False
+    cfg = _load_settings()
+    timeout = cfg.get("AAWO_TIMEOUT", 10)
+    cmd = ["python", str(path), "record-outcome",
+           "--agent-id", agent_id,
+           "--outcome", outcome,
+           "--task", description[:200]]
+    if duration_s is not None:
+        cmd += ["--duration", str(round(duration_s, 3))]
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, shell=False,
+        )
+        if result.returncode != 0:
+            logger.debug("aawo_bridge: record_outcome non-zero exit %d", result.returncode)
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        logger.debug("aawo_bridge: record_outcome timeout")
+        return False
+    except OSError as exc:
+        logger.debug("aawo_bridge: record_outcome error %s", exc)
+        return False
+
+
 def enrich_subtask(st_data: dict, description: str, repo_path: str = ".") -> dict:
     """
     Consult AAWO routing and inject action_type/tools into st_data if not already set.
