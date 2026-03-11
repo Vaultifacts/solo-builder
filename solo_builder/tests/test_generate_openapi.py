@@ -142,6 +142,23 @@ class TestBuildSpecPaths(unittest.TestCase):
     def test_metrics_export_present(self):
         self.assertIn("/metrics/export", self.paths)
 
+    def test_export_get_present(self):
+        self.assertIn("/export", self.paths)
+        self.assertIn("get", self.paths["/export"])
+
+    def test_export_post_present(self):
+        self.assertIn("/export", self.paths)
+        self.assertIn("post", self.paths["/export"])
+
+    def test_stats_present(self):
+        self.assertIn("/stats", self.paths)
+
+    def test_search_present(self):
+        self.assertIn("/search", self.paths)
+
+    def test_journal_present(self):
+        self.assertIn("/journal", self.paths)
+
 
 # ---------------------------------------------------------------------------
 # _ROUTES catalogue completeness
