@@ -449,3 +449,8 @@
 {"ts": 1773256996, "step": 1, "elapsed_s": 0.0, "sdk_dispatched": 0, "sdk_succeeded": 0, "sdk_success_rate": null, "started": 0, "verified": 0}
 {"ts": 1773256996, "step": 1, "elapsed_s": 0.0, "sdk_dispatched": 0, "sdk_succeeded": 0, "sdk_success_rate": null, "started": 0, "verified": 0}
 {"ts": 1773256996, "step": 1, "elapsed_s": 0.0, "sdk_dispatched": 0, "sdk_succeeded": 0, "sdk_success_rate": null, "started": 0, "verified": 0}
+{"ts": 1773258609, "step": 1, "elapsed_s": 0.001, "sdk_dispatched": 0, "sdk_succeeded": 0, "sdk_success_rate": null, "started": 0, "verified": 1}
+{"ts": 1773258609, "step": 1, "elapsed_s": 0.001, "sdk_dispatched": 0, "sdk_succeeded": 0, "sdk_success_rate": null, "started": 0, "verified": 1}
+{"ts": 1773258609, "step": 1, "elapsed_s": 0.0, "sdk_dispatched": 0, "sdk_succeeded": 0, "sdk_success_rate": null, "started": 0, "verified": 0}
+{"ts": 1773258609, "step": 1, "elapsed_s": 0.002, "sdk_dispatched": 1, "sdk_succeeded": 1, "sdk_success_rate": 1.0, "started": 0, "verified": 1}
+{"ts": 1773258615, "step": 1, "elapsed_s": 0.002, "sdk_dispatched": 1, "sdk_succeeded": 1, "sdk_success_rate": 1.0, "started": 0, "verified": 1}
