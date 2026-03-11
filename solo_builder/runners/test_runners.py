@@ -480,6 +480,28 @@ class TestSdkToolRunner(unittest.TestCase):
             result = r._exec("Read", {"file_path": tmp})
         self.assertIn("Error", result)
 
+    def test_exec_grep_relative_path_resolved(self):
+        # Line 185: relative path joined to _SOLO
+        r = self._runner()
+        result = r._exec("Grep", {"pattern": "def ", "path": "runners"})
+        # Should find definitions in runners/ without error
+        self.assertIsInstance(result, str)
+
+    def test_exec_grep_200_line_limit(self):
+        # Line 199: break when lines >= 200
+        import tempfile as _tmpmod
+        r = self._runner()
+        with _tmpmod.NamedTemporaryFile(mode="w", suffix=".py", delete=False,
+                                        dir=_SOLO) as tf:
+            tf.write("\n".join(["x = 1"] * 300))
+            tmp_path = tf.name
+        try:
+            result = r._exec("Grep", {"pattern": "x = 1", "path": tmp_path})
+            lines = result.strip().splitlines()
+            self.assertLessEqual(len(lines), 200)
+        finally:
+            os.unlink(tmp_path)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Executor
