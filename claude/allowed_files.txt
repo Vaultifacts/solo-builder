@@ -131,6 +131,7 @@ solo_builder/tests/test_validators.py
 tools/dep_audit.py
 solo_builder/tests/test_dep_audit.py
 claude/VERIFY.json
+claude/TASK_DONE.md
 solo_builder/tests/test_dag_cmds_tools.py
 solo_builder/tests/test_middleware.py
 solo_builder/tests/test_runtime_cfg.py
