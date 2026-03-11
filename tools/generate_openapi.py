@@ -52,12 +52,28 @@ _ROUTES: list[dict] = [
          "state_file_exists":  {"type": "boolean"}, "total_subtasks":   {"type": "integer"},
      }}},
     # Metrics
-    {"path": "/metrics",        "method": "GET",    "tag": "Metrics",    "summary": "Run health + analytics history"},
-    {"path": "/metrics/summary","method": "GET",    "tag": "Metrics",    "summary": "Executor step metrics (p50/p95/p99/latency buckets)"},
+    {"path": "/metrics",        "method": "GET",    "tag": "Metrics",    "summary": "Run health + analytics history",
+     "response": {"type": "object", "properties": {
+         "steps":   {"type": "integer"}, "healed":   {"type": "integer"},
+         "verified":{"type": "integer"},
+     }}},
+    {"path": "/metrics/summary","method": "GET",    "tag": "Metrics",    "summary": "Executor step metrics (p50/p95/p99/latency buckets)",
+     "response": {"type": "object", "properties": {
+         "count":  {"type": "integer"}, "p50": {"type": "number"},
+         "p99":    {"type": "number"},  "min": {"type": "number"},
+         "max":    {"type": "number"},
+     }}},
     {"path": "/metrics/export", "method": "GET",    "tag": "Metrics",    "summary": "Export step history as CSV or JSON",
      "query": [("format", "string", "Output format: csv or json (default json)")]},
-    {"path": "/agents",         "method": "GET",    "tag": "Metrics",    "summary": "Agent statistics and ETA forecast"},
-    {"path": "/forecast",       "method": "GET",    "tag": "Metrics",    "summary": "Detailed completion forecast"},
+    {"path": "/agents",         "method": "GET",    "tag": "Metrics",    "summary": "Agent statistics and ETA forecast",
+     "response": {"type": "object", "properties": {
+         "agents":   {"type": "array", "items": {"type": "object"}},
+         "forecast": {"type": "string"},
+     }}},
+    {"path": "/forecast",       "method": "GET",    "tag": "Metrics",    "summary": "Detailed completion forecast",
+     "response": {"type": "object", "properties": {
+         "forecast": {"type": "string"}, "pct_done": {"type": "number"},
+     }}},
     # History
     {"path": "/history",        "method": "GET",    "tag": "History",    "summary": "Paged activity log",
      "query": [("since", "integer", "Return events after this step number"),
@@ -85,15 +101,25 @@ _ROUTES: list[dict] = [
     {"path": "/tasks/{task_id}/progress", "method": "GET", "tag": "Tasks", "summary": "Branch progress for a task"},
     {"path": "/tasks/{task_id}/reset",    "method": "POST","tag": "Tasks", "summary": "Reset non-Verified subtasks"},
     # Branches
-    {"path": "/branches",       "method": "GET",    "tag": "Branches",   "summary": "List all branches"},
-    {"path": "/branches/{task_id}", "method": "GET", "tag": "Branches","summary": "Get branches and subtasks for a specific task"},
+    {"path": "/branches",       "method": "GET",    "tag": "Branches",   "summary": "List all branches",
+     "response": {"type": "object", "properties": {
+         "branches": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/branches/{task_id}", "method": "GET", "tag": "Branches","summary": "Get branches and subtasks for a specific task",
+     "response": {"type": "object", "properties": {
+         "task_id":  {"type": "string"}, "branches": {"type": "object"},
+     }}},
     # Subtasks
     {"path": "/subtasks",       "method": "GET",    "tag": "Subtasks",   "summary": "List all subtasks",
      "response": {"type": "object", "properties": {
          "subtasks": {"type": "array", "items": {"type": "object"}},
      }}},
     {"path": "/subtasks/bulk-reset", "method": "POST","tag": "Subtasks", "summary": "Bulk-reset selected subtasks"},
-    {"path": "/stalled",        "method": "GET",    "tag": "Subtasks",   "summary": "List stalled subtasks (Running >= threshold)"},
+    {"path": "/stalled",        "method": "GET",    "tag": "Subtasks",   "summary": "List stalled subtasks (Running >= threshold)",
+     "response": {"type": "object", "properties": {
+         "stalled": {"type": "array", "items": {"type": "object"}},
+         "count":   {"type": "integer"},
+     }}},
     # Triggers
     {"path": "/verify",         "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask verification",
      "body": {"subtask": {"type": "string", "description": "Subtask name to verify"}}},
@@ -110,11 +136,18 @@ _ROUTES: list[dict] = [
     {"path": "/reset",          "method": "POST",   "tag": "Control",    "summary": "Reset workflow state"},
     {"path": "/snapshot",       "method": "POST",   "tag": "Control",    "summary": "Create state snapshot"},
     # Config
-    {"path": "/config",         "method": "GET",    "tag": "Config",     "summary": "Get current configuration"},
+    {"path": "/config",         "method": "GET",    "tag": "Config",     "summary": "Get current configuration",
+     "response": {"type": "object", "properties": {
+         "settings": {"type": "object"},
+     }}},
     {"path": "/config",         "method": "POST",   "tag": "Config",     "summary": "Update configuration",
      "body": {"key": {"type": "string"}, "value": {}}},
     # DAG
-    {"path": "/dag/summary",    "method": "GET",    "tag": "DAG",        "summary": "DAG pipeline summary with per-task breakdown"},
+    {"path": "/dag/summary",    "method": "GET",    "tag": "DAG",        "summary": "DAG pipeline summary with per-task breakdown",
+     "response": {"type": "object", "properties": {
+         "total":    {"type": "integer"}, "verified": {"type": "integer"},
+         "pending":  {"type": "integer"}, "tasks":    {"type": "array", "items": {"type": "object"}},
+     }}},
     {"path": "/dag/import",     "method": "POST",   "tag": "DAG",        "summary": "Import DAG from JSON",
      "body": {"dag": {"type": "object", "description": "DAG structure to import"}}},
     {"path": "/dag/export",     "method": "GET",    "tag": "DAG",        "summary": "Export DAG as JSON"},
@@ -126,23 +159,70 @@ _ROUTES: list[dict] = [
      "query": [("q", "string", "Keyword to search for")]},
     {"path": "/journal", "method": "GET",  "tag": "Export", "summary": "Last 30 journal entries"},
     # Health (detailed checks)
-    {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts"},
-    {"path": "/health/context-window",   "method": "GET", "tag": "Health", "summary": "Context window line-count check (CLAUDE.md / MEMORY.md / JOURNAL.md)"},
-    {"path": "/health/threat-model",     "method": "GET", "tag": "Health", "summary": "Threat model freshness check (SE-001 to SE-006)"},
-    {"path": "/health/slo",              "method": "GET", "tag": "Health", "summary": "SLO status: SLO-003 success rate + SLO-005 latency median"},
-    {"path": "/health/prompt-regression","method": "GET", "tag": "Health", "summary": "Prompt template regression check (AI-002, AI-003)"},
-    {"path": "/health/debt-scan",        "method": "GET", "tag": "Health", "summary": "Code debt scan: TODO/FIXME/HACK/XXX markers (capped at 20)"},
-    {"path": "/health/ci-quality",       "method": "GET", "tag": "Health", "summary": "CI quality gate tool inventory (6 configured tools)"},
-    {"path": "/health/pre-release",      "method": "GET", "tag": "Health", "summary": "Pre-release gate inventory (builtin + VERIFY.json gates)"},
-    {"path": "/health/live-summary",     "method": "GET", "tag": "Health", "summary": "Live in-process health summary (threat-model + context-window + slo)"},
+    {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts",
+     "response": {"type": "object", "properties": {
+         "overall_ok": {"type": "boolean"}, "checks": {"type": "object"},
+     }}},
+    {"path": "/health/context-window",   "method": "GET", "tag": "Health", "summary": "Context window line-count check (CLAUDE.md / MEMORY.md / JOURNAL.md)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "files": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/health/threat-model",     "method": "GET", "tag": "Health", "summary": "Threat model freshness check (SE-001 to SE-006)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "gaps": {"type": "array", "items": {"type": "string"}},
+     }}},
+    {"path": "/health/slo",              "method": "GET", "tag": "Health", "summary": "SLO status: SLO-003 success rate + SLO-005 latency median",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "violations": {"type": "array", "items": {"type": "string"}},
+     }}},
+    {"path": "/health/prompt-regression","method": "GET", "tag": "Health", "summary": "Prompt template regression check (AI-002, AI-003)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "failures": {"type": "array", "items": {"type": "string"}},
+     }}},
+    {"path": "/health/debt-scan",        "method": "GET", "tag": "Health", "summary": "Code debt scan: TODO/FIXME/HACK/XXX markers (capped at 20)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "count": {"type": "integer"},
+         "items": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/health/ci-quality",       "method": "GET", "tag": "Health", "summary": "CI quality gate tool inventory (6 configured tools)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "tools": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/health/pre-release",      "method": "GET", "tag": "Health", "summary": "Pre-release gate inventory (builtin + VERIFY.json gates)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "gates": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/health/live-summary",     "method": "GET", "tag": "Health", "summary": "Live in-process health summary (threat-model + context-window + slo)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "checks": {"type": "object"},
+     }}},
     # Policy
-    {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json"},
-    {"path": "/policy/scope",            "method": "GET", "tag": "Policy", "summary": "Tool scope policy rules from settings.json"},
+    {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json",
+     "response": {"type": "object", "properties": {
+         "rules": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/policy/scope",            "method": "GET", "tag": "Policy", "summary": "Tool scope policy rules from settings.json",
+     "response": {"type": "object", "properties": {
+         "rules": {"type": "array", "items": {"type": "object"}},
+     }}},
     # Cache (extended)
-    {"path": "/cache",                   "method": "GET",    "tag": "Cache",    "summary": "Priority cache contents"},
-    {"path": "/cache",                   "method": "DELETE", "tag": "Cache",    "summary": "Clear the priority cache (DELETE variant)"},
+    {"path": "/cache",                   "method": "GET",    "tag": "Cache",    "summary": "Priority cache contents",
+     "response": {"type": "object", "properties": {
+         "entries":              {"type": "integer"}, "cumulative_hits":    {"type": "integer"},
+         "cumulative_misses":    {"type": "integer"}, "cumulative_hit_rate":{"type": "number"},
+         "estimated_tokens_held":{"type": "integer"}, "cache_dir":          {"type": "string"},
+     }}},
+    {"path": "/cache",                   "method": "DELETE", "tag": "Cache",    "summary": "Clear the priority cache (DELETE variant)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "deleted": {"type": "integer"}, "errors": {"type": "integer"},
+     }}},
     {"path": "/cache/export",            "method": "GET",    "tag": "Cache",    "summary": "Export cache as JSON"},
-    {"path": "/cache/history",           "method": "GET",    "tag": "Cache",    "summary": "Cache operation history"},
+    {"path": "/cache/history",           "method": "GET",    "tag": "Cache",    "summary": "Cache operation history",
+     "response": {"type": "object", "properties": {
+         "sessions":          {"type": "array", "items": {"type": "object"}},
+         "cumulative_hits":   {"type": "integer"},
+         "cumulative_misses": {"type": "integer"},
+     }}},
     # Tasks (extended)
     {"path": "/tasks/{task_id}/branches",  "method": "GET",  "tag": "Tasks",  "summary": "List branches for a task"},
     {"path": "/tasks/{task_id}/subtasks",  "method": "GET",  "tag": "Tasks",  "summary": "List subtasks for a task"},
@@ -164,8 +244,16 @@ _ROUTES: list[dict] = [
     # History (extended)
     {"path": "/history/export",            "method": "GET",  "tag": "History",  "summary": "Export activity history as CSV or JSON"},
     # Control (extended)
-    {"path": "/run",                       "method": "POST", "tag": "Control",  "summary": "Trigger one execution cycle"},
-    {"path": "/run/history",               "method": "GET",  "tag": "Control",  "summary": "History of run cycles"},
+    {"path": "/run",                       "method": "POST", "tag": "Control",  "summary": "Trigger one execution cycle",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "reason": {"type": "string"},
+     }}},
+    {"path": "/run/history",               "method": "GET",  "tag": "Control",  "summary": "History of run cycles",
+     "response": {"type": "object", "properties": {
+         "records":     {"type": "array", "items": {"type": "object"}},
+         "count":       {"type": "integer"},
+         "total_steps": {"type": "integer"},
+     }}},
     # Triggers (extended)
     {"path": "/add_task",       "method": "POST", "tag": "Triggers", "summary": "Add a new task to the DAG",
      "body": {"spec": {"type": "string", "description": "Task specification / goal"}}},

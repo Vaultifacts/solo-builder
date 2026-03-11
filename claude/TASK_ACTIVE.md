@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-396
+TASK-397
 
-HistoryBlueprintCoverage: add Flask test-client tests for history.py — /history, /history/count, /history/export, /diff, /dag/diff, /run/history
+OpenAPIResponseSchemas2: add response schemas to 15+ more high-value routes in generate_openapi.py
