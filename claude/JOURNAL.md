@@ -540,3 +540,4 @@
 - [2026-03-11T22:20:47.0146384Z] state transition: done/RESEARCH -> build/DEV
 - [2026-03-11T22:21:02.5616833Z] state transition: build/DEV -> verify/AUDITOR
 - [2026-03-11T22:21:11.5061108Z] state transition: verify/AUDITOR -> done/RESEARCH
+- [2026-03-11T22:29:11.1695507Z] Starting TASK-404 via tools/start_task.ps1 with automated preflight gating.

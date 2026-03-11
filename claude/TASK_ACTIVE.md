@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-403
+TASK-404
 
-commands/ coverage push — dag_cmds.py, query_cmds.py, dispatcher.py: targeted tests to boost from current low coverage
+OpenAPI spec drift guard — add missing routes to generate_openapi.py and add test asserting all Flask routes are covered
