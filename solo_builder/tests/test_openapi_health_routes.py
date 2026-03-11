@@ -30,7 +30,6 @@ _ROUTES = _mod._ROUTES
 
 _HEALTH_ROUTES = [
     "/health/detailed",
-    "/health/gates",
     "/health/context-window",
     "/health/threat-model",
     "/health/slo",
@@ -59,8 +58,8 @@ class TestHealthRoutesInCatalogue(unittest.TestCase):
     def test_health_detailed_present(self):
         self.assertIn("/health/detailed", self._route_paths())
 
-    def test_health_gates_present(self):
-        self.assertIn("/health/gates", self._route_paths())
+    def test_executor_gates_present(self):
+        self.assertIn("/executor/gates", self._route_paths())
 
     def test_health_context_window_present(self):
         self.assertIn("/health/context-window", self._route_paths())
