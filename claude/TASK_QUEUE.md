@@ -2764,3 +2764,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-396
+Goal: HistoryBlueprintCoverage: add Flask test-client tests for history.py — /history, /history/count, /history/export, /diff, /dag/diff, /run/history
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
