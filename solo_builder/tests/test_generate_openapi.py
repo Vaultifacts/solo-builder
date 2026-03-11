@@ -187,6 +187,11 @@ class TestBuildSpecPaths(unittest.TestCase):
         self.assertIn("/config/reset", self.paths)
         self.assertIn("post", self.paths["/config/reset"])
 
+    def test_phantom_routes_absent(self):
+        """Phantom routes that have no Flask blueprint must NOT appear in spec."""
+        for phantom in ("/cache/stats", "/cache/clear", "/webhook/test", "/health/executor-gates"):
+            self.assertNotIn(phantom, self.paths, f"Phantom route still in spec: {phantom}")
+
     def test_add_task_has_request_body(self):
         op = self.paths["/add_task"]["post"]
         self.assertIn("requestBody", op)
@@ -238,6 +243,7 @@ class TestRoutesCatalogue(unittest.TestCase):
             seen.add(key)
 
     def test_at_least_90_routes(self):
+        # 92 real routes after removing 4 phantom entries (cache/stats, cache/clear, webhook/test, health/executor-gates)
         self.assertGreaterEqual(len(_ROUTES), 90)
 
 
