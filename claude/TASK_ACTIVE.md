@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-389
+TASK-390
 
-OpenAPIDriftGuard: add test that imports Flask app.url_map and asserts every registered route appears in _ROUTES
+OpenAPIPathParameters: add parameters schemas (path params + key query params) to endpoints in generate_openapi.py
