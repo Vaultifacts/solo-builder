@@ -1,5 +1,24 @@
 # Changelog
 
+## v6.14.0 — 2026-03-11  TASK-396–398 sprint — history coverage, OpenAPI 33 schemas, runner 98%
+
+- **TASK-396 HistoryBlueprintCoverage**: 49 new Flask test-client tests across 6 classes covering all of `history.py`:
+  - `GET /history` — pagination, since/status/subtask/task/branch filters, review count, events sorted descending
+  - `GET /history/count` — total/filtered/by_status breakdown, all filter params
+  - `GET /history/export` — CSV/JSON format, since/limit/subtask/status/task/branch filters, Content-Disposition header
+  - `GET /diff` — no-backup (empty changes), backup present (detects status transitions), no-change, step numbers
+  - `GET /dag/diff` — missing `from` returns 400, detects status transition via history arrays, no-change
+  - `GET /run/history` — meta_history records, cumulative sums, since/limit, step_index starts at 1
+- **TASK-397 OpenAPIResponseSchemas2**: Added `"response"` schemas to **25 more routes** (was 8, now **33 total**):
+  - `/metrics`, `/metrics/summary`, `/agents`, `/forecast`, `/stalled`, `/config`, `/dag/summary`
+  - `/branches`, `/branches/{task_id}`, `/cache` (GET+DELETE), `/cache/history`
+  - `/run`, `/run/history`; all 9 `/health/*` routes; both `/policy/*` routes
+- **TASK-398 RunnerCoveragePush**: 19 new tests targeting exception-handling paths:
+  - `cache.py`: **86% → 98%** — mock-based tests for mkdir OSError, `set()` write failure, `clear()` unlink OSError, `size()` glob failure, `persist_stats()` write failure
+  - `executor.py`: `_fire_outcome()` early-return paths (no routing, no agent_id); `_update_task()` Running branch; `execute_step()` max_per_step break
+
+---
+
 ## v6.10.0 — 2026-03-11  TASK-393–395 sprint — blueprint + agent coverage, OpenAPI required arrays
 
 - **TASK-393 BlueprintBodyCoverage**: 56 new Flask test-client tests across 11 test classes:
