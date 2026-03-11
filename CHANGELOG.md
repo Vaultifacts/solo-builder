@@ -1,5 +1,67 @@
 # Changelog
 
+## v5.95.0 — 2026-03-11  AawoTests3 — detector/handoff/snapshot_builder/lifecycle gap coverage + 86% coverage
+
+- **1769 tests**, all passing; 0 failures (AAWO: 968, Solo Builder: 1769)
+- AAWO v1.1.2 released
+- AAWO coverage baseline: **86% overall** (up from 85%); `lifecycle_manager.py` now **100%**; `selector.py`/`task_router.py`/`registry_loader.py`/`snapshot_normalizer.py` at 100%
+- AAWO `test_snapshot_detectors.py` +28: `TestScanRiskFactors` +3 (credential detection via `tempfile.TemporaryDirectory(prefix="aawo_")` to avoid pytest path naming conflict, test-file skip, env-var bypass), `TestDetectSignalsGaps` (7: has_makefile/config_files/external_api/user_data/ci-gitlab/docker-compose/all-false), `TestClassifyStageGaps` (7: early stage score=1, all 4 confidence values, high/very_high adds 2), `TestDetectFrameworksGaps` (6: django/flask/express/nextjs/sqlalchemy/no-duplicates), `TestReadOperationalSignals` (5: keys, defaults, file count, bool type, empty)
+- AAWO `test_handoff_manager.py` +16: `TestGetHandoffDetail` (5: all keys, receiving_agent_id, last_event_type handoff_created/accepted, no-file unknown), `TestCountPendingHandoffs` (5: no-file=0, accepted/rejected not counted, mixed), `TestListHandoffStatuses` (6: basic, sorted, pending_only, source filter, required fields)
+- AAWO `test_snapshot_builder.py` +23: `TestHasUncommitted` (4: porcelain nonempty/empty/timeout/FileNotFoundError), `TestRepoUnchanged` (4: timeout/FileNotFoundError/head-differs/head-matches), `TestRunStepErrors` (2: unknown detector function via `_is_ignored`, unknown module), `TestBuildSnapshotIncremental` (4: early return, captured_at updated, full pipeline on change, full pipeline on no prior), `TestLoadLatestSnapshot` stubs
+- AAWO `test_lifecycle.py` +5: `TestConfiguredGraceCycles` (3: returns int, value=2 from real YAML, zero when file missing), `TestGraceCyclesForAgentFallback` (2: OSError triggers fallback, returns int)
+- **Key testing insight**: `scan_risk_factors` skips files whose full path contains `"test"` — pytest `tmp_path` always embeds `test_funcname` in the directory name, so credential-detection tests must use `tempfile.TemporaryDirectory(prefix="aawo_cred_")` to avoid false-negative
+
+---
+
+## v5.94.0 — 2026-03-11  AawoTests2 — selector/lifecycle/score_engine/router/health/dep resolver tests
+
+- **1769 tests**, all passing; 0 failures (AAWO: 797, Solo Builder: 1769)
+- AAWO v1.1.0 released
+- AAWO `test_selector.py` +8: cap edge cases (very_high=5, unknown defaults=5, exact boundary, highest-score-first, no candidates, below-min excluded) + overlap resolver (vetoed excluded, returns same list)
+- AAWO `test_lifecycle.py` +7: `TestEventTriggeredActivation` — triggered reason `event_triggered:<signal>` vs `score_threshold_met`, multiple triggers, already-active no event, None=empty, grace cleared on return
+- AAWO `test_score_engine.py` +18: exact ±2.0 delta per signal verified for all 13 signals across all 3 conditional agents + always-active bonuses; `has_migrations` and `has_background_jobs` confirmed to produce zero conditional delta
+- AAWO `test_task_router.py` +9: priority tiebreak (2), edge cases — empty/whitespace, single-agent, all fields, score=keyword_count, fallback reasoning non-empty, no-keyword agent never wins
+- AAWO `test_health_monitor.py` (new): 22 tests — `_load_outcome_stats` (10) + `get_health_report` (12 incl. all required keys, active_agents, grace_agents, outcome_stats, pending_handoffs, snapshot_count)
+- AAWO `test_dependency_resolver.py` (new): 17 tests — hard requires (promotion, inactive no-pull, missing dep no crash, multiple deps, negative promoted to 1.0), soft prefers (bonus stacks, vetoed no bonus), combined
+
+---
+
+## v5.93.0 — 2026-03-11  AawoTests — snapshot_builder + runtime_controller unit tests + explain auto-width
+
+- **1769 tests**, all passing; 0 failures (AAWO: 647, Solo Builder: 1769)
+- AAWO v1.0.7 released
+- AAWO `test_snapshot_builder.py`: 43 unit tests — `_validate_requires` (7), `_validate_produces` (6), `_hash_snapshot` (6), `_to_model` (13), `build_snapshot` (4); first dedicated coverage of the detector pipeline entry point
+- AAWO `test_runtime_controller.py`: 24 unit tests — `_reconstruct_snapshot` (10), `_snapshot_to_dict` (7), `_compute_event_triggers` (5), `run_cycle` integration via `cycle_isolated` (10)
+- AAWO `explain --width`: default changed from hardcoded 120 to `shutil.get_terminal_size(fallback=(120,40)).columns` — reasoning column now auto-fits the actual terminal; explicit `--width N` still overrides
+- AAWO `test_event_detector.py` (45 tests) + `test_state_store.py` (22 tests) added in prior sprint (v1.0.7 includes all)
+
+---
+
+## v5.92.0 — 2026-03-11  AawoUx — visual consistency pass + route annotation
+
+- **1769 tests**, all passing; 0 failures (AAWO: 556, Solo Builder: 1769)
+- AAWO v1.0.4 released
+- AAWO `explain --agent`: outcome feedback line now shows `■□` bar + rate% + bias tag — same format as `explain --all` and `health`
+- AAWO `select` scores table: fixed-width `score` / `bias` columns when any agent has outcome bias; `-` for zero-bias agents
+- AAWO `handoff-list` header: appends `(■=agent success rate)` legend when any entry has outcome stats
+- AAWO `route`: outcome feedback line appended after routing decision showing selected agent's `■□` bar + rate%; completes coverage across all agent-facing commands
+- AAWO `retention_manager`: dedicated test suite (`test_retention_manager.py`) — `prune_artifacts`, `_prune_dir`, `prune_logs`, `_load_limits`
+
+---
+
+## v5.91.0 — 2026-03-11  AawoPolish — handoff-list --source filter + explain-all outcome bar + health bar
+
+- **1769 tests**, all passing; 0 failures (AAWO: 536, Solo Builder: 1769)
+- AAWO `handoff-list --source solo_builder`: filters handoff log to outcome-derived records; `list_handoff_statuses(source=)` tracks `from_agent_id` per task — lets Solo Builder query only its own dispatched handoffs
+- AAWO `select` score table: shows `bias=±N.N` suffix when outcome bias is non-zero for an agent
+- AAWO `explain --all` outcome table: sorted worst→best by success rate; visual `■□` bar (10 blocks); `bias=±N.N` tag
+- AAWO `health` outcome table: same `■□` bar + sort applied; consistent visual language across all three output surfaces
+- AAWO `handoff-list`: inline `[■■□□□□□□□□] 20%` annotation per line when agent has recorded outcomes
+- AAWO v1.0.2 released (`VERSION` + `CHANGELOG.md`)
+- Test isolation fix: `test_score_engine_breakdown._bd()` and `TestScoreAgentsBias` baselines patch `_load_outcome_bias={}` to prevent runtime `outcomes.jsonl` contaminating arithmetic assertions
+
+---
+
 ## v5.90.0 — 2026-03-11  FeedbackLoop — bidirectional AAWO outcome recording + dashboard Outcomes row
 
 - **1769 tests**, all passing; 0 failures
