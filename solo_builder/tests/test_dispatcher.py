@@ -416,5 +416,195 @@ class TestCmdSet(unittest.TestCase):
         self.assertIn("Invalid", combined)
 
 
+# ---------------------------------------------------------------------------
+# Additional _cmd_set coverage (lines 248, 273, 281, 293-334)
+# ---------------------------------------------------------------------------
+
+class TestCmdSetAdditional(unittest.TestCase):
+
+    def setUp(self):
+        self.cli = _FakeCLI()
+
+    def _set(self, args):
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_set(args)
+
+    def test_set_dispatch_via_handle_command(self):
+        """Line 162: handle_command routes 'set X=Y' to _cmd_set."""
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli.handle_command("set STALL_THRESHOLD=6")
+        self.assertEqual(self.cli._runtime_cfg["STALL_THRESHOLD"], 6)
+
+    def test_snapshot_interval_below_one_error(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_set("SNAPSHOT_INTERVAL=0")
+        self.assertIn("Invalid", "\n".join(printed))
+
+    def test_auto_step_delay_negative_error(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_set("AUTO_STEP_DELAY=-1")
+        self.assertIn("Invalid", "\n".join(printed))
+
+    def test_auto_save_interval_below_one_error(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_set("AUTO_SAVE_INTERVAL=0")
+        self.assertIn("Invalid", "\n".join(printed))
+
+    def test_anthropic_max_tokens_valid(self):
+        self._set("ANTHROPIC_MAX_TOKENS=2048")
+        self.assertEqual(self.cli.executor.anthropic.max_tokens, 2048)
+
+    def test_anthropic_max_tokens_out_of_range(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_set("ANTHROPIC_MAX_TOKENS=99999")
+        self.assertIn("Invalid", "\n".join(printed))
+
+    def test_anthropic_model(self):
+        self._set("ANTHROPIC_MODEL=claude-opus-4-6")
+        self.assertEqual(self.cli.executor.anthropic.model, "claude-opus-4-6")
+
+    def test_claude_subprocess_off(self):
+        self._set("CLAUDE_SUBPROCESS=off")
+        self.assertFalse(self.cli.executor.claude.available)
+
+    def test_claude_subprocess_on(self):
+        self.cli.executor.claude.available = False
+        self._set("CLAUDE_SUBPROCESS=on")
+        self.assertTrue(self.cli.executor.claude.available)
+
+    def test_review_mode_on(self):
+        self._set("REVIEW_MODE=on")
+        self.assertTrue(self.cli.executor.review_mode)
+
+    def test_review_mode_off(self):
+        self.cli.executor.review_mode = True
+        self._set("REVIEW_MODE=off")
+        self.assertFalse(self.cli.executor.review_mode)
+
+    def test_webhook_url_valid(self):
+        self._set("WEBHOOK_URL=https://example.com/hook")
+        self.assertEqual(self.cli._runtime_cfg["WEBHOOK_URL"], "https://example.com/hook")
+
+    def test_webhook_url_non_http_warns(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_set("WEBHOOK_URL=ftp://bad")
+        self.assertIn("Warning", "\n".join(printed))
+
+    def test_webhook_url_updates_sb_module(self):
+        """WEBHOOK_URL propagated to solo_builder_cli module if loaded."""
+        import types
+        fake_sb = types.SimpleNamespace(WEBHOOK_URL="")
+        import sys as _sys
+        _sys.modules["solo_builder_cli"] = fake_sb
+        try:
+            self._set("WEBHOOK_URL=https://hook.example.com")
+            self.assertEqual(fake_sb.WEBHOOK_URL, "https://hook.example.com")
+        finally:
+            _sys.modules.pop("solo_builder_cli", None)
+
+    def test_unknown_key_with_equals_prints_error(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_set("NONEXISTENT_KEY=value")
+        combined = "\n".join(printed)
+        self.assertIn("Unknown key", combined)
+
+
+# ---------------------------------------------------------------------------
+# _run_aawo_session_start
+# ---------------------------------------------------------------------------
+
+class TestRunAawoSessionStart(unittest.TestCase):
+
+    def setUp(self):
+        self.cli = _FakeCLI()
+
+    def test_returns_early_when_no_aawo_path(self):
+        with patch("utils.aawo_bridge._aawo_path", return_value=None):
+            self.cli._run_aawo_session_start()  # should not raise
+
+    def test_starts_thread_when_path_available(self):
+        import threading
+        threads_before = len(threading.enumerate())
+        with patch("utils.aawo_bridge._aawo_path", return_value="/some/path"), \
+             patch("utils.aawo_bridge.run_cycle", return_value=True), \
+             patch("builtins.print"):
+            self.cli._run_aawo_session_start()
+        # Thread starts (daemon); just verify no exception
+
+
+# ---------------------------------------------------------------------------
+# start() method
+# ---------------------------------------------------------------------------
+
+class TestStartMethod(unittest.TestCase):
+
+    def setUp(self):
+        self.cli = _FakeCLI()
+        self.cli._run_aawo_session_start = MagicMock()
+        # Inject STATE_PATH into dispatcher module (comes from cli.py at runtime)
+        patch.object(dispatcher_module, "STATE_PATH", new="/tmp/fake_state.json",
+                     create=True).start()
+        self.addCleanup(patch.stopall)
+
+    def test_headless_no_state_runs_auto_and_saves(self):
+        with patch("commands.dispatcher.os.path.exists", return_value=False), \
+             patch("builtins.print"), patch("time.sleep"):
+            self.cli.start(headless=True, auto_steps=3)
+        self.cli._cmd_auto.assert_called_once_with("3")
+        self.cli.save_state.assert_called()
+
+    def test_headless_no_steps_passes_empty_string(self):
+        with patch("commands.dispatcher.os.path.exists", return_value=False), \
+             patch("builtins.print"), patch("time.sleep"):
+            self.cli.start(headless=True)
+        self.cli._cmd_auto.assert_called_once_with("")
+
+    def test_no_resume_flag_skips_state_load(self):
+        with patch("commands.dispatcher.os.path.exists", return_value=True), \
+             patch("builtins.print"), patch("time.sleep"):
+            self.cli.start(headless=True, auto_steps=1, no_resume=True)
+        self.cli.load_state.assert_not_called()
+
+    def test_headless_with_state_resumes(self):
+        import json as _json
+        state_data = {"step": 3, "dag": {}}
+        with patch("commands.dispatcher.os.path.exists", return_value=True), \
+             patch("builtins.open", unittest.mock.mock_open(
+                 read_data=_json.dumps(state_data))), \
+             patch("commands.dispatcher.dag_stats",
+                   return_value={"verified": 0, "total": 0}, create=True), \
+             patch("builtins.print"), patch("time.sleep"):
+            self.cli.start(headless=True, auto_steps=1)
+        self.cli.load_state.assert_called_once()
+
+    def test_interactive_keyboard_interrupt_continues(self):
+        """KeyboardInterrupt in the main loop prints a message and continues."""
+        call_count = [0]
+        def _input(*a):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise KeyboardInterrupt
+            # Second call: set running=False to exit
+            self.cli.running = False
+            return ""
+        with patch("commands.dispatcher.os.path.exists", return_value=False), \
+             patch("builtins.print"), patch("time.sleep"), \
+             patch("builtins.input", side_effect=_input):
+            self.cli.start(headless=False, no_resume=True)
+        self.assertFalse(self.cli.running)
+
+
 if __name__ == "__main__":
     unittest.main()
