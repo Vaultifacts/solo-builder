@@ -2848,3 +2848,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-403
+Goal: commands/ coverage push — dag_cmds.py, query_cmds.py, dispatcher.py: targeted tests to boost from current low coverage
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions

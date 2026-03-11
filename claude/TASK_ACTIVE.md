@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-402
+TASK-403
 
-sdk_tool_runner.py coverage — mock Anthropic SDK to test run(), arun(), RateLimitError retry logic from 37% to 80%+
+commands/ coverage push — dag_cmds.py, query_cmds.py, dispatcher.py: targeted tests to boost from current low coverage
