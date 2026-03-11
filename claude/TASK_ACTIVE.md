@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-391
+TASK-392
 
-OpenAPIResponseSchemas: add content schemas to 200 responses for key endpoints (/status, /health, /tasks, /subtasks, /history) in generate_openapi.py
+CoveragePush2: cover _load_tool() in health blueprints, control.py execution paths, helper_functions.py, aawo_bridge.py easy paths

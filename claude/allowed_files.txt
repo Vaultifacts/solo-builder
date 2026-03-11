@@ -238,3 +238,4 @@ solo_builder/utils/aawo_bridge.py
 solo_builder/tests/test_aawo_bridge.py
 solo_builder/tests/test_repo_health_dashboard_widget.py
 solo_builder/tests/test_executor_aawo_wiring.py
+solo_builder/tests/test_blueprint_load_tool.py
