@@ -221,7 +221,8 @@ class SoloBuilderCLI(DispatcherMixin, AutoCommandsMixin, StepRunnerMixin,
         self.executor = Executor(max_per_step=EXEC_MAX_PER_STEP,
                                  verify_prob=EXEC_VERIFY_PROB,
                                  project_context=_PROJECT_CONTEXT,
-                                 append_journal=_append_journal)
+                                 append_journal=_append_journal,
+                                 aawo_repo_path=".")
         self.shadow   = ShadowAgent()
         self.verifier = Verifier()
         self.healer   = SelfHealer(stall_threshold=STALL_THRESHOLD)

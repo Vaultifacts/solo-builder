@@ -92,6 +92,42 @@ class TestRunLayer(unittest.TestCase):
             result = bridge.get_snapshot()
         self.assertIsNone(result)
 
+    def test_run_cycle_returns_true_on_success(self):
+        with self._patch_path(), \
+             patch("subprocess.run", return_value=_mock_run("", returncode=0)):
+            result = bridge.run_cycle()
+        self.assertTrue(result)
+
+    def test_run_cycle_returns_false_on_timeout(self):
+        with self._patch_path(), \
+             patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 10)):
+            result = bridge.run_cycle()
+        self.assertFalse(result)
+
+    def test_run_cycle_returns_false_on_nonzero_exit(self):
+        with self._patch_path(), \
+             patch("subprocess.run", return_value=_mock_run("", returncode=1)):
+            result = bridge.run_cycle()
+        self.assertFalse(result)
+
+    def test_run_cycle_returns_false_when_aawo_not_found(self):
+        with patch.object(bridge, "_aawo_path", return_value=None):
+            result = bridge.run_cycle()
+        self.assertFalse(result)
+
+    def test_run_cycle_uses_incremental_flag(self):
+        """Cycle always passes --incremental so it reuses prior snapshot."""
+        calls = []
+        def _fake_run(args, **kwargs):
+            calls.append(args)
+            return _mock_run("", returncode=0)
+        fake = MagicMock(spec=Path)
+        fake.exists.return_value = True
+        with patch.object(bridge, "_aawo_path", return_value=fake), \
+             patch("subprocess.run", side_effect=_fake_run):
+            bridge.run_cycle(repo_path=".")
+        self.assertIn("--incremental", calls[0])
+
 
 # ---------------------------------------------------------------------------
 # Security invariants

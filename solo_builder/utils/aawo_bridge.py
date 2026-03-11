@@ -82,6 +82,40 @@ def _run(args: list) -> Optional[dict]:
         return None
 
 
+def run_cycle(repo_path: str = ".") -> bool:
+    """
+    Run AAWO's full cycle (snapshot → score → select → lifecycle) for repo_path.
+
+    Runs incrementally (reuses prior snapshot if repo unchanged). Returns True on
+    success, False on any failure. Does not parse output — fire-and-confirm.
+    """
+    path = _aawo_path()
+    if path is None:
+        logger.debug("aawo_bridge: AAWO runtime not found — skipping cycle")
+        return False
+    cfg = _load_settings()
+    timeout = cfg.get("AAWO_TIMEOUT", 10)
+    try:
+        result = subprocess.run(
+            ["python", str(path), "cycle", "--repo", repo_path, "--incremental"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            shell=False,
+        )
+        if result.returncode != 0:
+            logger.warning("aawo_bridge: cycle non-zero exit %d stderr=%s",
+                           result.returncode, result.stderr[:200])
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        logger.warning("aawo_bridge: cycle timeout after %ds", timeout)
+        return False
+    except OSError as exc:
+        logger.warning("aawo_bridge: cycle error %s", exc)
+        return False
+
+
 def route_task(description: str, repo_path: str = ".") -> Optional[dict]:
     """Route a task description via AAWO. Returns routing decision dict or None."""
     return _run(["route", "--task", description])

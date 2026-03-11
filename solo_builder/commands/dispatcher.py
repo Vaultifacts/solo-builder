@@ -345,9 +345,25 @@ class DispatcherMixin:
             self.alerts, self.meta.forecast(self.dag),
         )
 
+    def _run_aawo_session_start(self) -> None:
+        """Fire AAWO cycle in a background daemon thread at session start."""
+        from utils.aawo_bridge import _aawo_path, run_cycle as _aawo_cycle
+        import logging, threading
+        if _aawo_path() is None:
+            return
+        print(f"  {DIM}AAWO: refreshing agent selection...{RESET}")
+        def _bg():
+            ok = _aawo_cycle(repo_path=".")
+            logging.getLogger("solo_builder").info(
+                "aawo_session_start: cycle %s", "ok" if ok else "failed"
+            )
+        threading.Thread(target=_bg, daemon=True, name="aawo-cycle").start()
+
     def start(self, headless: bool = False, auto_steps: Optional[int] = None,
               no_resume: bool = False, output_format: str = "text") -> None:
         """Run the CLI loop.  In headless mode: skip prompts, auto-run, then exit."""
+        self._run_aawo_session_start()
+
         if not no_resume and os.path.exists(STATE_PATH):
             try:
                 with open(STATE_PATH, "r", encoding="utf-8") as f:
