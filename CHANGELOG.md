@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.96.0 — 2026-03-11  AawoTests4 — snapshot_builder + snapshot_detectors → 100%; 88% overall
+
+- **1769 tests**, all passing; 0 failures (AAWO: 990, Solo Builder: 1769)
+- AAWO v1.1.5 released
+- AAWO coverage milestone: **88% overall** — `snapshot_builder.py` and `snapshot_detectors.py` both now at **100%**
+- AAWO `test_snapshot_builder.py` +3: `TestLoadLatestSnapshotSB` — dir-absent returns None (line 51), OSError on read returns None (lines 57-58), JSONDecodeError returns None (lines 57-58); used mock Path chain (`patch.object(sb, "Path", side_effect=_path_factory)`) to control `Path(__file__).parent / "storage" / "snapshots"` without touching real storage
+- AAWO `test_snapshot_detectors.py` +17: `TestReadOperationalSignals` +4 (git log/status timeout + FileNotFoundError exceptions, lines 258-259/268-269), `TestDetectFrameworksOSError` (OSError on file read skipped, lines 85-86), `TestEstimateComplexityGaps` +2 (OSError on file open skipped lines 163-164, very_high complexity with 500 files), `TestScanRiskFactorsIgnored` +2 (file in `storage/` ignored dir → continue line 224, OSError on read → pass lines 235-236)
+- **Key testing patterns**: `patch.object(Path, "open"/"read_text", side_effect=OSError(...))` — `side_effect` callable receives args without `self`; passing exception instance directly is simpler and correct; `subprocess.run` side_effect as list for multi-call sequences
+
+---
+
 ## v5.95.0 — 2026-03-11  AawoTests3 — detector/handoff/snapshot_builder/lifecycle gap coverage + 86% coverage
 
 - **1769 tests**, all passing; 0 failures (AAWO: 968, Solo Builder: 1769)
