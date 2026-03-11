@@ -2728,3 +2728,15 @@ Constraints:
 - Keep scope narrow
 - Do not modify product code unless explicitly required
 - Preserve deterministic workflow conventions
+
+## TASK-393
+Goal: BlueprintBodyCoverage: add Flask test client tests for control.py, history.py, cache.py blueprints to push coverage toward 70%
+
+Acceptance criteria:
+- <define criterion 1>
+- <define criterion 2>
+
+Constraints:
+- Keep scope narrow
+- Do not modify product code unless explicitly required
+- Preserve deterministic workflow conventions
