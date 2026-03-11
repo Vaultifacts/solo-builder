@@ -201,6 +201,285 @@ class TestSdkToolRunner(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("unavailable", msg)
 
+    # ----- run() synchronous tool-use loop -----
+
+    def _mock_end_turn(self, text="result text"):
+        """Build a mock response that terminates the loop (end_turn)."""
+        block = MagicMock()
+        block.text = text
+        block.type = "text"
+        resp = MagicMock()
+        resp.stop_reason = "end_turn"
+        resp.content = [block]
+        return resp
+
+    def _mock_tool_use(self, tool_name="Read", tool_input=None, tool_id="tu_1"):
+        """Build a mock response that requests one tool call."""
+        block = MagicMock()
+        block.type = "tool_use"
+        block.name = tool_name
+        block.input = tool_input or {"file_path": "/dev/null"}
+        block.id = tool_id
+        resp = MagicMock()
+        resp.stop_reason = "tool_use"
+        resp.content = [block]
+        return resp
+
+    def test_run_end_turn_returns_true_and_text(self):
+        r = self._runner()
+        r.client.messages.create.return_value = self._mock_end_turn("hello")
+        ok, out = r.run("prompt", "Read")
+        self.assertTrue(ok)
+        self.assertEqual(out, "hello")
+
+    def test_run_tool_use_then_end_turn(self):
+        r = self._runner()
+        # First call: tool_use; second call: end_turn
+        r.client.messages.create.side_effect = [
+            self._mock_tool_use("Read", {"file_path": "/dev/null"}),
+            self._mock_end_turn("final answer"),
+        ]
+        with patch.object(r, "_exec", return_value="file contents"):
+            ok, out = r.run("prompt", "Read")
+        self.assertTrue(ok)
+        self.assertEqual(out, "final answer")
+
+    def test_run_tool_result_appended_to_messages(self):
+        r = self._runner()
+        calls_made = []
+
+        def capture_create(**kwargs):
+            calls_made.append(kwargs["messages"])
+            if len(calls_made) == 1:
+                return self._mock_tool_use("Read", {"file_path": "/dev/null"}, "tu_42")
+            return self._mock_end_turn("done")
+
+        r.client.messages.create.side_effect = lambda **kw: capture_create(**kw)
+        with patch.object(r, "_exec", return_value="content"):
+            r.run("prompt", "Read")
+        # Second call should include user message with tool_result
+        second_msgs = calls_made[1]
+        user_msg = [m for m in second_msgs if m["role"] == "user"][-1]
+        self.assertEqual(user_msg["content"][0]["type"], "tool_result")
+        self.assertEqual(user_msg["content"][0]["tool_use_id"], "tu_42")
+
+    def test_run_unknown_stop_reason_breaks_loop(self):
+        r = self._runner()
+        resp = MagicMock()
+        resp.stop_reason = "max_tokens"
+        resp.content = []
+        r.client.messages.create.return_value = resp
+        ok, msg = r.run("prompt", "Read")
+        self.assertFalse(ok)
+        self.assertIn("exhausted", msg)
+
+    def test_run_exception_returns_false(self):
+        r = self._runner()
+        r.client.messages.create.side_effect = RuntimeError("API error")
+        ok, msg = r.run("prompt", "Read")
+        self.assertFalse(ok)
+        self.assertIn("API error", msg)
+
+    def test_run_filters_schemas_by_allowed(self):
+        r = self._runner()
+        r.client.messages.create.return_value = self._mock_end_turn("ok")
+        r.run("prompt", "Read")  # only Read allowed
+        call_kwargs = r.client.messages.create.call_args[1]
+        tool_names = [t["name"] for t in call_kwargs["tools"]]
+        self.assertEqual(tool_names, ["Read"])
+
+    # ----- arun() async tool-use loop -----
+
+    def _patch_anthropic(self):
+        """Return a context manager that injects a fake anthropic module."""
+        import types
+        fake_anthropic = types.ModuleType("anthropic")
+
+        class FakeRateLimitError(Exception):
+            pass
+
+        fake_anthropic.RateLimitError = FakeRateLimitError
+        return patch.dict("sys.modules", {"anthropic": fake_anthropic}), fake_anthropic
+
+    def test_arun_returns_false_when_unavailable(self):
+        r = SdkToolRunner(client=None, async_client=None, model="m", max_tokens=100)
+        cm, _ = self._patch_anthropic()
+        with cm:
+            ok, msg = asyncio.run(r.arun("prompt", "Read"))
+        self.assertFalse(ok)
+        self.assertIn("unavailable", msg)
+
+    def test_arun_end_turn_returns_true_and_text(self):
+        r = self._runner()
+
+        async def fake_create(**kwargs):
+            return self._mock_end_turn("async result")
+
+        r.async_client.messages.create = fake_create
+        cm, _ = self._patch_anthropic()
+        with cm:
+            ok, out = asyncio.run(r.arun("prompt", "Read"))
+        self.assertTrue(ok)
+        self.assertEqual(out, "async result")
+
+    def test_arun_tool_use_then_end_turn(self):
+        r = self._runner()
+        call_count = 0
+
+        async def fake_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return self._mock_tool_use("Read", {"file_path": "/dev/null"})
+            return self._mock_end_turn("done")
+
+        r.async_client.messages.create = fake_create
+        cm, _ = self._patch_anthropic()
+        with cm, patch.object(r, "_exec", return_value="file contents"):
+            ok, out = asyncio.run(r.arun("prompt", "Read"))
+        self.assertTrue(ok)
+        self.assertEqual(out, "done")
+
+    def test_arun_rate_limit_retries_then_succeeds(self):
+        cm, fake_anthropic = self._patch_anthropic()
+        r = self._runner()
+        call_count = 0
+
+        async def fake_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise fake_anthropic.RateLimitError("rate limited")
+            return self._mock_end_turn("ok after retry")
+
+        r.async_client.messages.create = fake_create
+
+        async def fake_sleep(t):
+            pass
+
+        with cm, patch("asyncio.sleep", side_effect=fake_sleep):
+            ok, out = asyncio.run(r.arun("prompt", "Read"))
+        self.assertTrue(ok)
+        self.assertEqual(out, "ok after retry")
+
+    def test_arun_rate_limit_exhausts_all_retries(self):
+        cm, fake_anthropic = self._patch_anthropic()
+        r = self._runner()
+
+        async def always_rate_limit(**kwargs):
+            raise fake_anthropic.RateLimitError("rate limited")
+
+        r.async_client.messages.create = always_rate_limit
+
+        async def fake_sleep(t):
+            pass
+
+        with cm, patch("asyncio.sleep", side_effect=fake_sleep):
+            ok, msg = asyncio.run(r.arun("prompt", "Read"))
+        self.assertFalse(ok)
+        self.assertIn("retries exhausted", msg)
+
+    def test_arun_exception_returns_false(self):
+        r = self._runner()
+
+        async def raise_exc(**kwargs):
+            raise RuntimeError("async error")
+
+        r.async_client.messages.create = raise_exc
+        cm, _ = self._patch_anthropic()
+        with cm:
+            ok, msg = asyncio.run(r.arun("prompt", "Read"))
+        self.assertFalse(ok)
+        self.assertIn("async error", msg)
+
+    def test_arun_unknown_stop_reason_breaks_loop(self):
+        r = self._runner()
+
+        async def fake_create(**kwargs):
+            resp = MagicMock()
+            resp.stop_reason = "stop_sequence"
+            resp.content = []
+            return resp
+
+        r.async_client.messages.create = fake_create
+        cm, _ = self._patch_anthropic()
+        with cm:
+            ok, msg = asyncio.run(r.arun("prompt", "Read"))
+        self.assertFalse(ok)
+        self.assertIn("exhausted", msg)
+
+    # ----- _exec() path coverage -----
+
+    def test_exec_read_path_outside_scope_rejected(self):
+        r = self._runner()
+        result = r._exec("Read", {"file_path": "C:/Windows/system32/secret"})
+        self.assertIn("restricted", result)
+
+    def test_exec_read_file_error_returns_error_string(self):
+        r = self._runner()
+        from runners.sdk_tool_runner import _REPO_ROOT
+        # A path inside scope but non-existent file
+        bad_path = os.path.join(_REPO_ROOT, "nonexistent_xyz_12345.txt")
+        result = r._exec("Read", {"file_path": bad_path})
+        self.assertIn("Error", result)
+
+    def test_exec_glob_with_matches(self):
+        r = self._runner()
+        result = r._exec("Glob", {"pattern": "*.py", "path": _SOLO})
+        self.assertNotEqual(result, "(no matches)")
+
+    def test_exec_glob_relative_base_resolved(self):
+        r = self._runner()
+        # Relative path should be joined with _SOLO
+        result = r._exec("Glob", {"pattern": "*.py", "path": "runners"})
+        self.assertNotEqual(result, "(no matches)")
+
+    def test_exec_grep_finds_pattern_in_file(self):
+        r = self._runner()
+        from runners.sdk_tool_runner import _REPO_ROOT
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False,
+                                         dir=_REPO_ROOT, encoding="utf-8") as f:
+            f.write("hello world\nsecond line\n")
+            tmp = f.name
+        try:
+            result = r._exec("Grep", {"pattern": "hello", "path": tmp})
+            self.assertIn("hello", result)
+        finally:
+            os.unlink(tmp)
+
+    def test_exec_grep_no_match_returns_no_matches(self):
+        r = self._runner()
+        from runners.sdk_tool_runner import _REPO_ROOT
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False,
+                                         dir=_REPO_ROOT, encoding="utf-8") as f:
+            f.write("hello world\n")
+            tmp = f.name
+        try:
+            result = r._exec("Grep", {"pattern": "zzznomatch", "path": tmp})
+            self.assertEqual(result, "(no matches)")
+        finally:
+            os.unlink(tmp)
+
+    def test_exec_grep_with_file_glob_searches_dir(self):
+        r = self._runner()
+        # Grep *.py files in _SOLO for "def " — should find something
+        result = r._exec("Grep", {"pattern": "def ", "path": _SOLO, "glob": "*.py"})
+        self.assertIn("def ", result)
+
+    def test_exec_grep_nonexistent_file_skipped(self):
+        r = self._runner()
+        from runners.sdk_tool_runner import _REPO_ROOT
+        result = r._exec("Grep", {"pattern": "x", "path": os.path.join(_REPO_ROOT, "no_such_file.txt")})
+        self.assertEqual(result, "(no matches)")
+
+    def test_exec_exception_returns_error_string(self):
+        r = self._runner()
+        with patch("builtins.open", side_effect=PermissionError("denied")):
+            from runners.sdk_tool_runner import _REPO_ROOT
+            tmp = os.path.join(_REPO_ROOT, "dummy.txt")
+            result = r._exec("Read", {"file_path": tmp})
+        self.assertIn("Error", result)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Executor
