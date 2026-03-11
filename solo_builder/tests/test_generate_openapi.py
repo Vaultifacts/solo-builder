@@ -253,6 +253,29 @@ class TestBuildSpecPaths(unittest.TestCase):
                         self.assertTrue(param["required"],
                                         f"Path param {param['name']} in {path} must be required")
 
+    def test_status_has_response_schema(self):
+        op = self.paths["/status"]["get"]
+        schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        self.assertIn("step", schema["properties"])
+        self.assertIn("verified", schema["properties"])
+
+    def test_health_has_response_schema(self):
+        op = self.paths["/health"]["get"]
+        schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        self.assertIn("ok", schema["properties"])
+        self.assertIn("version", schema["properties"])
+
+    def test_history_has_response_schema(self):
+        op = self.paths["/history"]["get"]
+        schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        self.assertIn("events", schema["properties"])
+        self.assertIn("total", schema["properties"])
+
+    def test_tasks_has_response_schema(self):
+        op = self.paths["/tasks"]["get"]
+        schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        self.assertIn("tasks", schema["properties"])
+
 
 # ---------------------------------------------------------------------------
 # _ROUTES catalogue completeness

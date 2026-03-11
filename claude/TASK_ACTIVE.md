@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-390
+TASK-391
 
-OpenAPIPathParameters: add parameters schemas (path params + key query params) to endpoints in generate_openapi.py
+OpenAPIResponseSchemas: add content schemas to 200 responses for key endpoints (/status, /health, /tasks, /subtasks, /history) in generate_openapi.py

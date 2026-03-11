@@ -31,9 +31,26 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _ROUTES: list[dict] = [
     # Core
     {"path": "/",               "method": "GET",    "tag": "Core",       "summary": "Dashboard HTML"},
-    {"path": "/status",         "method": "GET",    "tag": "Core",       "summary": "Task/branch status summary"},
-    {"path": "/heartbeat",      "method": "GET",    "tag": "Core",       "summary": "Lightweight step counter"},
-    {"path": "/health",         "method": "GET",    "tag": "Core",       "summary": "Extended health probe (version, uptime, subtask count)"},
+    {"path": "/status",         "method": "GET",    "tag": "Core",       "summary": "Task/branch status summary",
+     "response": {"type": "object", "properties": {
+         "step":     {"type": "integer"}, "total":    {"type": "integer"},
+         "verified": {"type": "integer"}, "running":  {"type": "integer"},
+         "review":   {"type": "integer"}, "stalled":  {"type": "integer"},
+         "pending":  {"type": "integer"}, "pct":      {"type": "number"},
+         "complete": {"type": "boolean"},
+     }}},
+    {"path": "/heartbeat",      "method": "GET",    "tag": "Core",       "summary": "Lightweight step counter",
+     "response": {"type": "object", "properties": {
+         "step":     {"type": "integer"}, "verified": {"type": "integer"},
+         "total":    {"type": "integer"}, "pending":  {"type": "integer"},
+         "running":  {"type": "integer"}, "review":   {"type": "integer"},
+     }}},
+    {"path": "/health",         "method": "GET",    "tag": "Core",       "summary": "Extended health probe (version, uptime, subtask count)",
+     "response": {"type": "object", "properties": {
+         "ok":                 {"type": "boolean"}, "version":          {"type": "string"},
+         "uptime_s":           {"type": "number"},  "step":             {"type": "integer"},
+         "state_file_exists":  {"type": "boolean"}, "total_subtasks":   {"type": "integer"},
+     }}},
     # Metrics
     {"path": "/metrics",        "method": "GET",    "tag": "Metrics",    "summary": "Run health + analytics history"},
     {"path": "/metrics/summary","method": "GET",    "tag": "Metrics",    "summary": "Executor step metrics (p50/p95/p99/latency buckets)"},
@@ -45,18 +62,36 @@ _ROUTES: list[dict] = [
     {"path": "/history",        "method": "GET",    "tag": "History",    "summary": "Paged activity log",
      "query": [("since", "integer", "Return events after this step number"),
                ("limit", "integer", "Max events to return (default 50)"),
-               ("page",  "integer", "Page number (1-based)")]},
-    {"path": "/history/count",  "method": "GET",    "tag": "History",    "summary": "Activity log counts by status"},
+               ("page",  "integer", "Page number (1-based)")],
+     "response": {"type": "object", "properties": {
+         "events": {"type": "array",   "items": {"type": "object"}},
+         "total":  {"type": "integer"}, "review": {"type": "integer"},
+         "page":   {"type": "integer"}, "pages":  {"type": "integer"},
+     }}},
+    {"path": "/history/count",  "method": "GET",    "tag": "History",    "summary": "Activity log counts by status",
+     "response": {"type": "object", "properties": {
+         "total":    {"type": "integer"}, "filtered": {"type": "integer"},
+         "by_status": {"type": "object"},
+     }}},
     # Tasks
-    {"path": "/tasks",          "method": "GET",    "tag": "Tasks",      "summary": "List all tasks"},
-    {"path": "/tasks/{task_id}","method": "GET",    "tag": "Tasks",      "summary": "Get task detail"},
+    {"path": "/tasks",          "method": "GET",    "tag": "Tasks",      "summary": "List all tasks",
+     "response": {"type": "object", "properties": {
+         "tasks": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/tasks/{task_id}","method": "GET",    "tag": "Tasks",      "summary": "Get task detail",
+     "response": {"type": "object", "properties": {
+         "task_id":  {"type": "string"}, "branches": {"type": "object"},
+     }}},
     {"path": "/tasks/{task_id}/progress", "method": "GET", "tag": "Tasks", "summary": "Branch progress for a task"},
     {"path": "/tasks/{task_id}/reset",    "method": "POST","tag": "Tasks", "summary": "Reset non-Verified subtasks"},
     # Branches
     {"path": "/branches",       "method": "GET",    "tag": "Branches",   "summary": "List all branches"},
     {"path": "/branches/{task_id}", "method": "GET", "tag": "Branches","summary": "Get branches and subtasks for a specific task"},
     # Subtasks
-    {"path": "/subtasks",       "method": "GET",    "tag": "Subtasks",   "summary": "List all subtasks"},
+    {"path": "/subtasks",       "method": "GET",    "tag": "Subtasks",   "summary": "List all subtasks",
+     "response": {"type": "object", "properties": {
+         "subtasks": {"type": "array", "items": {"type": "object"}},
+     }}},
     {"path": "/subtasks/bulk-reset", "method": "POST","tag": "Subtasks", "summary": "Bulk-reset selected subtasks"},
     {"path": "/stalled",        "method": "GET",    "tag": "Subtasks",   "summary": "List stalled subtasks (Running >= threshold)"},
     # Triggers
@@ -205,12 +240,17 @@ def build_spec() -> dict:
                 "schema": {"type": qtype},
             })
 
+        resp_200: dict = {"description": "Success"}
+        if "response" in route:
+            resp_200["content"] = {
+                "application/json": {"schema": route["response"]}
+            }
         operation: dict = {
             "tags":    [route["tag"]],
             "summary": route["summary"],
             "operationId": _operation_id(method, path),
             "responses": {
-                "200": {"description": "Success"},
+                "200": resp_200,
                 "400": {"description": "Bad request"},
                 "429": {"description": "Rate limit exceeded"},
             },
