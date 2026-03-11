@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-386
+TASK-387
 
-OpenAPIBlueprintGaps: add any routes missing from generate_openapi.py _ROUTES that exist in Flask blueprints
+OpenAPIRequestBodies: add requestBody schemas for POST endpoints (add_task, add_branch, rename, verify, describe, set, depends, undepends) in generate_openapi.py

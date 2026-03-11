@@ -56,9 +56,12 @@ _ROUTES: list[dict] = [
     {"path": "/stalled",        "method": "GET",    "tag": "Subtasks",   "summary": "List stalled subtasks (Running >= threshold)"},
     # Triggers
     {"path": "/trigger",        "method": "POST",   "tag": "Triggers",   "summary": "Fire a named trigger"},
-    {"path": "/verify",         "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask verification"},
-    {"path": "/describe",       "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask description update"},
-    {"path": "/set",            "method": "POST",   "tag": "Triggers",   "summary": "Set a config value at runtime"},
+    {"path": "/verify",         "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask verification",
+     "body": {"subtask": {"type": "string", "description": "Subtask name to verify"}}},
+    {"path": "/describe",       "method": "POST",   "tag": "Triggers",   "summary": "Trigger subtask description update",
+     "body": {"subtask": {"type": "string"}}},
+    {"path": "/set",            "method": "POST",   "tag": "Triggers",   "summary": "Set a config value at runtime",
+     "body": {"key": {"type": "string"}, "value": {"type": "string"}}},
     # Control
     {"path": "/pause",          "method": "POST",   "tag": "Control",    "summary": "Pause orchestration"},
     {"path": "/resume",         "method": "POST",   "tag": "Control",    "summary": "Resume orchestration"},
@@ -69,10 +72,12 @@ _ROUTES: list[dict] = [
     {"path": "/snapshot",       "method": "POST",   "tag": "Control",    "summary": "Create state snapshot"},
     # Config
     {"path": "/config",         "method": "GET",    "tag": "Config",     "summary": "Get current configuration"},
-    {"path": "/config",         "method": "POST",   "tag": "Config",     "summary": "Update configuration"},
+    {"path": "/config",         "method": "POST",   "tag": "Config",     "summary": "Update configuration",
+     "body": {"key": {"type": "string"}, "value": {}}},
     # DAG
     {"path": "/dag/summary",    "method": "GET",    "tag": "DAG",        "summary": "DAG pipeline summary with per-task breakdown"},
-    {"path": "/dag/import",     "method": "POST",   "tag": "DAG",        "summary": "Import DAG from JSON"},
+    {"path": "/dag/import",     "method": "POST",   "tag": "DAG",        "summary": "Import DAG from JSON",
+     "body": {"dag": {"type": "object", "description": "DAG structure to import"}}},
     {"path": "/dag/export",     "method": "GET",    "tag": "DAG",        "summary": "Export DAG as JSON"},
     # Cache
     {"path": "/cache/stats",    "method": "GET",    "tag": "Cache",      "summary": "Priority cache statistics"},
@@ -129,14 +134,22 @@ _ROUTES: list[dict] = [
     {"path": "/run",                       "method": "POST", "tag": "Control",  "summary": "Trigger one execution cycle"},
     {"path": "/run/history",               "method": "GET",  "tag": "Control",  "summary": "History of run cycles"},
     # Triggers (extended)
-    {"path": "/add_task",                  "method": "POST", "tag": "Triggers", "summary": "Add a new task to the DAG"},
-    {"path": "/add_branch",                "method": "POST", "tag": "Triggers", "summary": "Add a new branch to a task"},
-    {"path": "/rename",                    "method": "POST", "tag": "Triggers", "summary": "Rename a task or branch"},
-    {"path": "/depends",                   "method": "POST", "tag": "Triggers", "summary": "Add a dependency between tasks"},
-    {"path": "/undepends",                 "method": "POST", "tag": "Triggers", "summary": "Remove a dependency between tasks"},
-    {"path": "/prioritize_branch",         "method": "POST", "tag": "Triggers", "summary": "Set branch priority"},
-    {"path": "/tools",                     "method": "POST", "tag": "Triggers", "summary": "Set allowed tools for a subtask"},
-    {"path": "/webhook",                   "method": "POST", "tag": "Webhook",  "summary": "Receive external webhook events"},
+    {"path": "/add_task",       "method": "POST", "tag": "Triggers", "summary": "Add a new task to the DAG",
+     "body": {"spec": {"type": "string", "description": "Task specification / goal"}}},
+    {"path": "/add_branch",     "method": "POST", "tag": "Triggers", "summary": "Add a new branch to a task",
+     "body": {"task": {"type": "string"}, "spec": {"type": "string"}}},
+    {"path": "/rename",         "method": "POST", "tag": "Triggers", "summary": "Rename a task or branch",
+     "body": {"task": {"type": "string"}, "name": {"type": "string"}}},
+    {"path": "/depends",        "method": "POST", "tag": "Triggers", "summary": "Add a dependency between tasks",
+     "body": {"target": {"type": "string"}, "dep": {"type": "string"}}},
+    {"path": "/undepends",      "method": "POST", "tag": "Triggers", "summary": "Remove a dependency between tasks",
+     "body": {"target": {"type": "string"}, "dep": {"type": "string"}}},
+    {"path": "/prioritize_branch", "method": "POST", "tag": "Triggers", "summary": "Set branch priority",
+     "body": {"task": {"type": "string"}, "branch": {"type": "string"}}},
+    {"path": "/tools",          "method": "POST", "tag": "Triggers", "summary": "Set allowed tools for a subtask",
+     "body": {"subtask": {"type": "string"}, "tools": {"type": "string"}}},
+    {"path": "/webhook",        "method": "POST", "tag": "Webhook",  "summary": "Receive external webhook events",
+     "body": {"event": {"type": "string"}, "payload": {"type": "object"}}},
     # Config (extended)
     {"path": "/config/reset",              "method": "POST", "tag": "Config",   "summary": "Reset configuration to defaults"},
     {"path": "/config/export",             "method": "GET",  "tag": "Config",   "summary": "Export current configuration as JSON"},
@@ -173,15 +186,29 @@ def build_spec() -> dict:
         method = route["method"].lower()
         if path not in paths:
             paths[path] = {}
-        paths[path][method] = {
+        operation: dict = {
             "tags":    [route["tag"]],
             "summary": route["summary"],
             "operationId": _operation_id(method, path),
             "responses": {
                 "200": {"description": "Success"},
+                "400": {"description": "Bad request"},
                 "429": {"description": "Rate limit exceeded"},
             },
         }
+        if "body" in route:
+            operation["requestBody"] = {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": route["body"],
+                        }
+                    }
+                },
+            }
+        paths[path][method] = operation
 
     # Collect tags
     seen_tags: list[str] = []
