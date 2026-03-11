@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-405
+TASK-406
 
-commands/ deep coverage — step_runner, auto_cmds, settings_cmds, dag_cmds uncovered lines
+Deep coverage sprint: query_cmds.py, subtask_cmds.py, dispatcher.py
