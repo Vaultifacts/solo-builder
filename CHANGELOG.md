@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.99.0 — 2026-03-11  TASK-383/384 + AAWO 100% main.py coverage
+
+- **1730 Solo Builder tests** (0 failures); **1085 AAWO tests** (0 failures)
+- AAWO v1.1.8: `main.py` now at **100% coverage** — 9 new gap tests in `test_main_gaps.py` covering `cmd_health` lifecycle/storage/n-a branches (lines 152-154, 158-159, 176-177), `cmd_explain` n/a branch (229-230), `cmd_explain_all` GRACE status (265) and n/a branch (299-300), `cmd_route` policy-blocked JSON (338) and success JSON (373), and `if __name__ == "__main__"` guard (728) via `runpy.run_path`
+- TASK-383 closed: OpenAPIHealthRoutes already committed in `6a11412`; STATE advanced to done; `claude/TASK_DONE.md` added to `allowed_files.txt`
+- TASK-384: OpenAPIExportRoutes — 5 export routes (`/export` GET+POST, `/stats`, `/search`, `/journal`) added to `generate_openapi.py` under new `Export` tag; spec now has **56 routes**; `test_generate_openapi.py` grows from 30 → 35 tests
+
+---
+
 ## v5.98.0 — 2026-03-11  AawoTests6 — 99% overall coverage; 22 modules at 100%
 
 - **1769 tests**, all passing; 0 failures (AAWO: 1076, Solo Builder: 1769)
