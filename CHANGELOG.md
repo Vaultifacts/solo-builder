@@ -1,5 +1,41 @@
 # Changelog
 
+## v6.18.0 — 2026-03-11  TASK-399 BlueprintCoverage — tasks 98%, subtasks 94%, webhook 100%
+
+- **TASK-399 BlueprintCoverage**: 159 new Flask test-client tests across 3 new test files:
+  - `test_tasks_blueprint.py` (60 tests, 11 classes) — `tasks.py` 19% → **98%**:
+    - `GET /tasks` — pagination, task filter, empty DAG
+    - `GET /tasks/export` — CSV default, JSON format, Content-Disposition, header row
+    - `GET /tasks/<id>` + `GET /tasks/<id>/export` — 404 handling, CSV/JSON format, safe filename
+    - `POST /tasks/<id>/trigger` — 202, accepted, pending_subtasks list, 404
+    - `POST /tasks/<id>/reset` — non-verified reset, verified skipped, output cleared, 500 on write error
+    - `POST /tasks/<id>/bulk-reset` — skip_verified, include_verified, task status reset, 500
+    - `POST /tasks/<id>/bulk-verify` — non-verified advanced, skip_non_running, task status Verified, 500
+    - `GET /tasks/<id>/progress` — response keys, branch rows, verified count, 404
+    - `GET /tasks/<id>/branches` — pagination, status filter, dominant status (Running/Review/Verified), invalid limit fallback
+    - `GET /tasks/<id>/subtasks` — branch/status filters, output=1, pagination
+    - `GET /tasks/<id>/timeline` — sorted by last_update, response keys, 404
+    - `GET /graph` — nodes/text, empty DAG, depends_on in text
+    - `GET /priority` — Pending/Running only, deps_not_met excluded, risk descending
+  - `test_subtasks_blueprint.py` (66 tests, 9 classes) — `subtasks.py` 37% → **94%**:
+    - `GET /subtasks` — task/branch/status/name/output/min_age/pagination filters, invalid param fallbacks
+    - `GET /subtasks/export` — CSV/JSON, Content-Disposition, status filter, pagination
+    - `POST /subtasks/bulk-reset` — skip_verified, skip_verified=False, not_found, missing/empty list 400, write error 500
+    - `POST /subtasks/bulk-verify` — verified, already-verified skipped, skip_non_running, not_found, 400/500
+    - `GET /subtask/<id>` + `GET /subtask/<id>/output` — plain-text output, 404
+    - `POST /subtask/<id>/reset` — heal_trigger written, payload content, previous_status, 404
+    - `GET /timeline/<subtask>` — case-insensitive match, history included, 404
+    - `GET /stalled` — stall_threshold from settings, min_age override, task/branch filters, by_branch grouping, settings-read-error fallback, invalid min_age ignored
+  - `test_webhook_blueprint.py` (33 tests, 5 classes) — `webhook.py` 22% → **100%**:
+    - No URL / settings missing → `{ok: false, reason: "WEBHOOK_URL not configured"}`
+    - Invalid URL (ftp://, bare hostname) → `{ok: false, reason: "...http..."}`
+    - Success: `ok/sent=true`, url echoed, payload pct/event/step validated via urllib mock
+    - Network error: `ok/sent=false`, error message captured, still 200
+    - PCT calc edge cases: 0% when no verified, 0% when empty DAG
+- **Test suite**: **2557 → 2716 tests**, 0 failures
+
+---
+
 ## v6.14.0 — 2026-03-11  TASK-396–398 sprint — history coverage, OpenAPI 33 schemas, runner 98%
 
 - **TASK-396 HistoryBlueprintCoverage**: 49 new Flask test-client tests across 6 classes covering all of `history.py`:
