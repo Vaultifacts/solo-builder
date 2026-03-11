@@ -87,7 +87,7 @@ _ROUTES: list[dict] = [
     {"path": "/journal", "method": "GET",  "tag": "Export", "summary": "Last 30 journal entries"},
     # Health (detailed checks)
     {"path": "/health/detailed",         "method": "GET", "tag": "Health", "summary": "Aggregate health: state validator + config drift + metrics alerts"},
-    {"path": "/health/gates",            "method": "GET", "tag": "Health", "summary": "Executor gate inventory (schema + policies)"},
+    {"path": "/health/executor-gates",   "method": "GET", "tag": "Health", "summary": "Alias: executor gate evaluation via health namespace"},
     {"path": "/health/context-window",   "method": "GET", "tag": "Health", "summary": "Context window line-count check (CLAUDE.md / MEMORY.md / JOURNAL.md)"},
     {"path": "/health/threat-model",     "method": "GET", "tag": "Health", "summary": "Threat model freshness check (SE-001 to SE-006)"},
     {"path": "/health/slo",              "method": "GET", "tag": "Health", "summary": "SLO status: SLO-003 success rate + SLO-005 latency median"},
@@ -99,6 +99,55 @@ _ROUTES: list[dict] = [
     # Policy
     {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json"},
     {"path": "/policy/scope",            "method": "GET", "tag": "Policy", "summary": "Tool scope policy rules from settings.json"},
+    # Cache (extended)
+    {"path": "/cache",                   "method": "GET",    "tag": "Cache",    "summary": "Priority cache contents"},
+    {"path": "/cache",                   "method": "DELETE", "tag": "Cache",    "summary": "Clear the priority cache (DELETE variant)"},
+    {"path": "/cache/export",            "method": "GET",    "tag": "Cache",    "summary": "Export cache as JSON"},
+    {"path": "/cache/history",           "method": "GET",    "tag": "Cache",    "summary": "Cache operation history"},
+    # Tasks (extended)
+    {"path": "/tasks/{task_id}/branches",  "method": "GET",  "tag": "Tasks",  "summary": "List branches for a task"},
+    {"path": "/tasks/{task_id}/subtasks",  "method": "GET",  "tag": "Tasks",  "summary": "List subtasks for a task"},
+    {"path": "/tasks/{task_id}/timeline",  "method": "GET",  "tag": "Tasks",  "summary": "Timeline of subtask events for a task"},
+    {"path": "/tasks/{task_id}/export",    "method": "GET",  "tag": "Tasks",  "summary": "Export task data as JSON"},
+    {"path": "/tasks/{task_id}/bulk-reset",  "method": "POST", "tag": "Tasks", "summary": "Bulk-reset subtasks in a task"},
+    {"path": "/tasks/{task_id}/bulk-verify", "method": "POST", "tag": "Tasks", "summary": "Bulk-verify subtasks in a task"},
+    {"path": "/tasks/{task_id}/trigger",     "method": "POST", "tag": "Tasks", "summary": "Fire execution trigger for a task"},
+    {"path": "/tasks/export",              "method": "GET",  "tag": "Tasks",  "summary": "Export all tasks as JSON"},
+    # Branches (extended)
+    {"path": "/branches/{task_id}",        "method": "GET",  "tag": "Branches", "summary": "Get branches for a specific task"},
+    {"path": "/branches/{task_id}/reset",  "method": "POST", "tag": "Branches", "summary": "Reset branches for a task"},
+    {"path": "/branches/export",           "method": "GET",  "tag": "Branches", "summary": "Export all branches as JSON"},
+    # Subtasks (extended)
+    {"path": "/subtask/{subtask_id}",        "method": "GET",  "tag": "Subtasks", "summary": "Get a single subtask by ID"},
+    {"path": "/subtask/{subtask_id}/output", "method": "GET",  "tag": "Subtasks", "summary": "Get output for a single subtask"},
+    {"path": "/subtask/{subtask_id}/reset",  "method": "POST", "tag": "Subtasks", "summary": "Reset a single subtask"},
+    {"path": "/subtasks/bulk-verify",        "method": "POST", "tag": "Subtasks", "summary": "Bulk-verify selected subtasks"},
+    {"path": "/subtasks/export",             "method": "GET",  "tag": "Subtasks", "summary": "Export all subtasks as JSON"},
+    # History (extended)
+    {"path": "/history/export",            "method": "GET",  "tag": "History",  "summary": "Export activity history as CSV or JSON"},
+    # Control (extended)
+    {"path": "/run",                       "method": "POST", "tag": "Control",  "summary": "Trigger one execution cycle"},
+    {"path": "/run/history",               "method": "GET",  "tag": "Control",  "summary": "History of run cycles"},
+    # Triggers (extended)
+    {"path": "/add_task",                  "method": "POST", "tag": "Triggers", "summary": "Add a new task to the DAG"},
+    {"path": "/add_branch",                "method": "POST", "tag": "Triggers", "summary": "Add a new branch to a task"},
+    {"path": "/rename",                    "method": "POST", "tag": "Triggers", "summary": "Rename a task or branch"},
+    {"path": "/depends",                   "method": "POST", "tag": "Triggers", "summary": "Add a dependency between tasks"},
+    {"path": "/undepends",                 "method": "POST", "tag": "Triggers", "summary": "Remove a dependency between tasks"},
+    {"path": "/prioritize_branch",         "method": "POST", "tag": "Triggers", "summary": "Set branch priority"},
+    {"path": "/tools",                     "method": "POST", "tag": "Triggers", "summary": "Set allowed tools for a subtask"},
+    {"path": "/webhook",                   "method": "POST", "tag": "Webhook",  "summary": "Receive external webhook events"},
+    # Config (extended)
+    {"path": "/config/reset",              "method": "POST", "tag": "Config",   "summary": "Reset configuration to defaults"},
+    {"path": "/config/export",             "method": "GET",  "tag": "Config",   "summary": "Export current configuration as JSON"},
+    # Misc
+    {"path": "/priority",                  "method": "GET",  "tag": "Subtasks", "summary": "List highest-priority subtasks"},
+    {"path": "/shortcuts",                 "method": "GET",  "tag": "Core",     "summary": "Available command shortcuts"},
+    {"path": "/diff",                      "method": "GET",  "tag": "DAG",      "summary": "DAG diff since last snapshot"},
+    {"path": "/dag/diff",                  "method": "GET",  "tag": "DAG",      "summary": "Detailed DAG diff"},
+    {"path": "/graph",                     "method": "GET",  "tag": "DAG",      "summary": "DAG dependency graph as DOT or JSON"},
+    {"path": "/timeline/{subtask}",        "method": "GET",  "tag": "History",  "summary": "Timeline of events for a specific subtask"},
+    {"path": "/executor/gates",            "method": "GET",  "tag": "Health",   "summary": "Executor gate inventory (schema + policies)"},
 ]
 
 

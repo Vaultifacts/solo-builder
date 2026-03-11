@@ -159,6 +159,34 @@ class TestBuildSpecPaths(unittest.TestCase):
     def test_journal_present(self):
         self.assertIn("/journal", self.paths)
 
+    def test_shortcuts_present(self):
+        self.assertIn("/shortcuts", self.paths)
+
+    def test_add_task_present(self):
+        self.assertIn("/add_task", self.paths)
+        self.assertIn("post", self.paths["/add_task"])
+
+    def test_subtask_by_id_present(self):
+        self.assertIn("/subtask/{subtask_id}", self.paths)
+
+    def test_tasks_export_present(self):
+        self.assertIn("/tasks/export", self.paths)
+
+    def test_cache_get_present(self):
+        self.assertIn("/cache", self.paths)
+        self.assertIn("get", self.paths["/cache"])
+
+    def test_cache_delete_present(self):
+        self.assertIn("/cache", self.paths)
+        self.assertIn("delete", self.paths["/cache"])
+
+    def test_executor_gates_present(self):
+        self.assertIn("/executor/gates", self.paths)
+
+    def test_config_reset_present(self):
+        self.assertIn("/config/reset", self.paths)
+        self.assertIn("post", self.paths["/config/reset"])
+
 
 # ---------------------------------------------------------------------------
 # _ROUTES catalogue completeness
@@ -183,8 +211,8 @@ class TestRoutesCatalogue(unittest.TestCase):
             self.assertNotIn(key, seen, f"Duplicate route: {key}")
             seen.add(key)
 
-    def test_at_least_30_routes(self):
-        self.assertGreaterEqual(len(_ROUTES), 30)
+    def test_at_least_90_routes(self):
+        self.assertGreaterEqual(len(_ROUTES), 90)
 
 
 # ---------------------------------------------------------------------------
