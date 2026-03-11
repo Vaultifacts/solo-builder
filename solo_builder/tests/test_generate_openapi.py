@@ -395,5 +395,66 @@ class TestMain(unittest.TestCase):
         self.assertEqual(output, "")
 
 
+# ---------------------------------------------------------------------------
+# requestBody required arrays (TASK-395)
+# ---------------------------------------------------------------------------
+
+class TestRequestBodyRequired(unittest.TestCase):
+    """Every POST requestBody schema must include a non-empty required array."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.paths = build_spec()["paths"]
+
+    def test_verify_body_required_contains_subtask(self):
+        schema = self.paths["/verify"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+        self.assertIn("required", schema)
+        self.assertIn("subtask", schema["required"])
+
+    def test_add_branch_body_required_contains_task_and_spec(self):
+        schema = self.paths["/add_branch"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+        self.assertIn("required", schema)
+        self.assertIn("task", schema["required"])
+        self.assertIn("spec", schema["required"])
+
+    def test_dag_import_body_required_contains_dag(self):
+        schema = self.paths["/dag/import"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+        self.assertIn("required", schema)
+        self.assertIn("dag", schema["required"])
+
+    def test_webhook_body_required_contains_event(self):
+        schema = self.paths["/webhook"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+        self.assertIn("required", schema)
+        self.assertIn("event", schema["required"])
+
+    def test_all_request_bodies_have_required(self):
+        """Every route with a requestBody must have a schema-level required array."""
+        for path, methods in self.paths.items():
+            for method, op in methods.items():
+                if "requestBody" in op:
+                    schema = op["requestBody"]["content"]["application/json"]["schema"]
+                    self.assertIn(
+                        "required", schema,
+                        f"{method.upper()} {path} requestBody schema missing 'required' array"
+                    )
+                    self.assertGreater(
+                        len(schema["required"]), 0,
+                        f"{method.upper()} {path} requestBody required array is empty"
+                    )
+
+    def test_required_matches_property_keys(self):
+        """required array must be exactly the property keys (all fields required)."""
+        for path, methods in self.paths.items():
+            for method, op in methods.items():
+                if "requestBody" in op:
+                    schema = op["requestBody"]["content"]["application/json"]["schema"]
+                    props = set(schema.get("properties", {}).keys())
+                    required = set(schema.get("required", []))
+                    self.assertEqual(
+                        props, required,
+                        f"{method.upper()} {path}: required={required} != props={props}"
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()

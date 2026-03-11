@@ -518,3 +518,5 @@
 - [2026-03-11T20:33:45.8405287Z] state transition: triage/RESEARCH -> done/auditor
 - [2026-03-11T20:37:16.2775105Z] Starting TASK-394 via tools/start_task.ps1 with automated preflight gating.
 - [2026-03-11T20:40:53.9164587Z] state transition: triage/RESEARCH -> done/auditor
+- [2026-03-11T20:41:17.4912837Z] Starting TASK-395 via tools/start_task.ps1 with automated preflight gating.
+- [2026-03-11T20:43:25.1996098Z] state transition: triage/RESEARCH -> done/auditor

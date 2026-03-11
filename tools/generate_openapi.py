@@ -258,14 +258,18 @@ def build_spec() -> dict:
         if parameters:
             operation["parameters"] = parameters
         if "body" in route:
+            body_schema: dict = {
+                "type": "object",
+                "properties": route["body"],
+            }
+            required_fields = list(route["body"].keys())
+            if required_fields:
+                body_schema["required"] = required_fields
             operation["requestBody"] = {
                 "required": True,
                 "content": {
                     "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": route["body"],
-                        }
+                        "schema": body_schema,
                     }
                 },
             }
