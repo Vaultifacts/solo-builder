@@ -1,5 +1,25 @@
 # Changelog
 
+## v5.89.0 — 2026-03-11  AawoIntegration — AAWO subprocess bridge, executor enrichment, repo health widget
+
+- **1757 tests**, all passing; 0 failures
+- `utils/aawo_bridge.py`: opt-in subprocess bridge to AAWO (`AAWO_PATH` in settings.json or `AAWO_RUNTIME_PATH` env); `route_task`, `get_snapshot`, `run_cycle`, `get_active_agents`, `enrich_subtask`
+- `runners/executor.py`: `aawo_repo_path` param; `enrich_subtask` called before HITL gate when subtask has no tools
+- `commands/dispatcher.py`: `_run_aawo_session_start()` fires `run_cycle` in background daemon thread at CLI startup
+- `solo_builder_cli.py`: `_aawo_repo_path = os.path.dirname(_HERE)` (git root) passed to executor + dispatcher
+- `api/blueprints/health_detailed.py`: `repo_health` check — complexity, signals, risk_factors, active_agents; always ok:true, excluded from overall_ok
+- `api/static/dashboard_panels.js`: `pollRepoHealthDetailed()` — AAWO widget in Health tab showing complexity badge, signals, active agents
+- `api/app.py`: `ApiRateLimiter(read_limit=300)` — up from 120; dashboard 25-concurrent-poll load no longer triggers 429s
+- `config/settings.json`: `AAWO_PATH` + `AAWO_TIMEOUT:15` configured
+- `tests/test_aawo_bridge.py`: 30 tests — subprocess layer, security invariants, enrich_subtask, get_active_agents, resolve_executor_config
+- `tests/test_executor_aawo_wiring.py`: 6 tests — enrichment guard conditions, routing metadata injection, repo_path forwarding
+- `tests/test_repo_health_dashboard_widget.py`: 20 tests — HTML div, panels.js exports, dashboard.js import+call
+- `tests/test_health_detailed.py`: 9 tests — TestHealthDetailedRepoHealth class
+- `tests/test_health_tab_grid.py`: +repo-health-detailed-content to _WIDGET_IDS
+- `tests/test_middleware.py`: TestApiRateLimiter (8 tests) — class defaults, app override 300, allow/block, window expiry
+
+---
+
 ## v5.88.0 — 2026-03-10  OpenAPIHealthRoutes — 12 health+policy routes in spec (TASK-383)
 
 - **383 tasks** merged to master; **2323 tests**, all passing
