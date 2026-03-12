@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-383
+TASK-110
 
-Add 11 health endpoints to tools/generate_openapi.py OpenAPI spec
+Document test-patch constraint pattern for solo_builder_cli.py mixin architecture
