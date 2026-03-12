@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-109
+TASK-383
 
-Add unit tests for cli_utils._handle_status_subcommand and _handle_watch_subcommand
+Add 11 health endpoints to tools/generate_openapi.py OpenAPI spec
