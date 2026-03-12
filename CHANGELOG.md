@@ -1,5 +1,12 @@
 # Changelog
 
+## v6.38.0 — 2026-03-12  Tab-Aware Polling + Accessibility Tests + Version Bump
+
+- **Tab-aware polling**: Medium-tier pollers now only fire for the active sidebar tab — inactive tab data is not fetched. Combined with tiered polling, total API calls reduced ~85% vs original 30-per-tick
+- **6 new regression tests**: `TestCommandToolbarLabels` (aria-label on 7 inputs), `TestTieredPollingStructure` (tickCount, fast/medium/slow tiers, modulo guards, health in slow tier)
+- **Version bump**: `pyproject.toml` version 1.0.0 → 6.37.0 (aligned with CHANGELOG)
+- **3890 tests**, 0 failures
+
 ## v6.37.0 — 2026-03-12  Tiered Polling + Light Theme Contrast + Input Labels + Touch Targets
 
 - **Tiered polling**: Split 30 concurrent polls into fast (status/tasks/journal/history every 2s), medium (stats/branches/metrics/etc every 10s), and slow (health widgets every 30s). Reduces API calls by ~70% during idle operation

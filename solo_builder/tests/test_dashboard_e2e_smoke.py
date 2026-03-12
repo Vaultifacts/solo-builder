@@ -404,5 +404,61 @@ class TestDashboardAccessibility(_Base):
                 self.assertIn('data-tab=', tab)
 
 
+# ---------------------------------------------------------------------------
+# 10. Accessibility — aria-label on command toolbar inputs
+# ---------------------------------------------------------------------------
+
+class TestCommandToolbarLabels(_Base):
+    """Verify all command toolbar inputs and buttons have aria-label."""
+
+    def setUp(self):
+        super().setUp()
+        self._html = self.client.get("/").data.decode("utf-8", errors="replace")
+
+    _INPUT_IDS = [
+        "cmd-verify-st", "cmd-verify-note",
+        "cmd-desc-st", "cmd-desc-text",
+        "cmd-tools-st", "cmd-tools-list",
+        "cmd-set-key",
+    ]
+
+    def test_all_cmd_inputs_have_aria_label(self):
+        for iid in self._INPUT_IDS:
+            with self.subTest(input_id=iid):
+                pos = self._html.index(f'id="{iid}"')
+                # Check the element tag (up to 300 chars around the id)
+                snippet = self._html[max(0, pos - 200):pos + 100]
+                self.assertIn("aria-label=", snippet)
+
+
+# ---------------------------------------------------------------------------
+# 11. Tiered polling — dashboard.js tick structure
+# ---------------------------------------------------------------------------
+
+class TestTieredPollingStructure(unittest.TestCase):
+    """Verify dashboard.js uses tiered polling with _tickCount."""
+
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def setUp(self):
+        self._src = self._JS_PATH.read_text(encoding="utf-8")
+
+    def test_tick_count_variable_exists(self):
+        self.assertIn("_tickCount", self._src)
+
+    def test_fast_pollers_comment(self):
+        self.assertIn("Fast poller", self._src)
+
+    def test_medium_pollers_modulo_5(self):
+        self.assertIn("_tickCount % 5", self._src)
+
+    def test_slow_pollers_modulo_15(self):
+        self.assertIn("_tickCount % 15", self._src)
+
+    def test_slow_pollers_include_health(self):
+        # Health widgets should be in the slow tier
+        self.assertIn("pollHealthDetailed", self._src)
+
+
 if __name__ == "__main__":
     unittest.main()

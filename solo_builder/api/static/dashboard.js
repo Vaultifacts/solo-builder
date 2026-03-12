@@ -32,11 +32,22 @@ async function tick() {
   const progressPoll = state.selectedTask ? pollTaskProgress(state.selectedTask) : Promise.resolve();
   /* Fast pollers: every tick (2s default) */
   const fast = [pollStatus(), pollTasks(), pollJournal(), pollHistory(), progressPoll];
-  /* Medium pollers: every 5th tick (~10s) */
+  /* Medium pollers: every 5th tick (~10s), tab-aware */
   if (_tickCount % 5 === 0) {
-    fast.push(pollDiff(), pollStats(), pollBranches(), pollPriority(), pollStalled(),
-              pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(),
-              pollCache(), pollCacheHistory(), pollSettings());
+    const activeTab = document.querySelector(".sidebar-tab.active");
+    const tab = activeTab ? (activeTab.dataset.tab || "") : "";
+    fast.push(pollSettings());
+    /* Only poll data for the active tab + always-visible panels */
+    if (tab === "diff") fast.push(pollDiff());
+    if (tab === "stats") fast.push(pollStats());
+    if (tab === "branches") fast.push(pollBranches());
+    if (tab === "priority") fast.push(pollPriority());
+    if (tab === "stalled") fast.push(pollStalled());
+    if (tab === "subtasks") fast.push(pollSubtasks());
+    if (tab === "agents") fast.push(pollAgents());
+    if (tab === "forecast") fast.push(pollForecast());
+    if (tab === "metrics") fast.push(pollMetrics());
+    if (tab === "cache" || tab === "cache-history") fast.push(pollCache(), pollCacheHistory());
   }
   /* Slow pollers: every 15th tick (~30s) — health widgets change rarely */
   if (_tickCount % 15 === 0 || _tickCount === 1) {
