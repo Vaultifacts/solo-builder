@@ -38,8 +38,8 @@
     <option value="10000">10s</option>
     <option value="30000">30s</option>
   </select>
-  <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme">🌙</button>
-  <button id="btn-notif" onclick="toggleNotifPanel()" title="Notification history" style="position:relative;background:var(--surface);color:var(--dim);border:1px solid var(--border);border-radius:3px;padding:2px 10px;cursor:pointer;font-size:11px;font-family:var(--font)">🔔<span id="notif-count-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--yellow);color:#000;font-size:8px;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center">0</span></button>
+  <button id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light theme" aria-label="Toggle dark/light theme">🌙</button>
+  <button id="btn-notif" onclick="toggleNotifPanel()" title="Notification history" aria-label="Notification history" style="position:relative;background:var(--surface);color:var(--dim);border:1px solid var(--border);border-radius:3px;padding:2px 10px;cursor:pointer;font-size:11px;font-family:var(--font)">🔔<span id="notif-count-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--yellow);color:#000;font-size:8px;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center">0</span></button>
 </header>
 
 <div id="notif-panel" style="display:none;position:fixed;top:52px;right:12px;z-index:500;background:var(--surface);border:1px solid var(--border);border-radius:4px;width:320px;max-height:380px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
@@ -51,7 +51,7 @@
     <div style="color:var(--dim);font-size:10px;padding:8px 10px">No notifications yet.</div>
   </div>
 </div>
-<div id="stale-banner" style="display:none;background:#78350f;color:#fef3c7;font-size:11px;text-align:center;padding:4px 8px">
+<div id="stale-banner" role="alert" aria-live="polite" style="display:none;background:#78350f;color:#fef3c7;font-size:11px;text-align:center;padding:4px 8px">
   ⚠ Data may be stale — is the Flask server running?
 </div>
 
@@ -85,7 +85,7 @@
   </div>
 </div>
 
-<div class="layout">
+<div class="layout" role="main">
   <div class="tasks-panel">
     <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       Tasks<span id="tasks-count-lbl" style="font-size:9px;color:var(--dim);font-weight:normal;margin-left:4px"></span>
@@ -114,40 +114,40 @@
   </div>
 
   <div class="sidebar-bottom">
-    <div class="sidebar-tabs">
-      <button class="sidebar-tab active" onclick="switchTab('journal')">Journal</button>
-      <button class="sidebar-tab" onclick="switchTab('diff')">Diff</button>
-      <button class="sidebar-tab" onclick="switchTab('stats')">Stats</button>
-      <button class="sidebar-tab" onclick="switchTab('history')" id="tab-btn-history">History <span id="history-unread-badge" style="display:none;background:var(--red);color:#fff;border-radius:8px;font-size:9px;padding:0 4px;vertical-align:middle"></span></button>
-      <button class="sidebar-tab" onclick="switchTab('branches')">Branches</button>
-      <button class="sidebar-tab" onclick="switchTab('settings')">Settings</button>
-      <button class="sidebar-tab" onclick="switchTab('priority')">Priority</button>
-      <button class="sidebar-tab" onclick="switchTab('stalled')">Stalled</button>
-      <button class="sidebar-tab" data-tab="subtasks" onclick="switchTab('subtasks')">Subtasks</button>
-      <button class="sidebar-tab" onclick="switchTab('agents')">Agents</button>
-      <button class="sidebar-tab" onclick="switchTab('forecast')">Forecast</button>
-      <button class="sidebar-tab" onclick="switchTab('metrics')">Metrics</button>
-      <button class="sidebar-tab" onclick="switchTab('cache')">Cache</button>
-      <button class="sidebar-tab" data-tab="cache-history" onclick="switchTab('cache-history')">Cache History</button>
-      <button class="sidebar-tab" data-tab="export" onclick="switchTab('export')">Export</button>
-      <button class="sidebar-tab" data-tab="health" onclick="switchTab('health')">Health</button>
+    <div class="sidebar-tabs" role="tablist" aria-label="Dashboard panels">
+      <button class="sidebar-tab active" data-tab="journal" role="tab" aria-selected="true" aria-controls="tab-journal" onclick="switchTab('journal')">Journal</button>
+      <button class="sidebar-tab" data-tab="diff" role="tab" aria-selected="false" aria-controls="tab-diff" onclick="switchTab('diff')">Diff</button>
+      <button class="sidebar-tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats" onclick="switchTab('stats')">Stats</button>
+      <button class="sidebar-tab" data-tab="history" role="tab" aria-selected="false" aria-controls="tab-history" onclick="switchTab('history')" id="tab-btn-history">History <span id="history-unread-badge" style="display:none;background:var(--red);color:#fff;border-radius:8px;font-size:9px;padding:0 4px;vertical-align:middle"></span></button>
+      <button class="sidebar-tab" data-tab="branches" role="tab" aria-selected="false" aria-controls="tab-branches" onclick="switchTab('branches')">Branches</button>
+      <button class="sidebar-tab" data-tab="settings" role="tab" aria-selected="false" aria-controls="tab-settings" onclick="switchTab('settings')">Settings</button>
+      <button class="sidebar-tab" data-tab="priority" role="tab" aria-selected="false" aria-controls="tab-priority" onclick="switchTab('priority')">Priority</button>
+      <button class="sidebar-tab" data-tab="stalled" role="tab" aria-selected="false" aria-controls="tab-stalled" onclick="switchTab('stalled')">Stalled</button>
+      <button class="sidebar-tab" data-tab="subtasks" role="tab" aria-selected="false" aria-controls="tab-subtasks" onclick="switchTab('subtasks')">Subtasks</button>
+      <button class="sidebar-tab" data-tab="agents" role="tab" aria-selected="false" aria-controls="tab-agents" onclick="switchTab('agents')">Agents</button>
+      <button class="sidebar-tab" data-tab="forecast" role="tab" aria-selected="false" aria-controls="tab-forecast" onclick="switchTab('forecast')">Forecast</button>
+      <button class="sidebar-tab" data-tab="metrics" role="tab" aria-selected="false" aria-controls="tab-metrics" onclick="switchTab('metrics')">Metrics</button>
+      <button class="sidebar-tab" data-tab="cache" role="tab" aria-selected="false" aria-controls="tab-cache" onclick="switchTab('cache')">Cache</button>
+      <button class="sidebar-tab" data-tab="cache-history" role="tab" aria-selected="false" aria-controls="tab-cache-history" onclick="switchTab('cache-history')">Cache History</button>
+      <button class="sidebar-tab" data-tab="export" role="tab" aria-selected="false" aria-controls="tab-export" onclick="switchTab('export')">Export</button>
+      <button class="sidebar-tab" data-tab="health" role="tab" aria-selected="false" aria-controls="tab-health" onclick="switchTab('health')">Health</button>
     </div>
-    <div class="sidebar-tab-content active" id="tab-journal">
+    <div class="sidebar-tab-content active" id="tab-journal" role="tabpanel">
       <div id="journal-content">
         <div class="detail-placeholder">No entries yet.</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-diff">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-diff">
       <div id="diff-content">
         <div class="detail-placeholder">No changes yet.</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-stats">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-stats">
       <div id="stats-content">
         <div class="detail-placeholder">No stats yet.</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-history">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-history">
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:6px">
           <input id="history-filter" type="text" placeholder="Filter subtask/status…"
@@ -177,7 +177,7 @@
         <span id="history-count-label" style="color:var(--dim);margin-left:4px"></span>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-branches">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-branches">
       <div id="branches-bulk-bar" style="display:none;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
         <span id="branches-sel-count" style="font-size:9px;color:var(--dim)">0 selected</span>
         <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="branchesBulkReset()">↺ Reset</button>
@@ -210,17 +210,17 @@
         <span id="branches-count-label" style="color:var(--dim);margin-left:4px"></span>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-settings">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-settings">
       <div id="settings-content">
         <div class="detail-placeholder">Loading settings…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-priority">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-priority">
       <div id="priority-content">
         <div class="detail-placeholder">Loading priority queue…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-stalled">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-stalled">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <input id="stalled-task-filter" type="text" placeholder="Filter by task…"
                oninput="_applyStalledTaskFilter()"
@@ -235,7 +235,7 @@
         <div class="detail-placeholder">Loading stalled subtasks…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-subtasks">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-subtasks">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <input id="subtasks-filter" type="text" placeholder="Filter subtask/status…"
                oninput="renderSubtasks()"
@@ -274,27 +274,27 @@
         <span id="subtasks-count-label" style="color:var(--dim);margin-left:4px"></span>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-agents">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-agents">
       <div id="agents-content">
         <div class="detail-placeholder">Loading agent stats…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-forecast">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-forecast">
       <div id="forecast-content">
         <div class="detail-placeholder">Loading forecast…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-metrics">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-metrics">
       <div id="metrics-content">
         <div class="detail-placeholder">Loading metrics…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-cache">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-cache">
       <div id="cache-content">
         <div class="detail-placeholder">Loading cache stats…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-cache-history">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-cache-history">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:10px;color:var(--dim)">Show last</span>
         <select id="cache-history-limit" onchange="_renderCacheHistory()"
@@ -310,7 +310,7 @@
         <div class="detail-placeholder">Loading cache history…</div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-export">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-export">
       <div style="font-size:10px;color:var(--dim);margin-bottom:8px">Download data exports</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <div>
@@ -385,7 +385,7 @@
         </div>
       </div>
     </div>
-    <div class="sidebar-tab-content" id="tab-health">
+    <div class="sidebar-tab-content" role="tabpanel" id="tab-health">
       <div id="live-summary-detailed-content">
         <div class="detail-placeholder">Loading live summary…</div>
       </div>
@@ -428,7 +428,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="keys-overlay" onclick="if(event.target===this)closeKeysModal()" style="display:none">
+<div class="modal-overlay" id="keys-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onclick="if(event.target===this)closeKeysModal()" style="display:none">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-header">
       <span class="modal-title">Keyboard Shortcuts</span>
@@ -442,7 +442,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="st-modal-overlay" onclick="if(event.target===this)closeSubtaskModal()" style="display:none">
+<div class="modal-overlay" id="st-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sd-title" onclick="if(event.target===this)closeSubtaskModal()" style="display:none">
   <div class="modal-box" style="max-width:560px">
     <div class="modal-header">
       <span class="modal-title" id="sd-title">Subtask</span>
@@ -462,7 +462,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
     <div class="modal-header">
       <span class="modal-title" id="modal-title">—</span>
@@ -503,7 +503,7 @@
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="alert" aria-live="assertive"></div>
 
 <script type="module" src="/static/dashboard.js"></script>
 </body>

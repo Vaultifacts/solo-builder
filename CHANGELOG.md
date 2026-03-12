@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.35.0 — 2026-03-12  Dashboard Accessibility + ARIA + Focus Styles
+
+- **ARIA tablist/tab/tabpanel**: Sidebar tabs now have `role="tablist"`, each button has `role="tab"` + `aria-selected` + `aria-controls`, all panels have `role="tabpanel"`. `data-tab` on every tab button for reliable matching
+- **`aria-selected` toggling**: `switchTab()` now updates `aria-selected` on tab buttons dynamically
+- **Dialog accessibility**: All 3 modals have `role="dialog"` + `aria-modal="true"` + `aria-labelledby`
+- **Focus-visible outlines**: `:focus-visible` with cyan outline on all interactive elements — buttons, tabs, inputs, task cards
+- **Alert roles**: Toast (`aria-live="assertive"`) and stale banner (`role="alert"` + `aria-live="polite"`) for screen reader announcements
+- **Emoji button labels**: Theme toggle and notification buttons have `aria-label` for screen readers
+- **Mobile font fix**: Button font-size `9px → 10px` on mobile breakpoint (WCAG minimum)
+- **12 new accessibility regression tests**: tablist/tab/tabpanel roles, aria-selected, aria-controls, dialog roles, aria-modal, alert roles, aria-labels, data-tab completeness
+- **3884 tests**, 0 failures, dashboard lint PASS (0 gaps)
+
 ## v6.34.0 — 2026-03-12  Final Panel Extraction + Full Bot Dispatch Coverage
 
 - **TASK-415 complete**: Final `dashboard_panels.js` extraction — priority, agents, forecast, metrics panels (207 lines) → `dashboard_analytics.js`. Panels hub now **62 lines** (re-exports + switchTab + export refresh). **-96%** from original 1664 lines. **17 ES modules** total

@@ -14,7 +14,9 @@ import { resetHistoryUnread as _resetHistoryUnread } from "./dashboard_history.j
 window.switchTab = function (name) {
   document.querySelectorAll(".sidebar-tab").forEach(t => {
     const tabName = t.dataset.tab || t.textContent.toLowerCase();
-    t.classList.toggle("active", tabName === name);
+    const isActive = tabName === name;
+    t.classList.toggle("active", isActive);
+    t.setAttribute("aria-selected", String(isActive));
   });
   document.querySelectorAll(".sidebar-tab-content").forEach(c => c.classList.toggle("active", c.id === "tab-" + name));
   if (name === "journal") {

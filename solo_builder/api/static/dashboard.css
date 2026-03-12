@@ -526,6 +526,25 @@
   [data-theme="light"] #btn-auto     { background: #f0e8f5; }
   [data-theme="light"] .task-card.active { background: #e0f2f5; }
 
+  /* ── Focus / accessibility ────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+  .sidebar-tab:focus-visible {
+    outline-offset: -2px;
+  }
+  .task-card:focus-visible {
+    border-color: var(--cyan);
+    outline: 2px solid var(--cyan);
+    outline-offset: -1px;
+  }
+  .modal-close:focus-visible,
+  .cmd-btn:focus-visible,
+  .toolbar-btn:focus-visible {
+    outline-offset: 1px;
+  }
+
   /* ── Error toast ─────────────────────────────────────────── */
   #toast {
     position: fixed;
@@ -574,5 +593,5 @@
     header h1 { font-size: 12px; }
     .stat-val  { font-size: 16px; }
     .progress-wrap { min-width: 100%; }
-    #btn-export, #btn-theme, #btn-view { font-size: 9px; padding: 1px 5px; }
+    #btn-export, #btn-theme, #btn-view { font-size: 10px; padding: 2px 6px; }
   }

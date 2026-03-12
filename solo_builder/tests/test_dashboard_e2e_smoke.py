@@ -341,5 +341,68 @@ class TestAnalyticsModuleContent(unittest.TestCase):
         self.assertIn("sparklineSvg", self._src)
 
 
+# ---------------------------------------------------------------------------
+# 9. Accessibility — ARIA attributes
+# ---------------------------------------------------------------------------
+
+class TestDashboardAccessibility(_Base):
+    """Verify ARIA attributes and accessibility markup in served HTML."""
+
+    def setUp(self):
+        super().setUp()
+        self._html = self.client.get("/").data.decode("utf-8", errors="replace")
+
+    def test_tablist_role_present(self):
+        self.assertIn('role="tablist"', self._html)
+
+    def test_tab_roles_present(self):
+        self.assertIn('role="tab"', self._html)
+
+    def test_tabpanel_roles_present(self):
+        self.assertIn('role="tabpanel"', self._html)
+
+    def test_aria_selected_on_active_tab(self):
+        self.assertIn('aria-selected="true"', self._html)
+
+    def test_aria_controls_on_tabs(self):
+        self.assertIn('aria-controls="tab-journal"', self._html)
+
+    def test_dialog_role_on_modals(self):
+        # At least one modal should have role="dialog"
+        self.assertIn('role="dialog"', self._html)
+
+    def test_aria_modal_on_modals(self):
+        self.assertIn('aria-modal="true"', self._html)
+
+    def test_alert_role_on_toast(self):
+        self.assertIn('id="toast"', self._html)
+        # Toast should have aria-live for screen reader announcements
+        toast_pos = self._html.index('id="toast"')
+        # Check within 200 chars before the id (in the same element)
+        snippet = self._html[max(0, toast_pos - 200):toast_pos + 50]
+        self.assertIn('aria-live', snippet)
+
+    def test_stale_banner_has_alert_role(self):
+        self.assertIn('id="stale-banner"', self._html)
+        banner_pos = self._html.index('id="stale-banner"')
+        snippet = self._html[max(0, banner_pos - 200):banner_pos + 50]
+        self.assertIn('role="alert"', snippet)
+
+    def test_theme_button_has_aria_label(self):
+        self.assertIn('aria-label="Toggle dark/light theme"', self._html)
+
+    def test_notif_button_has_aria_label(self):
+        self.assertIn('aria-label="Notification history"', self._html)
+
+    def test_all_tabs_have_data_tab(self):
+        """All sidebar tab buttons should have data-tab for reliable switchTab matching."""
+        import re
+        tabs = re.findall(r'<button\s+class="sidebar-tab[^"]*"[^>]*>', self._html)
+        self.assertGreater(len(tabs), 0, "No sidebar-tab buttons found")
+        for tab in tabs:
+            with self.subTest(tab=tab[:60]):
+                self.assertIn('data-tab=', tab)
+
+
 if __name__ == "__main__":
     unittest.main()
