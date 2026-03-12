@@ -420,5 +420,38 @@ class TestCmdResume(unittest.TestCase):
         self.assertIn("Resumed", "\n".join(printed))
 
 
+# ---------------------------------------------------------------------------
+# _cmd_resume lines 181-182: OSError on os.remove swallowed (TASK-407)
+# ---------------------------------------------------------------------------
+
+class TestCmdResumeOSError(unittest.TestCase):
+    """Lines 181-182: OSError when removing pause_trigger is silently swallowed."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._ps = _inject(self._tmp)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_oserror_on_remove_swallowed(self):
+        """Lines 181-182: os.remove raises OSError → swallowed, 'Resumed' still printed."""
+        state_dir = os.path.join(self._tmp, "state")
+        os.makedirs(state_dir, exist_ok=True)
+        trigger = os.path.join(state_dir, "pause_trigger")
+        Path(trigger).write_text("1")
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))), \
+             patch("os.remove", side_effect=OSError("locked")):
+            self.cli._cmd_resume()
+        self.assertIn("Resumed", "\n".join(printed))
+
+
 if __name__ == "__main__":
     unittest.main()

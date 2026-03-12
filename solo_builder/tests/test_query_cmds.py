@@ -2,7 +2,9 @@
 _cmd_stalled, _cmd_agents, _cmd_forecast, _cmd_tasks, _cmd_history (TASK-403)."""
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -349,6 +351,51 @@ class TestCmdHistory(unittest.TestCase):
             self.cli._cmd_history("")
         combined = "\n".join(printed)
         self.assertIn("No history", combined)
+
+
+# ---------------------------------------------------------------------------
+# _cmd_log line 346: block starts with ## but doesn't match regex → continue
+# ---------------------------------------------------------------------------
+
+class TestCmdLog(unittest.TestCase):
+
+    def setUp(self):
+        self.cli = _FakeCLI()
+        self._tmp = tempfile.mkdtemp()
+        import commands.query_cmds as _qc
+        self._qc = _qc
+        self._old_journal = getattr(_qc, "JOURNAL_PATH", None)
+
+    def tearDown(self):
+        import commands.query_cmds as _qc
+        import shutil
+        if self._old_journal is not None:
+            _qc.JOURNAL_PATH = self._old_journal
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_block_with_bad_header_skipped(self):
+        """Line 346: block starts with '## ' but doesn't match full regex → continue."""
+        import os
+        journal = os.path.join(self._tmp, "JOURNAL.md")
+        # Write a block that starts with ## but has a malformed header
+        Path(journal).write_text(
+            "## not-a-valid-header\n\nsome body text\n",
+            encoding="utf-8",
+        )
+        self._qc.JOURNAL_PATH = journal
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))):
+            self.cli._cmd_log("")
+        combined = "\n".join(printed)
+        # No entries parsed from the malformed block
+        self.assertIn("0 entr", combined)
+
+    def test_no_journal_file_prints_warning(self):
+        self._qc.JOURNAL_PATH = os.path.join(self._tmp, "nonexistent.md")
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a: printed.append(" ".join(str(x) for x in a))):
+            self.cli._cmd_log("")
+        self.assertIn("No journal", "\n".join(printed))
 
 
 if __name__ == "__main__":
