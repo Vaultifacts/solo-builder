@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-386
+TASK-387
 
-OpenAPIBlueprintGaps — drift-guard already passes (no new routes)
+OpenAPIRequestBodies — request body schemas already present
