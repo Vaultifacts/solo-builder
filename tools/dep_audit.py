@@ -108,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Solo Builder dependency audit")
     parser.add_argument("--check-only", action="store_true",
                         help="Only check for version drift; skip pip-audit CVE scan")
+    parser.add_argument("--quiet", action="store_true",
+                        help="Suppress all stdout/stderr output")
     args = parser.parse_args(argv)
 
     if not LOCK_FILE.exists():
@@ -134,17 +136,18 @@ def main(argv: list[str] | None = None) -> int:
 
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
-    if drift:
-        print(f"DRIFT: {len(drift)} package(s) differ from lockfile:", file=sys.stderr)
-        for d in drift:
-            print(f"  {d['package']}: pinned={d['pinned']} installed={d['installed']}", file=sys.stderr)
+    if not args.quiet:
+        if drift:
+            print(f"DRIFT: {len(drift)} package(s) differ from lockfile:", file=sys.stderr)
+            for d in drift:
+                print(f"  {d['package']}: pinned={d['pinned']} installed={d['installed']}", file=sys.stderr)
 
-    if pip_audit_result.get("ran") and not pip_audit_result.get("passed"):
-        count = pip_audit_result.get("vulnerability_count", "?")
-        print(f"VULNERABILITIES: pip-audit found {count} CVE(s).", file=sys.stderr)
+        if pip_audit_result.get("ran") and not pip_audit_result.get("passed"):
+            count = pip_audit_result.get("vulnerability_count", "?")
+            print(f"VULNERABILITIES: pip-audit found {count} CVE(s).", file=sys.stderr)
 
-    if passed:
-        print("dep_audit: OK")
+        if passed:
+            print("dep_audit: OK")
     return 0 if passed else 1
 
 

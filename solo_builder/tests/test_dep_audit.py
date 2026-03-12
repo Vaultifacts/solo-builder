@@ -155,6 +155,24 @@ class TestMain(unittest.TestCase):
         rc = dep_audit.main(["--check-only"])
         self.assertEqual(rc, 1)
 
+    def test_quiet_suppresses_output(self):
+        import io
+        from unittest.mock import patch
+        self._write_good_lock()
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out, \
+             patch("sys.stderr", new_callable=io.StringIO) as mock_err:
+            dep_audit.main(["--check-only", "--quiet"])
+        self.assertEqual(mock_out.getvalue(), "")
+        self.assertEqual(mock_err.getvalue(), "")
+
+    def test_quiet_with_drift_suppresses_stderr(self):
+        import io
+        from unittest.mock import patch
+        self._lock.write_text("requests==0.0.0\n", encoding="utf-8")
+        with patch("sys.stderr", new_callable=io.StringIO) as mock_err:
+            dep_audit.main(["--check-only", "--quiet"])
+        self.assertEqual(mock_err.getvalue(), "")
+
 
 if __name__ == "__main__":
     unittest.main()
