@@ -139,6 +139,7 @@ solo_builder/tests/test_context_window_check.py
 tools/context_window_check.py
 docs/CLI_REFACTOR_DESIGN.md
 tools/archive_journal.py
+claude/journal_archive/2026-03.md
 solo_builder/tests/test_archive_journal.py
 solo_builder/tests/test_executor_timing.py
 solo_builder/tests/test_mutation_runner.py
