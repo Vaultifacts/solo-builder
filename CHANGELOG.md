@@ -1,5 +1,13 @@
 # Changelog
 
+## v6.28.0 — 2026-03-12  Dashboard Refactor + Zero Tech Debt
+
+- **dashboard_panels.js split**: extracted 14 health pollers into `dashboard_health.js` (697 lines), reducing `dashboard_panels.js` from 1664→970 lines (-42%)
+- **TD-ARCH-001 resolved**: `solo_builder_cli.py` at 473 lines (target was <600) — 0 open debt items remain
+- **Journal archival**: JOURNAL.md trimmed 559→65 lines (494 entries archived)
+- **10 ES modules** in dashboard (was 9): state, utils, svg, tasks, panels, branches, cache, journal, health (new)
+- **3358 tests**, 0 failures, CI gate 6/6 PASS
+
 ## v6.27.0 — 2026-03-12  Full Coverage Milestone — cli_utils 100%, cache 100%, CI gate 6/6
 
 - **cli_utils.py 74→100%**: 10 new tests covering `_splash`, `_acquire_lock`/`_release_lock`, `_setup_logging(use_json=True)`, `_emit_json_result` with/without export flag

@@ -30,19 +30,7 @@ it causing a problem and the cost of fixing it later vs. now.
 
 ## Active Debt Items
 
-### TD-ARCH-001 — `solo_builder_cli.py` god file
-**Priority:** Medium | **Added:** 2026-03-10
-
-`solo_builder_cli.py` is ~665 lines and acts as the application entry point,
-config loader, mixin host, and CLI dispatcher simultaneously. It contains
-five globals (`_PDF_OK`, `_CFG_PATH`, `STATE_PATH`, `JOURNAL_PATH`,
-`WEBHOOK_URL`) that must remain there for test patching to work.
-
-**Impact:** Hard to extend; test patches are brittle; onboarding cost high.
-
-**Resolution path:** Extract config loading to `solo_builder/config/loader.py`;
-move CLI dispatch to `commands/dispatcher.py` (already partially exists).
-Estimated scope: Medium. Prerequisite: update all test patches.
+_No open debt items._
 
 ---
 
@@ -50,6 +38,7 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 
 | ID | Description | Resolved in |
 |---|---|---|
+| TD-ARCH-001 | `solo_builder_cli.py` god file (665→473 lines, dispatcher+cli_utils extracted) | v6.28.0 |
 | TD-DOC-001 | No prompt engineering standard | TASK-311 |
 | TD-DOC-002 | No HITL trigger criteria | TASK-312 |
 | TD-DOC-003 | No tool scope design | TASK-313 |
@@ -75,12 +64,12 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 
 | Category | Open items | High priority |
 |---|---|---|
-| TD-ARCH | 1 | 0 |
+| TD-ARCH | 0 | 0 |
 | TD-TEST | 0 | 0 |
 | TD-SEC | 0 | 0 |
 | TD-OPS | 0 | 0 |
 | TD-DEP | 0 | 0 |
-| **Total** | **1** | **0** |
+| **Total** | **0** | **0** |
 
 ---
 
@@ -109,6 +98,7 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 | 2026-03-10 | TASK-319: Resolved TD-OPS-001 — executor metrics JSONL (elapsed_s, sdk_success_rate). 1 open item remains (TD-ARCH-001). |
 | 2026-03-10 | TASK-322: Resolved TD-SEC-003 — HSTS header added to SecurityHeadersMiddleware. |
 | 2026-03-10 | TASK-323: Resolved TD-TEST-003 — 5 Flask test-client integration tests assert all security headers end-to-end. TD-ARCH-001 Phase 1 analysis corrected: 6 of 8 "read-only" constants are mutable via do_set. |
+| 2026-03-12 | v6.28.0: Resolved TD-ARCH-001 — solo_builder_cli.py reduced from 665→473 lines via dispatcher.py, cli_utils.py, mixin extractions. 0 open debt items. |
 
 ---
 
