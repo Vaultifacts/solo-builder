@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-113
+TASK-114
 
-XSS dashboard JS — no innerHTML found, no changes needed
+Flask API integration tests for endpoints with insufficient coverage

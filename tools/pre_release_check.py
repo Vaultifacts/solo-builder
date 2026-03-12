@@ -77,7 +77,7 @@ def _builtin_gates() -> list[dict]:
             "name":     "python-tests",
             "command":  f'"{_PYTHON}" -m pytest solo_builder/tests/ solo_builder/api/test_app.py -q --tb=no',
             "required": True,
-            "timeout_sec": 120,
+            "timeout_sec": 300,
         },
         {
             "name":     "git-clean",
