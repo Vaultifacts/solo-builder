@@ -41,6 +41,7 @@ pypi Recovery Codes.txt
 *.env
 *.env.local
 *.key
+CLAUDE.local.md
 tools/auto_batch.log
 audit_reports/
 dep_audit_result.json
