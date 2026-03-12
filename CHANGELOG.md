@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.21.0 — 2026-03-11  TASK-407 Deep coverage sprint — 2570 tests, 4 command modules at 100%
+
+- **TASK-407 Deep coverage sprint**: 28 new tests across 4 test files reaching 100% on targeted modules:
+  - **`test_dag_cmds_deep.py`** (+19 tests, 7 new classes): `_cmd_reset` (6 tests), digit-dep normalise, Claude decomp `except` paths (104-105), lowercase `_normalise` in `depends`/`undepends`, import_dag validation errors, `_cmd_export` (5 tests) — `dag_cmds.py` 86% → **100%**
+  - **`test_step_runner.py`** (+6 tests, 2 new classes): Running/Review heartbeat counters (lines 90-91), `os.replace` OSError (115-118), `shutil.copy2` OSError (122-123) — `step_runner.py` 95% → **100%**
+  - **`test_query_cmds.py`** (+2 tests): `_cmd_log` bad-header `continue` path (line 346), no-journal warning — `query_cmds.py` 99% → **100%**
+  - **`test_subtask_cmds.py`** (+1 test): `_cmd_resume` `os.remove` OSError (lines 181-182) — `subtask_cmds.py` 99% → **100%**
+- Coverage totals: `dag_cmds.py` **100%**, `step_runner.py` **100%**, `query_cmds.py` **100%**, `subtask_cmds.py` **100%**
+- Key fix: `_FakeCLI.save_state` is a MagicMock instance attribute — OSError tests call `StepRunnerMixin.save_state(cli)` directly to reach the real implementation
+- **2570 tests total**, 0 failures
+
 ## v6.20.0 — 2026-03-11  TASK-406 Deep coverage sprint — 2542 tests, commands/ 96%
 
 - **TASK-406 Deep coverage sprint**: 5 new test files + major additions to 3 existing files (67 new tests):
