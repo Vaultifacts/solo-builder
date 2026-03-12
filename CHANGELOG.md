@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.30.0 — 2026-03-12  TASK-411 Dashboard Panel Extraction
+
+- **TASK-411 complete**: Extracted settings panel (105 lines) → `dashboard_settings.js`, stalled panel (134 lines) → `dashboard_stalled.js`
+- **dashboard_panels.js 960→722 lines** (-25%), 12 ES modules total (was 10)
+- Shared helpers (`STATUS_COL`, `placeholder`) in `dashboard_utils.js` for cross-module use
+- Arch regression test guards score >= 95.0 + zero critical findings
+- Idle/done STATE.json oscillation fix in `audit_check.ps1`
+- **2594 tests**, 0 failures, lint handler audit 0 gaps
+
 ## v6.29.0 — 2026-03-12  Architecture Score 99.0 + Dashboard Health Smoke Tests
 
 - **Architecture score 75.5→99.0/100**: Fixed 4 circular dependency false positives in Autonomous Architecture Auditor — multiline regex capture bug, test file exclusion, path boundary matching, token length filter

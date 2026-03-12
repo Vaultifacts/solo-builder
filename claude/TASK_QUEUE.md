@@ -1,8 +1,8 @@
 # Task Queue
 
-## Completed Tasks (TASK-001 through TASK-410)
+## Completed Tasks (TASK-001 through TASK-411)
 All tasks merged to `master`. See `claude/JOURNAL.md` and journal archive for history.
-Latest: **v6.29.0** (2026-03-12)
+Latest: **v6.30.0** (2026-03-12)
 
 Key milestones:
 - TASK-103: solo_builder_cli.py 2965→1393 lines (mixin extraction)
@@ -33,14 +33,9 @@ Priority: Low
 ### TASK-409 (done — v6.28.0)
 ### TASK-410 (done — v6.29.0)
 
-### TASK-411 (proposed)
-Goal: Reduce dashboard_panels.js further by extracting settings/stalled/subtasks panels
-
-Notes: Shared helpers (_STATUS_COL, _placeholder) moved to dashboard_utils.js.
-Settings (246-350), stalled (412-545), subtasks (546-826) are now extractable.
-Would bring dashboard_panels.js from ~960 to ~350 lines.
-
-Priority: Low
+### TASK-411 (done — v6.30.0)
+Extracted settings (105 lines) → dashboard_settings.js, stalled (134 lines) → dashboard_stalled.js.
+dashboard_panels.js 960→722 lines. Subtasks deferred (cross-cutting switchTab refs).
 
 ### TASK-412 (proposed)
 Goal: Add WebSocket support for real-time dashboard updates
