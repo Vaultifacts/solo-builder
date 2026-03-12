@@ -1,8 +1,8 @@
 # Task Queue
 
-## Completed Tasks (TASK-001 through TASK-407)
+## Completed Tasks (TASK-001 through TASK-410)
 All tasks merged to `master`. See `claude/JOURNAL.md` and journal archive for history.
-Latest: **v6.28.0** (2026-03-12)
+Latest: **v6.29.0** (2026-03-12)
 
 Key milestones:
 - TASK-103: solo_builder_cli.py 2965→1393 lines (mixin extraction)
@@ -15,7 +15,7 @@ Key milestones:
 - TASK-380+: AAWO bridge, outcome stats, OpenAPI health routes, blueprint coverage
 - TASK-400+: Final coverage sprints, architecture polish
 
-Current stats: 3358 tests, 0 failures, 90 API routes, 0 open tech debt items, CI gate 6/6 PASS
+Current stats: 3366 tests, 0 failures, 90 API routes, 0 open tech debt items, CI gate 6/6 PASS, arch score 99.0/100
 
 ---
 
@@ -30,24 +30,8 @@ Deferred due to cross-cutting complexity — 970-line file is acceptable.
 
 Priority: Low
 
-### TASK-409 (proposed)
-Goal: Add automated OpenAPI spec drift detection test
-
-Acceptance Criteria:
-- Test that compares Flask `app.url_map` routes against `generate_openapi.py` `build_spec()` output
-- Fails if any route exists in Flask but not in spec (or vice versa)
-- Runs as part of `test_generate_openapi.py`
-
-Priority: Medium
-
-### TASK-410 (proposed)
-Goal: Add dashboard E2E smoke test for the new dashboard_health.js module
-
-Acceptance Criteria:
-- Verify all 14 health poller functions are importable via dashboard_panels.js re-exports
-- Verify dashboard.js import statement includes all health pollers
-
-Priority: Low
+### TASK-409 (done — v6.28.0)
+### TASK-410 (done — v6.29.0)
 
 ### TASK-411 (proposed)
 Goal: Reduce dashboard_panels.js further by extracting settings/stalled/subtasks panels

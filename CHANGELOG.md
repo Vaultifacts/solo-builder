@@ -1,5 +1,13 @@
 # Changelog
 
+## v6.29.0 — 2026-03-12  Architecture Score 99.0 + Dashboard Health Smoke Tests
+
+- **Architecture score 75.5→99.0/100**: Fixed 4 circular dependency false positives in Autonomous Architecture Auditor — multiline regex capture bug, test file exclusion, path boundary matching, token length filter
+- **TASK-409 complete**: OpenAPI spec drift detection test (3 tests guard 90/90 route parity)
+- **TASK-410 complete**: dashboard_health.js smoke test — verifies all 12 pollers exported, re-exported, and imported
+- **3366 tests**, 0 failures, CI gate 6/6 PASS
+- Only remaining critical: known-acceptable `shell=True` in `pre_release_check.py`
+
 ## v6.28.0 — 2026-03-12  Dashboard Refactor + Zero Tech Debt
 
 - **dashboard_panels.js split**: extracted 14 health pollers into `dashboard_health.js` (697 lines), reducing `dashboard_panels.js` from 1664→970 lines (-42%)
