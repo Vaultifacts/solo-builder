@@ -451,7 +451,7 @@ class TestHealthDetailedSloStatus(_Base):
 class TestSloStatusPanelJs(unittest.TestCase):
 
     def _panels_js(self):
-        return (Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_panels.js"
+        return (Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_health.js"
                 ).read_text(encoding="utf-8")
 
     def test_slo_status_key_referenced(self):

@@ -23,7 +23,7 @@ import api.blueprints.slo as slo_mod
 
 _REPO_ROOT      = Path(__file__).resolve().parents[2]
 _DASHBOARD_HTML = _REPO_ROOT / "solo_builder" / "api" / "dashboard.html"
-_PANELS_JS      = _REPO_ROOT / "solo_builder" / "api" / "static" / "dashboard_panels.js"
+_PANELS_JS      = _REPO_ROOT / "solo_builder" / "api" / "static" / "dashboard_health.js"
 _MAIN_JS        = _REPO_ROOT / "solo_builder" / "api" / "static" / "dashboard.js"
 
 
