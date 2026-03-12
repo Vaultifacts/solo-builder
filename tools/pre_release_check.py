@@ -42,11 +42,12 @@ class GateResult(NamedTuple):
 
 def _run_gate(name: str, command: str, timeout: int = 120) -> tuple[bool, str, float]:
     """Run a shell command; return (passed, output, duration_s)."""
+    import shlex
     import time
     t0 = time.monotonic()
     try:
         result = subprocess.run(
-            command, shell=True, capture_output=True, text=True,
+            shlex.split(command), shell=False, capture_output=True, text=True,
             timeout=timeout, cwd=str(REPO_ROOT),
         )
         elapsed = round(time.monotonic() - t0, 2)
