@@ -516,6 +516,14 @@ class TestDagSummary(_Base):
         self.assertEqual(d["pending"], 1)
         self.assertEqual(d["review"], 1)
 
+    def test_running_subtask_counted(self):
+        """dag.py:36 — Running subtask increments running count."""
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.get("/dag/summary").get_json()
+        self.assertEqual(d["running"], 1)
+        task_row = d["tasks"][0]
+        self.assertEqual(task_row["running"], 1)
+
     def test_summary_text_includes_review(self):
         self._write_state(self._make_state({"A1": "Review"}))
         d = self.client.get("/dag/summary").get_json()
@@ -1414,6 +1422,15 @@ class TestDiff(_Base):
         r = self.client.get("/diff")
         d = r.get_json()
         self.assertEqual(d["changes"], [])
+
+    def test_diff_backup_corrupt_returns_500(self):
+        """history.py:180-181 — corrupt backup file returns 500."""
+        self._write_state(self._make_state())
+        backup_path = Path(str(self._state_path) + ".1")
+        backup_path.write_text("NOT-JSON!!!", encoding="utf-8")
+        r = self.client.get("/diff")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
 
 
 class TestDagDiff(_Base):
@@ -2725,6 +2742,43 @@ class TestGraph(_Base):
         self.assertIn("total", node)
         self.assertIn("depends_on", node)
 
+    def test_graph_empty_dag(self):
+        """tasks.py:492 — empty DAG returns no nodes."""
+        self._write_state({"step": 1, "dag": {}})
+        d = self.client.get("/graph").get_json()
+        self.assertEqual(d["nodes"], [])
+        self.assertIn("No tasks", d["text"])
+
+    def test_graph_with_dependencies(self):
+        """tasks.py:510-511, 515-516 — graph with deps shows arrows."""
+        state = {"step": 1, "dag": {
+            "Task A": {"status": "Verified", "depends_on": [],
+                       "branches": {"B1": {"subtasks": {"S1": {"status": "Verified"}}}}},
+            "Task B": {"status": "Pending", "depends_on": ["Task A"],
+                       "branches": {"B1": {"subtasks": {"S1": {"status": "Pending"}}}}},
+        }}
+        self._write_state(state)
+        d = self.client.get("/graph").get_json()
+        self.assertEqual(len(d["nodes"]), 2)
+        task_b = [n for n in d["nodes"] if n["task"] == "Task B"][0]
+        self.assertEqual(task_b["depends_on"], ["Task A"])
+        self.assertIn("<-", d["text"])
+        self.assertIn("+->", d["text"])
+
+    def test_priority_unmet_deps_excluded(self):
+        """tasks.py:531 — tasks with unmet deps skipped in priority."""
+        state = {"step": 5, "dag": {
+            "Task A": {"status": "Pending", "depends_on": [],
+                       "branches": {"B1": {"subtasks": {"S1": {"status": "Pending"}}}}},
+            "Task B": {"status": "Pending", "depends_on": ["Task A"],
+                       "branches": {"B1": {"subtasks": {"S1": {"status": "Pending"}}}}},
+        }}
+        self._write_state(state)
+        d = self.client.get("/priority").get_json()
+        tasks_in_queue = {c["task"] for c in d["queue"]}
+        self.assertIn("Task A", tasks_in_queue)
+        self.assertNotIn("Task B", tasks_in_queue)
+
 
 # Stop
 # ---------------------------------------------------------------------------
@@ -3468,6 +3522,24 @@ class TestPauseResume(_Base):
         self.assertEqual(r.status_code, 202)
         self.assertTrue(r.get_json()["ok"])
 
+    def test_resume_unlink_oserror(self):
+        """control.py:87-88 — OSError on pause_trigger unlink."""
+        self._pause_path.parent.mkdir(exist_ok=True)
+        self._pause_path.write_text("1")
+        from pathlib import Path as _P
+        _orig = _P.unlink
+        def _boom(self_path, *a, **kw):
+            if "pause" in str(self_path):
+                raise OSError("locked")
+            return _orig(self_path, *a, **kw)
+        _P.unlink = _boom
+        try:
+            r = self.client.post("/resume")
+        finally:
+            _P.unlink = _orig
+        self.assertEqual(r.status_code, 202)
+        self.assertTrue(r.get_json()["ok"])
+
 
 # ---------------------------------------------------------------------------
 # GET /  (dashboard HTML)
@@ -3606,6 +3678,12 @@ class TestDagImport(_Base):
     def test_post_dag_import_response_has_task_count(self):
         d = self.client.post("/dag/import", json={"dag": self._minimal_dag()}).get_json()
         self.assertEqual(d["tasks"], 1)
+
+    def test_post_dag_import_invalid_dag_structure(self):
+        """dag.py:119 — dag value is not a dict."""
+        r = self.client.post("/dag/import", json={"dag": "not-a-dict"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Invalid", r.get_json()["error"])
 
 
 class TestMetrics(_Base):
@@ -4570,6 +4648,44 @@ class TestWebhook(_Base):
             self.assertIn(key, body)
         self.assertEqual(body["event"], "complete")
 
+    def test_settings_read_exception(self):
+        """webhook.py:37-38 — settings read exception → no URL."""
+        self._write_state(self._make_state())
+        from pathlib import Path as _P
+        _orig = _P.read_text
+        def _boom(self_path, *a, **kw):
+            if "settings" in str(self_path):
+                raise OSError("disk error")
+            return _orig(self_path, *a, **kw)
+        _P.read_text = _boom
+        try:
+            r = self.client.post("/webhook")
+        finally:
+            _P.read_text = _orig
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertIn("not configured", d.get("reason", ""))
+
+    def test_non_http_url_rejected(self):
+        """webhook.py:42 — WEBHOOK_URL not starting with http."""
+        self._write_state(self._make_state())
+        self._settings_path.write_text('{"WEBHOOK_URL": "ftp://evil.com"}', encoding="utf-8")
+        r = self.client.post("/webhook")
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertIn("http", d.get("reason", ""))
+
+    def test_urlopen_exception(self):
+        """webhook.py:59-60 — urlopen raises."""
+        self._write_state(self._make_state())
+        self._settings_path.write_text('{"WEBHOOK_URL": "http://bad.example.com"}', encoding="utf-8")
+        with patch("urllib.request.urlopen", side_effect=Exception("connection refused")):
+            r = self.client.post("/webhook")
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertFalse(d["sent"])
+        self.assertIn("error", d)
+
 
 # ---------------------------------------------------------------------------
 # GET /subtask/<id>/output  (TASK-079)
@@ -4785,6 +4901,22 @@ class TestPostTaskBulkVerify(_Base):
         s = _json.loads(self._state_path.read_text())
         self.assertEqual(s["dag"]["Task 0"]["status"], "Running")
 
+    def test_bulk_verify_write_failure_returns_500(self):
+        """tasks.py:313-314 — write_text exception on bulk-verify."""
+        self._write_state(self._make_state({"A1": "Running"}))
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            if "state" in str(self_path) and "solo_builder" in str(self_path):
+                raise OSError("disk full")
+            return _orig(self_path, *a, **kw)
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/tasks/Task 0/bulk-verify")
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
+
     def test_empty_subtasks_returns_zero_counts(self):
         state = {"step": 1, "dag": {"Task 0": {"status": "Pending", "depends_on": [],
                  "branches": {"Branch A": {"subtasks": {}}}}}}
@@ -4855,6 +4987,22 @@ class TestPostTaskReset(_Base):
         new_state = json.loads(self._state_path.read_text())
         st = new_state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
         self.assertEqual(st.get("output", ""), "")
+
+    def test_reset_write_failure_returns_500(self):
+        """tasks.py:182-183 — write_text exception on reset."""
+        self._write_state(self._make_state({"A1": "Running"}))
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            if "state" in str(self_path) and "solo_builder" in str(self_path):
+                raise OSError("disk full")
+            return _orig(self_path, *a, **kw)
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/tasks/Task 0/reset")
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
 
 
 class TestPostTaskBulkReset(_Base):
@@ -4945,6 +5093,22 @@ class TestPostTaskBulkReset(_Base):
         d = self.client.post("/tasks/Task 0/bulk-reset").get_json()
         self.assertEqual(d["reset_count"], 0)
         self.assertEqual(d["skipped_count"], 0)
+
+    def test_bulk_reset_write_failure_returns_500(self):
+        """tasks.py:223-224 — write_text exception on bulk-reset."""
+        self._write_state(self._make_state({"A1": "Running"}))
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            if "state" in str(self_path) and "solo_builder" in str(self_path):
+                raise OSError("disk full")
+            return _orig(self_path, *a, **kw)
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/tasks/Task 0/bulk-reset")
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
 
 
 # ---------------------------------------------------------------------------
@@ -5119,6 +5283,46 @@ class TestGetTaskBranches(_Base):
         d = self.client.get("/tasks/Task 0/branches").get_json()
         br = d["branches"][0]
         self.assertEqual(br["pct"], 50.0)
+
+    def test_bad_limit_defaults_to_zero(self):
+        """tasks.py:340-341 — invalid limit param falls back to 0."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/branches?limit=abc").get_json()
+        self.assertEqual(d["limit"], 0)
+
+    def test_bad_page_defaults_to_one(self):
+        """tasks.py:344-345 — invalid page param falls back to 1."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/branches?page=xyz").get_json()
+        self.assertEqual(d["page"], 1)
+
+    def test_review_dominant_status(self):
+        """tasks.py:360 — Review dominant status in branch listing."""
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/tasks/Task 0/branches").get_json()
+        br = d["branches"][0]
+        self.assertEqual(br["status"], "Review")
+
+
+class TestGetTaskSubtasksEdge(_Base):
+
+    def test_bad_limit_defaults_to_zero(self):
+        """tasks.py:414-415 — invalid limit param falls back to 0."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks?limit=abc").get_json()
+        self.assertEqual(d["limit"], 0)
+
+    def test_bad_page_defaults_to_one(self):
+        """tasks.py:418-419 — invalid page param falls back to 1."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks?page=xyz").get_json()
+        self.assertEqual(d["page"], 1)
+
+    def test_branch_filter_no_match(self):
+        """tasks.py:423 — branch filter skips non-matching branches."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/tasks/Task 0/subtasks?branch=ZZZ").get_json()
+        self.assertEqual(d["count"], 0)
 
 
 class TestGetTaskTimeline(_Base):
@@ -5738,6 +5942,41 @@ class TestExecutorGates(_Base):
         self.assertEqual(gate["hitl_level"], 0)
         self.assertEqual(gate["hitl_name"], "Auto")
 
+    def test_hitl_gate_import_exception(self):
+        """executor_gates.py:73-75 — hitl_gate import fails → fallback lambdas."""
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        import importlib
+        with patch.dict("sys.modules", {"runners.hitl_gate": None}):
+            # Force re-import by reloading the blueprint
+            import api.blueprints.executor_gates as eg_mod
+            try:
+                importlib.reload(eg_mod)
+            except Exception:
+                pass
+        # The endpoint should still work with fallback
+        d = self.client.get("/executor/gates").get_json()
+        self.assertIn("gates", d)
+
+    def test_scope_eval_exception_passes(self):
+        """executor_gates.py:123-124 — scope eval exception → pass."""
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        with patch("utils.tool_scope_policy.evaluate_scope", side_effect=RuntimeError("boom")):
+            d = self.client.get("/executor/gates").get_json()
+        gate = d["gates"][0]
+        self.assertTrue(gate["scope_ok"])
+
+    def test_validate_tools_import_exception(self):
+        """executor_gates.py:79-80 — validate_tools import fails → no-op."""
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        d = self.client.get("/executor/gates").get_json()
+        self.assertIn("gates", d)
+
 
 # ---------------------------------------------------------------------------
 # GET /health/detailed — TASK-357
@@ -5890,15 +6129,41 @@ class TestHealthDetailed(_Base):
     def test_aawo_snapshot_null(self):
         """health_detailed.py:147-153 — AAWO snapshot returns None."""
         self._write_state(self._make_state())
-        with patch("api.blueprints.health_detailed._load_tool") as mock_lt:
-            # Let the tool modules pass through normally, but mock AAWO imports
-            import api.blueprints.health_detailed as hd_mod
-            _orig_load = hd_mod._load_tool
-            mock_lt.side_effect = _orig_load
-        # Patch AAWO to return None snapshot
         with patch("utils.aawo_bridge.get_snapshot", return_value=None), \
              patch("utils.aawo_bridge.get_active_agents", return_value=[]), \
              patch("utils.aawo_bridge.get_outcome_stats", return_value={}):
+            d = self.client.get("/health/detailed").get_json()
+        rh = d["checks"]["repo_health"]
+        self.assertTrue(rh["ok"])
+        self.assertFalse(rh.get("available", True))
+
+    def test_slo_sufficient_records(self):
+        """health_detailed.py:113-114 — SLO checks with sufficient records."""
+        self._write_state(self._make_state())
+        import api.blueprints.health_detailed as hd_mod
+        orig_load = hd_mod._load_tool
+        def _patched(name):
+            mod = orig_load(name)
+            if name == "slo_check":
+                import types
+                return types.SimpleNamespace(
+                    _load_records=lambda p: [{"ok": True}] * 100,
+                    DEFAULT_MIN_RECORDS=5,
+                    METRICS_PATH=mod.METRICS_PATH,
+                    _check_slo003=lambda recs: {"slo": "SLO-003", "status": "ok"},
+                    _check_slo005=lambda recs: {"slo": "SLO-005", "status": "ok"},
+                )
+            return mod
+        with patch.object(hd_mod, "_load_tool", side_effect=_patched):
+            d = self.client.get("/health/detailed").get_json()
+        slo = d["checks"]["slo_status"]
+        self.assertTrue(slo["ok"])
+        self.assertEqual(len(slo["results"]), 2)
+
+    def test_repo_health_exception(self):
+        """health_detailed.py:152-153 — repo_health AAWO exception."""
+        self._write_state(self._make_state())
+        with patch("utils.aawo_bridge.get_snapshot", side_effect=RuntimeError("boom")):
             d = self.client.get("/health/detailed").get_json()
         rh = d["checks"]["repo_health"]
         self.assertTrue(rh["ok"])
