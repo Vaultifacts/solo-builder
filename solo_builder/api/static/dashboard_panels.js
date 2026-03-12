@@ -1,5 +1,5 @@
 import { state } from "./dashboard_state.js";
-import { api, esc, toast, flash } from "./dashboard_utils.js";
+import { api, esc, toast, flash, STATUS_COL, placeholder } from "./dashboard_utils.js";
 import { svgBar, sparklineSvg } from "./dashboard_svg.js";
 export { pollBranches } from "./dashboard_branches.js";
 export { pollCache, pollCacheHistory } from "./dashboard_cache.js";
@@ -25,7 +25,6 @@ function _updateHistoryBadge() {
   }
 }
 
-const _STATUS_CHIP_COLORS = {Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"};
 
 function _updateHistoryStatusChips(byStatus) {
   const el = document.getElementById("history-status-chips");
@@ -37,7 +36,7 @@ function _updateHistoryStatusChips(byStatus) {
   for (const [s, n] of entries) {
     const chip = document.createElement("span");
     chip.textContent = `${s}: ${n}`;
-    chip.style.color = _STATUS_CHIP_COLORS[s] || "var(--dim)";
+    chip.style.color = STATUS_COL[s] || "var(--dim)";
     el.append(chip);
   }
 }
@@ -111,20 +110,10 @@ function _updateHistoryExportLinks() {
   if (hint) hint.textContent = parts.length ? `(filtered: ${parts.join(", ")})` : "";
 }
 
-const _STATUS_COL = {Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"};
-
-function _placeholder(text) {
-  const d = document.createElement("div");
-  d.className = "detail-placeholder";
-  d.textContent = text;
-  return d;
-}
-
-
 function _renderHistory(events) {
   const el = document.getElementById("history-content");
   if (!events || events.length === 0) {
-    el.replaceChildren(_placeholder("No history yet."));
+    el.replaceChildren(placeholder("No history yet."));
     const pager = document.getElementById("history-pager");
     if (pager) pager.style.display = "none";
     return;
@@ -143,7 +132,7 @@ function _renderHistory(events) {
   const start = (_historyPage - 1) * _PAGE_SIZE;
   const page  = filtered.slice(start, start + _PAGE_SIZE);
   if (page.length === 0) {
-    el.replaceChildren(_placeholder("No matching events."));
+    el.replaceChildren(placeholder("No matching events."));
     const pager = document.getElementById("history-pager");
     if (pager) pager.style.display = "none";
     return;
@@ -164,7 +153,7 @@ function _renderHistory(events) {
     st.textContent = e.subtask;
 
     const status = document.createElement("span");
-    status.style.color = _STATUS_COL[e.status] || "var(--text)";
+    status.style.color = STATUS_COL[e.status] || "var(--text)";
     status.textContent = e.status;
 
     const task = document.createElement("span");
@@ -227,7 +216,7 @@ async function _refreshExportHistoryByStatus() {
     for (const [s, n] of entries) {
       const chip = document.createElement("span");
       chip.textContent = `${s}: ${n}`;
-      chip.style.color = _STATUS_CHIP_COLORS[s] || "var(--dim)";
+      chip.style.color = STATUS_COL[s] || "var(--dim)";
       el.append(chip);
     }
   } catch (_) {}
@@ -256,7 +245,7 @@ export async function pollSettings() {
 function _renderSettings(d) {
   const el = document.getElementById("settings-content");
   if (!d || typeof d !== "object") {
-    el.replaceChildren(_placeholder("Could not load settings."));
+    el.replaceChildren(placeholder("Could not load settings."));
     return;
   }
   _settingsCache = d;
@@ -359,7 +348,7 @@ export async function pollPriority() {
 function _renderPriority(d) {
   const el = document.getElementById("priority-content");
   if (!d || !d.queue) {
-    el.replaceChildren(_placeholder("No priority data."));
+    el.replaceChildren(placeholder("No priority data."));
     return;
   }
   const header = document.createElement("div");
@@ -367,7 +356,7 @@ function _renderPriority(d) {
   header.textContent = d.count + " candidates · step " + d.step;
   const nodes = [header];
   if (d.queue.length === 0) {
-    nodes.push(_placeholder("All subtasks Verified or blocked."));
+    nodes.push(placeholder("All subtasks Verified or blocked."));
   } else {
     const maxRisk = d.queue[0].risk || 1;
     d.queue.forEach((c, i) => {
@@ -461,13 +450,13 @@ window._clearStalledFilters = function () {
 function _renderStalled(d) {
   _updateStalledFilterLabel();
   const el = document.getElementById("stalled-content");
-  if (!d) { el.replaceChildren(_placeholder("No data.")); return; }
+  if (!d) { el.replaceChildren(placeholder("No data.")); return; }
   const header = document.createElement("div");
   header.style.cssText = "color:var(--dim);font-size:10px;margin-bottom:6px";
   header.textContent = "threshold: " + d.threshold + " steps · step " + d.step;
   const nodes = [header];
   if (!d.stalled || d.stalled.length === 0) {
-    const p = _placeholder("No stalled subtasks.");
+    const p = placeholder("No stalled subtasks.");
     p.style.color = "var(--green)";
     nodes.push(p);
   } else {
@@ -781,7 +770,7 @@ function _renderSubtasks() {
   const clearBtn = document.getElementById("subtasks-clear-filters");
   if (clearBtn) clearBtn.style.display = hasFilter ? "" : "none";
   if (rows.length === 0) {
-    el.replaceChildren(_placeholder(hasFilter ? "No matching subtasks." : "No subtasks yet."));
+    el.replaceChildren(placeholder(hasFilter ? "No matching subtasks." : "No subtasks yet."));
     return;
   }
   const counter = document.createElement("div");
@@ -809,7 +798,7 @@ function _renderSubtasks() {
     stEl.addEventListener("click", () => window.openSubtaskModal(ev));
 
     const statusEl = document.createElement("span");
-    statusEl.style.cssText = `color:${_STATUS_COL[s.status] || "var(--text)"};min-width:60px;font-size:10px`;
+    statusEl.style.cssText = `color:${STATUS_COL[s.status] || "var(--text)"};min-width:60px;font-size:10px`;
     statusEl.textContent = s.status;
     const branchEl = document.createElement("span");
     branchEl.style.cssText = "color:var(--dim);font-size:9px;min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
@@ -835,7 +824,7 @@ export async function pollAgents() {
 
 function _renderAgents(d) {
   const el = document.getElementById("agents-content");
-  if (!d) { el.replaceChildren(_placeholder("No data.")); return; }
+  if (!d) { el.replaceChildren(placeholder("No data.")); return; }
   const f = d.forecast || {};
   const pct = f.pct || 0;
   const barW = 120, fillW = Math.round(barW * pct / 100);

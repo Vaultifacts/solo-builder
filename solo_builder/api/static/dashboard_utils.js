@@ -122,6 +122,17 @@ export function checkStaleBanner() {
   if (el) el.style.display = stale ? "block" : "none";
 }
 
+/** Status color map — shared across history, stalled, subtasks panels. */
+export const STATUS_COL = {Verified: "var(--green)", Running: "var(--cyan)", Review: "var(--yellow)", Pending: "var(--dim)"};
+
+/** Create a dim placeholder element with the given text. */
+export function placeholder(text) {
+  const d = document.createElement("div");
+  d.style.cssText = "color:var(--dim);font-size:11px;padding:12px 0";
+  d.textContent = text;
+  return d;
+}
+
 export function flash(id, msg) {
   const el = document.getElementById(id);
   el.textContent = msg;

@@ -183,7 +183,10 @@ if ($auditorDir) {
 $state = Get-Content -Raw -Path $statePath | ConvertFrom-Json
 if ($passedAll) {
   $state.last_verify_pass = $true
-  $state.phase = 'done'
+  # Only advance to 'done' if a task is active; keep 'idle' when no task running
+  if ($state.task_id -and $state.task_id -ne 'none') {
+    $state.phase = 'done'
+  }
 } else {
   $state.last_verify_pass = $false
   $state.attempt = [int]$state.attempt + 1

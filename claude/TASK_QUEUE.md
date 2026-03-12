@@ -36,7 +36,34 @@ Priority: Low
 ### TASK-411 (proposed)
 Goal: Reduce dashboard_panels.js further by extracting settings/stalled/subtasks panels
 
-Notes: Settings (246-350), stalled (412-545), subtasks (546-826) are self-contained.
-Would bring dashboard_panels.js from 970 to ~350 lines.
+Notes: Shared helpers (_STATUS_COL, _placeholder) moved to dashboard_utils.js.
+Settings (246-350), stalled (412-545), subtasks (546-826) are now extractable.
+Would bring dashboard_panels.js from ~960 to ~350 lines.
+
+Priority: Low
+
+### TASK-412 (proposed)
+Goal: Add WebSocket support for real-time dashboard updates
+
+Notes: Replace polling with SSE or WebSocket push for status/history/subtasks.
+Would reduce API load and improve dashboard responsiveness.
+
+Priority: Medium
+
+### TASK-413 (proposed)
+Goal: Add API response caching with ETags
+
+Acceptance Criteria:
+- GET endpoints return ETag header based on content hash
+- 304 Not Modified when client sends matching If-None-Match
+- Reduces bandwidth for dashboard polling
+
+Priority: Medium
+
+### TASK-414 (proposed)
+Goal: discord_bot/bot.py file size reduction
+
+Notes: bot.py is flagged as "Very large file" by architecture audit.
+Extract command handlers into separate modules (similar to bot_slash.py pattern).
 
 Priority: Low

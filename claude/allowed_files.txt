@@ -260,3 +260,4 @@ solo_builder/runners/test_runners.py
 solo_builder/tests/test_query_cmds_deep.py
 solo_builder/tests/test_subtask_cmds.py
 solo_builder/tests/test_dashboard_health_smoke.py
+solo_builder/tests/test_arch_score_regression.py
