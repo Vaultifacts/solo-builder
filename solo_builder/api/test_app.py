@@ -5906,6 +5906,420 @@ class TestHealthDetailed(_Base):
 
 
 # ---------------------------------------------------------------------------
+# CI Quality endpoint — ci_quality.py
+# ---------------------------------------------------------------------------
+
+class TestCIQuality(_Base):
+    def test_returns_tool_inventory(self):
+        d = self.client.get("/health/ci-quality").get_json()
+        self.assertTrue(d["ok"])
+        self.assertIsInstance(d["count"], int)
+        self.assertGreater(d["count"], 0)
+        self.assertIsInstance(d["tools"], list)
+        for t in d["tools"]:
+            self.assertIn("name", t)
+
+    def test_tools_have_string_names(self):
+        d = self.client.get("/health/ci-quality").get_json()
+        for t in d["tools"]:
+            self.assertIsInstance(t["name"], str)
+            self.assertTrue(len(t["name"]) > 0)
+
+    def test_count_matches_tools_length(self):
+        d = self.client.get("/health/ci-quality").get_json()
+        self.assertEqual(d["count"], len(d["tools"]))
+
+    def test_exception_returns_ok_false(self):
+        with patch("api.blueprints.ci_quality._load_tool", side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/ci-quality")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertIn("error", d)
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["tools"], [])
+
+
+# ---------------------------------------------------------------------------
+# Context Window endpoint — context_window.py
+# ---------------------------------------------------------------------------
+
+class TestContextWindow(_Base):
+    def test_returns_budget_report(self):
+        d = self.client.get("/health/context-window").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("has_issues", d)
+        self.assertIsInstance(d["results"], list)
+
+    def test_results_have_expected_fields(self):
+        d = self.client.get("/health/context-window").get_json()
+        for r in d["results"]:
+            self.assertIn("label", r)
+            self.assertIn("status", r)
+            self.assertIn("budget", r)
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.context_window._load_tool", side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/context-window")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertTrue(d["has_issues"])
+        self.assertEqual(d["results"], [])
+
+
+# ---------------------------------------------------------------------------
+# Live Summary endpoint — live_summary.py
+# ---------------------------------------------------------------------------
+
+class TestLiveSummary(_Base):
+    def test_returns_all_checks(self):
+        d = self.client.get("/health/live-summary").get_json()
+        self.assertIn("ok", d)
+        self.assertIsInstance(d["passed"], int)
+        self.assertIsInstance(d["total"], int)
+        self.assertEqual(d["total"], 3)
+        self.assertIsInstance(d["checks"], list)
+        self.assertEqual(len(d["checks"]), 3)
+
+    def test_check_names(self):
+        d = self.client.get("/health/live-summary").get_json()
+        names = {c["name"] for c in d["checks"]}
+        self.assertEqual(names, {"threat-model", "context-window", "slo"})
+
+    def test_checks_have_ok_and_detail(self):
+        d = self.client.get("/health/live-summary").get_json()
+        for c in d["checks"]:
+            self.assertIn("ok", c)
+            self.assertIn("detail", c)
+
+    def test_passed_count_matches_ok_checks(self):
+        d = self.client.get("/health/live-summary").get_json()
+        expected = sum(1 for c in d["checks"] if c["ok"])
+        self.assertEqual(d["passed"], expected)
+
+    def test_runner_exception_caught(self):
+        import api.blueprints.live_summary as ls_mod
+        orig_runners = ls_mod._CHECK_RUNNERS[:]
+        def _boom():
+            raise RuntimeError("boom")
+        ls_mod._CHECK_RUNNERS = [_boom, ls_mod._run_context_window, ls_mod._run_slo]
+        try:
+            d = self.client.get("/health/live-summary").get_json()
+        finally:
+            ls_mod._CHECK_RUNNERS = orig_runners
+        self.assertEqual(d["total"], 3)
+        failed = [c for c in d["checks"] if not c["ok"]]
+        self.assertTrue(len(failed) >= 1)
+
+    def test_slo_insufficient_records(self):
+        with patch("api.blueprints.live_summary._run_slo",
+                   return_value={"name": "slo", "ok": True, "detail": ""}):
+            d = self.client.get("/health/live-summary").get_json()
+        slo = [c for c in d["checks"] if c["name"] == "slo"][0]
+        self.assertTrue(slo["ok"])
+
+    def test_slo_sufficient_records_branch(self):
+        """live_summary.py:62-63 — sufficient records triggers SLO checks."""
+        import api.blueprints.live_summary as ls_mod
+        orig_run_slo = ls_mod._run_slo
+        # Call _run_slo directly with a mocked slo_check that has enough records
+        def _slo_with_records():
+            import types
+            sc = ls_mod._load_tool("slo_check")
+            fake = types.SimpleNamespace(
+                _load_records=lambda p: [{"ok": True}] * 100,
+                DEFAULT_MIN_RECORDS=5,
+                METRICS_PATH=sc.METRICS_PATH,
+                _check_slo003=lambda recs: {"slo": "SLO-003", "status": "ok"},
+                _check_slo005=lambda recs: {"slo": "SLO-005", "status": "ok"},
+            )
+            with patch.object(ls_mod, "_load_tool", return_value=fake):
+                return ls_mod._run_slo()
+        ls_mod._CHECK_RUNNERS = [ls_mod._run_threat_model, ls_mod._run_context_window, _slo_with_records]
+        try:
+            d = self.client.get("/health/live-summary").get_json()
+        finally:
+            ls_mod._CHECK_RUNNERS = [ls_mod._run_threat_model, ls_mod._run_context_window, ls_mod._run_slo]
+        slo = [c for c in d["checks"] if c["name"] == "slo"][0]
+        self.assertTrue(slo["ok"])
+
+
+# ---------------------------------------------------------------------------
+# Policy endpoints — policy.py
+# ---------------------------------------------------------------------------
+
+class TestPolicyHitl(_Base):
+    def test_returns_policy(self):
+        d = self.client.get("/policy/hitl").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("policy", d)
+        self.assertIn("warnings", d)
+        self.assertIn("settings_path", d)
+
+    def test_policy_has_expected_keys(self):
+        d = self.client.get("/policy/hitl").get_json()
+        if d["ok"] or d.get("policy"):
+            p = d["policy"]
+            self.assertIsInstance(p, dict)
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.policy._get_app", side_effect=RuntimeError("boom")):
+            d = self.client.get("/policy/hitl").get_json()
+        self.assertFalse(d["ok"])
+        self.assertIn("error", d)
+        self.assertEqual(d["policy"], {})
+
+
+class TestPolicyScope(_Base):
+    def test_returns_scope_policy(self):
+        d = self.client.get("/policy/scope").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("policy", d)
+        self.assertIn("warnings", d)
+        self.assertIn("settings_path", d)
+
+    def test_policy_is_dict(self):
+        d = self.client.get("/policy/scope").get_json()
+        self.assertIsInstance(d["policy"], dict)
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.policy._get_app", side_effect=RuntimeError("boom")):
+            d = self.client.get("/policy/scope").get_json()
+        self.assertFalse(d["ok"])
+        self.assertIn("error", d)
+        self.assertEqual(d["policy"], {})
+
+
+# ---------------------------------------------------------------------------
+# Debt Scan endpoint — debt_scan.py
+# ---------------------------------------------------------------------------
+
+class TestDebtScan(_Base):
+    def test_returns_scan_results(self):
+        d = self.client.get("/health/debt-scan").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("count", d)
+        self.assertIsInstance(d["results"], list)
+
+    def test_results_capped_at_20(self):
+        d = self.client.get("/health/debt-scan").get_json()
+        self.assertLessEqual(len(d["results"]), 20)
+
+    def test_results_have_expected_fields(self):
+        d = self.client.get("/health/debt-scan").get_json()
+        for r in d["results"]:
+            self.assertIn("path", r)
+            self.assertIn("line", r)
+            self.assertIn("marker", r)
+            self.assertIn("text", r)
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.debt_scan._load_tool", side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/debt-scan")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["results"], [])
+
+
+# ---------------------------------------------------------------------------
+# SLO endpoint — slo.py
+# ---------------------------------------------------------------------------
+
+class TestSLO(_Base):
+    def test_returns_slo_results(self):
+        d = self.client.get("/health/slo").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("records", d)
+        self.assertIsInstance(d["results"], list)
+
+    def test_insufficient_records_returns_ok(self):
+        import api.blueprints.slo as slo_mod
+        orig_load = slo_mod._load_tool
+        def _patched(name):
+            mod = orig_load(name)
+            import types
+            patched = types.SimpleNamespace(**{k: getattr(mod, k) for k in dir(mod) if not k.startswith('__')})
+            patched._load_records = lambda p: []
+            patched.DEFAULT_MIN_RECORDS = 5
+            patched.METRICS_PATH = mod.METRICS_PATH
+            return patched
+        with patch.object(slo_mod, "_load_tool", side_effect=_patched):
+            d = self.client.get("/health/slo").get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["results"], [])
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.slo._load_tool", side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/slo")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertEqual(d["records"], 0)
+
+    def test_load_tool_uncached(self):
+        """slo.py:41-45 — _load_tool loads module when not in sys.modules."""
+        import api.blueprints.slo as slo_mod
+        saved = sys.modules.pop("slo_check", None)
+        try:
+            mod = slo_mod._load_tool("slo_check")
+            self.assertTrue(hasattr(mod, "_load_records"))
+        finally:
+            if saved is not None:
+                sys.modules["slo_check"] = saved
+
+    def test_sufficient_records_branch(self):
+        """slo.py:54-55 — SLO checks run when records >= DEFAULT_MIN_RECORDS."""
+        import api.blueprints.slo as slo_mod
+        orig_load = slo_mod._load_tool
+        def _patched(name):
+            import types
+            real = orig_load(name)
+            return types.SimpleNamespace(
+                _load_records=lambda p: [{"ok": True}] * 100,
+                DEFAULT_MIN_RECORDS=5,
+                METRICS_PATH=real.METRICS_PATH,
+                _check_slo003=lambda recs: {"slo": "SLO-003", "status": "ok", "value": 0.99},
+                _check_slo005=lambda recs: {"slo": "SLO-005", "status": "ok", "value": 50},
+            )
+        with patch.object(slo_mod, "_load_tool", side_effect=_patched):
+            d = self.client.get("/health/slo").get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(len(d["results"]), 2)
+
+
+# ---------------------------------------------------------------------------
+# Threat Model endpoint — threat_model.py
+# ---------------------------------------------------------------------------
+
+class TestThreatModel(_Base):
+    def test_returns_checks(self):
+        d = self.client.get("/health/threat-model").get_json()
+        self.assertIn("ok", d)
+        self.assertIsInstance(d["checks"], list)
+        self.assertGreater(len(d["checks"]), 0)
+
+    def test_checks_have_expected_fields(self):
+        d = self.client.get("/health/threat-model").get_json()
+        for c in d["checks"]:
+            self.assertIn("name", c)
+            self.assertIn("required", c)
+            self.assertIn("passed", c)
+            self.assertIn("detail", c)
+
+    def test_file_missing_returns_failed_check(self):
+        # Force-load the threat_model_check module, then patch its path
+        import api.blueprints.threat_model as tm_mod
+        real_mod = tm_mod._load_tool("threat_model_check")
+        orig_path = real_mod.THREAT_MODEL_PATH
+        real_mod.THREAT_MODEL_PATH = Path(self._tmp) / "nonexistent.md"
+        try:
+            d = self.client.get("/health/threat-model").get_json()
+        finally:
+            real_mod.THREAT_MODEL_PATH = orig_path
+        file_check = d["checks"][0]
+        self.assertFalse(file_check["passed"])
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.threat_model._load_tool", side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/threat-model")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertEqual(d["checks"], [])
+
+    def test_load_tool_uncached(self):
+        """threat_model.py:41-45 — _load_tool when not cached in sys.modules."""
+        import api.blueprints.threat_model as tm_mod
+        saved = sys.modules.pop("threat_model_check", None)
+        try:
+            mod = tm_mod._load_tool("threat_model_check")
+            self.assertTrue(hasattr(mod, "THREAT_MODEL_PATH"))
+        finally:
+            if saved is not None:
+                sys.modules["threat_model_check"] = saved
+
+
+# ---------------------------------------------------------------------------
+# Pre-release endpoint — pre_release.py
+# ---------------------------------------------------------------------------
+
+class TestPreRelease(_Base):
+    def test_returns_gate_inventory(self):
+        d = self.client.get("/health/pre-release").get_json()
+        self.assertTrue(d["ok"])
+        self.assertIsInstance(d["total"], int)
+        self.assertGreater(d["total"], 0)
+        self.assertIsInstance(d["required"], int)
+        self.assertIsInstance(d["gates"], list)
+
+    def test_gates_have_name_and_required(self):
+        d = self.client.get("/health/pre-release").get_json()
+        for g in d["gates"]:
+            self.assertIn("name", g)
+            self.assertIn("required", g)
+            self.assertIsInstance(g["required"], bool)
+
+    def test_total_matches_gates_length(self):
+        d = self.client.get("/health/pre-release").get_json()
+        self.assertEqual(d["total"], len(d["gates"]))
+
+    def test_required_count_matches(self):
+        d = self.client.get("/health/pre-release").get_json()
+        expected = sum(1 for g in d["gates"] if g["required"])
+        self.assertEqual(d["required"], expected)
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.pre_release._load_tool", side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/pre-release")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["gates"], [])
+
+
+# ---------------------------------------------------------------------------
+# Prompt Regression endpoint — prompt_regression.py
+# ---------------------------------------------------------------------------
+
+class TestPromptRegression(_Base):
+    def test_returns_regression_results(self):
+        d = self.client.get("/health/prompt-regression").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("passed", d)
+        self.assertIn("total", d)
+        self.assertIn("failed", d)
+        self.assertIsInstance(d["results"], list)
+
+    def test_total_equals_passed_plus_failed(self):
+        d = self.client.get("/health/prompt-regression").get_json()
+        # total should be sum of passed and failed results
+        passed_count = sum(1 for r in d["results"] if r["passed"])
+        failed_count = sum(1 for r in d["results"] if not r["passed"])
+        self.assertEqual(d["total"], passed_count + failed_count)
+
+    def test_results_have_expected_fields(self):
+        d = self.client.get("/health/prompt-regression").get_json()
+        for r in d["results"]:
+            self.assertIn("name", r)
+            self.assertIn("passed", r)
+            self.assertIn("errors", r)
+
+    def test_exception_returns_error(self):
+        with patch("api.blueprints.prompt_regression._load_tool",
+                   side_effect=RuntimeError("boom")):
+            r = self.client.get("/health/prompt-regression")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertFalse(d["ok"])
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["results"], [])
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
