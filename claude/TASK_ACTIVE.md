@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-110
+TASK-384
 
-Document test-patch constraint pattern for solo_builder_cli.py mixin architecture
+OpenAPIExportRoutes — verify export routes already in spec
