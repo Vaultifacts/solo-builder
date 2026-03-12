@@ -184,6 +184,19 @@ _JS_MODULES = [
     "dashboard_tasks.js",
 ]
 
+# Sub-modules that dashboard_panels.js re-exports from
+_PANEL_SUBMODULES = [
+    "dashboard_branches.js",
+    "dashboard_cache.js",
+    "dashboard_health.js",
+    "dashboard_settings.js",
+    "dashboard_stalled.js",
+    "dashboard_subtasks.js",
+    "dashboard_history.js",
+    "dashboard_analytics.js",
+    "dashboard_svg.js",
+]
+
 
 class TestDashboardJsModules(_Base):
 
@@ -220,6 +233,112 @@ class TestDashboardGridLayout(_Base):
             with self.subTest(widget=wid):
                 w_pos = self._html.index(f'id="{wid}"')
                 self.assertGreater(w_pos, grid_pos)
+
+
+# ---------------------------------------------------------------------------
+# 6. Panel sub-module JS files exist on disk
+# ---------------------------------------------------------------------------
+
+class TestPanelSubmodulesExist(unittest.TestCase):
+    """Verify all JS sub-modules that dashboard_panels.js re-exports actually exist."""
+
+    _STATIC_DIR = Path(__file__).resolve().parents[1] / "api" / "static"
+
+    def test_all_submodules_exist(self):
+        for mod in _PANEL_SUBMODULES:
+            with self.subTest(module=mod):
+                path = self._STATIC_DIR / mod
+                self.assertTrue(path.exists(), f"{mod} missing from api/static/")
+
+    def test_panels_hub_is_small(self):
+        """dashboard_panels.js should be a small re-export hub (<100 lines)."""
+        panels = self._STATIC_DIR / "dashboard_panels.js"
+        lines = panels.read_text(encoding="utf-8").splitlines()
+        self.assertLess(len(lines), 100, f"dashboard_panels.js is {len(lines)} lines — should be a small hub")
+
+
+# ---------------------------------------------------------------------------
+# 7. dashboard_panels.js re-exports key functions
+# ---------------------------------------------------------------------------
+
+class TestPanelsHubReexports(unittest.TestCase):
+    """Verify dashboard_panels.js re-exports essential functions."""
+
+    _PANELS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_panels.js"
+
+    def setUp(self):
+        self._src = self._PANELS_PATH.read_text(encoding="utf-8")
+
+    def test_reexports_pollBranches(self):
+        self.assertIn("pollBranches", self._src)
+
+    def test_reexports_pollCache(self):
+        self.assertIn("pollCache", self._src)
+
+    def test_reexports_pollSubtasks(self):
+        self.assertIn("pollSubtasks", self._src)
+
+    def test_reexports_pollHistory(self):
+        self.assertIn("pollHistory", self._src)
+
+    def test_reexports_pollPriority(self):
+        self.assertIn("pollPriority", self._src)
+
+    def test_reexports_pollAgents(self):
+        self.assertIn("pollAgents", self._src)
+
+    def test_reexports_pollForecast(self):
+        self.assertIn("pollForecast", self._src)
+
+    def test_reexports_pollMetrics(self):
+        self.assertIn("pollMetrics", self._src)
+
+    def test_reexports_pollSettings(self):
+        self.assertIn("pollSettings", self._src)
+
+    def test_reexports_pollStalled(self):
+        self.assertIn("pollStalled", self._src)
+
+    def test_reexports_pollHealthDetailed(self):
+        self.assertIn("pollHealthDetailed", self._src)
+
+    def test_contains_switchTab(self):
+        self.assertIn("switchTab", self._src)
+
+    def test_reexports_resetHistoryUnread(self):
+        self.assertIn("resetHistoryUnread", self._src)
+
+    def test_reexports_historyPageStep(self):
+        self.assertIn("historyPageStep", self._src)
+
+
+# ---------------------------------------------------------------------------
+# 8. Analytics sub-module content validation
+# ---------------------------------------------------------------------------
+
+class TestAnalyticsModuleContent(unittest.TestCase):
+    """Verify dashboard_analytics.js exports required functions."""
+
+    _PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_analytics.js"
+
+    def setUp(self):
+        self._src = self._PATH.read_text(encoding="utf-8")
+
+    def test_exports_pollPriority(self):
+        self.assertIn("export async function pollPriority", self._src)
+
+    def test_exports_pollAgents(self):
+        self.assertIn("export async function pollAgents", self._src)
+
+    def test_exports_pollForecast(self):
+        self.assertIn("export async function pollForecast", self._src)
+
+    def test_exports_pollMetrics(self):
+        self.assertIn("export async function pollMetrics", self._src)
+
+    def test_imports_svg_helpers(self):
+        self.assertIn("svgBar", self._src)
+        self.assertIn("sparklineSvg", self._src)
 
 
 if __name__ == "__main__":

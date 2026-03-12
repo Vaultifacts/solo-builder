@@ -3625,6 +3625,287 @@ class TestHandleTextCommandDispatch(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(written["subtask"], "A1")
         self.assertEqual(written["desc"], "New description")
 
+    async def test_status_dispatches_format_status(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_auto_running", return_value=False), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("status"))
+        mock_send.assert_called_once()
+
+    async def test_run_triggers_step(self):
+        state = _make_state({"A1": "Pending"})
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "TRIGGER_PATH", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("run"))
+        mock_trigger.write_text.assert_called_once_with("1")
+        self.assertIn("triggered", mock_send.call_args[0][1])
+
+    async def test_run_complete_no_work(self):
+        state = _make_state({"A1": "Verified"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("run"))
+        self.assertIn("complete", mock_send.call_args[0][1].lower())
+
+    async def test_stop_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "_auto_running", return_value=False), \
+             patch.object(bot_module, "STOP_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("stop"))
+        mock_trigger.write_text.assert_called_once_with("1")
+
+    async def test_verify_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "VERIFY_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("verify A1 looks good"))
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["subtask"], "A1")
+        self.assertEqual(written["note"], "looks good")
+
+    async def test_verify_no_args(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("verify"))
+        self.assertIn("Usage", mock_send.call_args[0][1])
+
+    async def test_add_task_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "ADD_TASK_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("add_task Build OAuth"))
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["spec"], "Build OAuth")
+
+    async def test_add_task_no_args(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("add_task"))
+        self.assertIn("Usage", mock_send.call_args[0][1])
+
+    async def test_add_branch_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "ADD_BRANCH_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("add_branch 0 Add error handling"))
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["task"], "0")
+        self.assertEqual(written["spec"], "Add error handling")
+
+    async def test_add_branch_no_args(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("add_branch"))
+        self.assertIn("Usage", mock_send.call_args[0][1])
+
+    async def test_export_no_file(self):
+        mock_path = MagicMock()
+        mock_path.exists.return_value = False
+        with patch.object(bot_module, "OUTPUTS_PATH", new=mock_path), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("export"))
+        self.assertIn("No export", mock_send.call_args[0][1])
+
+    async def test_undo_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "UNDO_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("undo"))
+        mock_trigger.write_text.assert_called_once_with("1")
+
+    async def test_graph_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("graph"))
+        mock_send.assert_called_once()
+
+    async def test_tasks_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("tasks"))
+        mock_send.assert_called_once()
+
+    async def test_stats_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("stats"))
+        mock_send.assert_called_once()
+
+    async def test_cache_dispatches(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("cache"))
+        mock_send.assert_called_once()
+
+    async def test_history_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("history"))
+        mock_send.assert_called_once()
+
+    async def test_history_with_count(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("history 5"))
+        mock_send.assert_called_once()
+
+    async def test_branches_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("branches"))
+        mock_send.assert_called_once()
+
+    async def test_subtasks_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("subtasks"))
+        mock_send.assert_called_once()
+
+    async def test_diff_dispatches(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("diff"))
+        mock_send.assert_called_once()
+
+    async def test_filter_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("filter Running"))
+        mock_send.assert_called_once()
+
+    async def test_search_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("search oauth"))
+        mock_send.assert_called_once()
+
+    async def test_log_dispatches(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("log"))
+        mock_send.assert_called_once()
+
+    async def test_priority_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("priority"))
+        mock_send.assert_called_once()
+
+    async def test_stalled_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("stalled"))
+        mock_send.assert_called_once()
+
+    async def test_agents_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("agents"))
+        mock_send.assert_called_once()
+
+    async def test_forecast_dispatches(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("forecast"))
+        mock_send.assert_called_once()
+
+    async def test_help_sends_help_text(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("help"))
+        self.assertIn("Solo Builder", mock_send.call_args[0][1])
+
+    async def test_output_no_args(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("output"))
+        self.assertIn("Usage", mock_send.call_args[0][1])
+
+    async def test_output_not_found(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_commands_module, "_find_subtask_output", return_value=None), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("output Z9"))
+        self.assertIn("not found", mock_send.call_args[0][1])
+
+    async def test_set_with_equals_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "SET_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("set STALL_THRESHOLD=10"))
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["key"], "STALL_THRESHOLD")
+        self.assertEqual(written["value"], "10")
+
+    async def test_set_read_known_key(self):
+        mock_path = MagicMock()
+        mock_path.read_text.return_value = json.dumps({"STALL_THRESHOLD": 5})
+        with patch.object(bot_module, "SETTINGS_PATH", new=mock_path), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("set STALL_THRESHOLD"))
+        self.assertIn("5", mock_send.call_args[0][1])
+
+    async def test_set_read_unknown_key(self):
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("set BOGUS_KEY"))
+        self.assertIn("Unknown", mock_send.call_args[0][1])
+
+    async def test_depends_show_graph(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("depends"))
+        self.assertIn("Dependency", mock_send.call_args[0][1])
+
+    async def test_depends_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "DEPENDS_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("depends 1 0"))
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["target"], "1")
+        self.assertEqual(written["dep"], "0")
+
+    async def test_undepends_writes_trigger(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        with patch.object(bot_module, "UNDEPENDS_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("undepends 1 0"))
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["target"], "1")
+        self.assertEqual(written["dep"], "0")
+
+    async def test_snapshot_no_existing(self):
+        mock_trigger = MagicMock()
+        mock_trigger.parent = MagicMock()
+        mock_dir = MagicMock()
+        mock_dir.is_dir.return_value = False
+        with patch.object(bot_module, "SNAPSHOT_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "SNAPSHOTS_DIR", new=mock_dir), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("snapshot"))
+        mock_trigger.write_text.assert_called_once_with("1")
+        self.assertIn("Snapshot", mock_send.call_args[0][1])
+
 
 # Entry point
 # ---------------------------------------------------------------------------

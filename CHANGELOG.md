@@ -1,5 +1,12 @@
 # Changelog
 
+## v6.34.0 — 2026-03-12  Final Panel Extraction + Full Bot Dispatch Coverage
+
+- **TASK-415 complete**: Final `dashboard_panels.js` extraction — priority, agents, forecast, metrics panels (207 lines) → `dashboard_analytics.js`. Panels hub now **62 lines** (re-exports + switchTab + export refresh). **-96%** from original 1664 lines. **17 ES modules** total
+- **38 new bot_commands dispatch tests**: Full coverage of `_handle_text_command` branches — status, run, stop, verify, add_task, add_branch, export, undo, graph, tasks, stats, cache, history, branches, subtasks, diff, filter, search, log, priority, stalled, agents, forecast, help, output, set (=, read, unknown), depends (show + add), undepends, snapshot
+- **Dashboard E2E smoke tests expanded**: 21 new tests — panel sub-module existence, hub size guard (<100 lines), re-export completeness (14 functions), analytics module content validation (4 exports + SVG imports)
+- **3872 tests**, 0 failures, 17 JS modules, 0 lint gaps
+
 ## v6.33.0 — 2026-03-12  History + Subtasks Extraction + ETag Tests + Bot Test Fixes
 
 - **History panel extraction**: `dashboard_panels.js` 466→268 lines (-42%). History tab → `dashboard_history.js` (204 lines). `resetHistoryUnread()` exported for cross-module switchTab

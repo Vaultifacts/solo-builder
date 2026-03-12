@@ -73,6 +73,7 @@ solo_builder/api/static/dashboard_settings.js
 solo_builder/api/static/dashboard_stalled.js
 solo_builder/api/static/dashboard_subtasks.js
 solo_builder/api/static/dashboard_history.js
+solo_builder/api/static/dashboard_analytics.js
 .gitignore
 solo_builder/dag_definition.py
 solo_builder/display.py
