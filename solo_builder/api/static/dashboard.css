@@ -19,7 +19,7 @@
     --surface:  #ffffff;
     --border:   #ddd;
     --text:     #1a1a1a;
-    --dim:      #888;
+    --dim:      #666;
     --node-bg-verified: #e0f5e0;
     --node-bg-running:  #e0f2f5;
     --node-bg-pending:  #fff8e0;
@@ -525,6 +525,15 @@
   [data-theme="light"] #btn-run      { background: #e0f5e0; }
   [data-theme="light"] #btn-auto     { background: #f0e8f5; }
   [data-theme="light"] .task-card.active { background: #e0f2f5; }
+
+  /* ── Touch targets ───────────────────────────────────────── */
+  .toolbar-btn {
+    min-height: 24px;
+    min-width: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   /* ── Focus / accessibility ────────────────────────────────── */
   :focus-visible {

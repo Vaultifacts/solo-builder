@@ -25,10 +25,27 @@ async function pollHealth() {
 }
 
 /* ── Polling loop ────────────────────────────────────────── */
+let _tickCount = 0;
 async function tick() {
   if (state.pollPaused) return;
+  _tickCount++;
   const progressPoll = state.selectedTask ? pollTaskProgress(state.selectedTask) : Promise.resolve();
-  await Promise.all([pollStatus(), pollTasks(), pollJournal(), pollDiff(), pollStats(), pollHistory(), pollBranches(), pollSettings(), pollPriority(), pollStalled(), pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(), pollCache(), pollCacheHistory(), pollHealth(), pollHealthDetailed(), pollGatesDetailed(), pollPolicyDetailed(), pollContextWindowDetailed(), pollThreatModelDetailed(), pollSloDetailed(), pollPromptRegressionDetailed(), pollDebtScanDetailed(), pollCiQualityDetailed(), pollPreReleaseDetailed(), pollLiveSummaryDetailed(), pollRepoHealthDetailed(), progressPoll]);
+  /* Fast pollers: every tick (2s default) */
+  const fast = [pollStatus(), pollTasks(), pollJournal(), pollHistory(), progressPoll];
+  /* Medium pollers: every 5th tick (~10s) */
+  if (_tickCount % 5 === 0) {
+    fast.push(pollDiff(), pollStats(), pollBranches(), pollPriority(), pollStalled(),
+              pollSubtasks(), pollAgents(), pollForecast(), pollMetrics(),
+              pollCache(), pollCacheHistory(), pollSettings());
+  }
+  /* Slow pollers: every 15th tick (~30s) — health widgets change rarely */
+  if (_tickCount % 15 === 0 || _tickCount === 1) {
+    fast.push(pollHealth(), pollHealthDetailed(), pollGatesDetailed(), pollPolicyDetailed(),
+              pollContextWindowDetailed(), pollThreatModelDetailed(), pollSloDetailed(),
+              pollPromptRegressionDetailed(), pollDebtScanDetailed(), pollCiQualityDetailed(),
+              pollPreReleaseDetailed(), pollLiveSummaryDetailed(), pollRepoHealthDetailed());
+  }
+  await Promise.all(fast);
   if (state.selectedTask && state.tasksCache[state.selectedTask]) {
     try {
       const fresh = await api("/tasks/" + encodeURIComponent(state.selectedTask));

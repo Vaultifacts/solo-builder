@@ -60,29 +60,29 @@
 <div class="cmd-toolbar">
   <div class="cmd-group">
     <label>Verify</label>
-    <input id="cmd-verify-st" class="cmd-input" placeholder="A3" title="Subtask name">
-    <input id="cmd-verify-note" class="cmd-input-wide" placeholder="optional note" title="Review note">
-    <button class="cmd-btn btn-verify" onclick="cmdVerify()">✓</button>
+    <input id="cmd-verify-st" class="cmd-input" placeholder="A3" title="Subtask name" aria-label="Subtask to verify">
+    <input id="cmd-verify-note" class="cmd-input-wide" placeholder="optional note" title="Review note" aria-label="Verification note">
+    <button class="cmd-btn btn-verify" onclick="cmdVerify()" aria-label="Verify subtask">✓</button>
     <span id="fb-verify" class="cmd-feedback"></span>
   </div>
   <div class="cmd-group">
     <label>Describe</label>
-    <input id="cmd-desc-st" class="cmd-input" placeholder="A3" title="Subtask name">
-    <input id="cmd-desc-text" class="cmd-input-wide" placeholder="new prompt text" title="Claude prompt">
-    <button class="cmd-btn btn-describe" onclick="cmdDescribe()">✎</button>
+    <input id="cmd-desc-st" class="cmd-input" placeholder="A3" title="Subtask name" aria-label="Subtask to describe">
+    <input id="cmd-desc-text" class="cmd-input-wide" placeholder="new prompt text" title="Claude prompt" aria-label="New description text">
+    <button class="cmd-btn btn-describe" onclick="cmdDescribe()" aria-label="Set description">✎</button>
     <span id="fb-desc" class="cmd-feedback"></span>
   </div>
   <div class="cmd-group">
     <label>Tools</label>
-    <input id="cmd-tools-st" class="cmd-input" placeholder="A3" title="Subtask name">
-    <input id="cmd-tools-list" class="cmd-input-wide" placeholder="Read,Glob,Grep" title="Tool list or 'none'">
-    <button class="cmd-btn btn-tools" onclick="cmdTools()">⚙</button>
+    <input id="cmd-tools-st" class="cmd-input" placeholder="A3" title="Subtask name" aria-label="Subtask for tools">
+    <input id="cmd-tools-list" class="cmd-input-wide" placeholder="Read,Glob,Grep" title="Tool list or 'none'" aria-label="Tool list">
+    <button class="cmd-btn btn-tools" onclick="cmdTools()" aria-label="Set tools">⚙</button>
     <span id="fb-tools" class="cmd-feedback"></span>
   </div>
   <div class="cmd-group">
     <label>Set</label>
-    <input id="cmd-set-key" class="cmd-input-wide" placeholder="REVIEW_MODE=on" title="KEY=VALUE">
-    <button class="cmd-btn btn-set" onclick="cmdSet()">⏎</button>
+    <input id="cmd-set-key" class="cmd-input-wide" placeholder="REVIEW_MODE=on" title="KEY=VALUE" aria-label="Setting key=value">
+    <button class="cmd-btn btn-set" onclick="cmdSet()" aria-label="Apply setting">⏎</button>
     <span id="fb-set" class="cmd-feedback"></span>
   </div>
 </div>

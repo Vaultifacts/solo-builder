@@ -1,5 +1,13 @@
 # Changelog
 
+## v6.37.0 — 2026-03-12  Tiered Polling + Light Theme Contrast + Input Labels + Touch Targets
+
+- **Tiered polling**: Split 30 concurrent polls into fast (status/tasks/journal/history every 2s), medium (stats/branches/metrics/etc every 10s), and slow (health widgets every 30s). Reduces API calls by ~70% during idle operation
+- **Light theme contrast fix**: `--dim #888 → #666` (3.25:1 → 5.27:1, passes WCAG AA)
+- **Command toolbar `aria-label`s**: All 8 inputs and 4 buttons in Verify/Describe/Tools/Set groups now have accessible names
+- **Touch targets**: `.toolbar-btn` minimum 24×24px (WCAG 2.5.8 AA), flexbox centered content
+- **3884 tests**, 0 failures, dashboard lint PASS (0 gaps)
+
 ## v6.36.0 — 2026-03-12  Accessibility Sprint: Contrast + Keyboard Nav + Skip-Nav
 
 - **WCAG contrast fix**: `--dim` color `#666 → #888` (3.38:1 → 5.48:1 contrast ratio, now passes AA)
