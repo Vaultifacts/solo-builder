@@ -32,13 +32,18 @@ Extracted history panel (204 lines) → dashboard_history.js. switchTab uses res
 Extracted settings (105 lines) → dashboard_settings.js, stalled (134 lines) → dashboard_stalled.js.
 dashboard_panels.js 960→722 lines. Subtasks deferred (cross-cutting switchTab refs).
 
-### TASK-412 (proposed)
-Goal: Add WebSocket support for real-time dashboard updates
+### TASK-412 (proposed — researched)
+Goal: Add Server-Sent Events (SSE) for real-time dashboard updates
 
-Notes: Replace polling with SSE or WebSocket push for status/history/subtasks.
-Would reduce API load and improve dashboard responsiveness.
+Research findings (v6.35.0):
+- Dashboard polls via `setInterval(tick, 2000)` — tick() calls 20+ pollers per interval
+- Flask app reads state from `state.json` on every request (no in-memory event source)
+- SSE needs a file-watcher or state-change hook to push events
+- Simplest approach: `watchdog` library monitors `state.json` + `metrics.jsonl`, SSE endpoint streams diffs
+- Alternative: Keep polling but add a lightweight `/changes?since=<step>` endpoint that returns only changed fields (hybrid approach, no new deps)
+- ETag caching (v6.31.0) already eliminates re-parsing unchanged JSON on 304 responses
 
-Priority: Medium
+Priority: Low (ETag caching reduced the urgency significantly)
 
 ### TASK-413 (done — v6.31.0)
 ETag after_request handler. MD5 hash of response body, 304 on If-None-Match match.

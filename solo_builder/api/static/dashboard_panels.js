@@ -11,6 +11,25 @@ import { updateSubtasksExportLinks as _updateSubtasksExportLinks } from "./dashb
 import { resetHistoryUnread as _resetHistoryUnread } from "./dashboard_history.js";
 
 /* ── Sidebar tabs ────────────────────────────────────────── */
+/* ── Keyboard nav for tablist (Arrow Left/Right, Home/End) ── */
+document.addEventListener("keydown", (e) => {
+  const tab = document.activeElement;
+  if (!tab || !tab.classList.contains("sidebar-tab")) return;
+  const tabs = [...document.querySelectorAll(".sidebar-tab")];
+  const idx = tabs.indexOf(tab);
+  if (idx < 0) return;
+  let next = -1;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (idx + 1) % tabs.length;
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (idx - 1 + tabs.length) % tabs.length;
+  else if (e.key === "Home") next = 0;
+  else if (e.key === "End") next = tabs.length - 1;
+  if (next >= 0) {
+    e.preventDefault();
+    tabs[next].focus();
+    tabs[next].click();
+  }
+});
+
 window.switchTab = function (name) {
   document.querySelectorAll(".sidebar-tab").forEach(t => {
     const tabName = t.dataset.tab || t.textContent.toLowerCase();

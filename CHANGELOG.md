@@ -1,5 +1,13 @@
 # Changelog
 
+## v6.36.0 — 2026-03-12  Accessibility Sprint: Contrast + Keyboard Nav + Skip-Nav
+
+- **WCAG contrast fix**: `--dim` color `#666 → #888` (3.38:1 → 5.48:1 contrast ratio, now passes AA)
+- **Keyboard tab navigation**: Arrow Left/Right/Up/Down, Home/End keys navigate sidebar tabs with focus + activation
+- **Skip-nav link**: "Skip to main content" link appears on Tab focus, jumps to task grid
+- **TASK-412 SSE researched**: documented findings in TASK_QUEUE — ETag caching reduces urgency, simplest SSE path requires `watchdog` file-watcher or hybrid `/changes?since=step` endpoint
+- **3884 tests**, 0 failures
+
 ## v6.35.0 — 2026-03-12  Dashboard Accessibility + ARIA + Focus Styles
 
 - **ARIA tablist/tab/tabpanel**: Sidebar tabs now have `role="tablist"`, each button has `role="tab"` + `aria-selected` + `aria-controls`, all panels have `role="tabpanel"`. `data-tab` on every tab button for reliable matching
