@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-407
+TASK-109
 
-dag_cmds + step_runner deep coverage sprint
+Add unit tests for cli_utils._handle_status_subcommand and _handle_watch_subcommand

@@ -149,6 +149,26 @@ class TestHandleWatchSubcommand(unittest.TestCase):
                 cli_utils._handle_watch_subcommand(path, interval=0.01)
             self.assertIn("No state file", out.getvalue())
 
+    def test_invalid_json_retries_then_interrupts(self):
+        """Lines 115-117: state file has invalid JSON → sleeps and continues loop."""
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "state.json")
+            Path(path).write_text("not json", encoding="utf-8")
+            call_count = [0]
+            real_sleep = time.sleep
+
+            def _sleep_then_raise(n):
+                call_count[0] += 1
+                if call_count[0] >= 2:
+                    raise KeyboardInterrupt
+                real_sleep(min(n, 0.01))
+
+            out = StringIO()
+            with patch("sys.stdout", out), patch("cli_utils.time.sleep", _sleep_then_raise):
+                cli_utils._handle_watch_subcommand(path, interval=0.01)
+            # Loop ran at least once with the invalid JSON — no crash
+            self.assertGreaterEqual(call_count[0], 1)
+
     def test_partial_progress_then_completes(self):
         """Write partial state, then overwrite with complete state; watch should exit."""
         with tempfile.TemporaryDirectory() as d:
