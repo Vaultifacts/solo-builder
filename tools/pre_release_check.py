@@ -41,13 +41,16 @@ class GateResult(NamedTuple):
 
 
 def _run_gate(name: str, command: str, timeout: int = 120) -> tuple[bool, str, float]:
-    """Run a shell command; return (passed, output, duration_s)."""
-    import shlex
+    """Run a gate command; return (passed, output, duration_s).
+
+    Uses shell=True because VERIFY.json commands may contain shell builtins
+    (exit, echo) or pipes. Commands come from local config, not user input.
+    """
     import time
     t0 = time.monotonic()
     try:
         result = subprocess.run(
-            shlex.split(command), shell=False, capture_output=True, text=True,
+            command, shell=True, capture_output=True, text=True,
             timeout=timeout, cwd=str(REPO_ROOT),
         )
         elapsed = round(time.monotonic() - t0, 2)
