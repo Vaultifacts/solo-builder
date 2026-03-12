@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-387
+TASK-113
 
-OpenAPIRequestBodies — request body schemas already present
+XSS dashboard JS — no innerHTML found, no changes needed
