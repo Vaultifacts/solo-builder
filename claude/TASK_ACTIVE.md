@@ -1,5 +1,5 @@
 # Active Task
 
-TASK-385
+TASK-386
 
-CoverageGaps — cover app.py AttributeError+405 handler, middleware.py current_count expiry
+OpenAPIBlueprintGaps — drift-guard already passes (no new routes)
