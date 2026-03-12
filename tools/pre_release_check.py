@@ -50,7 +50,7 @@ def _run_gate(name: str, command: str, timeout: int = 120) -> tuple[bool, str, f
     t0 = time.monotonic()
     try:
         result = subprocess.run(
-            command, shell=True, capture_output=True, text=True,
+            command, shell=True, capture_output=True, text=True,  # nosec B602 — commands from local VERIFY.json, not user input
             timeout=timeout, cwd=str(REPO_ROOT),
         )
         elapsed = round(time.monotonic() - t0, 2)
