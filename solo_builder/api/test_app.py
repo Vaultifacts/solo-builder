@@ -1381,6 +1381,13 @@ class TestCacheExport(_Base):
         nums = [r["session"] for r in rows]
         self.assertEqual(nums, [4, 5])
 
+    def test_export_read_exception(self):
+        """cache.py:121-122 — corrupt stats file returns 500."""
+        (self._cache_dir / "session_stats.json").write_text("NOT-JSON!", encoding="utf-8")
+        r = self.client.get("/cache/export")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
+
 
 # ---------------------------------------------------------------------------
 # GET /diff
@@ -3970,6 +3977,62 @@ class TestCache(_Base):
         d = r.get_json()
         self.assertTrue(d["ok"])
 
+    def test_get_cache_dir_read_exception(self):
+        """cache.py:26-27 — cache dir read exception returns 500."""
+        from pathlib import Path as _P
+        _orig = _P.glob
+        def _boom(self_path, *a, **kw):
+            if "cache" in str(self_path):
+                raise PermissionError("access denied")
+            return _orig(self_path, *a, **kw)
+        _P.glob = _boom
+        try:
+            r = self.client.get("/cache")
+        finally:
+            _P.glob = _boom  # restore below
+            _P.glob = _orig
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
+
+    def test_delete_cache_unlink_oserror(self):
+        """cache.py:58-59 — unlink OSError increments errors count."""
+        self._write_entries(2)
+        from pathlib import Path as _P
+        _orig = _P.unlink
+        call_count = [0]
+        def _boom(self_path, *a, **kw):
+            if "entry_" in str(self_path):
+                call_count[0] += 1
+                if call_count[0] == 1:
+                    raise OSError("locked")
+            return _orig(self_path, *a, **kw)
+        _P.unlink = _boom
+        try:
+            r = self.client.delete("/cache")
+        finally:
+            _P.unlink = _orig
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["errors"], 1)
+        self.assertEqual(d["deleted"], 1)
+
+    def test_delete_cache_glob_exception(self):
+        """cache.py:60-61 — glob exception on delete returns 500."""
+        self._write_entries(1)
+        from pathlib import Path as _P
+        _orig = _P.glob
+        def _boom(self_path, *a, **kw):
+            if "cache" in str(self_path):
+                raise PermissionError("access denied")
+            return _orig(self_path, *a, **kw)
+        _P.glob = _boom
+        try:
+            r = self.client.delete("/cache")
+        finally:
+            _P.glob = _orig
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
+
 
 # ---------------------------------------------------------------------------
 # /metrics/export
@@ -4294,6 +4357,13 @@ class TestCacheHistory(_Base):
         self._write_stats_n(3)
         d = self.client.get("/cache/history").get_json()
         self.assertEqual(len(d["sessions"]), 3)
+
+    def test_history_read_exception(self):
+        """cache.py:77-78 — corrupt stats file returns 500."""
+        (self._cache_dir / "session_stats.json").write_text("NOT-JSON!", encoding="utf-8")
+        r = self.client.get("/cache/history")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
 
 
 # ---------------------------------------------------------------------------
