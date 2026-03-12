@@ -4,9 +4,15 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+# Cross-platform commands that work without shell=True
+_PY = sys.executable
+_PASS_CMD = f'"{_PY}" -c pass'
+_FAIL_CMD = f'"{_PY}" -c "import sys; sys.exit(1)"'
 
 # ---------------------------------------------------------------------------
 # Load module from tools/
@@ -64,16 +70,16 @@ class TestRunGate(unittest.TestCase):
         """Patch _tool_definitions to return two fast-passing tools."""
         def fake_defs():
             return [
-                {"name": "t1", "command": "exit 0", "timeout": 5},
-                {"name": "t2", "command": "exit 0", "timeout": 5},
+                {"name": "t1", "command": _PASS_CMD, "timeout": 5},
+                {"name": "t2", "command": _PASS_CMD, "timeout": 5},
             ]
         return patch.object(_mod, "_tool_definitions", fake_defs)
 
     def _one_failing(self):
         def fake_defs():
             return [
-                {"name": "t1", "command": "exit 0", "timeout": 5},
-                {"name": "t2", "command": "exit 1", "timeout": 5},
+                {"name": "t1", "command": _PASS_CMD, "timeout": 5},
+                {"name": "t2", "command": _FAIL_CMD, "timeout": 5},
             ]
         return patch.object(_mod, "_tool_definitions", fake_defs)
 
@@ -91,8 +97,8 @@ class TestRunGate(unittest.TestCase):
         """If a tool is skipped it should not appear in results."""
         def fake_defs():
             return [
-                {"name": "t1", "command": "exit 0", "timeout": 5},
-                {"name": "t2", "command": "exit 1", "timeout": 5},  # would fail
+                {"name": "t1", "command": _PASS_CMD, "timeout": 5},
+                {"name": "t2", "command": _FAIL_CMD, "timeout": 5},  # would fail
             ]
         with patch.object(_mod, "_tool_definitions", fake_defs):
             code = run_gate(quiet=True, skip={"t2"})
@@ -112,7 +118,7 @@ class TestJsonOutput(unittest.TestCase):
 
     def _passing_patch(self):
         def fake_defs():
-            return [{"name": "g1", "command": "exit 0", "timeout": 5}]
+            return [{"name": "g1", "command": _PASS_CMD, "timeout": 5}]
         return patch.object(_mod, "_tool_definitions", fake_defs)
 
     def test_json_structure(self):
@@ -136,7 +142,7 @@ class TestJsonOutput(unittest.TestCase):
 
     def test_gate_passed_false_on_fail(self):
         def fake_defs():
-            return [{"name": "g1", "command": "exit 1", "timeout": 5}]
+            return [{"name": "g1", "command": _FAIL_CMD, "timeout": 5}]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             run_gate(quiet=False, as_json=True)
@@ -146,8 +152,8 @@ class TestJsonOutput(unittest.TestCase):
     def test_tools_run_count(self):
         def fake_defs():
             return [
-                {"name": "g1", "command": "exit 0", "timeout": 5},
-                {"name": "g2", "command": "exit 0", "timeout": 5},
+                {"name": "g1", "command": _PASS_CMD, "timeout": 5},
+                {"name": "g2", "command": _PASS_CMD, "timeout": 5},
             ]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
@@ -160,8 +166,8 @@ class TestJsonOutput(unittest.TestCase):
     def test_tools_failed_count(self):
         def fake_defs():
             return [
-                {"name": "g1", "command": "exit 0", "timeout": 5},
-                {"name": "g2", "command": "exit 1", "timeout": 5},
+                {"name": "g1", "command": _PASS_CMD, "timeout": 5},
+                {"name": "g2", "command": _FAIL_CMD, "timeout": 5},
             ]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
@@ -178,7 +184,7 @@ class TestTextOutput(unittest.TestCase):
 
     def test_pass_message_on_success(self):
         def fake_defs():
-            return [{"name": "my-tool", "command": "exit 0", "timeout": 5}]
+            return [{"name": "my-tool", "command": _PASS_CMD, "timeout": 5}]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             run_gate(quiet=False, as_json=False)
@@ -189,7 +195,7 @@ class TestTextOutput(unittest.TestCase):
 
     def test_fail_message_on_failure(self):
         def fake_defs():
-            return [{"name": "bad-tool", "command": "exit 1", "timeout": 5}]
+            return [{"name": "bad-tool", "command": _FAIL_CMD, "timeout": 5}]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             run_gate(quiet=False, as_json=False)
@@ -199,7 +205,7 @@ class TestTextOutput(unittest.TestCase):
 
     def test_quiet_suppresses_output(self):
         def fake_defs():
-            return [{"name": "g1", "command": "exit 0", "timeout": 5}]
+            return [{"name": "g1", "command": _PASS_CMD, "timeout": 5}]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             run_gate(quiet=True)
@@ -230,7 +236,7 @@ class TestMain(unittest.TestCase):
 
     def test_main_returns_int(self):
         def fake_defs():
-            return [{"name": "g", "command": "exit 0", "timeout": 5}]
+            return [{"name": "g", "command": _PASS_CMD, "timeout": 5}]
         with patch.object(_mod, "_tool_definitions", fake_defs):
             rc = _mod.main(["--quiet"])
         self.assertIsInstance(rc, int)
@@ -239,8 +245,8 @@ class TestMain(unittest.TestCase):
         """--skip removes a tool that would fail."""
         def fake_defs():
             return [
-                {"name": "ok",   "command": "exit 0", "timeout": 5},
-                {"name": "fail", "command": "exit 1", "timeout": 5},
+                {"name": "ok",   "command": _PASS_CMD, "timeout": 5},
+                {"name": "fail", "command": _FAIL_CMD, "timeout": 5},
             ]
         with patch.object(_mod, "_tool_definitions", fake_defs):
             rc = _mod.main(["--quiet", "--skip", "fail"])
@@ -248,7 +254,7 @@ class TestMain(unittest.TestCase):
 
     def test_main_json_flag(self):
         def fake_defs():
-            return [{"name": "g", "command": "exit 0", "timeout": 5}]
+            return [{"name": "g", "command": _PASS_CMD, "timeout": 5}]
         with patch.object(_mod, "_tool_definitions", fake_defs), \
              patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             _mod.main(["--json"])

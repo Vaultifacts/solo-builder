@@ -45,10 +45,11 @@ class ToolResult(NamedTuple):
 
 def _run_tool(name: str, command: str, timeout: int = 120) -> ToolResult:
     """Run *command*; return a ToolResult."""
+    import shlex
     t0 = time.monotonic()
     try:
         result = subprocess.run(
-            command, shell=True, capture_output=True, text=True,
+            shlex.split(command), shell=False, capture_output=True, text=True,
             timeout=timeout, cwd=str(REPO_ROOT),
         )
         elapsed = round(time.monotonic() - t0, 2)
