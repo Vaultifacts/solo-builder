@@ -66,6 +66,30 @@ to move to `cli_utils.py` or other helper modules:
 - `_handle_status_subcommand(state_path)` ✓
 - `_handle_watch_subcommand(state_path, interval)` ✓
 
+### Instance-attribute MagicMock shadowing (TASK-407 discovery)
+
+When `_FakeCLI` (or any test double) assigns a `MagicMock` as an **instance attribute**
+with the same name as a real mixin method, the instance attribute silently wins:
+
+```python
+class _FakeCLI(StepRunnerMixin):
+    def __init__(self):
+        self.save_state = MagicMock()  # shadows StepRunnerMixin.save_state!
+```
+
+Calling `self.cli.save_state()` calls the mock — the real method is never reached,
+leaving lines inside `StepRunnerMixin.save_state` permanently uncovered.
+
+**Fix**: delete the instance attribute before calling the real method:
+
+```python
+del self.cli.save_state          # remove instance shadow → real method is exposed
+StepRunnerMixin.save_state(self.cli)  # call directly via unbound call
+```
+
+This pattern is needed whenever you need to cover code inside a mixin method that
+was previously masked by a test-double instance attribute.
+
 ### How to test this constraint
 
 If you're extracting a function and unsure whether it's safe, run:
