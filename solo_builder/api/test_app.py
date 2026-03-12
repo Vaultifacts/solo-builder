@@ -267,6 +267,18 @@ class TestGetStatus(_Base):
         self.assertEqual(counts, sorted(counts, reverse=True))
         self.assertEqual(d["stalled_by_branch"][0]["count"], 2)
 
+    def test_status_uses_default_threshold_when_settings_bad(self):
+        """core.py:33-34 — except Exception: pass when settings unreadable."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("not-json!", encoding="utf-8")
+        try:
+            r = self.client.get("/status")
+            self.assertEqual(r.status_code, 200)
+            # default threshold=5 still applies
+            self.assertIn("stalled", r.get_json())
+        finally:
+            self._settings_path.write_bytes(backup)
+
 
 # ---------------------------------------------------------------------------
 # GET /history/count
@@ -699,6 +711,24 @@ class TestHealth(_Base):
         self.assertIn("total_subtasks", d)
         self.assertIsInstance(d["total_subtasks"], int)
 
+    def test_version_falls_back_to_pyproject(self):
+        """core.py:100-101 — importlib.metadata fails → pyproject.toml fallback."""
+        import importlib.metadata as im
+        with patch.object(im, "version", side_effect=Exception("not found")):
+            d = self.client.get("/health").get_json()
+        self.assertIn("version", d)
+        self.assertIsInstance(d["version"], str)
+        self.assertTrue(d["version"])  # non-empty (read from pyproject.toml or "unknown")
+
+    def test_version_falls_back_to_unknown(self):
+        """core.py:107-109 — both importlib and pyproject fail → 'unknown'."""
+        import importlib.metadata as im
+        from pathlib import Path as _Path
+        with patch.object(im, "version", side_effect=Exception("not found")):
+            with patch.object(_Path, "read_text", side_effect=OSError("no read")):
+                d = self.client.get("/health").get_json()
+        self.assertEqual(d["version"], "unknown")
+
 
 # ---------------------------------------------------------------------------
 # POST /export + GET /export
@@ -751,6 +781,17 @@ class TestJournal(_Base):
             "**Prompt:** test prompt\n\n"
             "Some output text here.\n"
             "---\n",
+            encoding="utf-8",
+        )
+        d = self.client.get("/journal").get_json()
+        self.assertEqual(len(d["entries"]), 1)
+        self.assertEqual(d["entries"][0]["subtask"], "A1")
+
+    def test_journal_skips_non_matching_header(self):
+        """export_routes.py:146 — blocks not matching expected header are skipped."""
+        self._journal_path.write_text(
+            "## Random note\nSome text\n\n"
+            "## A1 \u00b7 Task 0 / Branch A \u00b7 Step 3\nOutput.\n",
             encoding="utf-8",
         )
         d = self.client.get("/journal").get_json()
@@ -1887,6 +1928,21 @@ class TestBranchReset(_Base):
         st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]
         self.assertEqual(st["status"], "Pending")
 
+    def test_reset_write_failure_returns_500(self):
+        """branches.py:193-194 — state write fails → 500."""
+        self._write_state(self._make_state({"A1": "Running"}))
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            raise OSError("disk full")
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/branches/Task 0/reset",
+                                 json={"branch": "Branch A"})
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
+
 
 # ---------------------------------------------------------------------------
 # GET /subtasks  (TASK-087)
@@ -2092,6 +2148,24 @@ class TestSubtasksPagination(_Base):
         names = [s["subtask"] for s in d["subtasks"]]
         self.assertIn("A1", names)
 
+    def test_bad_min_age_defaults_to_zero(self):
+        """subtasks.py:37-38 — bad min_age → 0 (no filter)."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?min_age=xyz").get_json()
+        self.assertGreater(d["total"], 0)
+
+    def test_bad_page_defaults_to_one(self):
+        """subtasks.py:45-46 — bad page → 1."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?limit=10&page=abc").get_json()
+        self.assertEqual(d["page"], 1)
+
+    def test_branch_filter_no_match(self):
+        """subtasks.py:53 — branch filter with no matching branch."""
+        self._write_state(self._make_state({"A1": "Verified"}))
+        d = self.client.get("/subtasks?branch=ZZZ").get_json()
+        self.assertEqual(d["subtasks"], [])
+
 
 # ---------------------------------------------------------------------------
 # GET /subtasks/export  (TASK-088)
@@ -2265,6 +2339,47 @@ class TestSubtasksExportPagination(_Base):
         d = self.client.get("/subtasks/export?format=json&limit=abc").get_json()
         self.assertEqual(len(d["subtasks"]), 5)
 
+    def test_export_bad_min_age_defaults_to_zero(self):
+        """subtasks.py:111-112 — bad min_age → 0."""
+        self._write_state(self._state_with_n(3))
+        d = self.client.get("/subtasks/export?format=json&min_age=xyz").get_json()
+        self.assertEqual(len(d["subtasks"]), 3)
+
+    def test_export_bad_page_defaults_to_one(self):
+        """subtasks.py:119-120 — bad page → 1."""
+        self._write_state(self._state_with_n(3))
+        d = self.client.get("/subtasks/export?format=json&limit=10&page=abc").get_json()
+        self.assertEqual(d["page"], 1)
+
+    def test_export_branch_filter_no_match(self):
+        """subtasks.py:124,127 — branch filter with no matching branch."""
+        self._write_state(self._state_with_n(3))
+        d = self.client.get("/subtasks/export?format=json&branch=ZZZ").get_json()
+        self.assertEqual(len(d["subtasks"]), 0)
+
+    def test_export_min_age_filters_running(self):
+        """subtasks.py:135-138 — min_age filter in export."""
+        state = self._state_with_n(3)
+        state["step"] = 20
+        subs = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        subs["A1"]["status"] = "Running"
+        subs["A1"]["last_update"] = 0
+        subs["A2"]["status"] = "Running"
+        subs["A2"]["last_update"] = 19  # age=1, below min_age=5
+        subs["A3"]["status"] = "Verified"  # non-Running excluded (line 136)
+        self._write_state(state)
+        d = self.client.get("/subtasks/export?format=json&min_age=5").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertIn("A1", names)
+        self.assertNotIn("A2", names)  # fresh Running excluded (line 138)
+        self.assertNotIn("A3", names)  # Verified excluded (line 136)
+
+    def test_export_task_filter_no_match(self):
+        """subtasks.py:124 — task filter no match in export."""
+        self._write_state(self._state_with_n(3))
+        d = self.client.get("/subtasks/export?format=json&task=ZZZ").get_json()
+        self.assertEqual(len(d["subtasks"]), 0)
+
 
 # ---------------------------------------------------------------------------
 # GET /timeline enhanced  (TASK-090)
@@ -2385,6 +2500,47 @@ class TestConfig(_Base):
         r = self.client.post("/config", json={})
         self.assertEqual(r.status_code, 400)
 
+    def test_get_settings_not_found_returns_404(self):
+        """GET /config 404 when settings file absent (config.py:21)."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.unlink()
+        try:
+            r = self.client.get("/config")
+            self.assertEqual(r.status_code, 404)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+    def test_get_invalid_json_returns_500(self):
+        """GET /config 500 when settings file is unreadable JSON (config.py:25-26)."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("not-json!", encoding="utf-8")
+        try:
+            r = self.client.get("/config")
+            self.assertEqual(r.status_code, 500)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+    def test_post_settings_not_found_returns_404(self):
+        """POST /config 404 when settings file absent (config.py:37)."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.unlink()
+        try:
+            r = self.client.post("/config", json={"STALL_THRESHOLD": 5})
+            self.assertEqual(r.status_code, 404)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+    def test_post_invalid_json_returns_500(self):
+        """POST /config 500 when settings file has corrupt JSON (config.py:46-47)."""
+        from unittest.mock import patch
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("not-json!", encoding="utf-8")
+        try:
+            r = self.client.post("/config", json={"STALL_THRESHOLD": 5})
+            self.assertEqual(r.status_code, 500)
+        finally:
+            self._settings_path.write_bytes(backup)
+
 
 class TestConfigReset(_Base):
     """TASK-095: POST /config/reset restores compiled-in defaults."""
@@ -2418,6 +2574,19 @@ class TestConfigReset(_Base):
         finally:
             self._settings_path.write_bytes(backup)
 
+    def test_write_exception_returns_500(self):
+        """POST /config/reset 500 when write_text raises (config.py:80-81)."""
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            raise OSError("disk full")
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/config/reset")
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
+
 
 class TestConfigExport(_Base):
     """TASK-124: GET /config/export downloads settings.json as attachment."""
@@ -2450,6 +2619,19 @@ class TestConfigExport(_Base):
             self.assertEqual(r.status_code, 404)
         finally:
             self._settings_path.write_bytes(backup)
+
+    def test_read_exception_returns_500(self):
+        """GET /config/export 500 when read_bytes raises (config.py:63-64)."""
+        from pathlib import Path as _P
+        _orig = _P.read_bytes
+        def _boom(self_path, *a, **kw):
+            raise OSError("no read")
+        _P.read_bytes = _boom
+        try:
+            r = self.client.get("/config/export")
+        finally:
+            _P.read_bytes = _orig
+        self.assertEqual(r.status_code, 500)
 
 
 class TestShortcuts(_Base):
@@ -2986,6 +3168,18 @@ class TestStalled(_Base):
         d = self.client.get("/stalled?min_age=abc").get_json()
         self.assertIn("S1", [s["subtask"] for s in d["stalled"]])
 
+    def test_stalled_bad_settings_uses_default_threshold(self):
+        """subtasks.py:368-369 — except Exception: pass when settings unreadable."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("bad!", encoding="utf-8")
+        try:
+            state = self._make_state_lu({"S1": ("Running", 0)}, step=5)
+            self._write_state(state)
+            d = self.client.get("/stalled").get_json()
+            self.assertEqual(d["threshold"], 5)
+        finally:
+            self._settings_path.write_bytes(backup)
+
 
 # Heal
 # ---------------------------------------------------------------------------
@@ -3042,6 +3236,33 @@ class TestAgents(_Base):
         self.assertIn("threshold", h)
         self.assertIn("currently_stalled", h)
 
+    def test_agents_bad_settings_uses_defaults(self):
+        """metrics.py:35-36 — except Exception: pass when settings unreadable."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("bad!", encoding="utf-8")
+        try:
+            r = self.client.get("/agents")
+            self.assertEqual(r.status_code, 200)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+    def test_agents_stalled_count(self):
+        """metrics.py:49 — stalled_count incremented for stalled Running subtask."""
+        state = self._make_state({"A1": "Running"}, step=20)
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = 0
+        self._write_state(state)
+        d = self.client.get("/agents").get_json()
+        self.assertGreater(d["healer"]["currently_stalled"], 0)
+
+    def test_agents_meta_history_rates(self):
+        """metrics.py:52-55 — meta_history heal_rate/verify_rate computed."""
+        state = self._make_state({"A1": "Running", "A2": "Verified"})
+        state["meta_history"] = [{"verified": 2, "healed": 1}]
+        self._write_state(state)
+        d = self.client.get("/agents").get_json()
+        self.assertGreater(d["meta"]["verify_rate"], 0)
+        self.assertGreater(d["meta"]["heal_rate"], 0)
+
 
 # Forecast
 # ---------------------------------------------------------------------------
@@ -3071,6 +3292,21 @@ class TestForecast(_Base):
         d = r.get_json()
         self.assertIn("verify_rate", d)
         self.assertIn("heal_rate", d)
+
+    def test_review_counted(self):
+        """metrics.py:88 — elif s == 'Review': review += 1 in /forecast."""
+        self._write_state(self._make_state({"A1": "Review", "A2": "Pending"}))
+        d = self.client.get("/forecast").get_json()
+        self.assertEqual(d["review"], 1)
+
+    def test_meta_history_rates(self):
+        """metrics.py:93-96 — meta_history heal_rate/verify_rate in /forecast."""
+        state = self._make_state({"A1": "Verified"})
+        state["meta_history"] = [{"verified": 3, "healed": 1}]
+        self._write_state(state)
+        d = self.client.get("/forecast").get_json()
+        self.assertGreater(d["verify_rate"], 0)
+        self.assertGreater(d["heal_rate"], 0)
 
 
 # Error handlers
@@ -3483,6 +3719,47 @@ class TestMetricsHealth(_Base):
         d = self.client.get("/metrics").get_json()
         self.assertEqual(d["review"], 1)
         self.assertEqual(d["pending"], 1)
+
+    def test_metrics_bad_settings_uses_defaults(self):
+        """metrics.py:130-131 — except Exception: pass when settings unreadable."""
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("bad!", encoding="utf-8")
+        try:
+            self._write_state(self._make_state())
+            r = self.client.get("/metrics")
+            self.assertEqual(r.status_code, 200)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+    def test_metrics_stalled_increments(self):
+        """metrics.py:141-143 — stalled += 1 for Running subtask at threshold."""
+        state = self._make_state({"A1": "Running"}, step=20)
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["last_update"] = 0
+        self._write_state(state)
+        d = self.client.get("/metrics").get_json()
+        self.assertGreater(d["stalled"], 0)
+
+    def test_metrics_steps_per_min_computed(self):
+        """metrics.py:158 — steps_per_min computed when step > 0."""
+        import time as _time
+        state = self._make_state({"A1": "Verified"})
+        state["step"] = 10
+        self._write_state(state)
+        real_time = _time.time
+        # Force elapsed_s > 0 by returning a time 60 seconds in the future
+        with patch("api.blueprints.metrics._time") as mock_time:
+            mock_time.time.return_value = real_time() + 60
+            d = self.client.get("/metrics").get_json()
+        self.assertIsNotNone(d["steps_per_min"])
+        self.assertGreater(d["steps_per_min"], 0)
+
+    def test_metrics_state_file_missing_elapsed_none(self):
+        """metrics.py:159-160 — except Exception: pass when STATE_PATH.stat() fails."""
+        self._write_state(self._make_state())
+        self._state_path.unlink()
+        d = self.client.get("/metrics").get_json()
+        self.assertIsNone(d["elapsed_s"])
+        self.assertIsNone(d["steps_per_min"])
 
 
 class TestErrorHandlers(_Base):
@@ -4095,6 +4372,33 @@ class TestSubtasksBulkVerify(_Base):
                              content_type="application/json").get_json()
         self.assertIn("A1", d["verified"])
 
+    def test_bulk_verify_skips_unmentioned_subtasks(self):
+        """subtasks.py:241 — continue when st_name not in remaining."""
+        self._write_state(self._make_state({"A1": "Running", "A2": "Running"}))
+        d = self.client.post("/subtasks/bulk-verify",
+                             json={"subtasks": ["A1"]},
+                             content_type="application/json").get_json()
+        self.assertEqual(d["verified_count"], 1)
+        state = json.loads(self._state_path.read_text())
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A2"]
+        self.assertEqual(st["status"], "Running")  # A2 untouched
+
+    def test_bulk_verify_write_failure_returns_500(self):
+        """subtasks.py:256-257 — state write fails → 500."""
+        self._write_state(self._make_state({"A1": "Running"}))
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            raise OSError("disk full")
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/subtasks/bulk-verify",
+                                 json={"subtasks": ["A1"]},
+                                 content_type="application/json")
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
+
 
 class TestSubtasksBulkReset(_Base):
 
@@ -4169,6 +4473,32 @@ class TestSubtasksBulkReset(_Base):
         d = self.client.post("/subtasks/bulk-reset",
                              json={"subtasks": ["A1"]}).get_json()
         self.assertEqual(d["reset_count"], 1)
+
+    def test_bulk_reset_skips_unmentioned_subtasks(self):
+        """subtasks.py:194 — continue when st_name not in remaining."""
+        self._write_state(self._make_state({"A1": "Running", "A2": "Pending"}))
+        d = self.client.post("/subtasks/bulk-reset",
+                             json={"subtasks": ["A1"]}).get_json()
+        self.assertEqual(d["reset_count"], 1)
+        state = json.loads(self._state_path.read_text())
+        # A2 was not mentioned → should stay Pending (unchanged)
+        st = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A2"]
+        self.assertEqual(st["status"], "Pending")
+
+    def test_bulk_reset_write_failure_returns_500(self):
+        """subtasks.py:206-207 — state write fails → 500."""
+        self._write_state(self._make_state({"A1": "Running"}))
+        from pathlib import Path as _P
+        _orig = _P.write_text
+        def _boom(self_path, *a, **kw):
+            raise OSError("disk full")
+        _P.write_text = _boom
+        try:
+            r = self.client.post("/subtasks/bulk-reset",
+                                 json={"subtasks": ["A1"]})
+        finally:
+            _P.write_text = _orig
+        self.assertEqual(r.status_code, 500)
 
 
 class TestSubtasksBulkVerifyExtra(_Base):
@@ -5285,6 +5615,19 @@ class TestMetricsSummaryLatency(_Base):
         buckets = d["latency_buckets"]
         self.assertEqual(sum(buckets.values()), d["record_count"])
 
+    def test_missing_jsonl_file_returns_empty(self):
+        """metrics.py:260-261 — FileNotFoundError → empty records."""
+        from solo_builder.api.constants import METRICS_JSONL_PATH
+        if METRICS_JSONL_PATH.exists():
+            METRICS_JSONL_PATH.unlink()
+        d = self.client.get("/metrics/summary").get_json()
+        self.assertEqual(d["record_count"], 0)
+
+    def test_percentile_empty_returns_zero(self):
+        """metrics.py:212 — _percentile([]) → 0.0."""
+        from solo_builder.api.blueprints.metrics import _percentile
+        self.assertEqual(_percentile([], 0.5), 0.0)
+
     def test_existing_fields_still_present(self):
         """Backwards compatibility — no existing fields removed."""
         self._write_jsonl([{"elapsed_s": 1.0, "sdk_dispatched": 2, "sdk_succeeded": 2}])
@@ -5292,6 +5635,274 @@ class TestMetricsSummaryLatency(_Base):
         for key in ("record_count", "avg_elapsed_s", "p95_elapsed_s",
                     "sdk_success_rate", "total_started", "total_verified"):
             self.assertIn(key, d)
+
+
+# ---------------------------------------------------------------------------
+# GET /executor/gates — TASK-368
+# ---------------------------------------------------------------------------
+
+class TestExecutorGates(_Base):
+
+    def test_returns_200_empty_dag(self):
+        r = self.client.get("/executor/gates")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["running_count"], 0)
+        self.assertEqual(d["blocked_count"], 0)
+        self.assertEqual(d["gates"], [])
+
+    def test_running_subtask_appears_in_gates(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        d = self.client.get("/executor/gates").get_json()
+        self.assertEqual(d["running_count"], 1)
+        gate = d["gates"][0]
+        self.assertEqual(gate["subtask"], "A1")
+        self.assertEqual(gate["tools"], "Read")
+        self.assertTrue(gate["tools_valid"])
+
+    def test_non_running_excluded(self):
+        self._write_state(self._make_state({"A1": "Verified", "A2": "Pending"}))
+        d = self.client.get("/executor/gates").get_json()
+        self.assertEqual(d["running_count"], 0)
+
+    def test_invalid_tools_sets_tools_valid_false(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "FakeToolThatDoesNotExist"
+        self._write_state(state)
+        d = self.client.get("/executor/gates").get_json()
+        gate = d["gates"][0]
+        self.assertFalse(gate["tools_valid"])
+        self.assertTrue(gate["blocked"])
+
+    def test_empty_tools_not_blocked(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = ""
+        self._write_state(state)
+        d = self.client.get("/executor/gates").get_json()
+        gate = d["gates"][0]
+        self.assertTrue(gate["tools_valid"])
+        self.assertFalse(gate["blocked"])
+
+    def test_no_state_file_returns_empty(self):
+        if self._state_path.exists():
+            self._state_path.unlink()
+        d = self.client.get("/executor/gates").get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["gates"], [])
+
+    def test_gate_has_required_keys(self):
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        d = self.client.get("/executor/gates").get_json()
+        gate = d["gates"][0]
+        for key in ("task", "branch", "subtask", "tools", "action_type",
+                    "hitl_level", "hitl_name", "scope_ok", "scope_denied",
+                    "tools_valid", "blocked"):
+            self.assertIn(key, gate)
+
+    def test_blocked_count_increments(self):
+        state = self._make_state({"A1": "Running", "A2": "Running"})
+        subs = state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]
+        subs["A1"]["tools"] = "FakeToolThatDoesNotExist"
+        subs["A2"]["tools"] = "Read"
+        self._write_state(state)
+        d = self.client.get("/executor/gates").get_json()
+        self.assertFalse(d["ok"])
+        self.assertEqual(d["blocked_count"], 1)
+
+    def test_gates_with_bad_settings_still_works(self):
+        """executor_gates.py:61-62,67-68 — policy load exceptions."""
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        backup = self._settings_path.read_bytes()
+        self._settings_path.write_text("bad!", encoding="utf-8")
+        try:
+            d = self.client.get("/executor/gates").get_json()
+            self.assertEqual(d["running_count"], 1)
+        finally:
+            self._settings_path.write_bytes(backup)
+
+    def test_gates_hitl_eval_exception_defaults_to_zero(self):
+        """executor_gates.py:109-110 — hitl eval exception → hitl_level=0."""
+        state = self._make_state({"A1": "Running"})
+        state["dag"]["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["tools"] = "Read"
+        self._write_state(state)
+        with patch("runners.hitl_gate.evaluate", side_effect=Exception("oops")):
+            d = self.client.get("/executor/gates").get_json()
+        gate = d["gates"][0]
+        self.assertEqual(gate["hitl_level"], 0)
+        self.assertEqual(gate["hitl_name"], "Auto")
+
+
+# ---------------------------------------------------------------------------
+# GET /health/detailed — TASK-357
+# ---------------------------------------------------------------------------
+
+class TestHealthDetailed(_Base):
+
+    def test_returns_200(self):
+        self._write_state(self._make_state())
+        r = self.client.get("/health/detailed")
+        self.assertEqual(r.status_code, 200)
+
+    def test_has_ok_and_checks(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health/detailed").get_json()
+        self.assertIn("ok", d)
+        self.assertIn("checks", d)
+
+    def test_checks_has_required_keys(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health/detailed").get_json()
+        for key in ("state_valid", "config_drift", "metrics_alerts", "slo_status", "repo_health"):
+            self.assertIn(key, d["checks"])
+
+    def test_state_valid_check_has_ok(self):
+        self._write_state(self._make_state())
+        sv = self.client.get("/health/detailed").get_json()["checks"]["state_valid"]
+        self.assertIn("ok", sv)
+        self.assertIn("errors", sv)
+        self.assertIn("warnings", sv)
+
+    def test_config_drift_check_has_ok(self):
+        self._write_state(self._make_state())
+        cd = self.client.get("/health/detailed").get_json()["checks"]["config_drift"]
+        self.assertIn("ok", cd)
+
+    def test_metrics_alerts_check_has_ok(self):
+        self._write_state(self._make_state())
+        ma = self.client.get("/health/detailed").get_json()["checks"]["metrics_alerts"]
+        self.assertIn("ok", ma)
+
+    def test_slo_status_check_has_ok(self):
+        self._write_state(self._make_state())
+        slo = self.client.get("/health/detailed").get_json()["checks"]["slo_status"]
+        self.assertIn("ok", slo)
+
+    def test_repo_health_check_has_ok(self):
+        self._write_state(self._make_state())
+        rh = self.client.get("/health/detailed").get_json()["checks"]["repo_health"]
+        self.assertIn("ok", rh)
+        self.assertTrue(rh["ok"])  # repo_health is always ok=True
+
+    def test_no_state_file_still_returns_200(self):
+        if self._state_path.exists():
+            self._state_path.unlink()
+        r = self.client.get("/health/detailed")
+        self.assertEqual(r.status_code, 200)
+
+    def test_overall_ok_reflects_sub_checks(self):
+        self._write_state(self._make_state())
+        d = self.client.get("/health/detailed").get_json()
+        # overall_ok = state_valid.ok AND config_drift.ok AND metrics_alerts.ok AND slo.ok
+        expected = (d["checks"]["state_valid"]["ok"]
+                    and d["checks"]["config_drift"]["ok"]
+                    and d["checks"]["metrics_alerts"]["ok"]
+                    and d["checks"]["slo_status"]["ok"])
+        self.assertEqual(d["ok"], expected)
+
+    def test_state_validator_exception_returns_error(self):
+        """health_detailed.py:65-66 — state_validator.validate() exception."""
+        self._write_state(self._make_state())
+        with patch("api.blueprints.health_detailed._load_tool",
+                   side_effect=Exception("broken")):
+            d = self.client.get("/health/detailed").get_json()
+        sv = d["checks"]["state_valid"]
+        self.assertFalse(sv["ok"])
+        self.assertGreater(len(sv["errors"]), 0)
+
+    def test_config_drift_exception(self):
+        """health_detailed.py:79-80 — config_drift exception fallback."""
+        self._write_state(self._make_state())
+        _orig_load = None
+        import api.blueprints.health_detailed as hd_mod
+        _orig_load = hd_mod._load_tool
+        call_count = [0]
+        def _patched_load(name):
+            call_count[0] += 1
+            if name == "config_drift":
+                raise Exception("drift broken")
+            return _orig_load(name)
+        with patch.object(hd_mod, "_load_tool", side_effect=_patched_load):
+            d = self.client.get("/health/detailed").get_json()
+        cd = d["checks"]["config_drift"]
+        self.assertFalse(cd["ok"])
+        self.assertIn("error", cd)
+
+    def test_metrics_alerts_exception(self):
+        """health_detailed.py:99-100 — metrics_alert_check exception fallback."""
+        self._write_state(self._make_state())
+        import api.blueprints.health_detailed as hd_mod
+        _orig_load = hd_mod._load_tool
+        def _patched_load(name):
+            if name == "metrics_alert_check":
+                raise Exception("alerts broken")
+            return _orig_load(name)
+        with patch.object(hd_mod, "_load_tool", side_effect=_patched_load):
+            d = self.client.get("/health/detailed").get_json()
+        ma = d["checks"]["metrics_alerts"]
+        self.assertFalse(ma["ok"])
+        self.assertIn("error", ma)
+
+    def test_slo_check_exception(self):
+        """health_detailed.py:123-124 — slo_check exception fallback."""
+        self._write_state(self._make_state())
+        import api.blueprints.health_detailed as hd_mod
+        _orig_load = hd_mod._load_tool
+        def _patched_load(name):
+            if name == "slo_check":
+                raise Exception("slo broken")
+            return _orig_load(name)
+        with patch.object(hd_mod, "_load_tool", side_effect=_patched_load):
+            d = self.client.get("/health/detailed").get_json()
+        slo = d["checks"]["slo_status"]
+        self.assertFalse(slo["ok"])
+        self.assertIn("error", slo)
+
+    def test_slo_insufficient_records_still_ok(self):
+        """health_detailed.py:113-117 — insufficient records → ok=True, empty results."""
+        self._write_state(self._make_state())
+        import api.blueprints.health_detailed as hd_mod
+        _orig_load = hd_mod._load_tool
+        def _patched_load(name):
+            mod = _orig_load(name)
+            if name == "slo_check":
+                # Patch _load_records to return fewer than DEFAULT_MIN_RECORDS
+                import types
+                patched = types.SimpleNamespace(**{k: getattr(mod, k) for k in dir(mod)
+                                                   if not k.startswith('__')})
+                patched._load_records = lambda p: []
+                patched.DEFAULT_MIN_RECORDS = 5
+                patched.METRICS_PATH = mod.METRICS_PATH
+                return patched
+            return mod
+        with patch.object(hd_mod, "_load_tool", side_effect=_patched_load):
+            d = self.client.get("/health/detailed").get_json()
+        slo = d["checks"]["slo_status"]
+        self.assertTrue(slo["ok"])
+        self.assertEqual(slo["results"], [])
+
+    def test_aawo_snapshot_null(self):
+        """health_detailed.py:147-153 — AAWO snapshot returns None."""
+        self._write_state(self._make_state())
+        with patch("api.blueprints.health_detailed._load_tool") as mock_lt:
+            # Let the tool modules pass through normally, but mock AAWO imports
+            import api.blueprints.health_detailed as hd_mod
+            _orig_load = hd_mod._load_tool
+            mock_lt.side_effect = _orig_load
+        # Patch AAWO to return None snapshot
+        with patch("utils.aawo_bridge.get_snapshot", return_value=None), \
+             patch("utils.aawo_bridge.get_active_agents", return_value=[]), \
+             patch("utils.aawo_bridge.get_outcome_stats", return_value={}):
+            d = self.client.get("/health/detailed").get_json()
+        rh = d["checks"]["repo_health"]
+        self.assertTrue(rh["ok"])
+        self.assertFalse(rh.get("available", True))
 
 
 # ---------------------------------------------------------------------------

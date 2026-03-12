@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.24.0 — 2026-03-12  TASK-114 Deep API Coverage Sprint — 50+ new tests, 8 blueprints at 100%
+
+- **TASK-114 Flask API integration tests**: 50+ new tests across 10 test classes:
+  - **Phase 1** (26 tests): `core.py`, `metrics.py`, `subtasks.py`, `branches.py`, `export_routes.py`, `config.py` → all **100%** coverage
+    - Exception handlers (`except Exception: pass`), filter edge cases (`branch=ZZZ`, `min_age=xyz`, `page=abc`), write failures (Path.write_text monkey-patch), `_read_version()` fallback chain
+  - **Phase 2** (24 tests): `executor_gates.py` 8%→**85%**, `health_detailed.py` 18%→**92%**
+    - Gate evaluation, policy load exceptions, HITL eval exception, AAWO snapshot null, SLO insufficient records, config drift/metrics alerts exception paths
+  - Fixed 2 broken tests: `Path.write_text`/`read_bytes` can't be `patch.object`'d on WindowsPath — switched to class-level monkey-patching
+- **pre_release_check python-tests timeout 120→300s**: test suite grew past 120s under subprocess overhead
+- **Overall**: `app.py` + `middleware.py` + 6 core blueprints at **100%**, 2 complex blueprints at 85–92%
+- **697 API tests** (was 651), full suite 2400+ tests, 0 failures
+
 ## v6.23.0 — 2026-03-12  TASK-385 CoverageGaps + ci_quality_gate pre-release timeout + B310 confirmed suppressed
 
 - **TASK-385 CoverageGaps**: `app.py` 96%→**100%**, `middleware.py` 98%→**100%** (+3 tests):
