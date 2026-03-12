@@ -31,10 +31,21 @@ export function dotClass(s) {
   return "dot-pending";
 }
 
+const _etagCache = new Map();
+
 export async function api(path) {
-  const r = await fetch(state.base + path);
+  const opts = {};
+  const cached = _etagCache.get(path);
+  if (cached) {
+    opts.headers = {"If-None-Match": cached.etag};
+  }
+  const r = await fetch(state.base + path, opts);
+  if (r.status === 304 && cached) return cached.data;
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return r.json();
+  const data = await r.json();
+  const etag = r.headers.get("ETag");
+  if (etag) _etagCache.set(path, {etag, data});
+  return data;
 }
 
 function _renderNotifPanel() {

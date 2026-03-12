@@ -44,6 +44,14 @@ sys.path.insert(0, str(_REPO))
 
 import importlib
 import discord_bot.bot as bot_module  # noqa: E402
+import discord_bot.bot_commands as bot_commands_module  # noqa: E402
+
+# Ensure _bot() lazy import in bot_commands.py resolves to the same module object
+# (bot_commands imports "solo_builder.discord_bot.bot" which is a different sys.modules key)
+sys.modules["solo_builder.discord_bot.bot"] = bot_module
+sys.modules["solo_builder.discord_bot.bot_commands"] = sys.modules["discord_bot.bot_commands"]
+sys.modules["solo_builder.discord_bot.bot_formatters"] = sys.modules["discord_bot.bot_formatters"]
+sys.modules["solo_builder.discord_bot.bot_slash"] = sys.modules["discord_bot.bot_slash"]
 
 
 # ---------------------------------------------------------------------------
@@ -1914,7 +1922,7 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         """'output A1' with output sends the output text."""
         state = {"dag": {}, "step": 0}
         with patch.object(bot_module, "_load_state", return_value=state), \
-             patch.object(bot_module, "_find_subtask_output",
+             patch.object(bot_commands_module, "_find_subtask_output",
                           return_value=("Task 0", "Great work!")), \
              patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
             await bot_module._handle_text_command(_make_msg("output A1"))
@@ -2194,7 +2202,7 @@ class TestHandleTextCommandExtra(unittest.IsolatedAsyncioTestCase):
         """'diff' with state changes shows subtask transitions."""
         result = "**Diff** · Step 4 → 5\n`A1` Pending → Running"
         with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
-             patch.object(bot_module, "_format_diff", return_value=result):
+             patch.object(bot_commands_module, "_format_diff", return_value=result):
             await bot_module._handle_text_command(_make_msg("diff"))
         text = mock_send.call_args[0][1]
         self.assertIn("Diff", text)
@@ -3437,6 +3445,187 @@ class TestBranchesExportSlash(unittest.IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# bot_commands.py — format helpers (TASK-414 extraction coverage)
+# ---------------------------------------------------------------------------
+
+class TestFormatHeal(unittest.TestCase):
+    """_format_heal — heal trigger writer."""
+
+    def test_empty_subtask_returns_usage(self):
+        result = bot_module._format_heal({"dag": {}}, "")
+        self.assertIn("Usage", result)
+
+    def test_subtask_not_found(self):
+        state = _make_state({"A1": "Pending"})
+        result = bot_module._format_heal(state, "Z9")
+        self.assertIn("not found", result)
+
+    def test_subtask_not_running_warns(self):
+        state = _make_state({"A1": "Pending"})
+        result = bot_module._format_heal(state, "A1")
+        self.assertIn("not Running", result)
+
+    def test_subtask_running_writes_trigger(self):
+        state = _make_state({"A1": "Running"})
+        mock_trigger = MagicMock()
+        with patch.object(bot_module, "HEAL_TRIGGER", new=mock_trigger):
+            result = bot_module._format_heal(state, "A1")
+        self.assertIn("heal trigger", result)
+        mock_trigger.write_text.assert_called_once()
+
+
+class TestFormatResetTask(unittest.TestCase):
+    """_format_reset_task — reset non-Verified subtasks in a task."""
+
+    def test_empty_task_returns_usage(self):
+        result = bot_module._format_reset_task({"dag": {}}, "")
+        self.assertIn("Usage", result)
+
+    def test_task_not_found(self):
+        state = _make_state({"A1": "Pending"})
+        result = bot_module._format_reset_task(state, "TaskX")
+        self.assertIn("not found", result)
+
+    def test_resets_non_verified_preserves_verified(self):
+        state = _make_state({"A1": "Verified", "A2": "Running", "A3": "Pending"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_reset_task(state, "Task0")
+        self.assertIn("2 subtask(s)", result)
+        self.assertIn("1 Verified preserved", result)
+
+
+class TestFormatResetBranch(unittest.TestCase):
+    """_format_reset_branch — reset one branch of a task."""
+
+    def test_missing_args_returns_usage(self):
+        result = bot_module._format_reset_branch({"dag": {}}, "", "")
+        self.assertIn("Usage", result)
+
+    def test_task_not_found(self):
+        state = _make_state({"A1": "Pending"})
+        result = bot_module._format_reset_branch(state, "TaskX", "BranchA")
+        self.assertIn("not found", result)
+
+    def test_branch_not_found(self):
+        state = _make_state({"A1": "Pending"})
+        result = bot_module._format_reset_branch(state, "Task0", "BranchZ")
+        self.assertIn("not found", result)
+
+    def test_resets_branch_subtasks(self):
+        state = _make_state({"A1": "Running", "A2": "Verified"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_reset_branch(state, "Task0", "BranchA")
+        self.assertIn("1 subtask(s)", result)
+        self.assertIn("1 Verified preserved", result)
+
+
+class TestFormatBulkReset(unittest.TestCase):
+    """_format_bulk_reset — reset selected subtasks by name."""
+
+    def test_empty_names_returns_usage(self):
+        result = bot_module._format_bulk_reset({"dag": {}}, [])
+        self.assertIn("Usage", result)
+
+    def test_resets_matching_subtasks(self):
+        state = _make_state({"A1": "Running", "A2": "Pending", "A3": "Verified"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_bulk_reset(state, ["A1", "A2", "A3"])
+        self.assertIn("2", result)  # 2 reset
+        self.assertIn("1 Verified preserved", result)
+
+    def test_not_found_names_reported(self):
+        state = _make_state({"A1": "Pending"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_bulk_reset(state, ["A1", "Z9"])
+        self.assertIn("not found", result)
+        self.assertIn("Z9", result)
+
+
+class TestFormatBulkVerify(unittest.TestCase):
+    """_format_bulk_verify — verify selected subtasks by name."""
+
+    def test_empty_names_returns_usage(self):
+        result = bot_module._format_bulk_verify({"dag": {}}, [])
+        self.assertIn("Usage", result)
+
+    def test_verifies_non_verified_subtasks(self):
+        state = _make_state({"A1": "Running", "A2": "Pending"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_bulk_verify(state, ["A1", "A2"])
+        self.assertIn("2", result)
+
+    def test_skips_already_verified(self):
+        state = _make_state({"A1": "Verified", "A2": "Running"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_bulk_verify(state, ["A1", "A2"])
+        self.assertIn("1 skipped", result)
+
+    def test_not_found_names_reported(self):
+        state = _make_state({"A1": "Running"})
+        with patch.object(bot_module, "STATE_PATH", new=MagicMock()):
+            result = bot_module._format_bulk_verify(state, ["A1", "Z9"])
+        self.assertIn("not found", result)
+        self.assertIn("Z9", result)
+
+
+class TestHandleTextCommandDispatch(unittest.IsolatedAsyncioTestCase):
+    """Verify key _handle_text_command branches that were moved to bot_commands.py."""
+
+    async def test_heal_dispatches_to_format_heal(self):
+        state = _make_state({"A1": "Running"})
+        mock_trigger = MagicMock()
+        with patch.object(bot_module, "_load_state", return_value=state), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "HEAL_TRIGGER", new=mock_trigger):
+            await bot_module._handle_text_command(_make_msg("heal A1"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("heal trigger", text)
+
+    async def test_config_reads_settings(self):
+        cfg = {"STALL_THRESHOLD": 5, "VERBOSITY": 1}
+        mock_path = MagicMock()
+        mock_path.read_text.return_value = json.dumps(cfg)
+        with patch.object(bot_module, "_send", new=AsyncMock()) as mock_send, \
+             patch.object(bot_module, "SETTINGS_PATH", new=mock_path):
+            await bot_module._handle_text_command(_make_msg("config"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("STALL_THRESHOLD", text)
+
+    async def test_heartbeat_no_data(self):
+        with patch.object(bot_module, "_read_heartbeat", return_value=None), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("heartbeat"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No heartbeat", text)
+
+    async def test_pause_no_auto(self):
+        with patch.object(bot_module, "_auto_running", return_value=False), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("pause"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("No auto-run", text)
+
+    async def test_resume_not_paused(self):
+        mock_trigger = MagicMock()
+        mock_trigger.exists.return_value = False
+        with patch.object(bot_module, "PAUSE_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("resume"))
+        text = mock_send.call_args[0][1]
+        self.assertIn("Not paused", text)
+
+    async def test_rename_writes_trigger(self):
+        mock_trigger = MagicMock()
+        with patch.object(bot_module, "RENAME_TRIGGER", new=mock_trigger), \
+             patch.object(bot_module, "_send", new=AsyncMock()) as mock_send:
+            await bot_module._handle_text_command(_make_msg("rename A1 New description"))
+        mock_trigger.write_text.assert_called_once()
+        written = json.loads(mock_trigger.write_text.call_args[0][0])
+        self.assertEqual(written["subtask"], "A1")
+        self.assertEqual(written["desc"], "New description")
+
+
 # Entry point
 # ---------------------------------------------------------------------------
 

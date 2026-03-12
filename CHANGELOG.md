@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.33.0 — 2026-03-12  History + Subtasks Extraction + ETag Tests + Bot Test Fixes
+
+- **History panel extraction**: `dashboard_panels.js` 466→268 lines (-42%). History tab → `dashboard_history.js` (204 lines). `resetHistoryUnread()` exported for cross-module switchTab
+- **Subtasks panel extraction**: Subtask tab (filters, paging, bulk actions, render) → `dashboard_subtasks.js` (256 lines). `updateSubtasksExportLinks()` exported for switchTab
+- **`dashboard_panels.js` 722→268 lines** (-63%) across 2 extractions. 16 ES modules total
+- **ETag test coverage**: 7 new tests in `test_middleware.py` — 304 on match, no ETag on POST/non-200/direct-passthrough, MD5 body hash, idempotent tags
+- **Dashboard ETag client**: `api()` in `dashboard_utils.js` now caches ETags and sends `If-None-Match` headers — avoids re-parsing unchanged JSON on 304
+- **Bot test fixes**: `sys.modules` aliasing for `solo_builder.discord_bot.*` → `discord_bot.*` so `_bot()` lazy import resolves to same module object. Fixed `_find_subtask_output` and `_format_diff` patch targets after bot_commands extraction. Re-exported `_HELP_TEXT`, `_KEY_MAP` from `bot.py`
+- **24 new bot_commands tests**: `_format_heal`, `_format_reset_task`, `_format_reset_branch`, `_format_bulk_reset`, `_format_bulk_verify`, plus 6 dispatch tests (heal, config, heartbeat, pause, resume, rename)
+- **2601+ tests** (core) + **329 bot tests**, 0 failures, 16 JS modules, 0 lint gaps
+
 ## v6.31.0 — 2026-03-12  ETag Caching + Bot.py Extraction
 
 - **TASK-413 complete**: ETag `after_request` handler — MD5 hash on GET/HEAD 200 responses, returns 304 Not Modified on `If-None-Match` match. Skips direct passthrough responses. Reduces dashboard polling bandwidth

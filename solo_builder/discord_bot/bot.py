@@ -204,6 +204,7 @@ from .bot_commands import (
     _handle_text_command,
     _format_heal, _format_reset_task, _format_reset_branch,
     _format_bulk_reset, _format_bulk_verify,
+    _HELP_TEXT, _KEY_MAP,
 )
 
 

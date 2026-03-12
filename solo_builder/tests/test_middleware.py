@@ -171,5 +171,55 @@ class TestRateLimiterCurrentCount(unittest.TestCase):
         self.assertEqual(self.lim.current_count("99.99.99.99", is_write=False), 0)
 
 
+class TestETagResponse(unittest.TestCase):
+    """ETag caching — after_request handler in app.py (TASK-413)."""
+
+    def setUp(self):
+        import api.app as app_mod
+        self.app = app_mod.app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
+    def test_get_200_has_etag_header(self):
+        resp = self.client.get("/health")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("ETag", resp.headers)
+        self.assertTrue(resp.headers["ETag"].startswith('"'))
+        self.assertTrue(resp.headers["ETag"].endswith('"'))
+
+    def test_etag_is_md5_of_body(self):
+        import hashlib
+        resp = self.client.get("/health")
+        body = resp.get_data()
+        expected = '"' + hashlib.md5(body).hexdigest() + '"'
+        self.assertEqual(resp.headers["ETag"], expected)
+
+    def test_if_none_match_returns_304(self):
+        resp1 = self.client.get("/health")
+        etag = resp1.headers["ETag"]
+        resp2 = self.client.get("/health", headers={"If-None-Match": etag})
+        self.assertEqual(resp2.status_code, 304)
+        self.assertEqual(resp2.get_data(), b"")
+
+    def test_if_none_match_mismatch_returns_200(self):
+        resp = self.client.get("/health", headers={"If-None-Match": '"bogus"'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreater(len(resp.get_data()), 0)
+
+    def test_post_request_no_etag(self):
+        resp = self.client.post("/run", content_type="application/json")
+        self.assertNotIn("ETag", resp.headers)
+
+    def test_non_200_no_etag(self):
+        resp = self.client.get("/nonexistent-path-xyz")
+        self.assertEqual(resp.status_code, 404)
+        self.assertNotIn("ETag", resp.headers)
+
+    def test_same_content_produces_same_etag(self):
+        r1 = self.client.get("/health")
+        r2 = self.client.get("/health")
+        self.assertEqual(r1.headers["ETag"], r2.headers["ETag"])
+
+
 if __name__ == "__main__":
     unittest.main()
