@@ -456,5 +456,55 @@ class TestRequestBodyRequired(unittest.TestCase):
                     )
 
 
+# ---------------------------------------------------------------------------
+# OpenAPI spec ↔ Flask route drift detection (TASK-409)
+# ---------------------------------------------------------------------------
+
+class TestSpecDriftDetection(unittest.TestCase):
+    """Ensure every Flask route is in the OpenAPI spec and vice versa."""
+
+    @classmethod
+    def setUpClass(cls):
+        import sys, os
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        saved_cwd = os.getcwd()
+        os.chdir(str(Path(__file__).resolve().parents[1]))
+        try:
+            from api.app import app
+            cls._flask_routes = set()
+            for rule in app.url_map.iter_rules():
+                if rule.rule.startswith("/static"):
+                    continue
+                for m in (rule.methods - {"OPTIONS", "HEAD"}):
+                    flask_path = rule.rule
+                    # Convert Flask <path:task_id> → OpenAPI {task_id}
+                    import re
+                    oapi_path = re.sub(r"<(?:path:|int:)?(\w+)>", r"{\1}", flask_path)
+                    cls._flask_routes.add((m.lower(), oapi_path))
+
+            spec = build_spec()
+            cls._spec_routes = set()
+            for path, methods in spec.get("paths", {}).items():
+                for method in methods:
+                    cls._spec_routes.add((method.lower(), path))
+        finally:
+            os.chdir(saved_cwd)
+
+    def test_no_flask_routes_missing_from_spec(self):
+        missing = self._flask_routes - self._spec_routes
+        self.assertEqual(missing, set(),
+                         f"Flask routes not in OpenAPI spec: {sorted(missing)}")
+
+    def test_no_spec_routes_missing_from_flask(self):
+        extra = self._spec_routes - self._flask_routes
+        self.assertEqual(extra, set(),
+                         f"OpenAPI spec routes not in Flask: {sorted(extra)}")
+
+    def test_route_count_matches(self):
+        self.assertEqual(len(self._flask_routes), len(self._spec_routes),
+                         f"Flask has {len(self._flask_routes)} routes, "
+                         f"spec has {len(self._spec_routes)}")
+
+
 if __name__ == "__main__":
     unittest.main()
