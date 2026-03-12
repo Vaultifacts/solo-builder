@@ -1,5 +1,11 @@
 # Changelog
 
+## v6.31.0 — 2026-03-12  ETag Caching + Bot.py Extraction
+
+- **TASK-413 complete**: ETag `after_request` handler — MD5 hash on GET/HEAD 200 responses, returns 304 Not Modified on `If-None-Match` match. Skips direct passthrough responses. Reduces dashboard polling bandwidth
+- **TASK-414 complete**: `bot.py` 1103→436 lines (-60%). Extracted `_handle_text_command` + 5 format helpers + `_HELP_TEXT` + `_KEY_MAP` into `bot_commands.py` (~550 lines). Lazy import pattern avoids circular deps
+- **2594 tests**, 0 failures, 12 JS modules, 0 lint gaps
+
 ## v6.30.0 — 2026-03-12  TASK-411 Dashboard Panel Extraction
 
 - **TASK-411 complete**: Extracted settings panel (105 lines) → `dashboard_settings.js`, stalled panel (134 lines) → `dashboard_stalled.js`

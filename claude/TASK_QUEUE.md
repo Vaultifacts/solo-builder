@@ -1,8 +1,8 @@
 # Task Queue
 
-## Completed Tasks (TASK-001 through TASK-411)
+## Completed Tasks (TASK-001 through TASK-414)
 All tasks merged to `master`. See `claude/JOURNAL.md` and journal archive for history.
-Latest: **v6.30.0** (2026-03-12)
+Latest: **v6.31.0** (2026-03-12)
 
 Key milestones:
 - TASK-103: solo_builder_cli.py 2965→1393 lines (mixin extraction)
@@ -45,20 +45,8 @@ Would reduce API load and improve dashboard responsiveness.
 
 Priority: Medium
 
-### TASK-413 (proposed)
-Goal: Add API response caching with ETags
+### TASK-413 (done — v6.31.0)
+ETag after_request handler. MD5 hash of response body, 304 on If-None-Match match.
 
-Acceptance Criteria:
-- GET endpoints return ETag header based on content hash
-- 304 Not Modified when client sends matching If-None-Match
-- Reduces bandwidth for dashboard polling
-
-Priority: Medium
-
-### TASK-414 (proposed)
-Goal: discord_bot/bot.py file size reduction
-
-Notes: bot.py is flagged as "Very large file" by architecture audit.
-Extract command handlers into separate modules (similar to bot_slash.py pattern).
-
-Priority: Low
+### TASK-414 (done — v6.31.0)
+bot.py 1103→436 lines. _handle_text_command + helpers → bot_commands.py (~550 lines).
