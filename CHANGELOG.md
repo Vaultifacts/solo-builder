@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.23.0 — 2026-03-12  TASK-385 CoverageGaps + ci_quality_gate pre-release timeout + B310 confirmed suppressed
+
+- **TASK-385 CoverageGaps**: `app.py` 96%→**100%**, `middleware.py` 98%→**100%** (+3 tests):
+  - `test_x_response_time_attribute_error_silent` — calls `security_headers()` via `test_request_context` (no `_start_time`) → covers `except AttributeError: pass` (app.py:108-109)
+  - `test_405_method_not_allowed_handler` — `POST /status` triggers 405 → covers `method_not_allowed()` (app.py:124)
+  - `test_current_count_prunes_expired_entries` — 25ms sleep expires deque → covers `dq.popleft()` (middleware.py:113)
+- **ci_quality_gate pre-release timeout 180→600s**: `pre_release_check.py` runs VERIFY.json gates (unittest-discover: 900s budget) plus builtin gates; 180s was always too tight
+- **TASK-116 (Bandit B310) confirmed suppressed**: `webhook.py` already has `# nosec B310`; bandit confirms no B310 finding; no product-code change needed
+- **TASK-115 already done**: `solo_builder_cli.py` is 473 lines (well below 600 target)
+- **2573 tests total** (was 2570), 0 failures
+
 ## v6.22.0 — 2026-03-12  TASK-383/384 OpenAPI complete + TASK-110 docs + dep_audit --quiet + audit drift fix
 
 - **TASK-383/384 OpenAPIHealthRoutes/ExportRoutes**: OpenAPI spec already complete — `TestLiveUrlMapDriftGuard` confirms all Flask blueprint routes are in `_ROUTES` with zero drift
