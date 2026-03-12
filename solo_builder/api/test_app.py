@@ -5031,6 +5031,22 @@ class TestSecurityHeadersIntegration(_Base):
         r = self._get()
         self.assertEqual(r.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
 
+    def test_x_response_time_attribute_error_silent(self):
+        """AttributeError when _start_time missing must be swallowed (app.py:108-109)."""
+        import api.app as _app_mod
+        with _app_mod.app.test_request_context("/status"):
+            # test_request_context skips before_request → _start_time not set → AttributeError
+            resp = _app_mod.app.make_response(("", 200))
+            result = _app_mod.security_headers(resp)
+        self.assertNotIn("X-Response-Time", result.headers)
+
+    def test_405_method_not_allowed_handler(self):
+        """POST /status returns 405 JSON (app.py:124)."""
+        self._write_state(self._make_state())
+        r = self.client.post("/status")
+        self.assertEqual(r.status_code, 405)
+        self.assertEqual(r.get_json()["error"], "Method not allowed.")
+
 
 # ---------------------------------------------------------------------------
 # Middleware unit tests (TASK-322)
@@ -5137,6 +5153,14 @@ class TestApiRateLimiter(unittest.TestCase):
     def test_current_count_zero_for_unknown_ip(self):
         rl = self._limiter()
         self.assertEqual(rl.current_count("0.0.0.0", is_write=False), 0)
+
+    def test_current_count_prunes_expired_entries(self):
+        """current_count must evict stale deque entries (middleware.py:113)."""
+        import time
+        rl = ApiRateLimiter(read_limit=5, window=0.01)
+        rl.check("4.4.4.4", is_write=False)   # adds timestamp to deque
+        time.sleep(0.025)                       # expire window
+        self.assertEqual(rl.current_count("4.4.4.4", is_write=False), 0)
 
 
 # ---------------------------------------------------------------------------
