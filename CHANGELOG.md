@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.25.0 — 2026-03-12  Blueprint Coverage Sprint — 9 blueprints 0→100%, 348 branches pruned
+
+- **Blueprint coverage sprint**: 44 new tests across 11 test classes covering 9 previously-uncovered blueprints:
+  - `ci_quality.py`, `context_window.py`, `live_summary.py`, `policy.py` (hitl+scope), `debt_scan.py`, `slo.py`, `threat_model.py`, `pre_release.py`, `prompt_regression.py` — all now **100%** coverage
+  - Happy paths, exception handlers, _load_tool uncached branches, SLO sufficient/insufficient records, threat model file-missing, runner exception caught
+- **Blueprint coverage overall**: **97%** across 22 blueprints (15 at 100%, up from 10)
+- **Branch cleanup**: Deleted 348 stale `task/TASK-*` branches (all merged to master)
+- **Test suite**: 746 API tests, 3319 total, 0 failures
+- **Pre-existing errors**: All 35 previously-reported test errors confirmed resolved (0 failures in `tests/`)
+
 ## v6.24.0 — 2026-03-12  TASK-114 Deep API Coverage Sprint — 50+ new tests, 8 blueprints at 100%
 
 - **TASK-114 Flask API integration tests**: 50+ new tests across 10 test classes:
