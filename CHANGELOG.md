@@ -1,5 +1,13 @@
 # Changelog
 
+## v6.27.0 — 2026-03-12  Full Coverage Milestone — cli_utils 100%, cache 100%, CI gate 6/6
+
+- **cli_utils.py 74→100%**: 10 new tests covering `_splash`, `_acquire_lock`/`_release_lock`, `_setup_logging(use_json=True)`, `_emit_json_result` with/without export flag
+- **cache.py 89→100%**: 5 new tests covering dir read exception, unlink OSError, glob exception, history/export corrupt file
+- **CI Quality Gate**: 6/6 PASS confirmed after full coverage sprint
+- **Branch cleanup**: 348 stale `task/TASK-*` branches deleted
+- **775 API tests**, 37 cli_utils tests, 3319+ total, 0 failures
+
 ## v6.26.0 — 2026-03-12  Deep Blueprint Coverage — 99% across 25 blueprints, 770 API tests
 
 - **Phase 2 coverage sprint**: 30 additional tests covering remaining gaps across 7 blueprints:
