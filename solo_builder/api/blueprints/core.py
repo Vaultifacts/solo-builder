@@ -93,17 +93,17 @@ def heartbeat():
 
 
 def _read_version() -> str:
-    """Read version from pyproject.toml; fall back to 'unknown'."""
-    try:
-        import importlib.metadata
-        return importlib.metadata.version("solo-builder")
-    except Exception:
-        pass
+    """Read version from pyproject.toml; fall back to importlib.metadata."""
     try:
         toml = Path(__file__).resolve().parents[3] / "pyproject.toml"
         for line in toml.read_text(encoding="utf-8").splitlines():
             if line.strip().startswith("version"):
                 return line.split("=")[1].strip().strip('"\'')
+    except Exception:
+        pass
+    try:
+        import importlib.metadata
+        return importlib.metadata.version("solo-builder")
     except Exception:
         pass
     return "unknown"

@@ -7,8 +7,14 @@ export { pollStalled } from "./dashboard_stalled.js";
 export { pollSubtasks, updateSubtasksExportLinks } from "./dashboard_subtasks.js";
 export { pollHistory, historyPageStep, resetHistoryUnread } from "./dashboard_history.js";
 export { pollPriority, pollAgents, pollForecast, pollMetrics } from "./dashboard_analytics.js";
-import { updateSubtasksExportLinks as _updateSubtasksExportLinks } from "./dashboard_subtasks.js";
-import { resetHistoryUnread as _resetHistoryUnread } from "./dashboard_history.js";
+import { pollBranches as _pollBranches } from "./dashboard_branches.js";
+import { pollCache as _pollCache, pollCacheHistory as _pollCacheHistory } from "./dashboard_cache.js";
+import { pollStalled as _pollStalled } from "./dashboard_stalled.js";
+import { pollSubtasks as _pollSubtasks, updateSubtasksExportLinks as _updateSubtasksExportLinks } from "./dashboard_subtasks.js";
+import { pollHistory as _pollHistory, resetHistoryUnread as _resetHistoryUnread } from "./dashboard_history.js";
+import { pollPriority as _pollPriority, pollAgents as _pollAgents, pollForecast as _pollForecast, pollMetrics as _pollMetrics } from "./dashboard_analytics.js";
+import { pollDiff as _pollDiff, pollStats as _pollStats } from "./dashboard_journal.js";
+import { pollSettings as _pollSettings } from "./dashboard_settings.js";
 
 /* ── Sidebar tabs ────────────────────────────────────────── */
 /* ── Keyboard nav for tablist (Arrow Left/Right, Home/End) ── */
@@ -51,6 +57,16 @@ window.switchTab = function (name) {
   if (name === "export") {
     _refreshExportHistoryByStatus();
   }
+  /* Immediate poll for the newly-active tab (no waiting for next medium tick) */
+  const _tabPollers = {
+    diff: [_pollDiff], stats: [_pollStats], branches: [_pollBranches],
+    priority: [_pollPriority], stalled: [_pollStalled], subtasks: [_pollSubtasks],
+    agents: [_pollAgents], forecast: [_pollForecast], metrics: [_pollMetrics],
+    cache: [_pollCache, _pollCacheHistory], "cache-history": [_pollCache, _pollCacheHistory],
+    history: [_pollHistory], settings: [_pollSettings],
+  };
+  const fns = _tabPollers[name];
+  if (fns) Promise.all(fns.map(f => f())).catch(() => {});
 };
 
 async function _refreshExportHistoryByStatus() {

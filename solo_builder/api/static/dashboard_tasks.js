@@ -67,7 +67,7 @@ export async function pollStatus() {
     if (d.complete && badge.textContent !== "Complete") {
       playCompletionSound();
       fetch(state.base + "/webhook", {method: "POST"}).then(r => r.json()).then(wd => {
-        if (wd.ok) toast("Pipeline complete — webhook fired");
+        if (wd.ok) toast("Pipeline complete — webhook fired", "success");
       }).catch(() => {});
     }
     if (d.complete) {
@@ -386,6 +386,23 @@ export function renderDetail(t) {
 
       row.append(dot, nameSpan);
 
+      if (s.depends_on && s.depends_on.length) {
+        const depWrap = document.createElement("span");
+        depWrap.style.cssText = "display:inline-flex;gap:2px;align-items:center;margin-left:4px";
+        const arrow = document.createElement("span");
+        arrow.style.cssText = "color:var(--dim);font-size:9px";
+        arrow.textContent = "←";
+        depWrap.appendChild(arrow);
+        for (const dep of s.depends_on) {
+          const chip = document.createElement("span");
+          chip.style.cssText = "font-size:8px;padding:0 3px;border-radius:3px;background:var(--bg3);color:#ff9800;cursor:pointer";
+          chip.textContent = dep;
+          chip.title = `Depends on ${dep}`;
+          depWrap.appendChild(chip);
+        }
+        row.appendChild(depWrap);
+      }
+
       if (rawOutput) {
         const outSpan = document.createElement("span");
         outSpan.className = "st-output";
@@ -447,9 +464,9 @@ window.resetTask = async function (taskId) {
       toast("↺ " + taskId + " reset (" + d.reset_count + " subtasks)");
       selectTask(taskId);
     } else {
-      toast(d.reason || "Reset failed");
+      toast(d.reason || "Reset failed", "error");
     }
-  } catch (_) { toast("Network error"); }
+  } catch (_) { toast("Network error", "error"); }
 };
 
 const _STATUS_COLOR = {
@@ -465,7 +482,7 @@ window.toggleTaskTimeline = async function toggleTaskTimeline(taskId) {
   try {
     const r = await fetch(state.base + "/tasks/" + encodeURIComponent(taskId) + "/timeline");
     data = await r.json();
-  } catch (_) { toast("Timeline fetch failed"); return; }
+  } catch (_) { toast("Timeline fetch failed", "error"); return; }
 
   const panel = document.createElement("div");
   panel.className = "detail-tl-panel";

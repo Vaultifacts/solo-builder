@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.39.0 — 2026-03-12  Immediate Tab Poll + Notification Sounds + Version Fix + Dependency Viz
+
+- **Immediate poll on tab switch**: Clicking a sidebar tab now fires its associated poller immediately instead of waiting for the next medium tick (~10s). Tab-to-poller mapping in `switchTab()` covers all 12 pollable tabs
+- **Notification sounds**: Web Audio API tone on pipeline success (880 Hz sine, 120ms) and errors (330 Hz square, 120ms). Volume at 8% — subtle, non-intrusive. Triggered via `toast(msg, "success"|"error")`
+- **`/health` version fix**: `_read_version()` now reads pyproject.toml first, falls back to `importlib.metadata`. Previously returned stale `1.0.0` from installed package metadata instead of current `6.39.0`
+- **Subtask dependency badges**: Detail panel subtask rows now show `← dep1 dep2` chips with orange badges for each depends_on entry, replacing plain text
+- **Regression test**: `test_health_version_matches_pyproject` pins `/health` version against pyproject.toml
+- **2641 tests**, 0 failures
+
 ## v6.38.0 — 2026-03-12  Tab-Aware Polling + Accessibility Tests + Version Bump
 
 - **Tab-aware polling**: Medium-tier pollers now only fire for the active sidebar tab — inactive tab data is not fetched. Combined with tiered polling, total API calls reduced ~85% vs original 30-per-tick

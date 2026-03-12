@@ -129,6 +129,18 @@ class TestApiEndpointSmoke(_Base):
     def test_config_returns_200(self):
         self._check_endpoint("/config")
 
+    def test_health_version_matches_pyproject(self):
+        resp = self.client.get("/health")
+        data = resp.get_json()
+        toml = Path(__file__).resolve().parents[1] / ".." / "pyproject.toml"
+        version = None
+        for line in toml.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith("version"):
+                version = line.split("=")[1].strip().strip('"\'')
+                break
+        self.assertIsNotNone(version)
+        self.assertEqual(data["version"], version)
+
     def test_404_returns_json(self):
         resp = self.client.get("/no-such-route-xyz")
         self.assertEqual(resp.status_code, 404)

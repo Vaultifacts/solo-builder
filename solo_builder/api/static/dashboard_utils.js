@@ -87,6 +87,23 @@ export function pushNotif(msg, type) {
   _renderNotifPanel();
 }
 
+/** Play a short notification tone via Web Audio API. type: "success"|"error"|"info" */
+function notifSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.value = 0.08;
+    if (type === "success") { osc.frequency.value = 880; osc.type = "sine"; }
+    else if (type === "error") { osc.frequency.value = 330; osc.type = "square"; }
+    else return;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+  } catch (_) {}
+}
+
 export function toast(msg, type) {
   const el = document.getElementById("toast");
   el.textContent = msg;
@@ -94,6 +111,7 @@ export function toast(msg, type) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { el.style.display = "none"; }, 4000);
   pushNotif(msg, type || "info");
+  if (type === "success" || type === "error") notifSound(type);
 }
 
 export function updateNotifBadge(currentStep) {
