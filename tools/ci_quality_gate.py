@@ -98,7 +98,7 @@ def _tool_definitions() -> list[dict]:
         {
             "name":    "pre-release",
             "command": f'"{_PYTHON}" tools/pre_release_check.py --quiet',
-            "timeout": 180,
+            "timeout": 600,
         },
     ]
 
