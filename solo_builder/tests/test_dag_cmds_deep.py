@@ -861,5 +861,339 @@ class TestCmdConfig(unittest.TestCase):
         self.assertIn("(none)", combined)
 
 
+# ---------------------------------------------------------------------------
+# _cmd_reset (lines 18-36)
+# ---------------------------------------------------------------------------
+
+class TestCmdReset(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+        self.cli.meta._history = [1, 2]
+        self.cli.meta.heal_rate = 0.5
+        self.cli.meta.verify_rate = 0.3
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_reset_clears_step(self):
+        self.cli.step = 10
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_reset()
+        self.assertEqual(self.cli.step, 0)
+
+    def test_reset_restores_initial_dag(self):
+        self.cli.dag["Task 99"] = {"status": "Running", "depends_on": [], "branches": {}}
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_reset()
+        self.assertNotIn("Task 99", self.cli.dag)
+
+    def test_reset_clears_state_file_if_exists(self):
+        Path(self._state).write_text("{}")
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_reset()
+        self.assertFalse(os.path.exists(self._state))
+
+    def test_reset_no_state_file_does_not_raise(self):
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_reset()  # file doesn't exist
+
+    def test_reset_prints_message(self):
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a, **kw: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_reset()
+        self.assertIn("reset", "\n".join(printed).lower())
+
+    def test_reset_calls_display_render(self):
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_reset()
+        self.cli.display.render.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# _cmd_add_task line 60: digit dep normalization in pipe spec
+# _cmd_add_task lines 104-105: Claude decomp exception path
+# ---------------------------------------------------------------------------
+
+class TestCmdAddTaskMore(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_pipe_dep_digit_normalised(self):
+        """Line 60: '0' in pipe dep → 'Task 0'."""
+        with patch("builtins.input", return_value="do something"), \
+             patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_add_task()
+        # dep_raw was '0' if input had '| depends: 0' — test via spec override
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_add_task("build stuff | depends: 0")
+        # Task 0 should be set as dep on new task
+        new_tasks = [k for k in self.cli.dag if k not in ("Task 0", "Task 1")]
+        if new_tasks:
+            deps = self.cli.dag[new_tasks[-1]].get("depends_on", [])
+            self.assertIn("Task 0", deps)
+
+    def test_claude_decomp_bad_json_falls_back_to_single(self):
+        """Lines 104-105: Claude returns output with brackets but invalid JSON → except path."""
+        self.cli.executor.claude.available = True
+        # Must have [...] so the regex matches, but content must be invalid JSON
+        self.cli.executor.claude.run = MagicMock(return_value=(True, "[bad json here]"))
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_add_task("do the thing")
+        new_tasks = [k for k in self.cli.dag if k not in ("Task 0", "Task 1")]
+        self.assertTrue(len(new_tasks) >= 1)
+        # Should have exactly 1 subtask (fallback)
+        new_task = new_tasks[-1]
+        branches = self.cli.dag[new_task].get("branches", {})
+        all_subtasks = [st for br in branches.values() for st in br["subtasks"]]
+        self.assertEqual(len(all_subtasks), 1)
+
+
+# ---------------------------------------------------------------------------
+# _cmd_add_branch lines 220, 228-229: Claude decomp bad-prefix + exception
+# ---------------------------------------------------------------------------
+
+class TestCmdAddBranchMore(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_claude_decomp_wrong_prefix_corrected(self):
+        """Line 220: subtask name with wrong prefix gets corrected to branch letter."""
+        self.cli.executor.claude.available = True
+        self.cli.executor.claude.run = MagicMock(return_value=(
+            True,
+            '[{"name": "Z1", "description": "wrong prefix subtask"}]'
+        ))
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_add_branch("Task 0", spec_override="new approach")
+        # Should still add a branch (prefix corrected)
+        branches = self.cli.dag["Task 0"]["branches"]
+        new_branches = [b for b in branches if b not in ("Branch A",)]
+        self.assertTrue(len(new_branches) >= 1)
+
+    def test_claude_decomp_bad_json_falls_back(self):
+        """Lines 228-229: Claude JSON parse error → fallback to single subtask."""
+        self.cli.executor.claude.available = True
+        self.cli.executor.claude.run = MagicMock(return_value=(True, "[bad json]"))
+        with patch("builtins.print"), patch("time.sleep"):
+            self.cli._cmd_add_branch("Task 0", spec_override="new approach")
+        branches = self.cli.dag["Task 0"]["branches"]
+        new_branches = [b for b in branches if b not in ("Branch A",)]
+        self.assertEqual(len(new_branches), 1)
+        # Fallback: single subtask
+        br = new_branches[0]
+        self.assertEqual(len(self.cli.dag["Task 0"]["branches"][br]["subtasks"]), 1)
+
+
+# ---------------------------------------------------------------------------
+# _cmd_depends lines 347, 364-365: lowercase normalise + new dep added
+# ---------------------------------------------------------------------------
+
+class TestCmdDependsMore(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+        self.cli.dag["Task 0"]["depends_on"] = []
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_lowercase_title_cased(self):
+        """Line 347: lowercase single-word task → title-cased via .title()."""
+        # Add single-word title-cased tasks so lowercase input normalises to them
+        self.cli.dag["Alpha"] = {"status": "Pending", "depends_on": [], "branches": {}}
+        self.cli.dag["Beta"] = {"status": "Pending", "depends_on": [], "branches": {}}
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a, **kw: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_depends("alpha beta")
+        combined = "\n".join(printed)
+        # Should succeed: "alpha"→"Alpha", "beta"→"Beta" both found in dag
+        self.assertIn("depends", combined.lower())
+
+    def test_new_dep_added_successfully(self):
+        """Lines 364-365: dep not yet in list → appended and message printed."""
+        # Start with Task 1 having no deps
+        self.cli.dag["Task 1"]["depends_on"] = []
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a, **kw: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            # Digit form: "1 0" → Task 1 depends on Task 0
+            self.cli._cmd_depends("1 0")
+        combined = "\n".join(printed)
+        self.assertIn("now depends", combined)
+        self.assertIn("Task 0", self.cli.dag["Task 1"]["depends_on"])
+
+
+# ---------------------------------------------------------------------------
+# _cmd_undepends line 386: lowercase normalise
+# ---------------------------------------------------------------------------
+
+class TestCmdUndependsMore(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_lowercase_normalised_in_undepends(self):
+        """Line 386: lowercase single-word task → title-cased via .title()."""
+        # Add single-word title-cased tasks so lowercase input normalises to them
+        self.cli.dag["Alpha"] = {"status": "Pending", "depends_on": ["Beta"], "branches": {}}
+        self.cli.dag["Beta"] = {"status": "Pending", "depends_on": [], "branches": {}}
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a, **kw: printed.append(" ".join(str(x) for x in a))), \
+             patch("time.sleep"):
+            self.cli._cmd_undepends("alpha beta")
+        combined = "\n".join(printed)
+        self.assertIn("no longer depends", combined)
+
+
+# ---------------------------------------------------------------------------
+# _cmd_import_dag lines 429-432: validate_dag errors
+# ---------------------------------------------------------------------------
+
+class TestCmdImportDagMore(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_validation_errors_printed(self):
+        """Lines 429-432: validate_dag returns errors → printed then return."""
+        dag_file = os.path.join(self._tmp, "bad.json")
+        bad_dag = {"Task 0": {"status": "Pending", "depends_on": ["Task 0"], "branches": {}}}
+        Path(dag_file).write_text(json.dumps(bad_dag))
+        # Patch validate_dag to return errors
+        with patch.object(dc_module, "validate_dag", return_value=["cycle detected"]), \
+             patch("builtins.print") as mock_print, patch("time.sleep"):
+            self.cli._cmd_import_dag(dag_file)
+        printed = " ".join(str(c) for c in mock_print.call_args_list)
+        self.assertIn("failed", printed.lower())
+
+
+# ---------------------------------------------------------------------------
+# _cmd_export (lines 460-488)
+# ---------------------------------------------------------------------------
+
+class TestCmdExport(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        self._ps = _dag_patches(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        self.cli = _FakeCLI()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_export_no_outputs_writes_header(self):
+        """Lines 479-480: no outputs → writes header-only file."""
+        with patch("builtins.print"):
+            path, count = self.cli._cmd_export()
+        self.assertEqual(count, 0)
+        self.assertTrue(os.path.exists(path))
+        content = Path(path).read_text(encoding="utf-8")
+        self.assertIn("No Claude outputs", content)
+
+    def test_export_with_outputs(self):
+        """Lines 466-478: subtask with output → included in export."""
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "Here is the result."
+        with patch("builtins.print"):
+            path, count = self.cli._cmd_export()
+        self.assertEqual(count, 1)
+        content = Path(path).read_text(encoding="utf-8")
+        self.assertIn("Here is the result.", content)
+
+    def test_export_includes_description(self):
+        """Line 475-476: description included when present."""
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["output"] = "result"
+        self.cli.dag["Task 0"]["branches"]["Branch A"]["subtasks"]["A1"]["description"] = "do alpha"
+        with patch("builtins.print"):
+            path, count = self.cli._cmd_export()
+        content = Path(path).read_text(encoding="utf-8")
+        self.assertIn("do alpha", content)
+
+    def test_export_returns_tuple(self):
+        with patch("builtins.print"):
+            result = self.cli._cmd_export()
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+
+    def test_export_prints_to_stderr_no_outputs(self):
+        """Lines 484-485: no outputs → prints warning to stderr."""
+        import sys as _sys
+        printed = []
+        with patch("builtins.print", side_effect=lambda *a, **kw: printed.append(str(a))):
+            self.cli._cmd_export()
+        # print called (stderr path)
+        self.assertTrue(len(printed) >= 1)
+
+
 if __name__ == "__main__":
     unittest.main()

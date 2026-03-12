@@ -444,5 +444,136 @@ class TestConsumeJsonTrigger(unittest.TestCase):
         self.assertEqual(len(result), 2)
 
 
+# ---------------------------------------------------------------------------
+# Lines 90-91: heartbeat counts Running and Review statuses (TASK-407)
+# ---------------------------------------------------------------------------
+
+class TestRunStepHeartbeatStatuses(unittest.TestCase):
+    """Lines 90-91: _hb_r incremented for Running, _hb_rv for Review subtasks."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
+        self._ps = _inject(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _make_cli_with_statuses(self, *statuses):
+        """Build a CLI with one subtask per status in a single branch."""
+        cli = _FakeCLI()
+        subtasks = {}
+        for i, st in enumerate(statuses):
+            subtasks[f"S{i}"] = {"status": st, "last_update": 0, "description": f"s{i}", "output": ""}
+        cli.dag = {
+            "Task 0": {
+                "status": "Running",
+                "depends_on": [],
+                "branches": {"A": {"subtasks": subtasks}},
+            }
+        }
+        cli.memory_store = {"A": []}
+        return cli
+
+    def test_running_subtask_increments_hb_r(self):
+        """Line 90: subtask with status 'Running' → _hb_r written to step.txt."""
+        cli = self._make_cli_with_statuses("Running")
+        with patch("builtins.print"), patch("time.sleep"):
+            cli.run_step()
+        step_txt = os.path.join(self._tmp, "state", "step.txt")
+        self.assertTrue(os.path.exists(step_txt))
+        parts = Path(step_txt).read_text().split(",")
+        # Format: step,verified,total,pending,running,review
+        hb_r = int(parts[4])
+        self.assertEqual(hb_r, 1)
+
+    def test_review_subtask_increments_hb_rv(self):
+        """Line 91: subtask with status 'Review' → _hb_rv written to step.txt."""
+        cli = self._make_cli_with_statuses("Review")
+        with patch("builtins.print"), patch("time.sleep"):
+            cli.run_step()
+        step_txt = os.path.join(self._tmp, "state", "step.txt")
+        parts = Path(step_txt).read_text().split(",")
+        # Format: step,verified,total,pending,running,review
+        hb_rv = int(parts[5])
+        self.assertEqual(hb_rv, 1)
+
+    def test_mixed_statuses_all_counted(self):
+        """Lines 88-91: Verified, Pending, Running, Review all counted correctly."""
+        cli = self._make_cli_with_statuses("Verified", "Pending", "Running", "Review")
+        with patch("builtins.print"), patch("time.sleep"):
+            cli.run_step()
+        step_txt = os.path.join(self._tmp, "state", "step.txt")
+        parts = Path(step_txt).read_text().split(",")
+        hb_v, hb_t, hb_p, hb_r, hb_rv = int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])
+        self.assertEqual(hb_v, 1)
+        self.assertEqual(hb_t, 4)
+        self.assertEqual(hb_p, 1)
+        self.assertEqual(hb_r, 1)
+        self.assertEqual(hb_rv, 1)
+
+
+# ---------------------------------------------------------------------------
+# Lines 115-123: save_state OSError in backup rotation (TASK-407)
+# ---------------------------------------------------------------------------
+
+class TestSaveStateOSErrors(unittest.TestCase):
+    """Lines 115-118, 122-123: OSError in backup rotation is silently swallowed.
+
+    NOTE: _FakeCLI replaces save_state with a MagicMock for run_step tests.
+    These tests call StepRunnerMixin.save_state directly on a minimal stub.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._state = os.path.join(self._tmp, "state.json")
+        os.makedirs(self._tmp, exist_ok=True)
+        self._ps = _inject(self._tmp, self._state)
+        for p in self._ps:
+            p.start()
+        # Build a minimal stub WITHOUT mocking save_state so the real impl runs
+        self.cli = _FakeCLI()
+        del self.cli.save_state   # remove the instance-level MagicMock → real method is used
+
+    def tearDown(self):
+        for p in self._ps:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_os_replace_oserror_swallowed(self):
+        """Lines 115-118: OSError from os.replace during backup rotation is swallowed."""
+        Path(self._state).write_text("{}", encoding="utf-8")
+        Path(f"{self._state}.1").write_text("{}", encoding="utf-8")
+        with patch("os.replace", side_effect=OSError("permission denied")):
+            # Must not raise
+            StepRunnerMixin.save_state(self.cli)
+
+    def test_shutil_copy2_oserror_swallowed(self):
+        """Lines 122-123: OSError from shutil.copy2 during backup is swallowed."""
+        Path(self._state).write_text("{}", encoding="utf-8")
+        import shutil as _shutil
+        with patch.object(_shutil, "copy2", side_effect=OSError("copy failed")):
+            # Must not raise
+            StepRunnerMixin.save_state(self.cli)
+
+    def test_both_oserrors_swallowed(self):
+        """Lines 115-123: both os.replace and copy2 raise OSError — still completes."""
+        Path(self._state).write_text("{}", encoding="utf-8")
+        Path(f"{self._state}.1").write_text("{}", encoding="utf-8")
+        import shutil as _shutil
+        with patch("os.replace", side_effect=OSError("denied")), \
+             patch.object(_shutil, "copy2", side_effect=OSError("denied")):
+            StepRunnerMixin.save_state(self.cli)
+        # File should still be written (the final json.dump runs after backup)
+        self.assertTrue(os.path.exists(self._state))
+
+
 if __name__ == "__main__":
     unittest.main()
