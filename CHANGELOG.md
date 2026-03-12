@@ -1,5 +1,18 @@
 # Changelog
 
+## v6.26.0 — 2026-03-12  Deep Blueprint Coverage — 99% across 25 blueprints, 770 API tests
+
+- **Phase 2 coverage sprint**: 30 additional tests covering remaining gaps across 7 blueprints:
+  - `control.py` 96→**100%** (OSError on pause_trigger unlink)
+  - `dag.py` 97→**100%** (Running count in summary, invalid DAG import structure)
+  - `health_detailed.py` 94→**100%** (SLO sufficient records, repo_health exception)
+  - `history.py` 99→**100%** (corrupt backup returns 500)
+  - `tasks.py` 94→**100%** (write failures on reset/bulk-reset/bulk-verify, bad limit/page params, Review dominant status, branch filter, graph deps, priority unmet deps)
+  - `webhook.py` 88→**100%** (settings read exception, non-http URL rejected, urlopen exception)
+  - `executor_gates.py` 85→**88%** (scope eval exception, hitl gate import exception)
+- **Blueprint coverage**: **99%** overall — 22 of 25 at 100%
+- **770 API tests** (was 746), 3319+ total, 0 failures
+
 ## v6.25.0 — 2026-03-12  Blueprint Coverage Sprint — 9 blueprints 0→100%, 348 branches pruned
 
 - **Blueprint coverage sprint**: 44 new tests across 11 test classes covering 9 previously-uncovered blueprints:
