@@ -112,17 +112,27 @@ Estimated scope: Medium. Prerequisite: update all test patches.
 
 ---
 
-## Code-Level Debt Scan (auto-generated 2026-03-10)
+## Code-Level Debt Scan (auto-generated 2026-03-11)
 
-Scanned 8 files; found 8 inline debt markers.
+Scanned 13 files; found 18 inline debt markers.
 
 | File | Line | Marker | Note |
 |---|---|---|---|
+| `solo_builder/api/blueprints/context_window.py` | 52 | NOQA | PLC0415 |
+| `solo_builder/api/blueprints/prompt_regression.py` | 51 | NOQA | PLC0415 |
 | `solo_builder/api/blueprints/webhook.py` | 56 | NOQA | S310  # nosec B310 |
 | `solo_builder/cli_utils.py` | 9 | NOQA | dag_stats used by _handle_watch/_status |
 | `solo_builder/discord_bot/test_bot.py` | 46 | NOQA | E402 |
 | `solo_builder/runners/anthropic_runner.py` | 41 | NOQA | PLC0415 |
-| `solo_builder/solo_builder_cli.py` | 357 | NOQA | S310  # nosec B310 |
+| `solo_builder/solo_builder_cli.py` | 352 | NOQA | S310  # nosec B310 |
 | `solo_builder/tests/test_cache.py` | 419 | NOQA | — needed to pick up patched JOURNAL_PATH |
+| `solo_builder/tests/test_debt_scan.py` | 34 | TODO | fix this\ny = 2\n") |
+| `solo_builder/tests/test_debt_scan.py` | 42 | FIXME | broken\n") |
+| `solo_builder/tests/test_debt_scan.py` | 48 | HACK | workaround\n") |
+| `solo_builder/tests/test_debt_scan.py` | 54 | TODO | lower case\n") |
+| `solo_builder/tests/test_debt_scan.py` | 67 | TODO | one\nx = 1\n# FIXME: two\n" |
+| `solo_builder/tests/test_debt_scan.py` | 74 | TODO | here\n") |
+| `solo_builder/tests/test_generate_openapi.py` | 330 | NOQA | PLC0415 |
 | `tools/cache_stats.py` | 26 | NOQA | E402 |
 | `tools/debt_scan.py` | 36 | TODO | |FIXME|HACK|XXX|NOQA)\b[:\s]*(.*)", re.IGNORECASE) |
+| `tools/session_context_report.py` | 20 | NOQA | E402 |
