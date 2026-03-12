@@ -1,8 +1,8 @@
 # Task Queue
 
-## Completed Tasks (TASK-001 through TASK-414)
+## Completed Tasks (TASK-001 through TASK-415)
 All tasks merged to `master`. See `claude/JOURNAL.md` and journal archive for history.
-Latest: **v6.34.0** (2026-03-12)
+Latest: **v6.39.0** (2026-03-12)
 
 Key milestones:
 - TASK-103: solo_builder_cli.py 2965→1393 lines (mixin extraction)
@@ -10,48 +10,45 @@ Key milestones:
 - TASK-105: dashboard.html 2587→349 lines (static CSS/JS)
 - TASK-106: discord_bot/bot.py 2086→925 lines (bot_formatters + bot_slash)
 - TASK-107: solo_builder_cli.py 1393→665 lines (dispatcher, auto_cmds, step_runner, cli_utils)
-- TASK-108–119: cli_utils, dashboard, XSS audit, API coverage, progress bar
-- TASK-300+: Tools layer (state_validator, metrics_alert, lint, release_notes, version_bump, prompt_builder, hitl_policy, tool_scope, threat_model, ci_quality, generate_openapi, discord_role_guard, state_backup, config_drift, context_window_budget, dep_severity, health_detailed, context_window_compact, lock_file_gen)
-- TASK-380+: AAWO bridge, outcome stats, OpenAPI health routes, blueprint coverage
-- TASK-400+: Final coverage sprints, architecture polish
-- TASK-411–414: Dashboard panel extraction sprint (panels 1664→62 lines, -96%), ETag caching, bot.py extraction
+- TASK-300+: Tools layer (20+ tools: state_validator, lint, ci_quality, threat_model, etc.)
+- TASK-400+: AAWO bridge, OpenAPI, blueprint coverage, architecture polish
+- TASK-411–415: Dashboard panel extraction sprint (panels 1664→100 lines, -94%), ETag caching, bot extraction
+- v6.35–6.39: Accessibility (ARIA, WCAG AA contrast, keyboard nav, skip-nav), tiered+tab-aware polling, notification sounds, dep viz
 
-Current stats: 2601+ tests (core) + 329 bot tests, 0 failures, 90 API routes, 0 open tech debt items, arch score 100.0/100, 17 ES modules
+Current stats: 2641 tests, 0 failures, 90+ API routes, arch score 100.0/100, 17 ES modules
 
 ---
 
 ## Backlog (proposed)
 
-### TASK-408 (done — v6.33.0)
-Extracted history panel (204 lines) → dashboard_history.js. switchTab uses resetHistoryUnread().
-
-### TASK-409 (done — v6.28.0)
-### TASK-410 (done — v6.29.0)
-
-### TASK-411 (done — v6.30.0)
-Extracted settings (105 lines) → dashboard_settings.js, stalled (134 lines) → dashboard_stalled.js.
-dashboard_panels.js 960→722 lines. Subtasks deferred (cross-cutting switchTab refs).
-
-### TASK-412 (proposed — researched)
-Goal: Add Server-Sent Events (SSE) for real-time dashboard updates
+### TASK-412 — SSE Real-Time Updates (Low priority)
+Goal: Add Server-Sent Events for real-time dashboard updates
 
 Research findings (v6.35.0):
-- Dashboard polls via `setInterval(tick, 2000)` — tick() calls 20+ pollers per interval
-- Flask app reads state from `state.json` on every request (no in-memory event source)
-- SSE needs a file-watcher or state-change hook to push events
-- Simplest approach: `watchdog` library monitors `state.json` + `metrics.jsonl`, SSE endpoint streams diffs
-- Alternative: Keep polling but add a lightweight `/changes?since=<step>` endpoint that returns only changed fields (hybrid approach, no new deps)
-- ETag caching (v6.31.0) already eliminates re-parsing unchanged JSON on 304 responses
+- Flask reads state from `state.json` on disk per request (no in-memory event source)
+- SSE needs `watchdog` file-watcher or state-change hook to push events
+- Alternative: lightweight `/changes?since=<step>` endpoint (hybrid, no new deps)
+- ETag caching + tiered polling + tab-aware polling already reduce API load ~85%
 
-Priority: Low (ETag caching reduced the urgency significantly)
+Priority: **Low** — existing optimizations make this non-urgent
 
-### TASK-413 (done — v6.31.0)
-ETag after_request handler. MD5 hash of response body, 304 on If-None-Match match.
+### TASK-416 — Subtask Dependency Graph SVG (Medium priority)
+Goal: Render a mini DAG visualization showing subtask dependency edges as SVG arrows in the detail panel
 
-### TASK-414 (done — v6.31.0)
-bot.py 1103→436 lines. _handle_text_command + helpers → bot_commands.py (~550 lines).
+- Basic dep badges already exist (v6.39.0) with click-to-navigate
+- Full SVG graph would show dependency chains visually (useful for complex multi-branch tasks)
+- Use existing `dashboard_svg.js` helpers (svgBar, sparklineSvg) as foundation
 
-### TASK-415 (done — v6.34.0)
-Final dashboard_panels.js extraction: subtasks (256 lines) → dashboard_subtasks.js,
-analytics (207 lines) → dashboard_analytics.js. panels.js is now a 62-line hub
-(re-exports + switchTab + export refresh). 17 ES modules total. -96% from original 1664 lines.
+### TASK-417 — Dashboard Performance Profiling (Low priority)
+Goal: Add a hidden `?perf=1` mode that logs poll timing, DOM mutation counts, and memory usage
+
+- Would help identify remaining optimization opportunities
+- Console.time/timeEnd around each poller + MutationObserver count
+- No production impact (behind query param flag)
+
+### TASK-418 — Offline/PWA Support (Low priority)
+Goal: Service worker for offline dashboard access
+
+- Cache static assets (CSS, JS, HTML)
+- Show last-known state when server is unreachable
+- Stale banner already exists for connectivity loss detection

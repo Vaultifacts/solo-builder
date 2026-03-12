@@ -1,5 +1,12 @@
 # Changelog
 
+## v6.40.0 — 2026-03-12  Dependency Click-to-Navigate + Task Queue Triage
+
+- **Dep badge click-to-navigate**: Clicking a dependency badge chip in the detail panel scrolls to and highlights the target subtask row (orange outline, 1.5s fade)
+- **Error/success toast types**: Reset failures, network errors, and timeline fetch failures now pass `"error"` type to toast; pipeline completion passes `"success"` type — triggers notification sounds
+- **Task queue cleanup**: Removed 7 completed task entries from TASK_QUEUE.md, updated stats to v6.39.0, added 3 new proposed tasks (TASK-416 SVG dep graph, TASK-417 perf profiling, TASK-418 PWA)
+- **2641 tests**, 0 failures
+
 ## v6.39.0 — 2026-03-12  Immediate Tab Poll + Notification Sounds + Version Fix + Dependency Viz
 
 - **Immediate poll on tab switch**: Clicking a sidebar tab now fires its associated poller immediately instead of waiting for the next medium tick (~10s). Tab-to-poller mapping in `switchTab()` covers all 12 pollable tabs

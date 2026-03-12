@@ -397,7 +397,20 @@ export function renderDetail(t) {
           const chip = document.createElement("span");
           chip.style.cssText = "font-size:8px;padding:0 3px;border-radius:3px;background:var(--bg3);color:#ff9800;cursor:pointer";
           chip.textContent = dep;
-          chip.title = `Depends on ${dep}`;
+          chip.title = `Click to scroll to ${dep}`;
+          chip.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const rows = document.querySelectorAll("#detail-content .st-name");
+            for (const r of rows) {
+              if (r.textContent === dep) {
+                const sr = r.closest(".subtask-row");
+                sr.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                sr.style.outline = "2px solid #ff9800";
+                setTimeout(() => { sr.style.outline = ""; }, 1500);
+                break;
+              }
+            }
+          });
           depWrap.appendChild(chip);
         }
         row.appendChild(depWrap);
