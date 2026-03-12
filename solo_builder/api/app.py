@@ -7,6 +7,7 @@ Run:      python api/app.py
           flask --app api/app.py run
 """
 
+import hashlib
 import time
 
 from flask import Flask, jsonify, request
@@ -107,6 +108,25 @@ def security_headers(resp):
         resp.headers["X-Response-Time"] = f"{elapsed_ms}ms"
     except AttributeError:
         pass
+    return resp
+
+
+@app.after_request
+def etag_response(resp):
+    if request.method not in ("GET", "HEAD"):
+        return resp
+    if resp.status_code != 200 or resp.direct_passthrough:
+        return resp
+    try:
+        data = resp.get_data()
+    except RuntimeError:
+        return resp
+    etag = '"' + hashlib.md5(data).hexdigest() + '"'  # noqa: S324
+    resp.headers["ETag"] = etag
+    if_none_match = request.headers.get("If-None-Match")
+    if if_none_match and if_none_match == etag:
+        resp.status_code = 304
+        resp.set_data(b"")
     return resp
 
 
