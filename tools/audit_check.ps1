@@ -95,6 +95,13 @@ foreach ($cmd in $verify.commands) {
   }) | Out-Null
 }
 
+# Restore known-volatile files mutated by the test suite before dirty-tree check.
+# metrics.jsonl is written by executor/metrics modules during every test run.
+$_knownVolatile = @('solo_builder/metrics.jsonl')
+foreach ($_vf in $_knownVolatile) {
+  git restore --source=HEAD --worktree -- $_vf 2>$null | Out-Null
+}
+
 $afterTracked = Get-TrackedChangedPaths
 $dirtyFiles = @($afterTracked | Where-Object { $beforeTracked -notcontains $_ })
 $workingTreeDirty = ($dirtyFiles.Count -gt 0)
