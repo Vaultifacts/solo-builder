@@ -24,11 +24,15 @@ async function pollHealth() {
   } catch (_) {}
 }
 
+/* ── Performance profiling (?perf=1) ──────────────────────── */
+const _perfMode = new URLSearchParams(location.search).has("perf");
+
 /* ── Polling loop ────────────────────────────────────────── */
 let _tickCount = 0;
 async function tick() {
   if (state.pollPaused) return;
   _tickCount++;
+  const _t0 = _perfMode ? performance.now() : 0;
   const progressPoll = state.selectedTask ? pollTaskProgress(state.selectedTask) : Promise.resolve();
   /* Fast pollers: every tick (2s default) */
   const fast = [pollStatus(), pollTasks(), pollJournal(), pollHistory(), progressPoll];
@@ -65,6 +69,12 @@ async function tick() {
     } catch (_) {}
   }
   if (state.viewMode === "graph") renderGraph();
+  if (_perfMode) {
+    const ms = (performance.now() - _t0).toFixed(1);
+    const dom = document.querySelectorAll("*").length;
+    const mem = performance.memory ? (performance.memory.usedJSHeapSize / 1048576).toFixed(1) + "MB" : "n/a";
+    console.log(`[perf] tick#${_tickCount} ${ms}ms | ${fast.length} polls | ${dom} DOM nodes | heap ${mem}`);
+  }
 }
 window.tick = tick;
 
@@ -656,6 +666,7 @@ function _applyTheme(theme) {
   document.getElementById("btn-theme").textContent = theme === "dark" ? "🌙" : "☀️";
 }
 _applyTheme(localStorage.getItem("sb-theme") || "dark");
+{ const mb = document.getElementById("btn-mute"); if (mb) mb.textContent = localStorage.getItem("sb-mute") === "1" ? "🔇" : "🔔"; }
 
 window.toggleTheme = function () {
   const next = (localStorage.getItem("sb-theme") || "dark") === "dark" ? "light" : "dark";
@@ -676,3 +687,86 @@ if (pollSel) pollSel.value = String(state.pollMs);
 
 tick();
 state.pollIntervalId = setInterval(tick, state.pollMs);
+
+/* ── Keyboard shortcuts ──────────────────────────────────── */
+const _SHORTCUTS = [
+  ["?", "Show/hide this shortcuts panel"],
+  ["j / ↓", "Select next task"],
+  ["k / ↑", "Select previous task"],
+  ["Enter", "Open selected task detail"],
+  ["Escape", "Close modal / shortcuts"],
+  ["p", "Pause/resume polling"],
+  ["t", "Toggle dark/light theme"],
+  ["1-9", "Switch to sidebar tab by position"],
+];
+
+function _showShortcuts() {
+  let overlay = document.getElementById("shortcuts-overlay");
+  if (overlay) { overlay.remove(); return; }
+  overlay = document.createElement("div");
+  overlay.id = "shortcuts-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center";
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  const card = document.createElement("div");
+  card.style.cssText = "background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 24px;max-width:360px;width:90%";
+  const title = document.createElement("div");
+  title.style.cssText = "font-size:14px;font-weight:bold;margin-bottom:10px;color:var(--cyan)";
+  title.textContent = "Keyboard Shortcuts";
+  card.appendChild(title);
+  for (const [key, desc] of _SHORTCUTS) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;justify-content:space-between;padding:3px 0;font-size:11px";
+    const k = document.createElement("span");
+    k.style.cssText = "font-weight:bold;color:var(--text);min-width:80px";
+    k.textContent = key;
+    const d = document.createElement("span");
+    d.style.color = "var(--dim)";
+    d.textContent = desc;
+    row.append(k, d);
+    card.appendChild(row);
+  }
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+  if (e.target.classList.contains("sidebar-tab")) return;
+  const key = e.key;
+  if (key === "?") { _showShortcuts(); return; }
+  if (key === "Escape") {
+    const sc = document.getElementById("shortcuts-overlay");
+    if (sc) { sc.remove(); return; }
+    const modal = document.querySelector(".modal-overlay[style*='flex']");
+    if (modal) { modal.style.display = "none"; return; }
+    return;
+  }
+  if (key === "j" || key === "ArrowDown") {
+    e.preventDefault();
+    const cards = [...document.querySelectorAll(".task-card")];
+    if (!cards.length) return;
+    const cur = cards.findIndex(c => c.classList.contains("selected"));
+    const next = cur < cards.length - 1 ? cur + 1 : 0;
+    cards[next].click();
+    cards[next].scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (key === "k" || key === "ArrowUp") {
+    e.preventDefault();
+    const cards = [...document.querySelectorAll(".task-card")];
+    if (!cards.length) return;
+    const cur = cards.findIndex(c => c.classList.contains("selected"));
+    const prev = cur > 0 ? cur - 1 : cards.length - 1;
+    cards[prev].click();
+    cards[prev].scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
+  if (key === "t") { window.toggleTheme(); return; }
+  if (key >= "1" && key <= "9") {
+    const tabs = [...document.querySelectorAll(".sidebar-tab")];
+    const idx = parseInt(key) - 1;
+    if (tabs[idx]) { tabs[idx].click(); }
+    return;
+  }
+});

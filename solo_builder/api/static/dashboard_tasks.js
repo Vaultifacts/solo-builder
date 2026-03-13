@@ -1,5 +1,6 @@
 import { state } from "./dashboard_state.js";
 import { api, statusClass, dotClass, toast, updateNotifBadge, checkStaleBanner, playCompletionSound } from "./dashboard_utils.js";
+import { svgEl } from "./dashboard_svg.js";
 export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 
 const _TASKS_LIMIT    = 50;
@@ -286,6 +287,14 @@ export function renderDetail(t) {
   timelineBtn.addEventListener("click", () => window.toggleTaskTimeline(t.id));
   statusDiv.append(" ", timelineBtn);
 
+  const depsBtn = document.createElement("button");
+  depsBtn.className = "toolbar-btn";
+  depsBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  depsBtn.title = "Toggle subtask dependency graph";
+  depsBtn.textContent = "⊶ Deps";
+  depsBtn.addEventListener("click", () => _toggleDepsGraph(t));
+  statusDiv.append(" ", depsBtn);
+
   // ── Per-task progress bar + per-branch breakdown ──────────
   let _total = 0, _verified = 0, _running = 0, _review = 0, _pending = 0;
   const _branchStats = [];
@@ -539,6 +548,106 @@ window.toggleTaskTimeline = async function toggleTaskTimeline(taskId) {
 
   el.appendChild(panel);
 };
+
+function _toggleDepsGraph(task) {
+  const el = document.getElementById("detail-content");
+  const existing = el.querySelector(".detail-deps-panel");
+  if (existing) { existing.remove(); return; }
+
+  const allSt = {};
+  Object.entries(task.branches || {}).forEach(([, bdata]) => {
+    Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+      allSt[sname] = s;
+    });
+  });
+  const names = Object.keys(allSt);
+  if (!names.length) return;
+
+  const hasDeps = names.some(n => (allSt[n].depends_on || []).length > 0);
+  if (!hasDeps) {
+    toast("No dependencies in this task");
+    return;
+  }
+
+  const NW = 60, NH = 22, PX = 90, PY = 34, OX = 10, OY = 20;
+  const levels = {};
+  const placed = new Set();
+  function assignLevel(n, lv) {
+    if (placed.has(n)) return;
+    placed.add(n);
+    levels[n] = Math.max(levels[n] || 0, lv);
+    names.forEach(other => {
+      if ((allSt[other].depends_on || []).includes(n)) assignLevel(other, lv + 1);
+    });
+  }
+  names.forEach(n => {
+    if (!(allSt[n].depends_on || []).length) assignLevel(n, 0);
+  });
+  names.forEach(n => { if (!placed.has(n)) levels[n] = 0; });
+
+  const byLevel = {};
+  names.forEach(n => {
+    const lv = levels[n] || 0;
+    (byLevel[lv] = byLevel[lv] || []).push(n);
+  });
+  const maxLevel = Math.max(...Object.values(levels));
+  const maxPerLevel = Math.max(...Object.values(byLevel).map(a => a.length));
+  const totalW = (maxLevel + 1) * PX + OX * 2;
+  const totalH = maxPerLevel * PY + OY * 2;
+
+  const pos = {};
+  Object.entries(byLevel).forEach(([lv, ids]) => {
+    const startY = (totalH - ids.length * PY) / 2 + PY / 2;
+    ids.forEach((id, i) => { pos[id] = { x: OX + Number(lv) * PX, y: startY + i * PY }; });
+  });
+
+  const panel = document.createElement("div");
+  panel.className = "detail-deps-panel";
+  panel.style.cssText = "margin-top:8px;border-top:1px solid var(--border);padding-top:6px;overflow-x:auto";
+
+  const header = document.createElement("div");
+  header.style.cssText = "font-size:10px;color:var(--cyan);margin-bottom:4px";
+  header.textContent = `Dependency graph — ${names.length} subtasks`;
+  panel.appendChild(header);
+
+  const svg = svgEl("svg", { width: totalW, height: totalH, viewBox: `0 0 ${totalW} ${totalH}` });
+  svg.style.cssText = "display:block;min-height:80px";
+
+  const defs = svgEl("defs", {});
+  const marker = svgEl("marker", { id: "dep-arrow", markerWidth: "6", markerHeight: "4", refX: "6", refY: "2", orient: "auto" });
+  marker.appendChild(svgEl("path", { d: "M0,0 L6,2 L0,4", fill: "var(--dim)" }));
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  names.forEach(n => {
+    (allSt[n].depends_on || []).filter(d => pos[d]).forEach(dep => {
+      const from = pos[dep], to = pos[n];
+      svg.appendChild(svgEl("line", {
+        x1: from.x + NW, y1: from.y, x2: to.x, y2: to.y,
+        stroke: "var(--dim)", "stroke-width": "1", "marker-end": "url(#dep-arrow)", opacity: "0.6"
+      }));
+    });
+  });
+
+  const stColor = s => {
+    if (s === "Verified") return "var(--green)";
+    if (s === "Running") return "var(--cyan)";
+    if (s === "Blocked") return "#ef4444";
+    return "var(--yellow)";
+  };
+
+  names.forEach(n => {
+    const p = pos[n];
+    const col = stColor(allSt[n].status);
+    svg.appendChild(svgEl("rect", { x: p.x, y: p.y - NH / 2, width: NW, height: NH, rx: "3", fill: "var(--surface)", stroke: col, "stroke-width": "1" }));
+    const txt = svgEl("text", { x: p.x + NW / 2, y: p.y + 4, "text-anchor": "middle", "font-size": "9", fill: col, "font-family": "var(--font)" });
+    txt.textContent = n;
+    svg.appendChild(txt);
+  });
+
+  panel.appendChild(svg);
+  el.appendChild(panel);
+}
 
 window._applyTaskSearch = function () {
   _tasksSearchFilter = (document.getElementById("task-search")?.value || "").trim().toLowerCase();

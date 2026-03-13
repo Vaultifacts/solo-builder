@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.41.0 — 2026-03-12  Subtask Dep Graph + Keyboard Shortcuts + Mute + Perf Mode
+
+- **Subtask dependency graph**: "⊶ Deps" button in task detail panel renders a mini SVG DAG showing subtask nodes with colored status borders and dependency arrows. Topological layout with level assignment
+- **Keyboard shortcuts**: `?` shows shortcuts overlay, `j/k` or `↑/↓` navigate tasks, `p` pauses polling, `t` toggles theme, `1-9` switches tabs, `Escape` closes modals
+- **Mute toggle**: 🔔/🔇 button in header bar, persisted to `localStorage("sb-mute")`. Suppresses Web Audio notification tones when muted
+- **Performance profiling**: `?perf=1` query param logs tick timing, poll count, DOM node count, and JS heap size to console each tick
+- **8 new tests**: mute button present + aria-label, keyboard shortcuts panel, perf mode flag, mute init, deps graph function + panel class + svgEl import
+- **69 dashboard E2E tests**, 2641+ total, 0 failures
+
 ## v6.40.0 — 2026-03-12  Dependency Click-to-Navigate + Task Queue Triage
 
 - **Dep badge click-to-navigate**: Clicking a dependency badge chip in the detail panel scrolls to and highlights the target subtask row (orange outline, 1.5s fade)

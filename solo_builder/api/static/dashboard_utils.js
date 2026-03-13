@@ -89,6 +89,7 @@ export function pushNotif(msg, type) {
 
 /** Play a short notification tone via Web Audio API. type: "success"|"error"|"info" */
 function notifSound(type) {
+  if (localStorage.getItem("sb-mute") === "1") return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -103,6 +104,13 @@ function notifSound(type) {
     osc.stop(ctx.currentTime + 0.12);
   } catch (_) {}
 }
+
+window.toggleMute = function () {
+  const muted = localStorage.getItem("sb-mute") === "1";
+  localStorage.setItem("sb-mute", muted ? "0" : "1");
+  const btn = document.getElementById("btn-mute");
+  if (btn) btn.textContent = muted ? "🔔" : "🔇";
+};
 
 export function toast(msg, type) {
   const el = document.getElementById("toast");

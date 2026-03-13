@@ -406,6 +406,12 @@ class TestDashboardAccessibility(_Base):
     def test_notif_button_has_aria_label(self):
         self.assertIn('aria-label="Notification history"', self._html)
 
+    def test_mute_button_present(self):
+        self.assertIn('id="btn-mute"', self._html)
+
+    def test_mute_button_has_aria_label(self):
+        self.assertIn('aria-label="Mute notification sounds"', self._html)
+
     def test_all_tabs_have_data_tab(self):
         """All sidebar tab buttons should have data-tab for reliable switchTab matching."""
         import re
@@ -470,6 +476,38 @@ class TestTieredPollingStructure(unittest.TestCase):
     def test_slow_pollers_include_health(self):
         # Health widgets should be in the slow tier
         self.assertIn("pollHealthDetailed", self._src)
+
+    def test_keyboard_shortcuts_panel(self):
+        self.assertIn("_SHORTCUTS", self._src)
+        self.assertIn("shortcuts-overlay", self._src)
+
+    def test_perf_mode_flag(self):
+        self.assertIn("_perfMode", self._src)
+
+    def test_mute_state_init(self):
+        self.assertIn("sb-mute", self._src)
+
+
+# ---------------------------------------------------------------------------
+# 12. Subtask dependency graph toggle
+# ---------------------------------------------------------------------------
+
+class TestDepsGraphFunction(unittest.TestCase):
+    """Verify dashboard_tasks.js contains the deps graph toggle."""
+
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def setUp(self):
+        self._src = self._JS_PATH.read_text(encoding="utf-8")
+
+    def test_toggle_deps_graph_exists(self):
+        self.assertIn("_toggleDepsGraph", self._src)
+
+    def test_deps_panel_class(self):
+        self.assertIn("detail-deps-panel", self._src)
+
+    def test_imports_svg_el(self):
+        self.assertIn('import { svgEl }', self._src)
 
 
 if __name__ == "__main__":
