@@ -3119,5 +3119,121 @@ class TestKeyboardExport(unittest.TestCase):
         self.assertIn("Export selected task", js)
 
 
+# ---------------------------------------------------------------------------
+# 130. Subtask output word cloud
+# ---------------------------------------------------------------------------
+
+class TestSubtaskWordCloud(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_word_cloud_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-word-cloud", js)
+
+    def test_js_word_tag_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-word-tag", js)
+
+    def test_js_freq_computation(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_freq", js)
+
+    def test_css_word_cloud_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-word-cloud", css)
+
+
+# ---------------------------------------------------------------------------
+# 131. Card verified streak
+# ---------------------------------------------------------------------------
+
+class TestCardVerifiedStreak(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_streak_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-streak", js)
+
+    def test_js_streak_icon(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("🔥", js)
+
+    def test_css_streak_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-streak", css)
+
+
+# ---------------------------------------------------------------------------
+# 132. Branch health dot
+# ---------------------------------------------------------------------------
+
+class TestBranchHealthDot(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_health_dot_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-health-dot", js)
+
+    def test_js_health_ok(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("health-ok", js)
+
+    def test_js_health_warn(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("health-warn", js)
+
+    def test_css_health_dot_ok(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-health-dot.health-ok", css)
+
+    def test_css_health_dot_warn(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-health-dot.health-warn", css)
+
+
+# ---------------------------------------------------------------------------
+# 133. Detail panel tab memory
+# ---------------------------------------------------------------------------
+
+class TestDetailFilterMemory(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_detail_filter_key(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-detail-filter", js)
+
+    def test_js_saved_filter_restore(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_savedFilter", js)
+
+
+# ---------------------------------------------------------------------------
+# 134. Keyboard `z` undo verify
+# ---------------------------------------------------------------------------
+
+class TestKeyboardUndoVerify(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    _TASKS_JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_z_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"z"', js)
+
+    def test_js_undo_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Undid verify", js)
+
+    def test_js_last_verified_stored(self):
+        js = self._TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("_lastVerifiedSubtask", js)
+
+    def test_js_z_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Undo last verify", js)
+
+
 if __name__ == "__main__":
     unittest.main()

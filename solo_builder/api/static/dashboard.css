@@ -875,6 +875,15 @@
   .st-priority.pri-low { color: #22c55e; }
   /* ── Card ETA countdown ────────────────────────────────── */
   .card-eta { font-size: 8px; color: var(--dim); opacity: 0.6; }
+  /* ── Output word cloud tags ─────────────────────────────── */
+  .st-word-cloud { display: inline-flex; gap: 2px; margin-left: 4px; flex-shrink: 0; }
+  .st-word-tag { font-size: 7px; background: var(--bg3); color: var(--dim); padding: 0 3px; border-radius: 2px; }
+  /* ── Card verified streak ──────────────────────────────── */
+  .card-streak { font-size: 9px; margin-left: 4px; }
+  /* ── Branch health dot ─────────────────────────────────── */
+  .branch-health-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
+  .branch-health-dot.health-ok { background: #22c55e; }
+  .branch-health-dot.health-warn { background: #f59e0b; }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

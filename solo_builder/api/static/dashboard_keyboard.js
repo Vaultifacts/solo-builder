@@ -37,6 +37,7 @@ const _SHORTCUTS = [
   ["l", "Journal tab"],
   ["o", "Open output modal for first subtask"],
   ["e", "Export selected task as markdown"],
+  ["z", "Undo last verify (reset to Pending)"],
 ];
 
 function _showShortcuts() {
@@ -238,6 +239,20 @@ document.addEventListener("keydown", (e) => {
   if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
   if (key === "t") { window.toggleTheme(); return; }
   if (key === "e") { _copyTaskSummary(); return; }
+  if (key === "z") {
+    const lastV = window._lastVerifiedSubtask;
+    if (lastV) {
+      fetch(state.base + "/heal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subtask: lastV }),
+      }).then(r => r.json()).then(d => {
+        if (d.ok) toast(`↺ Undid verify: ${lastV} → Pending`);
+        else toast("Undo failed");
+      }).catch(() => toast("Undo failed"));
+    } else { toast("No recent verify to undo"); }
+    return;
+  }
   if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
   if (key === "l") { window.switchTab?.("journal"); return; }
   if (key === "o") {

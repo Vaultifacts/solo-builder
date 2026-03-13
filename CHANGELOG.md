@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.71.0 — 2026-03-13  Dashboard UX Round 30 — word cloud, streak, health dot, filter memory, undo key
+
+- **Subtask output word cloud**: Top 5 frequent words shown as mini tags on output rows
+- **Card verified streak**: Shows 🔥N when verified count increases by 3+ in a cycle
+- **Branch health dot**: Green/yellow dot based on stalled subtask ratio per branch
+- **Detail panel filter memory**: Remembers last active filter pill in localStorage
+- **Keyboard `z` undo verify**: Press z to reset last verified subtask to Pending via /heal
+
+### Stats
+- 473 dashboard E2E smoke tests (18 new), 3149 total tests, 0 failures
+- 140 UX features across v6.39–v6.71
+
 ## v6.70.0 — 2026-03-13  Dashboard UX Round 29 — priority dot, ETA countdown, collapse memory, auto-scroll, export key
 
 - **Subtask priority indicator**: Colored dot based on action_type (red=full_execution, yellow=file_edit, green=read_only)

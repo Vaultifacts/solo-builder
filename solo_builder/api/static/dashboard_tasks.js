@@ -708,6 +708,23 @@ export function renderGrid(tasks) {
       etaEl.textContent = "";
     }
 
+    // Verified streak — consecutive verified subtasks from last
+    let streakEl = card.querySelector(".card-streak");
+    if (!streakEl) {
+      streakEl = document.createElement("span");
+      streakEl.className = "card-streak";
+      card.appendChild(streakEl);
+    }
+    const _prevStreak = card._prevVerifiedCount ?? 0;
+    const _curStreak = t.verified_subtasks || 0;
+    if (_curStreak > _prevStreak && _curStreak >= 3) {
+      streakEl.textContent = `🔥${_curStreak - _prevStreak}`;
+      streakEl.title = `${_curStreak - _prevStreak} verified this cycle`;
+    } else if (_curStreak >= 3 && _prevStreak > 0) {
+      streakEl.textContent = "";
+    }
+    card._prevVerifiedCount = _curStreak;
+
     // Recently active highlight (active within 60s)
     const _lastActiveSec = t.last_active ? (Date.now() - new Date(t.last_active).getTime()) / 1000 : Infinity;
     card.classList.toggle("card-recently-active", _lastActiveSec < 60);
@@ -1075,6 +1092,7 @@ export function renderDetail(t) {
     pill.addEventListener("click", () => {
       filterPills.querySelectorAll(".detail-filter-pill").forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
+      localStorage.setItem("sb-detail-filter", label);
       const dc = document.getElementById("detail-content");
       dc.querySelectorAll(".subtask-row").forEach(row => {
         if (label === "All") { row.style.display = ""; return; }
@@ -1087,6 +1105,11 @@ export function renderDetail(t) {
         row.style.display = match ? "" : "none";
       });
     });
+    // Restore saved filter
+    const _savedFilter = localStorage.getItem("sb-detail-filter");
+    if (_savedFilter === label && label !== "All") {
+      pill.click();
+    }
     filterPills.appendChild(pill);
   }
 
@@ -1164,6 +1187,22 @@ export function renderDetail(t) {
     const branchCountSpan = document.createElement("span");
     branchCountSpan.className = "branch-st-count";
     if (_bs) branchCountSpan.textContent = ` (${_bs.total})`;
+    // Branch health dot — based on stalled/running ratio
+    const branchHealthDot = document.createElement("span");
+    branchHealthDot.className = "branch-health-dot";
+    if (_bs && _bs.running > 0) {
+      const _stalledInBranch = Object.values(bdata.subtasks || {}).filter(s =>
+        s.status === "Running" && s.last_update != null && (state.step || 0) - s.last_update >= 5
+      ).length;
+      if (_stalledInBranch > 0) {
+        branchHealthDot.classList.add("health-warn");
+        branchHealthDot.title = `${_stalledInBranch} stalled subtask(s)`;
+      } else {
+        branchHealthDot.classList.add("health-ok");
+        branchHealthDot.title = "All running subtasks healthy";
+      }
+    }
+
     // Branch last-active timestamp
     const branchLastActive = document.createElement("span");
     branchLastActive.className = "branch-last-active";
@@ -1183,7 +1222,7 @@ export function renderDetail(t) {
       branchDiffSpan.textContent = `Δ${_branchChanged}`;
       branchDiffSpan.title = `${_branchChanged} subtask(s) changed status`;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan, branchLastActive, branchDiffSpan);
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchPctSpan, branchCountSpan, branchLastActive, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
     // Restore collapsed state from localStorage
     const _collapseKey = `sb-branch-${t.id}-${bname}`;
@@ -1422,6 +1461,26 @@ export function renderDetail(t) {
           navigator.clipboard.writeText(rawOutput).then(() => toast("Copied output")).catch(() => {});
         });
         row.appendChild(copyBtn);
+
+        // Output word cloud — top 5 frequent words as mini tags
+        if (rawOutput.length > 50) {
+          const _stopWords = new Set(["the","a","an","is","are","was","were","to","of","in","for","on","and","or","it","this","that","with","as","at","by","from","not","be","has","have","had"]);
+          const _words = rawOutput.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 3 && !_stopWords.has(w));
+          const _freq = {};
+          _words.forEach(w => { _freq[w] = (_freq[w] || 0) + 1; });
+          const _top = Object.entries(_freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
+          if (_top.length > 0) {
+            const cloudSpan = document.createElement("span");
+            cloudSpan.className = "st-word-cloud";
+            _top.forEach(([w]) => {
+              const tag = document.createElement("span");
+              tag.className = "st-word-tag";
+              tag.textContent = w;
+              cloudSpan.appendChild(tag);
+            });
+            row.appendChild(cloudSpan);
+          }
+        }
 
         const expandBtn = document.createElement("button");
         expandBtn.className = "st-expand-btn";
@@ -1742,6 +1801,7 @@ window._quickVerify = async function (stName) {
     });
     const d = await r.json();
     if (d.ok) {
+      window._lastVerifiedSubtask = stName;
       toast(`✓ ${stName} verified`);
       if (state.selectedTask) selectTask(state.selectedTask);
     } else {
