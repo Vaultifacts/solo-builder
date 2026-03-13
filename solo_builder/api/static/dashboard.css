@@ -839,6 +839,20 @@
   /* ── Branch subtask count ─────────────────────────────────── */
   .branch-st-count { font-size: 9px; color: var(--dim); margin-left: 2px; }
 
+  /* ── Subtask retry button ─────────────────────────────────── */
+  .st-retry-btn { background: none; border: none; color: var(--yellow); font-size: 11px; cursor: pointer; padding: 0 3px; opacity: 0.5; flex-shrink: 0; }
+  .st-retry-btn:hover { opacity: 1; color: #ff9800; }
+  /* ── Card drag handle ──────────────────────────────────────── */
+  .card-drag-handle { color: var(--dim); font-size: 10px; cursor: grab; opacity: 0.3; margin-right: 3px; user-select: none; }
+  .task-card:hover .card-drag-handle { opacity: 0.7; }
+  .card-drag-handle:active { cursor: grabbing; }
+  /* ── Branch last-active timestamp ──────────────────────────── */
+  .branch-last-active { font-size: 8px; color: var(--dim); margin-left: 6px; opacity: 0.6; }
+  /* ── Detail breadcrumb ─────────────────────────────────────── */
+  .detail-breadcrumb { font-size: 10px; color: var(--dim); margin-bottom: 4px; }
+  .detail-bc-link { color: var(--cyan); cursor: pointer; }
+  .detail-bc-link:hover { text-decoration: underline; }
+  .detail-bc-current { color: var(--text); }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

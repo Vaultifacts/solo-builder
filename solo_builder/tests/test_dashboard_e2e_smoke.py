@@ -2659,5 +2659,125 @@ class TestKeyboardTaskInfo(unittest.TestCase):
         self.assertIn("branches", js)
 
 
+# ---------------------------------------------------------------------------
+# 110. Subtask retry button
+# ---------------------------------------------------------------------------
+
+class TestSubtaskRetryButton(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_retry_btn_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-retry-btn", js)
+
+    def test_js_retry_heal_endpoint(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"/heal"', js)
+
+    def test_js_retry_only_running(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('s.status === "Running"', js)
+
+    def test_css_retry_btn_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-retry-btn", css)
+
+
+# ---------------------------------------------------------------------------
+# 111. Card drag handle icon
+# ---------------------------------------------------------------------------
+
+class TestCardDragHandle(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_drag_handle_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-drag-handle", js)
+
+    def test_js_drag_handle_icon(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("⠿", js)
+
+    def test_css_drag_handle_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-drag-handle", css)
+
+    def test_css_drag_handle_hover(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".task-card:hover .card-drag-handle", css)
+
+
+# ---------------------------------------------------------------------------
+# 112. Branch last-active timestamp
+# ---------------------------------------------------------------------------
+
+class TestBranchLastActive(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_branch_last_active_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-last-active", js)
+
+    def test_js_branch_times_computed(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_branchTimes", js)
+
+    def test_css_branch_last_active_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-last-active", css)
+
+
+# ---------------------------------------------------------------------------
+# 113. Detail panel breadcrumb
+# ---------------------------------------------------------------------------
+
+class TestDetailBreadcrumb(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_breadcrumb_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-breadcrumb", js)
+
+    def test_js_breadcrumb_tasks_link(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-bc-link", js)
+
+    def test_js_breadcrumb_separator(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("›", js)
+
+    def test_css_breadcrumb_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-breadcrumb", css)
+
+    def test_css_bc_link_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-bc-link", css)
+
+
+# ---------------------------------------------------------------------------
+# 114. Keyboard `r` force refresh
+# ---------------------------------------------------------------------------
+
+class TestKeyboardForceRefresh(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_r_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"r"', js)
+
+    def test_js_tick_call(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("window.tick", js)
+
+    def test_js_refresh_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Refreshing", js)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -372,7 +372,11 @@ export function renderGrid(tasks) {
       const cardReview = document.createElement("span");
       cardReview.className = "card-review-badge";
       cardReview.style.cssText = "font-size:9px;color:var(--yellow);display:none";
-      cardTop.append(cardIdSpan, cardBadge, cardReview);
+      const dragHandle = document.createElement("span");
+      dragHandle.className = "card-drag-handle";
+      dragHandle.textContent = "⠿";
+      dragHandle.title = "Drag to reorder";
+      cardTop.append(dragHandle, cardIdSpan, cardBadge, cardReview);
 
       const cardDeps = document.createElement("div");
       cardDeps.className = "card-deps";
@@ -719,7 +723,20 @@ export function renderDetail(t) {
   });
   window._prevSubtaskStatuses = _newStatuses;
 
-  // Build DOM
+  // Build DOM — breadcrumb navigation
+  const breadcrumb = document.createElement("div");
+  breadcrumb.className = "detail-breadcrumb";
+  const bcTasks = document.createElement("span");
+  bcTasks.className = "detail-bc-link";
+  bcTasks.textContent = "Tasks";
+  bcTasks.title = "Back to task grid";
+  bcTasks.addEventListener("click", () => { state.selectedTask = null; document.querySelectorAll(".task-card.selected").forEach(c => c.classList.remove("selected")); el.replaceChildren(); });
+  breadcrumb.append(bcTasks, document.createTextNode(" › "));
+  const bcTask = document.createElement("span");
+  bcTask.className = "detail-bc-current";
+  bcTask.textContent = t.id;
+  breadcrumb.appendChild(bcTask);
+
   const taskIdDiv = document.createElement("div");
   taskIdDiv.className = "detail-task-id";
   taskIdDiv.textContent = t.id;
@@ -1006,7 +1023,7 @@ export function renderDetail(t) {
   notesInput.addEventListener("input", () => _setTaskNote(t.id, notesInput.value));
   notesWrap.appendChild(notesInput);
 
-  const nodes = [stickyHeader, notesWrap];
+  const nodes = [breadcrumb, stickyHeader, notesWrap];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
@@ -1041,7 +1058,16 @@ export function renderDetail(t) {
     const branchCountSpan = document.createElement("span");
     branchCountSpan.className = "branch-st-count";
     if (_bs) branchCountSpan.textContent = ` (${_bs.total})`;
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan);
+    // Branch last-active timestamp
+    const branchLastActive = document.createElement("span");
+    branchLastActive.className = "branch-last-active";
+    const _branchTimes = Object.values(bdata.subtasks || {}).map(s => s.last_update_time).filter(Boolean);
+    if (_branchTimes.length > 0) {
+      const _maxTime = _branchTimes.reduce((a, b) => a > b ? a : b);
+      const _relBranch = _relativeTime(_maxTime);
+      if (_relBranch) branchLastActive.textContent = _relBranch;
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan, branchLastActive);
     branchNameEl.style.cursor = "pointer";
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");
@@ -1117,6 +1143,29 @@ export function renderDetail(t) {
           window._quickVerify(sname);
         });
         row.appendChild(inlineVerify);
+      }
+
+      // Retry button (Running subtasks only — resets to Pending via /heal)
+      if (s.status === "Running") {
+        const retryBtn = document.createElement("button");
+        retryBtn.className = "st-retry-btn";
+        retryBtn.title = `Reset ${sname} to Pending`;
+        retryBtn.textContent = "↻";
+        retryBtn.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          try {
+            const r = await fetch(state.base + "/heal", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ subtask: sname }),
+            });
+            const d = await r.json();
+            if (d.ok) toast(`↻ Reset ${sname} to Pending`);
+            else toast(`Failed: ${d.reason || "unknown"}`);
+          } catch (err) { toast("Retry failed: " + err.message); }
+          if (state.selectedTask) selectTask(state.selectedTask);
+        });
+        row.appendChild(retryBtn);
       }
 
       if (s.depends_on && s.depends_on.length) {

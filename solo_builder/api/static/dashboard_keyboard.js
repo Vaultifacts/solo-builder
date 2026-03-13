@@ -30,7 +30,7 @@ const _SHORTCUTS = [
   ["w", "Toggle compact mode"],
   ["v", "Verify first unverified subtask"],
   ["a", "Select all task cards"],
-  ["r", "Run step"],
+  ["r", "Force refresh (immediate poll)"],
   ["b", "Branches tab"],
   ["s", "Subtasks tab"],
   ["h", "History tab"],
@@ -234,6 +234,7 @@ document.addEventListener("keydown", (e) => {
   if (key === "/") { e.preventDefault(); const si = document.getElementById("task-search"); if (si) si.focus(); return; }
   if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
   if (key === "t") { window.toggleTheme(); return; }
+  if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
   if (key >= "1" && key <= "9") {
     const tabs = [...document.querySelectorAll(".sidebar-tab")];
     const idx = parseInt(key) - 1;

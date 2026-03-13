@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.67.0 — 2026-03-13  Dashboard UX Round 26 — retry btn, drag handle, branch time, breadcrumb, refresh key
+
+- **Subtask retry button**: ↻ button on Running subtasks to reset via POST /heal
+- **Card drag handle icon**: Visible ⠿ grip icon on task cards for drag-to-reorder
+- **Branch last-active timestamp**: Relative time since most recent subtask activity per branch
+- **Detail panel breadcrumb**: "Tasks › TASK-001" navigation with click-to-deselect
+- **Keyboard `r` force refresh**: Press r to trigger immediate poll tick with toast
+
+### Stats
+- 403 dashboard E2E smoke tests (19 new), 3079 total tests, 0 failures
+- 120 UX features across v6.39–v6.67
+
 ## v6.66.0 — 2026-03-13  Coverage Push Round 3 — executor_gates 100%, live_summary 100%
 
 - **10 new tests** across 2 existing test files
