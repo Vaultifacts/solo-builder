@@ -580,6 +580,24 @@
     z-index: 999;
   }
 
+  /* ── Diff syntax highlighting ─────────────────────────────── */
+  .diff-line { font-size: 11px; padding: 1px 4px; font-family: var(--font); white-space: pre-wrap; word-break: break-all; }
+  .diff-add  { color: var(--green); background: rgba(76, 175, 80, 0.08); }
+  .diff-del  { color: var(--red); background: rgba(244, 67, 54, 0.08); }
+  [data-theme="light"] .diff-add { background: rgba(76, 175, 80, 0.12); }
+  [data-theme="light"] .diff-del { background: rgba(244, 67, 54, 0.12); }
+
+  /* ── Branch merge-readiness badge ───────────────────────── */
+  .branch-readiness { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+  .branch-readiness.ready    { background: var(--green); }
+  .branch-readiness.partial  { background: var(--yellow); }
+  .branch-readiness.notready { background: var(--red); }
+
+  /* ── Drag-to-reorder ───────────────────────────────────── */
+  .task-card[draggable="true"] { cursor: grab; }
+  .task-card.dragging { opacity: 0.4; }
+  .task-card.drag-over { border-top: 2px solid var(--cyan); }
+
   /* ── Loading skeleton ─────────────────────────────────────── */
   @keyframes skeleton-pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.3; } }
   .skeleton-card {

@@ -13,6 +13,56 @@ window.toggleView = function () {
   document.getElementById("task-grid").style.display = state.viewMode === "grid" ? "" : "none";
   document.getElementById("dag-svg").style.display   = state.viewMode === "grid" ? "none" : "";
   if (state.viewMode === "graph") renderGraph();
+  const dlBtn = document.getElementById("btn-dag-download");
+  if (dlBtn) dlBtn.style.display = state.viewMode === "graph" ? "" : "none";
+};
+
+/* ── Export DAG as PNG ───────────────────────────────────── */
+window.downloadDagPng = function () {
+  const svg = document.getElementById("dag-svg");
+  if (!svg || !svg.firstChild) return;
+  const clone = svg.cloneNode(true);
+  // Resolve CSS variables to computed values for the canvas
+  const cs = getComputedStyle(document.documentElement);
+  const resolve = (str) => str.replace(/var\(--([^)]+)\)/g, (_, name) => cs.getPropertyValue("--" + name).trim() || "#888");
+  clone.querySelectorAll("*").forEach(el => {
+    for (const attr of ["fill", "stroke", "color"]) {
+      const v = el.getAttribute(attr);
+      if (v && v.includes("var(")) el.setAttribute(attr, resolve(v));
+    }
+  });
+  clone.querySelectorAll("text").forEach(el => {
+    el.setAttribute("font-family", "Courier New, monospace");
+  });
+  const vb = svg.getAttribute("viewBox") || "0 0 800 400";
+  const [, , w, h] = vb.split(/\s+/).map(Number);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("width", w);
+  clone.setAttribute("height", h);
+  const data = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = w * 2;
+    canvas.height = h * 2;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = cs.getPropertyValue("--bg").trim() || "#0d0d0d";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((pngBlob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pngBlob);
+      a.download = "dag_graph.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    });
+  };
+  img.src = url;
 };
 
 export function renderGraph() {

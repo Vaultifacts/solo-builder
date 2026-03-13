@@ -695,5 +695,107 @@ class TestGraphModule(unittest.TestCase):
         self.assertIn("dashboard_graph.js", src)
 
 
+# ---------------------------------------------------------------------------
+# 20. Diff syntax highlighting
+# ---------------------------------------------------------------------------
+
+class TestDiffSyntaxHighlighting(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_journal.js"
+
+    def test_css_diff_add_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".diff-add", css)
+
+    def test_css_diff_del_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".diff-del", css)
+
+    def test_js_assigns_diff_classes(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("diff-add", js)
+        self.assertIn("diff-del", js)
+
+
+# ---------------------------------------------------------------------------
+# 21. Branch merge-readiness badge
+# ---------------------------------------------------------------------------
+
+class TestBranchMergeReadiness(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_css_readiness_classes(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-readiness", css)
+        self.assertIn(".ready", css)
+        self.assertIn(".notready", css)
+
+    def test_js_creates_readiness_dot(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-readiness", js)
+        self.assertIn("merge ready", js)
+
+
+# ---------------------------------------------------------------------------
+# 22. Export DAG as PNG
+# ---------------------------------------------------------------------------
+
+class TestExportDagPng(unittest.TestCase):
+    _GRAPH_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_graph.js"
+
+    def test_download_function_exists(self):
+        src = self._GRAPH_PATH.read_text(encoding="utf-8")
+        self.assertIn("downloadDagPng", src)
+
+    def test_canvas_conversion(self):
+        src = self._GRAPH_PATH.read_text(encoding="utf-8")
+        self.assertIn("canvas", src)
+        self.assertIn("toBlob", src)
+
+    def test_png_download_button_in_html(self):
+        html = Path(self._GRAPH_PATH).resolve().parents[1] / "dashboard.html"
+        src = html.read_text(encoding="utf-8")
+        self.assertIn("btn-dag-download", src)
+
+
+# ---------------------------------------------------------------------------
+# 23. Task card hover tooltip
+# ---------------------------------------------------------------------------
+
+class TestTaskCardTooltip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_card_title_set(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card.title", js)
+
+
+# ---------------------------------------------------------------------------
+# 24. Drag-to-reorder task cards
+# ---------------------------------------------------------------------------
+
+class TestDragToReorder(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_css_dragging_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".dragging", css)
+        self.assertIn(".drag-over", css)
+
+    def test_js_draggable_attr(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('draggable', js)
+
+    def test_js_reorder_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_reorderTask", js)
+
+    def test_js_localstorage_persist(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-task-order", js)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,32 @@ const _TASKS_LIMIT    = 50;
 let _tasksPage        = 1;
 let _tasksSearchFilter = "";
 
+/* ── Drag-to-reorder persistence ──────────────────────────── */
+function _getTaskOrder() {
+  try { return JSON.parse(localStorage.getItem("sb-task-order") || "[]"); } catch (_) { return []; }
+}
+function _setTaskOrder(order) {
+  localStorage.setItem("sb-task-order", JSON.stringify(order));
+}
+function _reorderTask(fromId, toId) {
+  const order = state.taskIds.slice();
+  const fi = order.indexOf(fromId);
+  const ti = order.indexOf(toId);
+  if (fi < 0 || ti < 0) return;
+  order.splice(fi, 1);
+  order.splice(ti, 0, fromId);
+  _setTaskOrder(order);
+  state.taskIds = order;
+  // Re-sort allTasks to match new order
+  const taskMap = {};
+  state.allTasks.forEach(t => { taskMap[t.id] = t; });
+  const sorted = order.map(id => taskMap[id]).filter(Boolean);
+  // Add any tasks not in order at the end
+  state.allTasks.forEach(t => { if (!order.includes(t.id)) sorted.push(t); });
+  state.allTasks = sorted;
+  renderGrid(sorted);
+}
+
 function _updateTasksPager() {
   const pager = document.getElementById("tasks-pager");
   const lbl   = document.getElementById("tasks-page-label");
@@ -126,9 +152,20 @@ export async function pollTasks() {
 
 export function applyTaskSearch() {
   const q = (document.getElementById("task-search")?.value || "").trim().toLowerCase();
-  const filtered = q
+  let filtered = q
     ? state.allTasks.filter(t => t.id.toLowerCase().includes(q) || (t.status || "").toLowerCase().includes(q))
     : state.allTasks;
+  // Apply saved drag-reorder
+  const savedOrder = _getTaskOrder();
+  if (savedOrder.length > 0 && !q) {
+    const orderMap = {};
+    savedOrder.forEach((id, i) => { orderMap[id] = i; });
+    filtered = filtered.slice().sort((a, b) => {
+      const ai = orderMap[a.id] ?? 9999;
+      const bi = orderMap[b.id] ?? 9999;
+      return ai - bi;
+    });
+  }
   renderGrid(filtered);
 }
 
@@ -176,6 +213,17 @@ export function renderGrid(tasks) {
 
       card.replaceChildren(cardTop, cardDeps, barBg, cardCounts);
       card.addEventListener("click", () => selectTask(t.id));
+      card.setAttribute("draggable", "true");
+      card.addEventListener("dragstart", (ev) => { ev.dataTransfer.setData("text/plain", t.id); card.classList.add("dragging"); });
+      card.addEventListener("dragend", () => { card.classList.remove("dragging"); });
+      card.addEventListener("dragover", (ev) => { ev.preventDefault(); card.classList.add("drag-over"); });
+      card.addEventListener("dragleave", () => { card.classList.remove("drag-over"); });
+      card.addEventListener("drop", (ev) => {
+        ev.preventDefault();
+        card.classList.remove("drag-over");
+        const fromId = ev.dataTransfer.getData("text/plain");
+        if (fromId && fromId !== t.id) _reorderTask(fromId, t.id);
+      });
       grid.appendChild(card);
     }
     card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
@@ -203,6 +251,19 @@ export function renderGrid(tasks) {
       depEl.textContent = "← " + t.depends_on.join(", ");
     } else {
       depEl.textContent = "";
+    }
+
+    // Tooltip with branch breakdown
+    const _bEntries = Object.entries(t.branches || {});
+    if (_bEntries.length > 0) {
+      const tipLines = _bEntries.map(([bn, bd]) => {
+        const st = Object.values(bd.subtasks || {});
+        const v = st.filter(s => s.status === "Verified").length;
+        return `${bn}: ${v}/${st.length}`;
+      });
+      card.title = `${t.id} — ${t.status || "Pending"}\n${tipLines.join("\n")}`;
+    } else {
+      card.title = `${t.id} — ${t.status || "Pending"}`;
     }
   });
 }
@@ -388,7 +449,22 @@ export function renderDetail(t) {
     const collapseArrow = document.createElement("span");
     collapseArrow.className = "branch-collapse-arrow";
     collapseArrow.textContent = "▾";
-    branchNameEl.append(collapseArrow, " " + bname);
+    const readinessDot = document.createElement("span");
+    readinessDot.className = "branch-readiness";
+    const _bs = _branchStats.find(b => b.name === bname);
+    if (_bs) {
+      if (_bs.verified === _bs.total && _bs.total > 0) {
+        readinessDot.classList.add("ready");
+        readinessDot.title = "All subtasks verified — merge ready";
+      } else if (_bs.verified > 0) {
+        readinessDot.classList.add("partial");
+        readinessDot.title = `${_bs.verified}/${_bs.total} verified — in progress`;
+      } else {
+        readinessDot.classList.add("notready");
+        readinessDot.title = `0/${_bs.total} verified — not started`;
+      }
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot);
     branchNameEl.style.cursor = "pointer";
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");

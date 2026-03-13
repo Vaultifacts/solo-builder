@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.46.0 — 2026-03-12  Diff Highlighting + Merge Readiness + DAG PNG Export + Tooltips + Drag Reorder
+
+- **Diff syntax highlighting**: +/- lines in diff tab colored green/red with subtle background tint; light theme variants
+- **Branch merge-readiness badge**: Green/yellow/red dot on each branch header — green = all verified (merge ready), yellow = in progress, red = not started
+- **Export DAG as PNG**: "⬇ PNG" button appears in graph view — converts SVG to 2x canvas PNG with resolved CSS variables and background fill
+- **Task card hover tooltip**: Hovering a task card shows branch-level breakdown (branch: verified/total per branch)
+- **Drag-to-reorder task cards**: HTML5 drag-and-drop reordering with localStorage persistence (`sb-task-order`). Visual feedback: opacity + cyan border on drop target
+- **13 new tests**: diff syntax (3), merge readiness (2), DAG PNG (3), tooltip (1), drag reorder (4)
+- **110 dashboard E2E tests**, 2690 total, 0 failures
+
 ## v6.45.0 — 2026-03-12  Light Theme Status + Command Palette + Sticky Header + Collapsible Branches + Graph Module
 
 - **Light theme status card colors**: `[data-theme="light"]` variants for `.status-complete/running/pending` task cards — maintains WCAG AA contrast in light mode
