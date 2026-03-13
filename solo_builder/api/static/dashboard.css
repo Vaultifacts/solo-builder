@@ -758,6 +758,24 @@
   .task-dep-chip { font-size: 9px; padding: 0 4px; border-radius: 3px; background: var(--bg3); color: #ff9800; cursor: pointer; }
   .task-dep-chip:hover { background: #ff9800; color: #000; }
 
+  /* ── Subtask output copy button ─────────────────────────── */
+  .st-copy-btn { background: none; border: none; font-size: 9px; cursor: pointer; padding: 0 2px; opacity: 0.4; flex-shrink: 0; }
+  .st-copy-btn:hover { opacity: 1; }
+  /* ── Detail filter pills ──────────────────────────────────── */
+  .detail-filter-pills { display: flex; gap: 4px; margin: 4px 0; flex-wrap: wrap; }
+  .detail-filter-pill { background: var(--bg3); color: var(--dim); border: 1px solid var(--border); border-radius: 10px; font-size: 9px; padding: 1px 8px; cursor: pointer; }
+  .detail-filter-pill:hover { background: var(--bg2); color: var(--text); }
+  .detail-filter-pill.active { background: var(--cyan); color: #000; border-color: var(--cyan); }
+  /* ── Card goal text ───────────────────────────────────────── */
+  .card-goal { font-size: 9px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-style: italic; }
+  /* ── Card completion flash ────────────────────────────────── */
+  @keyframes card-complete-flash-anim {
+    0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+    50% { box-shadow: 0 0 12px 4px rgba(34,197,94,0.4); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+  .card-complete-flash { animation: card-complete-flash-anim 1s ease-out; }
+
   /* ── Card verified pulse animation ──────────────────────── */
   @keyframes card-pulse-anim {
     0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }

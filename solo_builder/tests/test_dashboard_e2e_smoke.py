@@ -2029,5 +2029,125 @@ class TestKeyboardMuteToggle(unittest.TestCase):
         self.assertIn("Sound unmuted", js)
 
 
+# ---------------------------------------------------------------------------
+# 80. Subtask output copy button
+# ---------------------------------------------------------------------------
+
+class TestSubtaskOutputCopyButton(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_copy_btn_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-copy-btn", js)
+
+    def test_js_copy_output_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Copied output", js)
+
+    def test_js_clipboard_write(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("navigator.clipboard.writeText(rawOutput)", js)
+
+    def test_css_copy_btn_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-copy-btn", css)
+
+
+# ---------------------------------------------------------------------------
+# 81. Detail panel status filter pills
+# ---------------------------------------------------------------------------
+
+class TestDetailStatusFilterPills(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_filter_pills_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-filter-pills", js)
+
+    def test_js_filter_pill_click(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-filter-pill", js)
+
+    def test_js_pill_active_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"active"', js)
+
+    def test_css_filter_pills_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-filter-pills", css)
+
+    def test_css_pill_active_style(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-filter-pill.active", css)
+
+
+# ---------------------------------------------------------------------------
+# 82. Card goal text
+# ---------------------------------------------------------------------------
+
+class TestCardGoalText(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_card_goal_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-goal", js)
+
+    def test_js_goal_truncation(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("t.goal.substring(0, 60)", js)
+
+    def test_css_card_goal_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-goal", css)
+
+
+# ---------------------------------------------------------------------------
+# 83. Keyboard `a` select all
+# ---------------------------------------------------------------------------
+
+class TestKeyboardSelectAll(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_a_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"a"', js)
+
+    def test_js_select_all_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Selected", js)
+
+    def test_js_multi_selected_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("multi-selected", js)
+
+
+# ---------------------------------------------------------------------------
+# 84. Card completion celebration flash
+# ---------------------------------------------------------------------------
+
+class TestCardCompletionFlash(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_complete_flash_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-complete-flash", js)
+
+    def test_js_was_complete_tracking(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_wasComplete", js)
+
+    def test_css_flash_animation(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-complete-flash", css)
+
+    def test_css_flash_keyframes(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-complete-flash-anim", css)
+
+
 if __name__ == "__main__":
     unittest.main()

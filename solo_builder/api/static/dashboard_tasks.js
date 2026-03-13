@@ -435,6 +435,16 @@ export function renderGrid(tasks) {
     }
     card._prevVerified = t.verified_subtasks;
 
+    // Card completion celebration (flash when task reaches 100%)
+    const _wasComplete = card._wasComplete ?? false;
+    const _isComplete = t.subtask_count > 0 && t.verified_subtasks === t.subtask_count;
+    if (_isComplete && !_wasComplete) {
+      card.classList.remove("card-complete-flash");
+      void card.offsetWidth;
+      card.classList.add("card-complete-flash");
+    }
+    card._wasComplete = _isComplete;
+
     const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
     card.querySelector(".card-bar-fg").style.width = pct + "%";
     const pctLabel = card.querySelector(".card-pct-label");
@@ -528,6 +538,20 @@ export function renderGrid(tasks) {
       lastVEl.title = `Last verified: ${_lastV}`;
     } else if (lastVEl) {
       lastVEl.textContent = "";
+    }
+
+    // Card goal text
+    let goalEl = card.querySelector(".card-goal");
+    if (t.goal) {
+      if (!goalEl) {
+        goalEl = document.createElement("div");
+        goalEl.className = "card-goal";
+        card.appendChild(goalEl);
+      }
+      goalEl.textContent = t.goal.substring(0, 60) + (t.goal.length > 60 ? "…" : "");
+      goalEl.title = t.goal;
+    } else if (goalEl) {
+      goalEl.textContent = "";
     }
 
     const depEl = card.querySelector(".card-deps");
@@ -842,9 +866,37 @@ export function renderDetail(t) {
     ? `${completeBranches}/${_branchStats.length} branches complete`
     : "";
 
+  // Status filter pills
+  const filterPills = document.createElement("div");
+  filterPills.className = "detail-filter-pills";
+  const _pillCounts = { All: _total, Verified: _verified, Running: _running, Review: _review, Pending: _pending };
+  for (const [label, count] of Object.entries(_pillCounts)) {
+    if (label !== "All" && count === 0) continue;
+    const pill = document.createElement("button");
+    pill.className = "detail-filter-pill";
+    pill.dataset.filter = label;
+    pill.textContent = `${label} (${count})`;
+    pill.addEventListener("click", () => {
+      filterPills.querySelectorAll(".detail-filter-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      const dc = document.getElementById("detail-content");
+      dc.querySelectorAll(".subtask-row").forEach(row => {
+        if (label === "All") { row.style.display = ""; return; }
+        const dot = row.querySelector(".st-dot");
+        const cls = dot?.className || "";
+        const match = (label === "Verified" && cls.includes("green")) ||
+                      (label === "Running" && cls.includes("cyan")) ||
+                      (label === "Review" && cls.includes("yellow")) ||
+                      (label === "Pending" && cls.includes("gray"));
+        row.style.display = match ? "" : "none";
+      });
+    });
+    filterPills.appendChild(pill);
+  }
+
   const stickyHeader = document.createElement("div");
   stickyHeader.className = "detail-sticky-header";
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusDiv);
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, filterPills, statusDiv);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -1032,6 +1084,17 @@ export function renderDetail(t) {
           });
           row.appendChild(moreBtn);
         }
+
+        // Copy output button
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "st-copy-btn";
+        copyBtn.title = "Copy output to clipboard";
+        copyBtn.textContent = "📋";
+        copyBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          navigator.clipboard.writeText(rawOutput).then(() => toast("Copied output")).catch(() => {});
+        });
+        row.appendChild(copyBtn);
 
         const expandBtn = document.createElement("button");
         expandBtn.className = "st-expand-btn";

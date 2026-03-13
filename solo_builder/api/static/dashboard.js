@@ -572,6 +572,16 @@ document.addEventListener("keydown", function (e) {
     toast(isMuted === "1" ? "Sound muted" : "Sound unmuted");
     return;
   }
+  if (e.key === "a") {
+    const cards = document.querySelectorAll(".task-card:not([style*='display: none'])");
+    if (cards.length === 0) return;
+    cards.forEach(c => {
+      const tid = c.dataset.id;
+      if (tid) { c.classList.add("multi-selected"); c.click && c.dispatchEvent(new MouseEvent("click", { shiftKey: true })); }
+    });
+    toast(`Selected ${cards.length} task(s)`);
+    return;
+  }
   if (e.key === "r") { window.runStep(); return; }
   if (e.key === "g") { window.toggleView(); return; }
   if (e.key === "b") { window.switchTab("branches"); return; }

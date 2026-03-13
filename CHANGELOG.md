@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.58.0 — 2026-03-13  Output Copy + Filter Pills + Card Goal + Select All + Completion Flash
+
+- **Subtask output copy button**: 📋 button on subtask rows copies full output to clipboard
+- **Detail panel status filter pills**: Clickable Verified/Running/Review/Pending pills to filter subtasks in detail view
+- **Card goal text**: Shows task goal (truncated to 60 chars) in italic on each card
+- **Keyboard `a` select all**: Press a to select all visible task cards for batch operations
+- **Card completion celebration**: Green glow flash animation when a task reaches 100% verified
+
+### Stats
+- 313 dashboard E2E smoke tests (19 new), 2893 total tests, 0 failures
+- 92 UX features across v6.39–v6.58
+
 ## v6.57.0 — 2026-03-13  Verified Pulse + Show More + Last Verified + Branch Count + Mute Key
 
 - **Card verified pulse animation**: Green pulse flash when a card's verified count increases (CSS keyframe animation with reflow trick)
