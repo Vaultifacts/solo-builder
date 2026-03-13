@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.61.0 — 2026-03-13  Sort Dropdown + Status Summary + Shortcuts Update + Hover Scale + Row Striping
+
+- **Card sort dropdown**: Sort task grid by name/progress/recent/status; persisted in localStorage
+- **Detail panel status count summary**: "N verified · N running · N pending" text summary in detail header
+- **Shortcuts overlay updated**: Added 11 new keyboard shortcuts (w, v, a, m, c, n, x, d, f, r, b, s, h)
+- **Card hover scale**: Subtle scale(1.02) transform on card hover for depth effect
+- **Subtask row alternate striping**: Even/odd row backgrounds for readability
+
+### Stats
+- 355 dashboard E2E smoke tests (12 new), 2935 total tests, 0 failures
+- 105 UX features across v6.39–v6.61
+
 ## v6.60.0 — 2026-03-13  Blocked Overlay + Search Count + Compact Key + Pct Color + Dot Tooltip 🎯 100 UX
 
 - **Card blocked overlay**: Semi-transparent 🔒 overlay on blocked task cards

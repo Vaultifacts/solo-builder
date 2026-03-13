@@ -31,6 +31,13 @@
   <span id="hdr-uptime" title="Server uptime" style="font-size:10px;color:var(--dim);cursor:default;letter-spacing:0.5px"></span>
   <input id="task-search" type="search" placeholder="Filter tasks…" title="Filter task list by name or status (Esc to clear)" oninput="_applyTaskSearch()" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:11px;padding:2px 8px;outline:none;width:120px;font-family:var(--font)">
   <span id="search-match-count" style="font-size:9px;color:var(--dim);min-width:0"></span>
+  <select id="task-sort-sel" onchange="_setTaskSort(this.value)" title="Sort tasks" style="font-size:10px;background:var(--bg2);color:var(--dim);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-family:var(--font)">
+    <option value="default">Sort: Default</option>
+    <option value="name">Sort: Name</option>
+    <option value="progress">Sort: Progress</option>
+    <option value="active">Sort: Recent</option>
+    <option value="status">Sort: Status</option>
+  </select>
   <button id="btn-run" onclick="runStep()" title="Signal CLI to run one step">▶ Run Step</button>
   <button id="btn-export" onclick="exportOutputs()" title="Download all subtask outputs as Markdown">⬇ Export</button>
   <div class="auto-wrap">

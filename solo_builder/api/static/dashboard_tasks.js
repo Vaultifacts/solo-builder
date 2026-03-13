@@ -6,6 +6,7 @@ export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 const _TASKS_LIMIT    = 50;
 let _tasksPage        = 1;
 let _tasksSearchFilter = "";
+let _tasksSortMode = localStorage.getItem("sb-task-sort") || "default";
 
 /* ── Pinned tasks persistence ─────────────────────────────── */
 function _getPinnedTasks() {
@@ -310,6 +311,20 @@ export function applyTaskSearch() {
       const ai = orderMap[a.id] ?? 9999;
       const bi = orderMap[b.id] ?? 9999;
       return ai - bi;
+    });
+  }
+  // Sort by mode
+  if (_tasksSortMode !== "default") {
+    filtered = filtered.slice().sort((a, b) => {
+      if (_tasksSortMode === "name") return a.id.localeCompare(b.id);
+      if (_tasksSortMode === "progress") {
+        const pa = a.subtask_count > 0 ? a.verified_subtasks / a.subtask_count : 0;
+        const pb = b.subtask_count > 0 ? b.verified_subtasks / b.subtask_count : 0;
+        return pb - pa;
+      }
+      if (_tasksSortMode === "active") return (b.last_active || "").localeCompare(a.last_active || "");
+      if (_tasksSortMode === "status") return (a.status || "").localeCompare(b.status || "");
+      return 0;
     });
   }
   // Pin sorted tasks to top
@@ -940,9 +955,19 @@ export function renderDetail(t) {
     filterPills.appendChild(pill);
   }
 
+  // Status count summary
+  const statusSummary = document.createElement("div");
+  statusSummary.className = "detail-status-summary";
+  const _parts = [];
+  if (_verified > 0) _parts.push(`${_verified} verified`);
+  if (_running > 0) _parts.push(`${_running} running`);
+  if (_review > 0) _parts.push(`${_review} review`);
+  if (_pending > 0) _parts.push(`${_pending} pending`);
+  statusSummary.textContent = _parts.join(" · ");
+
   const stickyHeader = document.createElement("div");
   stickyHeader.className = "detail-sticky-header";
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, filterPills, statusDiv);
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -1379,6 +1404,12 @@ function _toggleDepsGraph(task) {
   panel.appendChild(svg);
   el.appendChild(panel);
 }
+
+window._setTaskSort = function (mode) {
+  _tasksSortMode = mode;
+  localStorage.setItem("sb-task-sort", mode);
+  applyTaskSearch();
+};
 
 window._applyTaskSearch = function () {
   _tasksSearchFilter = (document.getElementById("task-search")?.value || "").trim().toLowerCase();

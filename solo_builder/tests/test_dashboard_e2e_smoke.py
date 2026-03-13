@@ -2359,5 +2359,100 @@ class TestSubtaskDotTooltip(unittest.TestCase):
         self.assertIn(".st-dot[title]", css)
 
 
+# ---------------------------------------------------------------------------
+# 95. Card sort dropdown
+# ---------------------------------------------------------------------------
+
+class TestCardSortDropdown(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_set_task_sort(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_setTaskSort", js)
+
+    def test_js_sort_modes(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_tasksSortMode", js)
+
+    def test_js_sort_localstorage(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-task-sort", js)
+
+    def test_html_sort_select(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("task-sort-sel", html)
+
+
+# ---------------------------------------------------------------------------
+# 96. Detail panel status count summary
+# ---------------------------------------------------------------------------
+
+class TestDetailStatusSummary(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_summary_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-status-summary", js)
+
+    def test_js_summary_parts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("verified", js)
+        self.assertIn("running", js)
+        self.assertIn("pending", js)
+
+    def test_css_summary_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-status-summary", css)
+
+
+# ---------------------------------------------------------------------------
+# 97. Shortcuts overlay updated keys
+# ---------------------------------------------------------------------------
+
+class TestShortcutsOverlayKeys(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_new_shortcut_entries(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Toggle mute", js)
+        self.assertIn("Toggle compact mode", js)
+        self.assertIn("Verify first unverified", js)
+        self.assertIn("Select all task cards", js)
+
+
+# ---------------------------------------------------------------------------
+# 98. Card hover scale
+# ---------------------------------------------------------------------------
+
+class TestCardHoverScale(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_css_hover_scale(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("scale(1.02)", css)
+
+    def test_css_hover_transition(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".task-card:hover", css)
+
+
+# ---------------------------------------------------------------------------
+# 99. Subtask row alternate striping
+# ---------------------------------------------------------------------------
+
+class TestSubtaskRowStriping(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_css_even_row(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".subtask-row:nth-child(even)", css)
+
+    def test_css_odd_row(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".subtask-row:nth-child(odd)", css)
+
+
 if __name__ == "__main__":
     unittest.main()

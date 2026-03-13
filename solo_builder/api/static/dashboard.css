@@ -758,6 +758,15 @@
   .task-dep-chip { font-size: 9px; padding: 0 4px; border-radius: 3px; background: var(--bg3); color: #ff9800; cursor: pointer; }
   .task-dep-chip:hover { background: #ff9800; color: #000; }
 
+  /* ── Card hover scale ──────────────────────────────────── */
+  .task-card:hover { transform: scale(1.02); transition: transform 0.15s ease; }
+  /* ── Subtask row alternate striping ───────────────────── */
+  .subtask-row:nth-child(even) { background: var(--bg2); }
+  .subtask-row:nth-child(odd) { background: transparent; }
+  .subtask-row:hover { background: var(--bg3) !important; }
+  /* ── Detail status summary ────────────────────────────── */
+  .detail-status-summary { font-size: 9px; color: var(--dim); margin: 2px 0; }
+
   /* ── Card blocked overlay ──────────────────────────────── */
   .card-blocked-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 11px; color: #ef4444; border-radius: 6px; pointer-events: none; z-index: 2; }
   /* ── Card percentage color classes ─────────────────────── */

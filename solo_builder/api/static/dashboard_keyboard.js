@@ -21,6 +21,19 @@ const _SHORTCUTS = [
   ["g s", "Go to Settings tab"],
   ["g b", "Go to Branches tab"],
   ["g m", "Go to Metrics tab"],
+  ["c", "Copy selected task ID"],
+  ["n", "Jump to next unverified task"],
+  ["x", "Expand/collapse all branches"],
+  ["d", "Toggle detail panel"],
+  ["f", "Focus task search"],
+  ["m", "Toggle mute"],
+  ["w", "Toggle compact mode"],
+  ["v", "Verify first unverified subtask"],
+  ["a", "Select all task cards"],
+  ["r", "Run step"],
+  ["b", "Branches tab"],
+  ["s", "Subtasks tab"],
+  ["h", "History tab"],
 ];
 
 function _showShortcuts() {
