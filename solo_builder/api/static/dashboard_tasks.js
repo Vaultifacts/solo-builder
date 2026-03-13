@@ -7,6 +7,58 @@ const _TASKS_LIMIT    = 50;
 let _tasksPage        = 1;
 let _tasksSearchFilter = "";
 
+/* ── Pinned tasks persistence ─────────────────────────────── */
+function _getPinnedTasks() {
+  try { return JSON.parse(localStorage.getItem("sb-pinned-tasks") || "[]"); } catch (_) { return []; }
+}
+function _setPinnedTasks(pinned) {
+  localStorage.setItem("sb-pinned-tasks", JSON.stringify(pinned));
+}
+function _togglePin(taskId) {
+  const pinned = _getPinnedTasks();
+  const idx = pinned.indexOf(taskId);
+  if (idx >= 0) pinned.splice(idx, 1); else pinned.push(taskId);
+  _setPinnedTasks(pinned);
+  applyTaskSearch();
+}
+
+/* ── Batch multi-select ──────────────────────────────────── */
+const _selectedCards = new Set();
+function _toggleCardSelect(taskId, ev) {
+  ev.stopPropagation();
+  if (_selectedCards.has(taskId)) _selectedCards.delete(taskId); else _selectedCards.add(taskId);
+  _updateBatchBar();
+  document.querySelectorAll(".task-card").forEach(c => c.classList.toggle("multi-selected", _selectedCards.has(c.dataset.id)));
+}
+function _updateBatchBar() {
+  const bar = document.getElementById("batch-action-bar");
+  const lbl = document.getElementById("batch-sel-count");
+  if (!bar) return;
+  if (_selectedCards.size > 0) {
+    bar.style.display = "flex";
+    lbl.textContent = `${_selectedCards.size} selected`;
+  } else {
+    bar.style.display = "none";
+  }
+}
+window.batchResetSelected = async function () {
+  if (_selectedCards.size === 0) return;
+  for (const tid of _selectedCards) {
+    try {
+      await fetch(state.base + "/tasks/" + encodeURIComponent(tid) + "/bulk-reset", { method: "POST" });
+    } catch (_) {}
+  }
+  toast(`↺ Reset ${_selectedCards.size} task(s)`);
+  _selectedCards.clear();
+  _updateBatchBar();
+  document.querySelectorAll(".task-card.multi-selected").forEach(c => c.classList.remove("multi-selected"));
+};
+window.batchClearSelection = function () {
+  _selectedCards.clear();
+  _updateBatchBar();
+  document.querySelectorAll(".task-card.multi-selected").forEach(c => c.classList.remove("multi-selected"));
+};
+
 /* ── Drag-to-reorder persistence ──────────────────────────── */
 function _getTaskOrder() {
   try { return JSON.parse(localStorage.getItem("sb-task-order") || "[]"); } catch (_) { return []; }
@@ -166,6 +218,16 @@ export function applyTaskSearch() {
       return ai - bi;
     });
   }
+  // Pin sorted tasks to top
+  const pinned = _getPinnedTasks();
+  if (pinned.length > 0) {
+    const pinSet = new Set(pinned);
+    filtered = filtered.slice().sort((a, b) => {
+      const ap = pinSet.has(a.id) ? 0 : 1;
+      const bp = pinSet.has(b.id) ? 0 : 1;
+      return ap - bp;
+    });
+  }
   renderGrid(filtered);
 }
 
@@ -211,8 +273,13 @@ export function renderGrid(tasks) {
       const cardCounts = document.createElement("div");
       cardCounts.className = "card-counts";
 
+      const cardPctLabel = document.createElement("span");
+      cardPctLabel.className = "card-pct-label";
+      barBg.style.position = "relative";
+      barBg.appendChild(cardPctLabel);
+
       card.replaceChildren(cardTop, cardDeps, barBg, cardCounts);
-      card.addEventListener("click", () => selectTask(t.id));
+      card.addEventListener("click", (ev) => { if (ev.shiftKey) { _toggleCardSelect(t.id, ev); return; } selectTask(t.id); });
       card.setAttribute("draggable", "true");
       card.addEventListener("dragstart", (ev) => { ev.dataTransfer.setData("text/plain", t.id); card.classList.add("dragging"); });
       card.addEventListener("dragend", () => { card.classList.remove("dragging"); });
@@ -224,8 +291,17 @@ export function renderGrid(tasks) {
         const fromId = ev.dataTransfer.getData("text/plain");
         if (fromId && fromId !== t.id) _reorderTask(fromId, t.id);
       });
+      const pinBtn = document.createElement("button");
+      pinBtn.className = "card-pin-btn";
+      pinBtn.title = "Pin/unpin task";
+      pinBtn.textContent = "📌";
+      pinBtn.addEventListener("click", (ev) => { ev.stopPropagation(); _togglePin(t.id); });
+      cardTop.appendChild(pinBtn);
+
       grid.appendChild(card);
     }
+    card.classList.toggle("pinned", _getPinnedTasks().includes(t.id));
+    card.classList.toggle("multi-selected", _selectedCards.has(t.id));
     card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
     card.querySelector(".card-mini-badge").textContent = t.status || "Pending";
     const reviewBadge = card.querySelector(".card-review-badge");
@@ -241,6 +317,8 @@ export function renderGrid(tasks) {
 
     const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
     card.querySelector(".card-bar-fg").style.width = pct + "%";
+    const pctLabel = card.querySelector(".card-pct-label");
+    if (pctLabel) pctLabel.textContent = pct > 0 ? `${pct}%` : "";
     card.querySelector(".card-counts").textContent =
       `${t.verified_subtasks}/${t.subtask_count} verified` +
       (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
@@ -764,11 +842,27 @@ window._applyTaskSearch = function () {
 window.filterSubtasks = function filterSubtasks() {
   const q = (document.getElementById("st-search").value || "").toLowerCase();
   document.querySelectorAll("#detail-content .subtask-row").forEach(row => {
-    const name = (row.querySelector(".st-name")?.textContent || "").toLowerCase();
-    const output = (row.querySelector(".st-output")?.textContent || "").toLowerCase();
-    row.style.display = (!q || name.includes(q) || output.includes(q)) ? "" : "none";
+    const nameEl = row.querySelector(".st-name");
+    const outEl = row.querySelector(".st-output");
+    const name = (nameEl?.textContent || "").toLowerCase();
+    const output = (outEl?.textContent || "").toLowerCase();
+    const match = !q || name.includes(q) || output.includes(q);
+    row.style.display = match ? "" : "none";
+    // Highlight matching text
+    if (nameEl) nameEl.innerHTML = q && name.includes(q) ? _highlightText(nameEl.textContent, q) : _escHtml(nameEl.textContent);
+    if (outEl) outEl.innerHTML = q && output.includes(q) ? _highlightText(outEl.textContent, q) : _escHtml(outEl.textContent);
   });
 };
+
+function _escHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function _highlightText(text, query) {
+  const esc = _escHtml(text);
+  const qEsc = _escHtml(query);
+  const re = new RegExp(`(${qEsc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  return esc.replace(re, "<mark>$1</mark>");
+}
 
 /* ── Lightweight progress bar update (no full re-render) ──── */
 export async function pollTaskProgress(taskId) {

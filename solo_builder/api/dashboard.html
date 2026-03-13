@@ -96,6 +96,12 @@
       <button id="btn-view" onclick="toggleView()" style="background:transparent;border:1px solid var(--border);color:var(--dim);font-size:10px;padding:1px 8px;border-radius:3px;cursor:pointer;font-family:var(--font)">Graph</button>
       <button id="btn-dag-download" onclick="downloadDagPng()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:10px;padding:1px 8px;border-radius:3px;cursor:pointer;font-family:var(--font)" aria-label="Download DAG as PNG">⬇ PNG</button>
     </div>
+    <div id="batch-action-bar" style="display:none;align-items:center;gap:6px;margin-bottom:6px;padding:4px 8px;background:var(--surface);border:1px solid var(--blue);border-radius:3px;font-size:10px">
+      <span id="batch-sel-count" style="color:var(--dim)">0 selected</span>
+      <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="batchResetSelected()">↺ Reset</button>
+      <button class="toolbar-btn" style="font-size:9px;padding:2px 5px" onclick="batchClearSelection()">✕ Clear</button>
+      <span style="color:var(--dim);font-size:9px;margin-left:auto">Shift+click to select</span>
+    </div>
     <div class="task-grid" id="task-grid">
       <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
     </div>

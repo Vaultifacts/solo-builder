@@ -569,7 +569,10 @@ function _applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.getElementById("btn-theme").textContent = theme === "dark" ? "🌙" : "☀️";
 }
-_applyTheme(localStorage.getItem("sb-theme") || "dark");
+{ const saved = localStorage.getItem("sb-theme");
+  const osTheme = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  _applyTheme(saved || osTheme);
+}
 { const mb = document.getElementById("btn-mute"); if (mb) mb.textContent = localStorage.getItem("sb-mute") === "1" ? "🔇" : "🔔"; }
 
 window.toggleTheme = function () {

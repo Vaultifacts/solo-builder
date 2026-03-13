@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.47.0 — 2026-03-12  Batch Actions + Auto Theme + Search Highlight + Pinned Tasks + Card Percentage
+
+- **Batch task actions**: Shift+click to multi-select task cards; batch reset bar with count, reset, and clear buttons
+- **Auto theme from OS**: Initial theme detects `prefers-color-scheme` via `matchMedia` if no localStorage preference is saved
+- **Subtask search highlight**: Filtering subtasks in the detail panel highlights matching text with `<mark>` elements (yellow background)
+- **Pinned tasks**: Pin icon on task cards sorts pinned tasks to top of grid; persisted in localStorage (`sb-pinned-tasks`)
+- **Card percentage label**: Progress bar shows percentage number overlay (e.g. "72%") on each task card
+- **21 new tests**: batch actions (6), auto theme (3), search highlight (3), pinned tasks (6), card percentage (3)
+- **131 dashboard E2E tests**, 2711 total, 0 failures
+
 ## v6.46.0 — 2026-03-12  Diff Highlighting + Merge Readiness + DAG PNG Export + Tooltips + Drag Reorder
 
 - **Diff syntax highlighting**: +/- lines in diff tab colored green/red with subtle background tint; light theme variants

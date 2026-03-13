@@ -797,5 +797,134 @@ class TestDragToReorder(unittest.TestCase):
         self.assertIn("sb-task-order", js)
 
 
+# ---------------------------------------------------------------------------
+# 25. Batch task actions (multi-select)
+# ---------------------------------------------------------------------------
+
+class TestBatchTaskActions(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_toggle_card_select(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_toggleCardSelect", js)
+
+    def test_js_batch_reset(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("batchResetSelected", js)
+
+    def test_js_batch_clear(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("batchClearSelection", js)
+
+    def test_js_shift_click(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("shiftKey", js)
+
+    def test_css_multi_selected_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".multi-selected", css)
+
+    def test_batch_bar_in_html(self):
+        html = Path(self._JS_PATH).resolve().parents[1] / "dashboard.html"
+        src = html.read_text(encoding="utf-8")
+        self.assertIn("batch-action-bar", src)
+
+
+# ---------------------------------------------------------------------------
+# 26. Auto theme from OS (prefers-color-scheme)
+# ---------------------------------------------------------------------------
+
+class TestAutoThemeFromOS(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_prefers_color_scheme_check(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("prefers-color-scheme", js)
+
+    def test_match_media_call(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("matchMedia", js)
+
+    def test_fallback_to_os_theme(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("osTheme", js)
+
+
+# ---------------------------------------------------------------------------
+# 27. Subtask search highlight
+# ---------------------------------------------------------------------------
+
+class TestSubtaskSearchHighlight(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_highlight_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_highlightText", js)
+
+    def test_js_mark_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("<mark>", js)
+
+    def test_css_mark_styling(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("mark", css)
+
+
+# ---------------------------------------------------------------------------
+# 28. Pinned tasks
+# ---------------------------------------------------------------------------
+
+class TestPinnedTasks(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_get_pinned(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_getPinnedTasks", js)
+
+    def test_js_set_pinned(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_setPinnedTasks", js)
+
+    def test_js_toggle_pin(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_togglePin", js)
+
+    def test_js_localstorage_key(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-pinned-tasks", js)
+
+    def test_css_pinned_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".pinned", css)
+
+    def test_js_pin_button(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-pin-btn", js)
+
+
+# ---------------------------------------------------------------------------
+# 29. Card percentage label
+# ---------------------------------------------------------------------------
+
+class TestCardPercentageLabel(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_pct_label_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-pct-label", js)
+
+    def test_css_pct_label_style(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-pct-label", css)
+
+    def test_js_sets_pct_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("pctLabel.textContent", js)
+
+
 if __name__ == "__main__":
     unittest.main()
