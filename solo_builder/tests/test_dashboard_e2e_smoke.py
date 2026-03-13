@@ -1372,5 +1372,107 @@ class TestDetailVerifiedCounter(unittest.TestCase):
         self.assertIn("_verified}/${_total}", js)
 
 
+# ---------------------------------------------------------------------------
+# 50. Task card context menu
+# ---------------------------------------------------------------------------
+
+class TestCardContextMenu(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_context_menu_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_showCardContextMenu", js)
+
+    def test_js_contextmenu_event(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("contextmenu", js)
+
+    def test_css_ctx_menu_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-ctx-menu", css)
+
+    def test_css_ctx_menu_item(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".ctx-menu-item", css)
+
+
+# ---------------------------------------------------------------------------
+# 51. Header clock
+# ---------------------------------------------------------------------------
+
+class TestHeaderClock(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_update_clock_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_updateClock", js)
+
+    def test_html_clock_element(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-clock", html)
+
+    def test_js_locale_time_string(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("toLocaleTimeString", js)
+
+
+# ---------------------------------------------------------------------------
+# 52. Expand / collapse all branches
+# ---------------------------------------------------------------------------
+
+class TestExpandCollapseAllBranches(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_expand_all(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("expandAllBranches", js)
+
+    def test_js_collapse_all(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("collapseAllBranches", js)
+
+    def test_js_expand_button_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("All", js)
+
+
+# ---------------------------------------------------------------------------
+# 53. Branch filter dropdown
+# ---------------------------------------------------------------------------
+
+class TestBranchFilterDropdown(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_filter_branch_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("filterBranch", js)
+
+    def test_js_branch_filter_select(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-filter-select", js)
+
+    def test_js_all_branches_option(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("All branches", js)
+
+
+# ---------------------------------------------------------------------------
+# 54. Subtask output preview tooltip
+# ---------------------------------------------------------------------------
+
+class TestSubtaskOutputPreview(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_output_title_attr(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("outSpan.title", js)
+
+    def test_js_output_truncated(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("substring(0, 400)", js)
+
+
 if __name__ == "__main__":
     unittest.main()

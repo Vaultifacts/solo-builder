@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.52.0 — 2026-03-12  Context Menu + Clock + Expand/Collapse All + Branch Filter + Output Preview
+
+- **Task card context menu**: Right-click card shows Pin/Reset/Copy ID/Select options with styled dropdown
+- **Header clock**: Live HH:MM:SS clock in header updated every second
+- **Expand/collapse all branches**: "▾ All" and "▸ All" buttons in detail panel to expand or collapse all branch blocks
+- **Branch filter dropdown**: Select dropdown to filter detail panel to a single branch (appears when >1 branch)
+- **Subtask output preview tooltip**: Hovering output text shows first 400 chars in title attribute
+- **15 new tests**: context menu (4), clock (3), expand/collapse (3), branch filter (3), output preview (2)
+- **211 dashboard E2E tests**, 2731 total, 0 failures
+
 ## v6.51.0 — 2026-03-12  Running Name + Branch % + Copy Key + Row Hover + Verified Counter
 
 - **Task card running subtask name**: Shows the currently running subtask name (e.g. "▶ ST-042") on each task card

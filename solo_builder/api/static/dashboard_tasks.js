@@ -329,6 +329,11 @@ export function renderGrid(tasks) {
       pinBtn.addEventListener("click", (ev) => { ev.stopPropagation(); _togglePin(t.id); });
       cardTop.appendChild(pinBtn);
 
+      card.addEventListener("contextmenu", (ev) => {
+        ev.preventDefault();
+        _showCardContextMenu(ev, t.id);
+      });
+
       grid.appendChild(card);
     }
     card.classList.toggle("pinned", _getPinnedTasks().includes(t.id));
@@ -538,6 +543,42 @@ export function renderDetail(t) {
     toast("Sorted subtasks by status");
   });
   statusDiv.append(" ", sortBtn);
+
+  const expandAllBtn = document.createElement("button");
+  expandAllBtn.className = "toolbar-btn";
+  expandAllBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  expandAllBtn.title = "Expand all branches";
+  expandAllBtn.textContent = "▾ All";
+  expandAllBtn.addEventListener("click", () => window.expandAllBranches());
+  statusDiv.append(" ", expandAllBtn);
+
+  const collapseAllBtn = document.createElement("button");
+  collapseAllBtn.className = "toolbar-btn";
+  collapseAllBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:2px";
+  collapseAllBtn.title = "Collapse all branches";
+  collapseAllBtn.textContent = "▸ All";
+  collapseAllBtn.addEventListener("click", () => window.collapseAllBranches());
+  statusDiv.append(" ", collapseAllBtn);
+
+  const branchNames = Object.keys(branches);
+  if (branchNames.length > 1) {
+    const branchSelect = document.createElement("select");
+    branchSelect.className = "branch-filter-select";
+    branchSelect.title = "Filter to branch";
+    branchSelect.style.cssText = "font-size:9px;margin-left:4px;background:var(--bg2);color:var(--dim);border:1px solid var(--border);border-radius:3px;padding:1px 4px";
+    const allOpt = document.createElement("option");
+    allOpt.value = "";
+    allOpt.textContent = "All branches";
+    branchSelect.appendChild(allOpt);
+    branchNames.forEach(bn => {
+      const opt = document.createElement("option");
+      opt.value = bn;
+      opt.textContent = bn;
+      branchSelect.appendChild(opt);
+    });
+    branchSelect.addEventListener("change", () => window.filterBranch(branchSelect.value));
+    statusDiv.append(" ", branchSelect);
+  }
 
   // ── Per-task progress bar + per-branch breakdown ──────────
   let _total = 0, _verified = 0, _running = 0, _review = 0, _pending = 0;
@@ -1084,6 +1125,61 @@ if (localStorage.getItem("sb-compact") === "1") {
   const btn = document.getElementById("btn-compact");
   if (btn) btn.textContent = "▤ Expand";
 }
+
+/* ── Card context menu ─────────────────────────────────────── */
+function _showCardContextMenu(ev, taskId) {
+  let menu = document.getElementById("card-ctx-menu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "card-ctx-menu";
+    menu.className = "card-ctx-menu";
+    document.body.appendChild(menu);
+  }
+  const pinned = _getPinnedTasks().includes(taskId);
+  menu.innerHTML = "";
+  const items = [
+    { label: pinned ? "Unpin" : "Pin", action: () => _togglePin(taskId) },
+    { label: "Reset", action: () => window.resetTask(taskId) },
+    { label: "Copy ID", action: () => { navigator.clipboard.writeText(taskId).then(() => toast(`Copied: ${taskId}`)); } },
+    { label: "Select", action: () => selectTask(taskId) },
+  ];
+  items.forEach(it => {
+    const btn = document.createElement("div");
+    btn.className = "ctx-menu-item";
+    btn.textContent = it.label;
+    btn.addEventListener("click", () => { menu.style.display = "none"; it.action(); });
+    menu.appendChild(btn);
+  });
+  menu.style.display = "block";
+  menu.style.left = ev.pageX + "px";
+  menu.style.top = ev.pageY + "px";
+  const _hideMenu = () => { menu.style.display = "none"; document.removeEventListener("click", _hideMenu); };
+  setTimeout(() => document.addEventListener("click", _hideMenu), 0);
+}
+
+/* ── Expand / collapse all branches ───────────────────────── */
+window.expandAllBranches = function () {
+  document.querySelectorAll("#detail-content .branch-block.collapsed").forEach(bb => {
+    bb.classList.remove("collapsed");
+    const arrow = bb.querySelector(".branch-collapse-arrow");
+    if (arrow) arrow.textContent = "▾";
+  });
+};
+window.collapseAllBranches = function () {
+  document.querySelectorAll("#detail-content .branch-block:not(.collapsed)").forEach(bb => {
+    bb.classList.add("collapsed");
+    const arrow = bb.querySelector(".branch-collapse-arrow");
+    if (arrow) arrow.textContent = "▸";
+  });
+};
+
+/* ── Branch filter dropdown ───────────────────────────────── */
+window.filterBranch = function (branchName) {
+  document.querySelectorAll("#detail-content .branch-block").forEach(bb => {
+    const name = bb.querySelector(".branch-name")?.textContent?.trim() || "";
+    bb.style.display = (!branchName || name.includes(branchName)) ? "" : "none";
+  });
+};
 
 /* ── Lightweight progress bar update (no full re-render) ──── */
 export async function pollTaskProgress(taskId) {

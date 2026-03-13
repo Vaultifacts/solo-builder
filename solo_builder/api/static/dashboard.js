@@ -602,6 +602,16 @@ window.setPollInterval = function (ms) {
 const pollSel = document.getElementById("poll-interval-select");
 if (pollSel) pollSel.value = String(state.pollMs);
 
+/* ── Header clock ──────────────────────────────────────────── */
+function _updateClock() {
+  const el = document.getElementById("hdr-clock");
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+_updateClock();
+setInterval(_updateClock, 1000);
+
 /* ── Poll countdown timer ──────────────────────────────────── */
 let _countdownId = null;
 let _countdownLeft = 0;

@@ -721,6 +721,10 @@
   .subtask-row:hover { background: var(--bg3); }
   /* ── Branch percentage ───────────────────────────────── */
   .branch-pct { font-size: 10px; color: var(--dim); margin-left: 4px; }
+  /* ── Card context menu ───────────────────────────────── */
+  .card-ctx-menu { display: none; position: absolute; z-index: 600; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 100px; }
+  .ctx-menu-item { padding: 4px 12px; font-size: 11px; cursor: pointer; color: var(--text); }
+  .ctx-menu-item:hover { background: var(--bg3); }
 
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
