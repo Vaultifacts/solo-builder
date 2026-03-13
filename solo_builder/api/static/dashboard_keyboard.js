@@ -35,6 +35,7 @@ const _SHORTCUTS = [
   ["s", "Subtasks tab"],
   ["h", "History tab"],
   ["l", "Journal tab"],
+  ["o", "Open output modal for first subtask"],
 ];
 
 function _showShortcuts() {
@@ -237,6 +238,11 @@ document.addEventListener("keydown", (e) => {
   if (key === "t") { window.toggleTheme(); return; }
   if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
   if (key === "l") { window.switchTab?.("journal"); return; }
+  if (key === "o") {
+    const row = document.querySelector("#detail-content .subtask-row");
+    if (row) { row.click(); } else { toast("No subtask rows visible"); }
+    return;
+  }
   if (key >= "1" && key <= "9") {
     const tabs = [...document.querySelectorAll(".sidebar-tab")];
     const idx = parseInt(key) - 1;

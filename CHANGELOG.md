@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.69.0 — 2026-03-13  Dashboard UX Round 28 — duration timer, group headers, diff count, detail search, output key
+
+- **Subtask duration timer**: Elapsed time since Running subtask started (e.g. "2m15s")
+- **Card group-by-status headers**: Status divider headers when sorted by status mode
+- **Branch diff count**: Δ badge showing changed subtask count per branch since last poll
+- **Detail panel inline search**: Search box in sticky header to filter subtasks by name/output
+- **Keyboard `o` open output**: Press o to open output modal for first visible subtask
+
+### Stats
+- 438 dashboard E2E smoke tests (18 new), 3114 total tests, 0 failures
+- 130 UX features across v6.39–v6.69
+
 ## v6.68.0 — 2026-03-13  Dashboard UX Round 27 — fail badge, output change, mini-ring, JSON export, journal key
 
 - **Card failure count badge**: Red ✗N badge on cards with error/fail/exception in subtask output

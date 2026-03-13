@@ -2890,5 +2890,121 @@ class TestKeyboardJournalTab(unittest.TestCase):
         self.assertIn("Journal tab", js)
 
 
+# ---------------------------------------------------------------------------
+# 120. Subtask duration timer
+# ---------------------------------------------------------------------------
+
+class TestSubtaskDurationTimer(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_duration_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-duration", js)
+
+    def test_js_started_at(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("started_at", js)
+
+    def test_js_elapsed_calc(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_elapsed", js)
+
+    def test_css_duration_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-duration", css)
+
+
+# ---------------------------------------------------------------------------
+# 121. Card group-by-status headers
+# ---------------------------------------------------------------------------
+
+class TestCardGroupHeaders(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_group_header_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("task-grp-hdr", js)
+
+    def test_js_group_status_sort(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_lastGroup", js)
+
+    def test_css_group_header_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".task-grp-hdr", css)
+
+
+# ---------------------------------------------------------------------------
+# 122. Branch diff count
+# ---------------------------------------------------------------------------
+
+class TestBranchDiffCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_diff_count_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-diff-count", js)
+
+    def test_js_branch_changed(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_branchChanged", js)
+
+    def test_css_diff_count_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-diff-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 123. Detail panel inline search
+# ---------------------------------------------------------------------------
+
+class TestDetailInlineSearch(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_inline_search_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-inline-search", js)
+
+    def test_js_search_placeholder(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Search subtasks", js)
+
+    def test_js_search_filters_rows(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detailSearch.value", js)
+
+    def test_css_inline_search_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-inline-search", css)
+
+    def test_css_search_focus(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-inline-search:focus", css)
+
+
+# ---------------------------------------------------------------------------
+# 124. Keyboard `o` open output modal
+# ---------------------------------------------------------------------------
+
+class TestKeyboardOpenOutput(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_o_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"o"', js)
+
+    def test_js_row_click(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("row.click", js)
+
+    def test_js_o_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Open output modal", js)
+
+
 if __name__ == "__main__":
     unittest.main()

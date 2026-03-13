@@ -353,6 +353,27 @@ export function renderGrid(tasks) {
 
   existing.forEach(id => { if (!incoming.has(id)) grid.querySelector(`[data-id="${CSS.escape(id)}"]`)?.remove(); });
 
+  // Remove old group headers
+  grid.querySelectorAll(".task-grp-hdr").forEach(h => h.remove());
+
+  // Insert group-by-status headers when sorted by status
+  if (_tasksSortMode === "status" && tasks.length > 1) {
+    let _lastGroup = null;
+    tasks.forEach(t => {
+      const group = t.status || "Pending";
+      if (group !== _lastGroup) {
+        _lastGroup = group;
+        const hdr = document.createElement("div");
+        hdr.className = "task-grp-hdr";
+        hdr.textContent = group;
+        hdr.dataset.group = group;
+        grid.appendChild(hdr);
+      }
+      let card = grid.querySelector(`[data-id="${CSS.escape(t.id)}"]`);
+      if (card) grid.appendChild(card);
+    });
+  }
+
   tasks.forEach(t => {
     let card = grid.querySelector(`[data-id="${CSS.escape(t.id)}"]`);
     const isBlocked = t.depends_on && t.depends_on.length > 0 && t.status === "Pending";
@@ -1065,7 +1086,21 @@ export function renderDetail(t) {
 
   const stickyHeader = document.createElement("div");
   stickyHeader.className = "detail-sticky-header";
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv);
+  // Detail inline search
+  const detailSearch = document.createElement("input");
+  detailSearch.type = "text";
+  detailSearch.className = "detail-inline-search";
+  detailSearch.placeholder = "Search subtasks…";
+  detailSearch.addEventListener("input", () => {
+    const q = detailSearch.value.trim().toLowerCase();
+    document.querySelectorAll("#detail-content .subtask-row").forEach(row => {
+      const name = (row.querySelector(".st-name")?.textContent || "").toLowerCase();
+      const output = (row.querySelector(".st-output")?.textContent || "").toLowerCase();
+      row.style.display = (!q || name.includes(q) || output.includes(q)) ? "" : "none";
+    });
+  });
+
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -1122,7 +1157,17 @@ export function renderDetail(t) {
       const _relBranch = _relativeTime(_maxTime);
       if (_relBranch) branchLastActive.textContent = _relBranch;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan, branchLastActive);
+    // Branch diff count — how many subtasks changed status since last render
+    const branchDiffSpan = document.createElement("span");
+    branchDiffSpan.className = "branch-diff-count";
+    const _branchChanged = Object.entries(bdata.subtasks || {}).filter(([sn, st]) => {
+      return _prevStatuses[sn] && _prevStatuses[sn] !== (st.status || "Pending");
+    }).length;
+    if (_branchChanged > 0) {
+      branchDiffSpan.textContent = `Δ${_branchChanged}`;
+      branchDiffSpan.title = `${_branchChanged} subtask(s) changed status`;
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan, branchLastActive, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");
@@ -1182,10 +1227,24 @@ export function renderDetail(t) {
       const _stTime = _relativeTime(s.last_update_time);
       if (_stTime) stElapsed.textContent = _stTime;
 
+      // Duration timer for running subtasks
+      const stDuration = document.createElement("span");
+      stDuration.className = "st-duration";
+      if (s.status === "Running" && s.started_at) {
+        const _elapsed = (Date.now() - new Date(s.started_at).getTime()) / 1000;
+        if (_elapsed > 0) {
+          const _m = Math.floor(_elapsed / 60);
+          const _s = Math.floor(_elapsed % 60);
+          stDuration.textContent = _m > 0 ? `${_m}m${_s}s` : `${_s}s`;
+          stDuration.title = `Running for ${_m}m ${_s}s`;
+        }
+      }
+
       row.append(cb, dot, statusLabel, nameSpan);
       if (transSpan) row.appendChild(transSpan);
       row.appendChild(stStep);
       row.appendChild(stElapsed);
+      row.appendChild(stDuration);
 
       // Inline verify button (non-verified only)
       if (s.status !== "Verified") {
