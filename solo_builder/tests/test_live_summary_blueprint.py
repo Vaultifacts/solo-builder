@@ -162,5 +162,40 @@ class TestLiveSummaryCachedModule(_Base):
         self.assertEqual(r.status_code, 200)
 
 
+class TestLoadToolFreshImport(_Base):
+    """Cover _load_tool lines 39-43 — importlib.util fresh load path."""
+
+    def test_load_tool_fresh_import(self):
+        from api.blueprints import live_summary as ls_mod
+        import tempfile, os
+        mod_name = "_test_ls_fresh_dummy"
+        sys.modules.pop(mod_name, None)
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w") as f:
+            f.write("MARKER = 'live_summary_test'\n")
+            tmp_path = f.name
+        try:
+            from pathlib import Path as P
+            tools_dir = P(tmp_path).parent
+            file_name = P(tmp_path).stem
+            with patch.object(ls_mod, "_TOOLS_DIR", new=tools_dir):
+                result = ls_mod._load_tool(file_name)
+            self.assertEqual(result.MARKER, "live_summary_test")
+            self.assertIn(file_name, sys.modules)
+        finally:
+            os.unlink(tmp_path)
+            sys.modules.pop(file_name, None)
+
+    def test_load_tool_returns_cached(self):
+        from api.blueprints import live_summary as ls_mod
+        mod_name = "_test_ls_cached"
+        fake = MagicMock()
+        sys.modules[mod_name] = fake
+        try:
+            result = ls_mod._load_tool(mod_name)
+            self.assertIs(result, fake)
+        finally:
+            sys.modules.pop(mod_name, None)
+
+
 if __name__ == "__main__":
     unittest.main()

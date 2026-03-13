@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.66.0 — 2026-03-13  Coverage Push Round 3 — executor_gates 100%, live_summary 100%
+
+- **10 new tests** across 2 existing test files
+- `executor_gates.py` 82% → **100%** — import fallbacks (hitl_gate, sdk_tool_runner), HITL eval exception, scope eval exception
+- `live_summary.py` 88% → **100%** — _load_tool fresh importlib path + cached module
+
+### Stats
+- 3060 total tests, 0 failures
+- 8 blueprint modules now at 96–100% coverage
+
 ## v6.65.0 — 2026-03-13  Coverage Push Round 2 — core 100%, health_detailed 100%, cache 99%
 
 - **19 new tests** across 4 existing test files

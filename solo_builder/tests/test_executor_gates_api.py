@@ -359,5 +359,134 @@ class TestExecutorGatesScopeEval(_Base):
         self.assertIsInstance(gate["hitl_name"], str)
 
 
+# ---------------------------------------------------------------------------
+# Import fallback exception paths (lines 61-62, 67-68, 73-75, 79-80)
+# ---------------------------------------------------------------------------
+
+class TestExecutorGatesHitlImportFallback(_Base):
+    """Cover except block when utils.hitl_policy import fails (lines 61-62)."""
+
+    def test_hitl_policy_import_fail_still_works(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        import utils.hitl_policy as hp_mod
+        orig = hp_mod.load_policy
+        with patch.object(hp_mod, "load_policy", side_effect=Exception("broken")):
+            data = self._get()
+        self.assertIn("gates", data)
+        self.assertEqual(len(data["gates"]), 1)
+        # hitl_level defaults to gate eval only (no policy)
+        self.assertIsInstance(data["gates"][0]["hitl_level"], int)
+
+
+class TestExecutorGatesScopePolicyImportFallback(_Base):
+    """Cover except block when utils.tool_scope_policy import fails (lines 67-68)."""
+
+    def test_scope_policy_import_fail_still_works(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        import utils.tool_scope_policy as sp_mod
+        with patch.object(sp_mod, "load_scope_policy", side_effect=Exception("broken")):
+            data = self._get()
+        gate = data["gates"][0]
+        self.assertTrue(gate["scope_ok"])
+        self.assertEqual(gate["scope_denied"], [])
+
+
+class TestExecutorGatesHitlGateImportFallback(_Base):
+    """Cover except block when runners.hitl_gate import fails (lines 73-75)."""
+
+    def test_hitl_gate_import_fail_uses_lambda(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        import runners.hitl_gate as hg_mod
+        with patch.object(hg_mod, "evaluate", side_effect=Exception("broken")):
+            data = self._get()
+        gate = data["gates"][0]
+        # Exception in evaluate → hitl_level = 0 (line 109-110)
+        self.assertEqual(gate["hitl_level"], 0)
+        self.assertEqual(gate["hitl_name"], "Auto")
+
+    def test_hitl_gate_import_completely_missing(self):
+        """Force the 'from runners.hitl_gate import' to fail (lines 73-75)."""
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        saved = sys.modules.pop("runners.hitl_gate", None)
+        orig_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+        def _blocking_import(name, *args, **kwargs):
+            if name == "runners.hitl_gate":
+                raise ImportError("no hitl_gate")
+            return orig_import(name, *args, **kwargs)
+        with patch("builtins.__import__", side_effect=_blocking_import):
+            data = self._get()
+        if saved is not None:
+            sys.modules["runners.hitl_gate"] = saved
+        gate = data["gates"][0]
+        self.assertEqual(gate["hitl_level"], 0)
+        self.assertEqual(gate["hitl_name"], "Auto")
+
+
+class TestExecutorGatesSdkToolRunnerImportFallback(_Base):
+    """Cover except block when runners.sdk_tool_runner import fails (lines 79-80)."""
+
+    def test_validate_tools_import_fail_still_works(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        import runners.sdk_tool_runner as str_mod
+        with patch.object(str_mod, "validate_tools", side_effect=ValueError("bad")):
+            data = self._get()
+        gate = data["gates"][0]
+        self.assertFalse(gate["tools_valid"])
+        self.assertTrue(gate["blocked"])
+
+    def test_sdk_tool_runner_import_completely_missing(self):
+        """Force the 'from runners.sdk_tool_runner import' to fail (lines 79-80)."""
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        saved = sys.modules.pop("runners.sdk_tool_runner", None)
+        orig_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+        def _blocking_import(name, *args, **kwargs):
+            if name == "runners.sdk_tool_runner":
+                raise ImportError("no sdk_tool_runner")
+            return orig_import(name, *args, **kwargs)
+        with patch("builtins.__import__", side_effect=_blocking_import):
+            data = self._get()
+        if saved is not None:
+            sys.modules["runners.sdk_tool_runner"] = saved
+        gate = data["gates"][0]
+        # With lambda fallback, tools_valid stays True (no-op validate)
+        self.assertTrue(gate["tools_valid"])
+
+
+# ---------------------------------------------------------------------------
+# HITL eval exception path (lines 109-110)
+# ---------------------------------------------------------------------------
+
+class TestExecutorGatesHitlEvalException(_Base):
+    """Cover except block when _hg_eval raises during gate evaluation."""
+
+    def test_hitl_eval_exception_defaults_to_zero(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        import runners.hitl_gate as hg_mod
+        with patch.object(hg_mod, "evaluate", side_effect=RuntimeError("oops")):
+            data = self._get()
+        gate = data["gates"][0]
+        self.assertEqual(gate["hitl_level"], 0)
+        self.assertEqual(gate["hitl_name"], "Auto")
+
+
+# ---------------------------------------------------------------------------
+# Scope eval exception path (lines 123-124)
+# ---------------------------------------------------------------------------
+
+class TestExecutorGatesScopeEvalException(_Base):
+    """Cover except block when _sp_eval raises during scope evaluation."""
+
+    def test_scope_eval_exception_defaults_to_ok(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob", action_type="read_only")}))
+        import utils.tool_scope_policy as sp_mod
+        orig_load = sp_mod.load_scope_policy
+        orig_eval = sp_mod.evaluate_scope
+        with patch.object(sp_mod, "evaluate_scope", side_effect=RuntimeError("scope crash")):
+            data = self._get()
+        gate = data["gates"][0]
+        # Exception in scope eval → scope_ok stays True (default)
+        self.assertTrue(gate["scope_ok"])
+
+
 if __name__ == "__main__":
     unittest.main()
