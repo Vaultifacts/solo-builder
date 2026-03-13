@@ -530,6 +530,20 @@ document.addEventListener("keydown", function (e) {
     }
   }
 
+  if (e.key === "n") {
+    // Jump to next task with unverified subtasks
+    for (const tid of state.taskIds) {
+      const t = state.tasksCache[tid];
+      if (!t) continue;
+      if (t.verified_subtasks < t.subtask_count) {
+        selectTask(tid);
+        toast(`Jumped to ${tid}`);
+        return;
+      }
+    }
+    toast("All tasks fully verified");
+    return;
+  }
   if (e.key === "c" && state.selectedTask) {
     navigator.clipboard.writeText(state.selectedTask).then(() => toast(`Copied: ${state.selectedTask}`)).catch(() => {});
     return;

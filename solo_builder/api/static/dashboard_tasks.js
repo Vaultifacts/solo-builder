@@ -110,6 +110,35 @@ function _findFirstRunning(t) {
   return null;
 }
 
+/* ── Task star (favorite) persistence ──────────────────────── */
+function _getStarredTasks() {
+  try { return JSON.parse(localStorage.getItem("sb-starred-tasks") || "[]"); } catch (_) { return []; }
+}
+function _setStarredTasks(starred) {
+  localStorage.setItem("sb-starred-tasks", JSON.stringify(starred));
+}
+function _toggleStar(taskId) {
+  const starred = _getStarredTasks();
+  const idx = starred.indexOf(taskId);
+  if (idx >= 0) starred.splice(idx, 1); else starred.push(taskId);
+  _setStarredTasks(starred);
+  document.querySelectorAll(`.task-card[data-id="${CSS.escape(taskId)}"] .card-star-btn`).forEach(b => {
+    b.textContent = starred.includes(taskId) ? "★" : "☆";
+  });
+}
+
+/* ── Task notes persistence ───────────────────────────────── */
+function _getTaskNote(taskId) {
+  try { return JSON.parse(localStorage.getItem("sb-task-notes") || "{}")[taskId] || ""; } catch (_) { return ""; }
+}
+function _setTaskNote(taskId, note) {
+  try {
+    const notes = JSON.parse(localStorage.getItem("sb-task-notes") || "{}");
+    if (note) notes[taskId] = note; else delete notes[taskId];
+    localStorage.setItem("sb-task-notes", JSON.stringify(notes));
+  } catch (_) {}
+}
+
 function _updateTasksPager() {
   const pager = document.getElementById("tasks-pager");
   const lbl   = document.getElementById("tasks-page-label");
@@ -154,6 +183,8 @@ export async function pollStatus() {
     document.getElementById("hdr-bar").style.width      = d.pct + "%";
     document.getElementById("hdr-bar").title            = `Verified: ${d.verified} | Running: ${d.running} | Pending: ${d.pending}${d.review > 0 ? ` | Review: ${d.review}` : ""}`;
     document.getElementById("hdr-pct").textContent      = d.pct + "%";
+    const fracEl = document.getElementById("hdr-fraction");
+    if (fracEl) fracEl.textContent = `${d.verified}/${d.total}`;
     document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified` + (d.review > 0 ? ` · ${d.review}⏸` : "");
     if (d.step > state.prevStep) {
       const delta = (d.verified - state.prevVerified) / (d.step - state.prevStep);
@@ -328,6 +359,13 @@ export function renderGrid(tasks) {
       pinBtn.textContent = "📌";
       pinBtn.addEventListener("click", (ev) => { ev.stopPropagation(); _togglePin(t.id); });
       cardTop.appendChild(pinBtn);
+
+      const starBtn = document.createElement("button");
+      starBtn.className = "card-star-btn";
+      starBtn.title = "Star/unstar task";
+      starBtn.textContent = _getStarredTasks().includes(t.id) ? "★" : "☆";
+      starBtn.addEventListener("click", (ev) => { ev.stopPropagation(); _toggleStar(t.id); });
+      cardTop.appendChild(starBtn);
 
       card.addEventListener("contextmenu", (ev) => {
         ev.preventDefault();
@@ -657,7 +695,18 @@ export function renderDetail(t) {
   stickyHeader.className = "detail-sticky-header";
   stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, statusDiv);
 
-  const nodes = [stickyHeader];
+  // Task notes
+  const notesWrap = document.createElement("div");
+  notesWrap.className = "detail-notes-wrap";
+  const notesInput = document.createElement("textarea");
+  notesInput.className = "detail-notes";
+  notesInput.placeholder = "Add notes…";
+  notesInput.rows = 2;
+  notesInput.value = _getTaskNote(t.id);
+  notesInput.addEventListener("input", () => _setTaskNote(t.id, notesInput.value));
+  notesWrap.appendChild(notesInput);
+
+  const nodes = [stickyHeader, notesWrap];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
@@ -724,7 +773,13 @@ export function renderDetail(t) {
       nameSpan.className = "st-name";
       nameSpan.textContent = sname;
 
-      row.append(cb, dot, nameSpan);
+      // Subtask elapsed time
+      const stElapsed = document.createElement("span");
+      stElapsed.className = "st-elapsed";
+      const _stTime = _relativeTime(s.last_update_time);
+      if (_stTime) stElapsed.textContent = _stTime;
+
+      row.append(cb, dot, nameSpan, stElapsed);
 
       if (s.depends_on && s.depends_on.length) {
         const depWrap = document.createElement("span");

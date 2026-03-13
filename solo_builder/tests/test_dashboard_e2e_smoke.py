@@ -1474,5 +1474,117 @@ class TestSubtaskOutputPreview(unittest.TestCase):
         self.assertIn("substring(0, 400)", js)
 
 
+# ---------------------------------------------------------------------------
+# 55. Task card star (favorite)
+# ---------------------------------------------------------------------------
+
+class TestTaskCardStar(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_starred_persistence(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-starred-tasks", js)
+
+    def test_js_toggle_star(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_toggleStar", js)
+
+    def test_js_star_button(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-star-btn", js)
+
+    def test_css_star_btn_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-star-btn", css)
+
+
+# ---------------------------------------------------------------------------
+# 56. Subtask row elapsed time
+# ---------------------------------------------------------------------------
+
+class TestSubtaskRowElapsedTime(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_elapsed_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-elapsed", js)
+
+    def test_js_uses_relative_time(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_relativeTime(s.last_update_time)", js)
+
+    def test_css_elapsed_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-elapsed", css)
+
+
+# ---------------------------------------------------------------------------
+# 57. Detail panel task notes
+# ---------------------------------------------------------------------------
+
+class TestDetailPanelTaskNotes(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_get_task_note(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_getTaskNote", js)
+
+    def test_js_set_task_note(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_setTaskNote", js)
+
+    def test_js_notes_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-notes", js)
+
+    def test_css_notes_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-notes", css)
+
+    def test_js_localstorage_key(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-task-notes", js)
+
+
+# ---------------------------------------------------------------------------
+# 58. Header verified/total fraction
+# ---------------------------------------------------------------------------
+
+class TestHeaderFraction(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_fraction_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-fraction", js)
+
+    def test_html_fraction_span(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-fraction", html)
+
+
+# ---------------------------------------------------------------------------
+# 59. Keyboard `n` jump to next unverified
+# ---------------------------------------------------------------------------
+
+class TestKeyboardNextUnverified(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_n_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"n"', js)
+
+    def test_js_jump_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Jumped to", js)
+
+    def test_js_all_verified_message(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("All tasks fully verified", js)
+
+
 if __name__ == "__main__":
     unittest.main()

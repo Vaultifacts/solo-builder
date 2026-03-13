@@ -725,6 +725,15 @@
   .card-ctx-menu { display: none; position: absolute; z-index: 600; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 100px; }
   .ctx-menu-item { padding: 4px 12px; font-size: 11px; cursor: pointer; color: var(--text); }
   .ctx-menu-item:hover { background: var(--bg3); }
+  /* ── Card star button ────────────────────────────────── */
+  .card-star-btn { background: none; border: none; color: var(--yellow); font-size: 12px; cursor: pointer; padding: 0 2px; }
+  .card-star-btn:hover { transform: scale(1.2); }
+  /* ── Subtask elapsed time ────────────────────────────── */
+  .st-elapsed { font-size: 8px; color: var(--dim); margin-left: 4px; flex-shrink: 0; }
+  /* ── Detail task notes ───────────────────────────────── */
+  .detail-notes-wrap { margin: 4px 0; }
+  .detail-notes { width: 100%; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 3px; font-size: 10px; padding: 4px 6px; resize: vertical; font-family: var(--font); }
+  .detail-notes::placeholder { color: var(--dim); }
 
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.53.0 — 2026-03-12  Star Favorite + Subtask Elapsed + Task Notes + Fraction + Next Unverified
+
+- **Task card star (favorite)**: Toggle ★/☆ on task cards; persisted in localStorage (`sb-starred-tasks`)
+- **Subtask row elapsed time**: Relative time ("2m ago") since last status change on each subtask row
+- **Detail panel task notes**: Editable textarea per task stored in localStorage (`sb-task-notes`); persists across sessions
+- **Header verified/total fraction**: Shows "142/200" next to progress bar percentage
+- **Keyboard `n` next unverified**: Press `n` to jump to next task with unverified subtasks
+- **17 new tests**: star (4), elapsed (3), notes (5), fraction (2), next unverified (3)
+- **228 dashboard E2E tests**, 2748 total, 0 failures
+
 ## v6.52.0 — 2026-03-12  Context Menu + Clock + Expand/Collapse All + Branch Filter + Output Preview
 
 - **Task card context menu**: Right-click card shows Pin/Reset/Copy ID/Select options with styled dropdown
