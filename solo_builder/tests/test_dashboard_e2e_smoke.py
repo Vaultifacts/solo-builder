@@ -1904,5 +1904,130 @@ class TestKeyboardToggleDetail(unittest.TestCase):
         self.assertIn("detail-panel", js)
 
 
+# ---------------------------------------------------------------------------
+# 75. Card verified pulse animation
+# ---------------------------------------------------------------------------
+
+class TestCardVerifiedPulse(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_pulse_class_added(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-pulse", js)
+
+    def test_js_prev_verified_tracking(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_prevVerified", js)
+
+    def test_js_reflow_trick(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("offsetWidth", js)
+
+    def test_css_pulse_animation(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-pulse", css)
+
+    def test_css_keyframes(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-pulse-anim", css)
+
+
+# ---------------------------------------------------------------------------
+# 76. Output show more/less toggle
+# ---------------------------------------------------------------------------
+
+class TestOutputShowMoreToggle(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_show_more_button(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-show-more", js)
+
+    def test_js_expanded_flag(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_expanded", js)
+
+    def test_js_more_less_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"more"', js)
+        self.assertIn('"less"', js)
+
+    def test_css_show_more_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-show-more", css)
+
+
+# ---------------------------------------------------------------------------
+# 77. Card last verified subtask indicator
+# ---------------------------------------------------------------------------
+
+class TestCardLastVerified(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_find_last_verified(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_findLastVerified", js)
+
+    def test_js_last_verified_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-last-verified", js)
+
+    def test_js_last_verified_title(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Last verified:", js)
+
+    def test_css_last_verified_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-last-verified", css)
+
+
+# ---------------------------------------------------------------------------
+# 78. Branch subtask count in detail header
+# ---------------------------------------------------------------------------
+
+class TestBranchSubtaskCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_branch_count_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-st-count", js)
+
+    def test_js_branch_count_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branchCountSpan", js)
+
+    def test_css_branch_count_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-st-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 79. Keyboard `m` mute toggle
+# ---------------------------------------------------------------------------
+
+class TestKeyboardMuteToggle(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_m_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"m"', js)
+
+    def test_js_mute_localStorage(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-mute", js)
+
+    def test_js_mute_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Sound muted", js)
+
+    def test_js_unmute_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Sound unmuted", js)
+
+
 if __name__ == "__main__":
     unittest.main()

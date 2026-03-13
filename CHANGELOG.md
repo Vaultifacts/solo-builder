@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.57.0 — 2026-03-13  Verified Pulse + Show More + Last Verified + Branch Count + Mute Key
+
+- **Card verified pulse animation**: Green pulse flash when a card's verified count increases (CSS keyframe animation with reflow trick)
+- **Output show more/less toggle**: Long subtask output (>80 chars) gets a "more"/"less" button to expand to 300 chars inline
+- **Card last verified indicator**: Shows the most recently verified subtask name on each card with green `✓` prefix
+- **Branch subtask count in detail header**: Each branch name now shows `(N)` count of subtasks alongside the percentage
+- **Keyboard shortcut `m`**: Toggle mute/unmute from keyboard with toast confirmation
+
+### Stats
+- 294 dashboard E2E smoke tests (20 new), 2874 total tests, 0 failures
+- 87 UX features across v6.39–v6.57
+
 ## v6.56.0 — 2026-03-12  Segmented Bar + Desc Preview + Dep Chips + Active Count + Toggle Detail
 
 - **Task card segmented status bar**: Colored segments (green/cyan/yellow) showing verified/running/review proportions

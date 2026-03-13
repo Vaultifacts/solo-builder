@@ -564,6 +564,14 @@ document.addEventListener("keydown", function (e) {
     if (ts) { ts.focus(); ts.select(); e.preventDefault(); }
     return;
   }
+  if (e.key === "m") {
+    const isMuted = localStorage.getItem("sb-mute") === "1" ? "0" : "1";
+    localStorage.setItem("sb-mute", isMuted);
+    const mb = document.getElementById("btn-mute");
+    if (mb) mb.textContent = isMuted === "1" ? "🔇" : "🔔";
+    toast(isMuted === "1" ? "Sound muted" : "Sound unmuted");
+    return;
+  }
   if (e.key === "r") { window.runStep(); return; }
   if (e.key === "g") { window.toggleView(); return; }
   if (e.key === "b") { window.switchTab("branches"); return; }

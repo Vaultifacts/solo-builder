@@ -100,6 +100,20 @@ function _relativeTime(isoStr) {
 const _STATUS_EMOJI = { Verified: "✓", Running: "▶", Review: "⏸", Pending: "◯", Blocked: "⊘" };
 function _statusEmoji(status) { return _STATUS_EMOJI[status] || "◯"; }
 
+/* ── Find last verified subtask name ──────────────────────── */
+function _findLastVerified(t) {
+  let last = null, lastTime = 0;
+  for (const b of Object.values(t.branches || {})) {
+    for (const [sn, s] of Object.entries(b.subtasks || {})) {
+      if (s.status === "Verified" && s.last_update_time) {
+        const ts = new Date(s.last_update_time).getTime();
+        if (ts > lastTime) { lastTime = ts; last = sn; }
+      }
+    }
+  }
+  return last;
+}
+
 /* ── Find first running subtask name ───────────────────────── */
 function _findFirstRunning(t) {
   for (const b of Object.values(t.branches || {})) {
@@ -412,6 +426,15 @@ export function renderGrid(tasks) {
     const _taskPct = t.subtask_count > 0 ? t.verified_subtasks / t.subtask_count : 0;
     card.classList.add(_taskPct >= 1 ? "status-complete" : t.running_subtasks > 0 ? "status-running" : "status-pending");
 
+    // Verified pulse animation (flash card when verified count increases)
+    const _prevV = card._prevVerified ?? t.verified_subtasks;
+    if (t.verified_subtasks > _prevV) {
+      card.classList.remove("card-pulse");
+      void card.offsetWidth; // reflow to restart animation
+      card.classList.add("card-pulse");
+    }
+    card._prevVerified = t.verified_subtasks;
+
     const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
     card.querySelector(".card-bar-fg").style.width = pct + "%";
     const pctLabel = card.querySelector(".card-pct-label");
@@ -490,6 +513,21 @@ export function renderGrid(tasks) {
       runNameEl.title = `Currently running: ${_firstRunning}`;
     } else if (runNameEl) {
       runNameEl.textContent = "";
+    }
+
+    // Last verified subtask indicator
+    let lastVEl = card.querySelector(".card-last-verified");
+    const _lastV = _findLastVerified(t);
+    if (_lastV) {
+      if (!lastVEl) {
+        lastVEl = document.createElement("div");
+        lastVEl.className = "card-last-verified";
+        card.appendChild(lastVEl);
+      }
+      lastVEl.textContent = `✓ ${_lastV}`;
+      lastVEl.title = `Last verified: ${_lastV}`;
+    } else if (lastVEl) {
+      lastVEl.textContent = "";
     }
 
     const depEl = card.querySelector(".card-deps");
@@ -851,7 +889,10 @@ export function renderDetail(t) {
       const bPct = Math.round(_bs.verified / _bs.total * 100);
       branchPctSpan.textContent = ` ${bPct}%`;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan);
+    const branchCountSpan = document.createElement("span");
+    branchCountSpan.className = "branch-st-count";
+    if (_bs) branchCountSpan.textContent = ` (${_bs.total})`;
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan);
     branchNameEl.style.cursor = "pointer";
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");
@@ -968,8 +1009,29 @@ export function renderDetail(t) {
         const outSpan = document.createElement("span");
         outSpan.className = "st-output";
         outSpan.title = rawOutput.substring(0, 400);
-        outSpan.textContent = rawOutput.replace(/\n/g, " ").substring(0, 80);
+        const _flatOut = rawOutput.replace(/\n/g, " ");
+        outSpan.textContent = _flatOut.substring(0, 80);
         row.appendChild(outSpan);
+
+        // Show more toggle for long output
+        if (_flatOut.length > 80) {
+          const moreBtn = document.createElement("button");
+          moreBtn.className = "st-show-more";
+          moreBtn.textContent = "more";
+          moreBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (outSpan._expanded) {
+              outSpan.textContent = _flatOut.substring(0, 80);
+              moreBtn.textContent = "more";
+              outSpan._expanded = false;
+            } else {
+              outSpan.textContent = _flatOut.substring(0, 300);
+              moreBtn.textContent = "less";
+              outSpan._expanded = true;
+            }
+          });
+          row.appendChild(moreBtn);
+        }
 
         const expandBtn = document.createElement("button");
         expandBtn.className = "st-expand-btn";
