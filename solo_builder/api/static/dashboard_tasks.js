@@ -515,6 +515,15 @@ export function renderGrid(tasks) {
       (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "") +
       (_pendingSt > 0 ? ` · ${_pendingSt}◯` : "");
 
+    // Card step counter
+    let stepEl = card.querySelector(".card-step-num");
+    if (!stepEl) {
+      stepEl = document.createElement("span");
+      stepEl.className = "card-step-num";
+      card.querySelector(".card-counts").after(stepEl);
+    }
+    if (t.step != null) stepEl.textContent = `s${t.step}`;
+
     // Total subtask count label
     let stCountEl = card.querySelector(".card-st-count");
     if (!stCountEl) {
@@ -868,6 +877,14 @@ export function renderDetail(t) {
   badgeSpan.className = `card-mini-badge ${statusClass(t.status)}`;
   badgeSpan.textContent = t.status || "Pending";
   statusDiv.appendChild(badgeSpan);
+
+  // Task status chip — colored background chip
+  const statusChip = document.createElement("span");
+  statusChip.className = "detail-status-chip";
+  const _chipColor = t.status === "Complete" ? "var(--green)" : t.status === "Running" ? "var(--cyan)" : "var(--yellow)";
+  statusChip.style.cssText = `background:${_chipColor};color:#000;font-size:8px;padding:1px 6px;border-radius:8px;margin-left:6px`;
+  statusChip.textContent = t.status || "Pending";
+  statusDiv.appendChild(statusChip);
 
   if (t.depends_on && t.depends_on.length) {
     const depsWrap = document.createElement("span");
@@ -1327,7 +1344,14 @@ export function renderDetail(t) {
       branchElapsed.textContent = _em > 0 ? `⏱${_em}m` : `⏱${_totalSec}s`;
       branchElapsed.title = `Total running time: ${_em}m across ${_runningTimes.length} subtask(s)`;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchPctSpan, branchCountSpan, branchVerifiedBadge, branchLastActive, branchElapsed, branchDiffSpan);
+    // Branch running indicator — animated dot when subtasks are running
+    const branchRunDot = document.createElement("span");
+    branchRunDot.className = "branch-run-dot";
+    if (_bs && _bs.running > 0) {
+      branchRunDot.classList.add("active");
+      branchRunDot.title = `${_bs.running} running`;
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchRunDot, branchPctSpan, branchCountSpan, branchVerifiedBadge, branchLastActive, branchElapsed, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
     // Restore collapsed state from localStorage
     const _collapseKey = `sb-branch-${t.id}-${bname}`;
@@ -1544,6 +1568,14 @@ export function renderDetail(t) {
         wcBadge.title = `${wc} words`;
         wcBadge.textContent = wc > 999 ? `${(wc/1000).toFixed(1)}k` : `${wc}w`;
         row.appendChild(wcBadge);
+
+        // Byte size badge
+        const _bytes = new Blob([rawOutput]).size;
+        const sizeBadge = document.createElement("span");
+        sizeBadge.className = "st-size-badge";
+        sizeBadge.textContent = _bytes >= 1024 ? `${(_bytes / 1024).toFixed(1)}KB` : `${_bytes}B`;
+        sizeBadge.title = `${_bytes} bytes`;
+        row.appendChild(sizeBadge);
 
         // Line count badge
         const lineCount = rawOutput.split("\n").length;

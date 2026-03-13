@@ -3649,5 +3649,108 @@ class TestKeyboardShiftReset(unittest.TestCase):
         self.assertIn("Shift+R", js)
 
 
+# ---------------------------------------------------------------------------
+# 155. Subtask output byte size
+# ---------------------------------------------------------------------------
+
+class TestSubtaskByteSize(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_size_badge_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-size-badge", js)
+
+    def test_js_blob_size(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("new Blob", js)
+
+    def test_css_size_badge_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-size-badge", css)
+
+
+# ---------------------------------------------------------------------------
+# 156. Card step counter
+# ---------------------------------------------------------------------------
+
+class TestCardStepCounter(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_step_num_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-step-num", js)
+
+    def test_js_step_display(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("t.step", js)
+
+    def test_css_step_num_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-step-num", css)
+
+
+# ---------------------------------------------------------------------------
+# 157. Branch running indicator
+# ---------------------------------------------------------------------------
+
+class TestBranchRunningIndicator(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_run_dot_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-run-dot", js)
+
+    def test_js_run_dot_active(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branchRunDot", js)
+
+    def test_css_run_dot_active(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-run-dot.active", css)
+
+    def test_css_run_pulse_animation(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-run-pulse", css)
+
+
+# ---------------------------------------------------------------------------
+# 158. Detail panel task status chip
+# ---------------------------------------------------------------------------
+
+class TestDetailStatusChip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_status_chip_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-status-chip", js)
+
+    def test_js_chip_color(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_chipColor", js)
+
+
+# ---------------------------------------------------------------------------
+# 159. Keyboard Shift+V verify all
+# ---------------------------------------------------------------------------
+
+class TestKeyboardShiftVerifyAll(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_shift_v_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"V"', js)
+
+    def test_js_bulk_verify_call(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detailBulkVerify", js)
+
+    def test_js_shift_v_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Verify all unverified", js)
+
+
 if __name__ == "__main__":
     unittest.main()

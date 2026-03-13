@@ -42,6 +42,7 @@ const _SHORTCUTS = [
   ["u", "Scroll to first unverified subtask"],
   ["y", "Yank (copy) first subtask output"],
   ["Shift+R", "Reset selected task"],
+  ["Shift+V", "Verify all unverified subtasks"],
 ];
 
 function _showShortcuts() {
@@ -263,6 +264,14 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "V" && e.shiftKey) {
+    const cbs = document.querySelectorAll("#detail-content .st-checkbox");
+    if (cbs.length > 0) {
+      cbs.forEach(cb => { cb.checked = true; });
+      window.detailBulkVerify?.();
+    } else { toast("No subtasks to verify"); }
     return;
   }
   if (key === "R" && e.shiftKey) {

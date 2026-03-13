@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.77.0 — 2026-03-13  Dashboard UX Round 35 — byte size, step counter, run dot, status chip, Shift+V verify
+
+- **Subtask output byte size**: KB/MB size badge on output rows
+- **Card step counter**: Shows sN step number on each task card
+- **Branch running indicator**: Animated cyan pulse dot on branches with running subtasks
+- **Detail panel task status chip**: Colored chip showing task-level status
+- **Keyboard `Shift+V` verify all**: Press Shift+V to verify all unverified subtasks
+
+### Stats
+- 547 dashboard E2E smoke tests (15 new), 3231 total tests, 0 failures
+- 165 UX features across v6.39–v6.77
+
 ## v6.76.0 — 2026-03-13  Coverage Push Round 4 — metrics 100%, cache 100%, dag 100%
 
 - **8 new tests** across 3 existing test files

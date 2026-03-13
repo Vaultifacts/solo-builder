@@ -916,6 +916,14 @@
   .branch-verified-cnt { font-size: 8px; color: var(--green); margin-left: 3px; }
   /* ── Detail task timer ─────────────────────────────────── */
   .detail-task-timer { font-size: 9px; color: var(--dim); margin-left: 8px; }
+  /* ── Subtask output byte size badge ────────────────────── */
+  .st-size-badge { font-size: 8px; color: var(--dim); background: var(--bg3); padding: 0 3px; border-radius: 2px; margin-left: 2px; flex-shrink: 0; }
+  /* ── Card step counter ─────────────────────────────────── */
+  .card-step-num { font-size: 8px; color: var(--dim); opacity: 0.6; margin-left: 4px; }
+  /* ── Branch running indicator ──────────────────────────── */
+  .branch-run-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
+  .branch-run-dot.active { background: var(--cyan); animation: branch-run-pulse 1.5s infinite; }
+  @keyframes branch-run-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
