@@ -907,6 +907,15 @@
   .detail-scroll-top-btn:hover { opacity: 0.8; }
   /* ── Output error line highlight ─────────────────────────── */
   .out-line-err { color: #ef4444; background: rgba(239,68,68,0.1); display: inline; }
+  /* ── Output search match highlight ─────────────────────── */
+  .out-line-match { background: rgba(6,182,212,0.15); display: inline; }
+  /* ── Output search input ───────────────────────────────── */
+  .st-out-search { font-size: 9px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: var(--bg2); color: var(--text); width: 100px; margin-left: 4px; display: none; outline: none; }
+  .st-expand-content:not(:empty) ~ .st-out-search, .st-expand-btn.expanded ~ .st-out-search { display: inline-block; }
+  /* ── Branch verified counter ───────────────────────────── */
+  .branch-verified-cnt { font-size: 8px; color: var(--green); margin-left: 3px; }
+  /* ── Detail task timer ─────────────────────────────────── */
+  .detail-task-timer { font-size: 9px; color: var(--dim); margin-left: 8px; }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

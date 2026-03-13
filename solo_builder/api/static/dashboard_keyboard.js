@@ -41,6 +41,7 @@ const _SHORTCUTS = [
   ["q", "Cycle detail status filter"],
   ["u", "Scroll to first unverified subtask"],
   ["y", "Yank (copy) first subtask output"],
+  ["Shift+R", "Reset selected task"],
 ];
 
 function _showShortcuts() {
@@ -262,6 +263,11 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "R" && e.shiftKey) {
+    if (state.selectedTask) { window.resetTask?.(state.selectedTask); toast(`Reset: ${state.selectedTask}`); }
+    else { toast("No task selected"); }
     return;
   }
   if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }

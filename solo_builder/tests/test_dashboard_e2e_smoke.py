@@ -3543,5 +3543,111 @@ class TestKeyboardYankOutput(unittest.TestCase):
         self.assertIn("Yank", js)
 
 
+# ---------------------------------------------------------------------------
+# 150. Subtask output search
+# ---------------------------------------------------------------------------
+
+class TestSubtaskOutputSearch(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_out_search_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-out-search", js)
+
+    def test_js_out_line_match(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("out-line-match", js)
+
+    def test_css_out_search_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-out-search", css)
+
+    def test_css_match_highlight(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".out-line-match", css)
+
+
+# ---------------------------------------------------------------------------
+# 151. Card status emoji tooltip
+# ---------------------------------------------------------------------------
+
+class TestCardStatusEmojiTooltip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_badge_title(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('.querySelector(".card-mini-badge").title', js)
+
+    def test_js_tooltip_breakdown(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("verified", js)
+        self.assertIn("running", js)
+        self.assertIn("pending", js)
+
+
+# ---------------------------------------------------------------------------
+# 152. Branch verified counter badge
+# ---------------------------------------------------------------------------
+
+class TestBranchVerifiedCounter(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_verified_cnt_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-verified-cnt", js)
+
+    def test_js_verified_badge(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branchVerifiedBadge", js)
+
+    def test_css_verified_cnt_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-verified-cnt", css)
+
+
+# ---------------------------------------------------------------------------
+# 153. Detail panel task timer
+# ---------------------------------------------------------------------------
+
+class TestDetailTaskTimer(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_task_timer_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-task-timer", js)
+
+    def test_js_created_at(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("created_at", js)
+
+    def test_css_task_timer_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-task-timer", css)
+
+
+# ---------------------------------------------------------------------------
+# 154. Keyboard Shift+R reset task
+# ---------------------------------------------------------------------------
+
+class TestKeyboardShiftReset(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_shift_r_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"R"', js)
+        self.assertIn("e.shiftKey", js)
+
+    def test_js_reset_task_call(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("window.resetTask", js)
+
+    def test_js_shift_r_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Shift+R", js)
+
+
 if __name__ == "__main__":
     unittest.main()

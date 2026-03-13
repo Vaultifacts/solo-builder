@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.75.0 — 2026-03-13  Dashboard UX Round 34 — output search, emoji tooltip, verified counter, task timer, Shift+R reset
+
+- **Subtask output search**: Inline search within expanded output with match highlighting
+- **Card status emoji tooltip**: Hover status badge shows full verified/running/review/pending breakdown
+- **Branch verified counter**: Green "N✓" count badge next to branch name
+- **Detail panel task timer**: Shows elapsed time since task creation (⏱ Nh Nm)
+- **Keyboard `Shift+R` reset task**: Press Shift+R to reset selected task
+
+### Stats
+- 532 dashboard E2E smoke tests (15 new), 3208 total tests, 0 failures
+- 160 UX features across v6.39–v6.75
+
 ## v6.74.0 — 2026-03-13  Dashboard UX Round 33 — line highlight, ring text, branch tooltip, collapse verified, yank key
 
 - **Subtask output line highlight**: Error/fail lines highlighted red in expanded output view

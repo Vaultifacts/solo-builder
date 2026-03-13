@@ -455,6 +455,7 @@ export function renderGrid(tasks) {
     card.classList.toggle("multi-selected", _selectedCards.has(t.id));
     card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
     card.querySelector(".card-mini-badge").textContent = `${_statusEmoji(t.status)} ${t.status || "Pending"}`;
+    card.querySelector(".card-mini-badge").title = `${t.verified_subtasks} verified · ${t.running_subtasks} running · ${t.review_subtasks || 0} review · ${t.subtask_count - t.verified_subtasks - t.running_subtasks - (t.review_subtasks || 0)} pending`;
     const reviewBadge = card.querySelector(".card-review-badge");
     if (reviewBadge) {
       if (t.review_subtasks > 0) { reviewBadge.textContent = `⏸${t.review_subtasks}`; reviewBadge.style.display = ""; }
@@ -847,6 +848,18 @@ export function renderDetail(t) {
   taskIdDiv.addEventListener("click", () => {
     navigator.clipboard.writeText(t.id).then(() => toast(`Copied: ${t.id}`)).catch(() => {});
   });
+
+  // Task timer — elapsed since creation
+  const taskTimer = document.createElement("span");
+  taskTimer.className = "detail-task-timer";
+  if (t.created_at) {
+    const _taskElapsed = (Date.now() - new Date(t.created_at).getTime()) / 1000;
+    const _th = Math.floor(_taskElapsed / 3600);
+    const _tm = Math.floor((_taskElapsed % 3600) / 60);
+    taskTimer.textContent = _th > 0 ? `⏱ ${_th}h${_tm}m` : `⏱ ${_tm}m`;
+    taskTimer.title = `Created: ${t.created_at}`;
+  }
+  taskIdDiv.appendChild(taskTimer);
 
   const statusDiv = document.createElement("div");
   statusDiv.className = "detail-status";
@@ -1262,6 +1275,13 @@ export function renderDetail(t) {
     const branchCountSpan = document.createElement("span");
     branchCountSpan.className = "branch-st-count";
     if (_bs) branchCountSpan.textContent = ` (${_bs.total})`;
+    // Branch verified counter badge
+    const branchVerifiedBadge = document.createElement("span");
+    branchVerifiedBadge.className = "branch-verified-cnt";
+    if (_bs && _bs.verified > 0) {
+      branchVerifiedBadge.textContent = `${_bs.verified}✓`;
+      branchVerifiedBadge.title = `${_bs.verified} verified subtask(s)`;
+    }
     // Branch health dot — based on stalled/running ratio
     const branchHealthDot = document.createElement("span");
     branchHealthDot.className = "branch-health-dot";
@@ -1307,7 +1327,7 @@ export function renderDetail(t) {
       branchElapsed.textContent = _em > 0 ? `⏱${_em}m` : `⏱${_totalSec}s`;
       branchElapsed.title = `Total running time: ${_em}m across ${_runningTimes.length} subtask(s)`;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchPctSpan, branchCountSpan, branchLastActive, branchElapsed, branchDiffSpan);
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchPctSpan, branchCountSpan, branchVerifiedBadge, branchLastActive, branchElapsed, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
     // Restore collapsed state from localStorage
     const _collapseKey = `sb-branch-${t.id}-${bname}`;
@@ -1613,7 +1633,24 @@ export function renderDetail(t) {
         });
         expandContent.innerHTML = _outLines.join("\n");
 
-        row.append(expandBtn, expandContent);
+        // Output search input
+        const outSearch = document.createElement("input");
+        outSearch.type = "text";
+        outSearch.className = "st-out-search";
+        outSearch.placeholder = "Search output…";
+        outSearch.addEventListener("click", (ev) => ev.stopPropagation());
+        outSearch.addEventListener("input", () => {
+          const q = outSearch.value.trim().toLowerCase();
+          if (!q) { expandContent.innerHTML = _outLines.join("\n"); return; }
+          const highlighted = _outLines.map(line => {
+            const plain = line.replace(/<[^>]*>/g, "");
+            if (plain.toLowerCase().includes(q)) return `<span class="out-line-match">${line}</span>`;
+            return line;
+          });
+          expandContent.innerHTML = highlighted.join("\n");
+        });
+
+        row.append(expandBtn, outSearch, expandContent);
       }
 
       branchBlock.appendChild(row);
