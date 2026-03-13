@@ -474,7 +474,9 @@ export function renderGrid(tasks) {
     card._wasComplete = _isComplete;
 
     const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
-    card.querySelector(".card-bar-fg").style.width = pct + "%";
+    const barFg = card.querySelector(".card-bar-fg");
+    barFg.style.width = pct + "%";
+    barFg.parentElement.title = `${t.verified_subtasks}/${t.subtask_count} verified (${pct}%)`;
     const pctLabel = card.querySelector(".card-pct-label");
     if (pctLabel) {
       pctLabel.textContent = pct > 0 ? `${pct}%` : "";
@@ -556,6 +558,20 @@ export function renderGrid(tasks) {
       runNameEl.title = `Currently running: ${_firstRunning}`;
     } else if (runNameEl) {
       runNameEl.textContent = "";
+    }
+
+    // Stalled warning badge
+    let stalledBadge = card.querySelector(".card-stalled-badge");
+    if (t.stalled_subtasks > 0) {
+      if (!stalledBadge) {
+        stalledBadge = document.createElement("span");
+        stalledBadge.className = "card-stalled-badge";
+        card.querySelector(".card-top").appendChild(stalledBadge);
+      }
+      stalledBadge.textContent = `⚠${t.stalled_subtasks}`;
+      stalledBadge.title = `${t.stalled_subtasks} stalled subtask(s)`;
+    } else if (stalledBadge) {
+      stalledBadge.remove();
     }
 
     // Last verified subtask indicator
@@ -658,12 +674,16 @@ export async function selectTask(id) {
   _updateTaskExportLinks(id);
   const dp = document.getElementById("detail-content");
   if (dp) dp.scrollTop = 0;
+  const refreshDot = document.getElementById("detail-refresh-dot");
+  if (refreshDot) refreshDot.classList.add("spinning");
   try {
     const t = await api("/tasks/" + encodeURIComponent(id));
     state.tasksCache[id] = t;
     renderDetail(t);
   } catch (e) {
     toast("Could not load task detail: " + e.message);
+  } finally {
+    if (refreshDot) refreshDot.classList.remove("spinning");
   }
 }
 
@@ -1053,6 +1073,10 @@ export function renderDetail(t) {
       dot.className = `st-dot ${dotClass(s.status)}`;
       dot.title = `${s.status || "Pending"}${s.last_update != null ? ` — step ${s.last_update}` : ""}`;
 
+      const statusLabel = document.createElement("span");
+      statusLabel.className = "st-status-label";
+      statusLabel.textContent = s.status || "Pending";
+
       const nameSpan = document.createElement("span");
       nameSpan.className = "st-name";
       nameSpan.textContent = sname;
@@ -1077,7 +1101,7 @@ export function renderDetail(t) {
       const _stTime = _relativeTime(s.last_update_time);
       if (_stTime) stElapsed.textContent = _stTime;
 
-      row.append(cb, dot, nameSpan);
+      row.append(cb, dot, statusLabel, nameSpan);
       if (transSpan) row.appendChild(transSpan);
       row.appendChild(stStep);
       row.appendChild(stElapsed);

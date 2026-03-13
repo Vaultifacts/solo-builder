@@ -2549,5 +2549,115 @@ class TestCardRecentlyActive(unittest.TestCase):
         self.assertIn(".card-recently-active", css)
 
 
+# ---------------------------------------------------------------------------
+# 105. Card progress bar tooltip
+# ---------------------------------------------------------------------------
+
+class TestCardProgressBarTooltip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_bar_parent_title(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("barFg.parentElement.title", js)
+
+    def test_js_ratio_in_tooltip(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("verified (${pct}%)", js)
+
+
+# ---------------------------------------------------------------------------
+# 106. Card stalled warning badge
+# ---------------------------------------------------------------------------
+
+class TestCardStalledBadge(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_stalled_badge_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-stalled-badge", js)
+
+    def test_js_stalled_subtasks_check(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("stalled_subtasks", js)
+
+    def test_css_stalled_badge_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-stalled-badge", css)
+
+
+# ---------------------------------------------------------------------------
+# 107. Subtask row status label
+# ---------------------------------------------------------------------------
+
+class TestSubtaskStatusLabel(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_status_label_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-status-label", js)
+
+    def test_js_status_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("statusLabel.textContent", js)
+
+    def test_css_status_label_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-status-label", css)
+
+    def test_css_compact_hides_label(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".compact-mode .st-status-label", css)
+
+
+# ---------------------------------------------------------------------------
+# 108. Detail auto-refresh indicator
+# ---------------------------------------------------------------------------
+
+class TestDetailRefreshIndicator(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_refresh_dot_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-refresh-dot", js)
+
+    def test_js_spinning_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("spinning", js)
+
+    def test_html_refresh_dot(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-refresh-dot", html)
+
+    def test_css_refresh_dot_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-refresh-dot", css)
+
+    def test_css_spinning_animation(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-refresh-dot.spinning", css)
+
+
+# ---------------------------------------------------------------------------
+# 109. Keyboard `i` task info toast
+# ---------------------------------------------------------------------------
+
+class TestKeyboardTaskInfo(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_i_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"i"', js)
+
+    def test_js_info_toast_content(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("verified,", js)
+        self.assertIn("running,", js)
+        self.assertIn("branches", js)
+
+
 if __name__ == "__main__":
     unittest.main()

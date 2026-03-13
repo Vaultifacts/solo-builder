@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.63.0 — 2026-03-13  Bar Tooltip + Stalled Badge + Status Label + Refresh Dot + Info Key
+
+- **Card progress bar tooltip**: Hover progress bar shows verified/total ratio with percentage
+- **Card stalled warning badge**: Orange ⚠N badge on cards with stalled subtasks
+- **Subtask row status label**: Status text next to dot indicator (hidden in compact mode)
+- **Detail auto-refresh indicator**: Spinning cyan dot when detail panel is loading
+- **Keyboard `i` task info**: Toast with task summary stats (verified, running, branches)
+
+### Stats
+- 384 dashboard E2E smoke tests (16 new), 2964 total tests, 0 failures
+- 115 UX features across v6.39–v6.63
+
 ## v6.62.0 — 2026-03-13  Pending Count + Scroll Progress + Escape Clear + Line Count + Active Highlight
 
 - **Card pending subtask count**: Shows pending count with ◯ symbol on card counts line
