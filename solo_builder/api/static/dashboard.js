@@ -1,6 +1,6 @@
 import { state } from "./dashboard_state.js";
 import { api, esc, statusClass, toast, flash, updateNotifBadge } from "./dashboard_utils.js";
-import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats, pollTaskProgress } from "./dashboard_tasks.js";
+import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats, pollTaskProgress, updateTabBadges } from "./dashboard_tasks.js";
 import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory, pollHealthDetailed, pollGatesDetailed, pollPolicyDetailed, pollContextWindowDetailed, pollThreatModelDetailed, pollSloDetailed, pollPromptRegressionDetailed, pollDebtScanDetailed, pollCiQualityDetailed, pollPreReleaseDetailed, pollLiveSummaryDetailed, pollRepoHealthDetailed } from "./dashboard_panels.js";
 
 /* ── Health / uptime ─────────────────────────────────────── */
@@ -62,6 +62,11 @@ async function tick() {
               pollPreReleaseDetailed(), pollLiveSummaryDetailed(), pollRepoHealthDetailed());
   }
   await Promise.all(fast);
+  // Update tab badges from cached state
+  try {
+    const sd = await api("/stalled");
+    updateTabBadges(sd.count || 0, null);
+  } catch (_) {}
   if (state.selectedTask && state.tasksCache[state.selectedTask]) {
     try {
       const fresh = await api("/tasks/" + encodeURIComponent(state.selectedTask));

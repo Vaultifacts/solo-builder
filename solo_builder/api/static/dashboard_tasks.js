@@ -331,8 +331,24 @@ export function renderGrid(tasks) {
       depEl.textContent = "";
     }
 
-    // Tooltip with branch breakdown
+    // Sparkline — tiny bar chart of branch completion
+    let sparkEl = card.querySelector(".card-sparkline");
     const _bEntries = Object.entries(t.branches || {});
+    if (_bEntries.length > 1) {
+      if (!sparkEl) {
+        sparkEl = document.createElement("div");
+        sparkEl.className = "card-sparkline";
+        card.querySelector(".card-counts").after(sparkEl);
+      }
+      const bars = _bEntries.map(([, bd]) => {
+        const st = Object.values(bd.subtasks || {});
+        const v = st.filter(s => s.status === "Verified").length;
+        return st.length > 0 ? Math.round(v / st.length * 100) : 0;
+      });
+      sparkEl.innerHTML = bars.map(p => `<span class="spark-bar" style="height:${Math.max(2, p * 12 / 100)}px"></span>`).join("");
+    }
+
+    // Tooltip with branch breakdown
     if (_bEntries.length > 0) {
       const tipLines = _bEntries.map(([bn, bd]) => {
         const st = Object.values(bd.subtasks || {});
@@ -555,7 +571,20 @@ export function renderDetail(t) {
 
       const row = document.createElement("div");
       row.className = "subtask-row";
-      row.addEventListener("click", () => window.showModal(sname, s));
+      row.addEventListener("click", (ev) => { if (!ev.target.closest(".st-checkbox")) window.showModal(sname, s); });
+      row.addEventListener("dblclick", (ev) => {
+        ev.preventDefault();
+        if (s.status !== "Verified") window._quickVerify(sname);
+      });
+
+      // Bulk verify checkbox
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "st-checkbox";
+      cb.title = "Select for bulk verify";
+      cb.dataset.subtask = sname;
+      cb.addEventListener("click", (ev) => ev.stopPropagation());
+      cb.addEventListener("change", () => _updateDetailBulkBar());
 
       const dot = document.createElement("div");
       dot.className = `st-dot ${dotClass(s.status)}`;
@@ -564,7 +593,7 @@ export function renderDetail(t) {
       nameSpan.className = "st-name";
       nameSpan.textContent = sname;
 
-      row.append(dot, nameSpan);
+      row.append(cb, dot, nameSpan);
 
       if (s.depends_on && s.depends_on.length) {
         const depWrap = document.createElement("span");
@@ -862,6 +891,95 @@ function _highlightText(text, query) {
   const qEsc = _escHtml(query);
   const re = new RegExp(`(${qEsc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
   return esc.replace(re, "<mark>$1</mark>");
+}
+
+/* ── Quick-verify (double-click) ──────────────────────────── */
+window._quickVerify = async function (stName) {
+  try {
+    const r = await fetch(state.base + "/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subtask: stName, note: "Quick verify (dblclick)" }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`✓ ${stName} verified`);
+      if (state.selectedTask) selectTask(state.selectedTask);
+    } else {
+      toast(d.reason || "Verify failed", "error");
+    }
+  } catch (_) { toast("Network error", "error"); }
+};
+
+/* ── Bulk verify in detail panel ──────────────────────────── */
+function _updateDetailBulkBar() {
+  const bar = document.getElementById("detail-bulk-bar");
+  if (!bar) return;
+  const checked = document.querySelectorAll("#detail-content .st-checkbox:checked");
+  const lbl = document.getElementById("detail-bulk-count");
+  if (checked.length > 0) {
+    bar.style.display = "flex";
+    if (lbl) lbl.textContent = `${checked.length} selected`;
+  } else {
+    bar.style.display = "none";
+  }
+}
+window.detailBulkVerify = async function () {
+  const checked = document.querySelectorAll("#detail-content .st-checkbox:checked");
+  if (checked.length === 0) return;
+  let ok = 0;
+  for (const cb of checked) {
+    try {
+      const r = await fetch(state.base + "/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subtask: cb.dataset.subtask, note: "Bulk verify" }),
+      });
+      const d = await r.json();
+      if (d.ok) ok++;
+    } catch (_) {}
+  }
+  toast(`✓ Verified ${ok}/${checked.length} subtasks`);
+  if (state.selectedTask) selectTask(state.selectedTask);
+};
+window.detailBulkClear = function () {
+  document.querySelectorAll("#detail-content .st-checkbox:checked").forEach(cb => { cb.checked = false; });
+  _updateDetailBulkBar();
+};
+
+/* ── Tab count badges ─────────────────────────────────────── */
+export function updateTabBadges(stalledCount, historyCount) {
+  const _setBadge = (tab, count) => {
+    const btn = document.querySelector(`.sidebar-tab[data-tab="${tab}"]`);
+    if (!btn) return;
+    let badge = btn.querySelector(".tab-count-badge");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "tab-count-badge";
+        btn.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  };
+  if (stalledCount != null) _setBadge("stalled", stalledCount);
+  if (historyCount != null) _setBadge("history", historyCount);
+}
+
+/* ── Compact mode toggle ──────────────────────────────────── */
+window.toggleCompactMode = function () {
+  const isCompact = document.body.classList.toggle("compact-mode");
+  localStorage.setItem("sb-compact", isCompact ? "1" : "0");
+  const btn = document.getElementById("btn-compact");
+  if (btn) btn.textContent = isCompact ? "▤ Expand" : "▥ Compact";
+};
+// Restore on load
+if (localStorage.getItem("sb-compact") === "1") {
+  document.body.classList.add("compact-mode");
+  const btn = document.getElementById("btn-compact");
+  if (btn) btn.textContent = "▤ Expand";
 }
 
 /* ── Lightweight progress bar update (no full re-render) ──── */

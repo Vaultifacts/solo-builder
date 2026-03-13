@@ -926,5 +926,139 @@ class TestCardPercentageLabel(unittest.TestCase):
         self.assertIn("pctLabel.textContent", js)
 
 
+# ---------------------------------------------------------------------------
+# 30. Double-click subtask to quick-verify
+# ---------------------------------------------------------------------------
+
+class TestQuickVerifyDblclick(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_quick_verify_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_quickVerify", js)
+
+    def test_js_dblclick_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("dblclick", js)
+
+    def test_js_verify_post(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Quick verify (dblclick)", js)
+
+    def test_js_checkbox_guard(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-checkbox", js)
+
+
+# ---------------------------------------------------------------------------
+# 31. Tab count badges (stalled/history)
+# ---------------------------------------------------------------------------
+
+class TestTabCountBadges(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _MAIN_JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_update_tab_badges_export(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("export function updateTabBadges", js)
+
+    def test_js_set_badge_helper(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_setBadge", js)
+
+    def test_css_badge_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".tab-count-badge", css)
+
+    def test_main_js_imports_badges(self):
+        js = self._MAIN_JS.read_text(encoding="utf-8")
+        self.assertIn("updateTabBadges", js)
+
+
+# ---------------------------------------------------------------------------
+# 32. Compact mode toggle
+# ---------------------------------------------------------------------------
+
+class TestCompactModeToggle(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_toggle_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("toggleCompactMode", js)
+
+    def test_js_localstorage_key(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-compact", js)
+
+    def test_css_compact_mode_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".compact-mode", css)
+
+    def test_html_compact_button(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("btn-compact", html)
+
+    def test_js_body_class_toggle(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("compact-mode", js)
+
+
+# ---------------------------------------------------------------------------
+# 33. Task card sparkline
+# ---------------------------------------------------------------------------
+
+class TestTaskCardSparkline(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_sparkline_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-sparkline", js)
+
+    def test_js_spark_bar_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("spark-bar", js)
+
+    def test_css_sparkline_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-sparkline", css)
+
+    def test_css_spark_bar_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".spark-bar", css)
+
+
+# ---------------------------------------------------------------------------
+# 34. Bulk verify in detail panel
+# ---------------------------------------------------------------------------
+
+class TestBulkVerifyDetailPanel(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_detail_bulk_verify(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detailBulkVerify", js)
+
+    def test_js_detail_bulk_clear(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detailBulkClear", js)
+
+    def test_js_update_detail_bulk_bar(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_updateDetailBulkBar", js)
+
+    def test_html_detail_bulk_bar(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-bulk-bar", html)
+
+    def test_js_bulk_verify_post(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Bulk verify", js)
+
+
 if __name__ == "__main__":
     unittest.main()

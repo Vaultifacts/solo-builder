@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.48.0 — 2026-03-12  Quick Verify + Tab Badges + Compact Mode + Sparklines + Bulk Verify
+
+- **Double-click quick-verify**: Double-click any subtask row to instantly verify it via POST /verify; checkbox guard prevents conflict with selection
+- **Tab count badges**: Stalled tab shows live count badge (yellow pill) updated each poll tick via `updateTabBadges` export
+- **Compact mode toggle**: "▥ Compact" toolbar button shrinks task cards (smaller padding/font); persisted in localStorage (`sb-compact`)
+- **Task card sparkline**: Tiny bar chart on each task card showing per-branch completion — each bar proportional to branch verified%
+- **Bulk verify in detail panel**: Checkbox on each subtask row + bulk action bar with "✓ Verify" and "✕ Clear" buttons for batch verification
+- **22 new tests**: quick verify (4), tab badges (4), compact mode (5), sparkline (4), bulk verify (5)
+- **153 dashboard E2E tests**, 2673 total, 0 failures
+
 ## v6.47.0 — 2026-03-12  Batch Actions + Auto Theme + Search Highlight + Pinned Tasks + Card Percentage
 
 - **Batch task actions**: Shift+click to multi-select task cards; batch reset bar with count, reset, and clear buttons
