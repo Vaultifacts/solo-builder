@@ -745,6 +745,18 @@
   .st-inline-verify:hover { opacity: 1; background: var(--green); color: #000; }
   /* ── Branch stats summary ────────────────────────────── */
   .branch-stats-summary { font-size: 9px; color: var(--dim); margin: 2px 0; }
+  /* ── Segmented status bar ────────────────────────────── */
+  .card-seg-bar { display: flex; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+  .seg { height: 100%; }
+  .seg-v { background: var(--green); }
+  .seg-r { background: var(--cyan); }
+  .seg-rv { background: var(--yellow); }
+  /* ── Description preview ─────────────────────────────── */
+  .st-desc-preview { font-size: 9px; color: var(--dim); margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  /* ── Task dependency chips ───────────────────────────── */
+  .detail-task-deps { display: inline-flex; gap: 2px; align-items: center; margin-left: 4px; }
+  .task-dep-chip { font-size: 9px; padding: 0 4px; border-radius: 3px; background: var(--bg3); color: #ff9800; cursor: pointer; }
+  .task-dep-chip:hover { background: #ff9800; color: #000; }
 
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {

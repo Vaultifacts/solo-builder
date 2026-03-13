@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.56.0 — 2026-03-12  Segmented Bar + Desc Preview + Dep Chips + Active Count + Toggle Detail
+
+- **Task card segmented status bar**: Colored segments (green/cyan/yellow) showing verified/running/review proportions
+- **Subtask description preview**: First 60 chars of description shown inline on subtask rows without output
+- **Detail panel task dep chips**: Task-level dependencies shown as clickable orange chips that navigate to dep task
+- **Header active tasks count**: "3 active" count of tasks with running subtasks next to ETA
+- **Keyboard `d` toggle detail**: Press `d` to show/hide the detail panel
+- **16 new tests**: segmented bar (4), desc preview (3), dep chips (4), active count (3), toggle detail (2)
+- **274 dashboard E2E tests**, 2794 total, 0 failures
+
 ## v6.55.0 — 2026-03-12  Progress Ring + Inline Verify + Branch Stats + Step Delta + Focus Search
 
 - **Task card progress ring**: Tiny circular SVG progress indicator on each card with animated dash offset

@@ -554,6 +554,11 @@ document.addEventListener("keydown", function (e) {
     else window.collapseAllBranches();
     return;
   }
+  if (e.key === "d") {
+    const dp = document.querySelector(".detail-panel");
+    if (dp) dp.style.display = dp.style.display === "none" ? "" : "none";
+    return;
+  }
   if (e.key === "f") {
     const ts = document.getElementById("task-search");
     if (ts) { ts.focus(); ts.select(); e.preventDefault(); }

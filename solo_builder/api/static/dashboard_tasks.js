@@ -240,6 +240,12 @@ export async function pollStatus() {
       badge.title = "";
     }
     _updateFavicon(d);
+    // Active tasks count
+    const activeEl = document.getElementById("hdr-active-tasks");
+    if (activeEl) {
+      const activeTasks = state.allTasks.filter(at => at.running_subtasks > 0).length;
+      activeEl.textContent = activeTasks > 0 ? `${activeTasks} active` : "";
+    }
   } catch (e) {
     checkStaleBanner();
   }
@@ -456,6 +462,21 @@ export function renderGrid(tasks) {
       _ringFg.setAttribute("stroke-dashoffset", `${circ - (pct / 100) * circ}`);
     }
 
+    // Segmented status bar
+    let segBar = card.querySelector(".card-seg-bar");
+    if (!segBar) {
+      segBar = document.createElement("div");
+      segBar.className = "card-seg-bar";
+      card.querySelector(".card-bar-bg").after(segBar);
+    }
+    if (t.subtask_count > 0) {
+      const vW = Math.round(t.verified_subtasks / t.subtask_count * 100);
+      const rW = Math.round(t.running_subtasks / t.subtask_count * 100);
+      const rvW = Math.round((t.review_subtasks || 0) / t.subtask_count * 100);
+      segBar.innerHTML = `<span class="seg seg-v" style="width:${vW}%"></span><span class="seg seg-r" style="width:${rW}%"></span><span class="seg seg-rv" style="width:${rvW}%"></span>`;
+      segBar.title = `Verified: ${vW}% | Running: ${rW}% | Review: ${rvW}%`;
+    }
+
     // Running subtask name on card
     let runNameEl = card.querySelector(".card-running-name");
     const _firstRunning = _findFirstRunning(t);
@@ -587,10 +608,21 @@ export function renderDetail(t) {
   statusDiv.appendChild(badgeSpan);
 
   if (t.depends_on && t.depends_on.length) {
-    const depsSpan = document.createElement("span");
-    depsSpan.style.cssText = "color:#ff9800;font-size:10px";
-    depsSpan.textContent = "← " + t.depends_on.join(", ");
-    statusDiv.append(" ", depsSpan);
+    const depsWrap = document.createElement("span");
+    depsWrap.className = "detail-task-deps";
+    const arrow = document.createElement("span");
+    arrow.style.cssText = "color:var(--dim);font-size:9px;margin-right:2px";
+    arrow.textContent = "←";
+    depsWrap.appendChild(arrow);
+    for (const dep of t.depends_on) {
+      const chip = document.createElement("span");
+      chip.className = "task-dep-chip";
+      chip.textContent = dep;
+      chip.title = `Click to select ${dep}`;
+      chip.addEventListener("click", (ev) => { ev.stopPropagation(); selectTask(dep); });
+      depsWrap.appendChild(chip);
+    }
+    statusDiv.append(" ", depsWrap);
   }
 
   const resetBtn = document.createElement("button");
@@ -916,6 +948,15 @@ export function renderDetail(t) {
         row.appendChild(depWrap);
       }
 
+      // Description preview (always show if available, truncated)
+      if (s.description && !rawOutput) {
+        const descPreview = document.createElement("span");
+        descPreview.className = "st-desc-preview";
+        descPreview.textContent = s.description.substring(0, 60) + (s.description.length > 60 ? "…" : "");
+        descPreview.title = s.description;
+        row.appendChild(descPreview);
+      }
+
       if (rawOutput) {
         const wc = rawOutput.split(/\s+/).filter(Boolean).length;
         const wcBadge = document.createElement("span");
@@ -941,11 +982,6 @@ export function renderDetail(t) {
         expandContent.textContent = rawOutput;
 
         row.append(expandBtn, expandContent);
-      } else if (s.description) {
-        const descSpan = document.createElement("span");
-        descSpan.className = "st-output";
-        descSpan.textContent = s.description;
-        row.appendChild(descSpan);
       }
 
       branchBlock.appendChild(row);

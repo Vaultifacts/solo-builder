@@ -1793,5 +1793,116 @@ class TestKeyboardFocusSearch(unittest.TestCase):
         self.assertIn("ts.select()", js)
 
 
+# ---------------------------------------------------------------------------
+# 70. Task card segmented status bar
+# ---------------------------------------------------------------------------
+
+class TestCardSegmentedStatusBar(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_seg_bar_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-seg-bar", js)
+
+    def test_js_seg_segments(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("seg-v", js)
+        self.assertIn("seg-r", js)
+
+    def test_css_seg_bar_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-seg-bar", css)
+
+    def test_css_seg_colors(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".seg-v", css)
+        self.assertIn(".seg-r", css)
+        self.assertIn(".seg-rv", css)
+
+
+# ---------------------------------------------------------------------------
+# 71. Subtask description preview
+# ---------------------------------------------------------------------------
+
+class TestSubtaskDescriptionPreview(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_desc_preview_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-desc-preview", js)
+
+    def test_js_desc_truncation(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("substring(0, 60)", js)
+
+    def test_css_desc_preview_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-desc-preview", css)
+
+
+# ---------------------------------------------------------------------------
+# 72. Detail panel task deps chips
+# ---------------------------------------------------------------------------
+
+class TestDetailTaskDepsChips(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_task_dep_chip(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("task-dep-chip", js)
+
+    def test_js_chip_click_selects(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("selectTask(dep)", js)
+
+    def test_css_chip_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".task-dep-chip", css)
+
+    def test_css_chip_hover(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".task-dep-chip:hover", css)
+
+
+# ---------------------------------------------------------------------------
+# 73. Header active tasks count
+# ---------------------------------------------------------------------------
+
+class TestHeaderActiveTasksCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_active_tasks_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-active-tasks", js)
+
+    def test_html_active_tasks_span(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-active-tasks", html)
+
+    def test_js_active_filter(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("active", js)
+
+
+# ---------------------------------------------------------------------------
+# 74. Keyboard `d` toggle detail panel
+# ---------------------------------------------------------------------------
+
+class TestKeyboardToggleDetail(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_d_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"d"', js)
+
+    def test_js_detail_panel_toggle(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-panel", js)
+
+
 if __name__ == "__main__":
     unittest.main()
