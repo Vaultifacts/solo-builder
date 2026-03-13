@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.59.0 — 2026-03-13  Step Number + Branch Badge + MD Export + Verify Key + Dot Pulse
+
+- **Subtask row step number**: Shows `sN` step number on each subtask row for quick reference
+- **Card branch count badge**: Shows "N branches" label on each task card
+- **Detail panel markdown export**: 📋 MD button copies detail panel as markdown checklist to clipboard
+- **Keyboard `v` verify first unverified**: Press v to quick-verify the first non-verified subtask in selected task
+- **Running dot pulse animation**: Cyan status dots on running subtasks pulse with opacity animation
+
+### Stats
+- 328 dashboard E2E smoke tests (15 new), 2908 total tests, 0 failures
+- 97 UX features across v6.39–v6.59
+
 ## v6.58.0 — 2026-03-13  Output Copy + Filter Pills + Card Goal + Select All + Completion Flash
 
 - **Subtask output copy button**: 📋 button on subtask rows copies full output to clipboard

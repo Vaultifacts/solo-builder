@@ -540,6 +540,17 @@ export function renderGrid(tasks) {
       lastVEl.textContent = "";
     }
 
+    // Card branch count badge
+    let branchBadge = card.querySelector(".card-branch-count");
+    if (_bEntries.length > 0) {
+      if (!branchBadge) {
+        branchBadge = document.createElement("span");
+        branchBadge.className = "card-branch-count";
+        card.querySelector(".card-counts").after(branchBadge);
+      }
+      branchBadge.textContent = `${_bEntries.length} branch${_bEntries.length !== 1 ? "es" : ""}`;
+    }
+
     // Card goal text
     let goalEl = card.querySelector(".card-goal");
     if (t.goal) {
@@ -747,6 +758,25 @@ export function renderDetail(t) {
     });
     toast("Sorted subtasks by status");
   });
+  const mdExportBtn = document.createElement("button");
+  mdExportBtn.className = "toolbar-btn";
+  mdExportBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  mdExportBtn.title = "Copy detail as Markdown";
+  mdExportBtn.textContent = "📋 MD";
+  mdExportBtn.addEventListener("click", () => {
+    let md = `# ${t.id}\n**Status:** ${t.status || "Pending"}\n**Progress:** ${_verified}/${_total} (${pct}%)\n\n`;
+    Object.entries(branches).forEach(([bname, bdata]) => {
+      md += `## ${bname}\n`;
+      Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+        const check = s.status === "Verified" ? "x" : " ";
+        md += `- [${check}] ${sname} — ${s.status}\n`;
+      });
+      md += "\n";
+    });
+    navigator.clipboard.writeText(md).then(() => toast("Copied detail as Markdown")).catch(() => {});
+  });
+  statusDiv.append(" ", mdExportBtn);
+
   statusDiv.append(" ", sortBtn);
 
   const expandAllBtn = document.createElement("button");
@@ -988,6 +1018,11 @@ export function renderDetail(t) {
         transSpan.textContent = `${_prev}→${s.status}`;
       }
 
+      // Subtask step number
+      const stStep = document.createElement("span");
+      stStep.className = "st-step-num";
+      if (s.last_update != null) stStep.textContent = `s${s.last_update}`;
+
       // Subtask elapsed time
       const stElapsed = document.createElement("span");
       stElapsed.className = "st-elapsed";
@@ -996,6 +1031,7 @@ export function renderDetail(t) {
 
       row.append(cb, dot, nameSpan);
       if (transSpan) row.appendChild(transSpan);
+      row.appendChild(stStep);
       row.appendChild(stElapsed);
 
       // Inline verify button (non-verified only)

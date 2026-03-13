@@ -758,6 +758,17 @@
   .task-dep-chip { font-size: 9px; padding: 0 4px; border-radius: 3px; background: var(--bg3); color: #ff9800; cursor: pointer; }
   .task-dep-chip:hover { background: #ff9800; color: #000; }
 
+  /* ── Subtask step number ───────────────────────────────── */
+  .st-step-num { font-size: 8px; color: var(--dim); margin-left: 4px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  /* ── Card branch count badge ──────────────────────────── */
+  .card-branch-count { display: block; font-size: 8px; color: var(--dim); }
+  /* ── Running dot pulse ────────────────────────────────── */
+  @keyframes dot-pulse-anim {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .st-dot.dot-cyan { animation: dot-pulse-anim 1.5s ease-in-out infinite; }
+
   /* ── Subtask output copy button ─────────────────────────── */
   .st-copy-btn { background: none; border: none; font-size: 9px; cursor: pointer; padding: 0 2px; opacity: 0.4; flex-shrink: 0; }
   .st-copy-btn:hover { opacity: 1; }

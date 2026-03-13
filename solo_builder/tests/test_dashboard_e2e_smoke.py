@@ -2149,5 +2149,109 @@ class TestCardCompletionFlash(unittest.TestCase):
         self.assertIn("card-complete-flash-anim", css)
 
 
+# ---------------------------------------------------------------------------
+# 85. Subtask row step number
+# ---------------------------------------------------------------------------
+
+class TestSubtaskStepNumber(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_step_num_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-step-num", js)
+
+    def test_js_step_prefix(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("`s${s.last_update}`", js)
+
+    def test_css_step_num_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-step-num", css)
+
+
+# ---------------------------------------------------------------------------
+# 86. Card branch count badge
+# ---------------------------------------------------------------------------
+
+class TestCardBranchCountBadge(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_branch_count_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-branch-count", js)
+
+    def test_js_branch_label(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch", js)
+
+    def test_css_branch_count_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-branch-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 87. Detail panel markdown export
+# ---------------------------------------------------------------------------
+
+class TestDetailMarkdownExport(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_md_export_button(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("MD", js)
+
+    def test_js_markdown_format(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Copied detail as Markdown", js)
+
+    def test_js_checklist_format(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("- [", js)
+
+
+# ---------------------------------------------------------------------------
+# 88. Keyboard `v` verify first unverified
+# ---------------------------------------------------------------------------
+
+class TestKeyboardVerifyFirst(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_v_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"v"', js)
+
+    def test_js_quick_verify_call(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_quickVerify", js)
+
+    def test_js_all_verified_message(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("All subtasks already verified", js)
+
+
+# ---------------------------------------------------------------------------
+# 89. Running dot pulse animation
+# ---------------------------------------------------------------------------
+
+class TestRunningDotPulse(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_css_dot_pulse_keyframes(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("dot-pulse-anim", css)
+
+    def test_css_dot_cyan_animation(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-dot.dot-cyan", css)
+
+    def test_css_pulse_opacity(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        idx = css.index("dot-pulse-anim")
+        snippet = css[idx:idx+120]
+        self.assertIn("opacity", snippet)
+
+
 if __name__ == "__main__":
     unittest.main()

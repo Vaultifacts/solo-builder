@@ -572,6 +572,19 @@ document.addEventListener("keydown", function (e) {
     toast(isMuted === "1" ? "Sound muted" : "Sound unmuted");
     return;
   }
+  if (e.key === "v" && state.selectedTask && state.tasksCache[state.selectedTask]) {
+    const t = state.tasksCache[state.selectedTask];
+    for (const b of Object.values(t.branches || {})) {
+      for (const [sn, s] of Object.entries(b.subtasks || {})) {
+        if (s.status !== "Verified") {
+          window._quickVerify(sn);
+          return;
+        }
+      }
+    }
+    toast("All subtasks already verified");
+    return;
+  }
   if (e.key === "a") {
     const cards = document.querySelectorAll(".task-card:not([style*='display: none'])");
     if (cards.length === 0) return;
