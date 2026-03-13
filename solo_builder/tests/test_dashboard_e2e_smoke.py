@@ -208,6 +208,7 @@ _PANEL_SUBMODULES = [
     "dashboard_analytics.js",
     "dashboard_svg.js",
     "dashboard_keyboard.js",
+    "dashboard_graph.js",
 ]
 
 
@@ -606,6 +607,92 @@ class TestScrollToTop(unittest.TestCase):
     def test_scroll_top_in_select_task(self):
         src = self._JS_PATH.read_text(encoding="utf-8")
         self.assertIn("scrollTop = 0", src)
+
+
+# ---------------------------------------------------------------------------
+# 16. Command palette (Ctrl+K)
+# ---------------------------------------------------------------------------
+
+class TestCommandPalette(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def setUp(self):
+        self._src = self._JS_PATH.read_text(encoding="utf-8")
+
+    def test_palette_function_exists(self):
+        self.assertIn("_showPalette", self._src)
+
+    def test_palette_builds_cmds(self):
+        self.assertIn("_buildPaletteCmds", self._src)
+
+    def test_palette_fuzzy_filter(self):
+        self.assertIn(".includes(", self._src)
+
+    def test_palette_ctrl_k_binding(self):
+        self.assertIn('key === "k"', self._src)
+
+
+# ---------------------------------------------------------------------------
+# 17. Sticky detail header
+# ---------------------------------------------------------------------------
+
+class TestStickyHeader(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_css_sticky_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-sticky-header", css)
+        self.assertIn("position: sticky", css)
+
+    def test_js_creates_sticky_header(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-sticky-header", js)
+
+
+# ---------------------------------------------------------------------------
+# 18. Collapsible branch blocks
+# ---------------------------------------------------------------------------
+
+class TestCollapsibleBranches(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_css_collapsed_hides_subtasks(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".collapsed", css)
+
+    def test_js_toggle_collapsed(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("collapsed", js)
+
+    def test_js_collapse_arrow(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("\u25be", js)  # ▾
+
+
+# ---------------------------------------------------------------------------
+# 19. Graph module extraction
+# ---------------------------------------------------------------------------
+
+class TestGraphModule(unittest.TestCase):
+    _GRAPH_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_graph.js"
+    _MAIN_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_graph_module_exists(self):
+        self.assertTrue(self._GRAPH_PATH.exists())
+
+    def test_exports_render_graph(self):
+        src = self._GRAPH_PATH.read_text(encoding="utf-8")
+        self.assertIn("export function renderGraph", src)
+
+    def test_graph_imports_state(self):
+        src = self._GRAPH_PATH.read_text(encoding="utf-8")
+        self.assertIn('import { state }', src)
+
+    def test_main_imports_graph(self):
+        src = self._MAIN_PATH.read_text(encoding="utf-8")
+        self.assertIn("dashboard_graph.js", src)
 
 
 if __name__ == "__main__":

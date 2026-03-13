@@ -283,10 +283,13 @@
     padding: 20px 0;
     text-align: center;
   }
+  .detail-sticky-header { position: sticky; top: 0; background: var(--bg); z-index: 5; padding-bottom: 4px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
   .detail-task-id   { color: var(--cyan); font-size: 14px; font-weight: bold; margin-bottom: 6px; }
   .detail-status    { margin-bottom: 10px; }
   .branch-block     { margin-bottom: 10px; }
-  .branch-name      { color: var(--yellow); font-size: 11px; margin-bottom: 4px; }
+  .branch-name      { color: var(--yellow); font-size: 11px; margin-bottom: 4px; user-select: none; }
+  .branch-collapse-arrow { display: inline-block; width: 10px; font-size: 9px; }
+  .branch-block.collapsed .subtask-row { display: none; }
   .subtask-row {
     display: flex;
     align-items: flex-start;
@@ -530,6 +533,9 @@
   [data-theme="light"] #btn-run      { background: #e0f5e0; }
   [data-theme="light"] #btn-auto     { background: #f0e8f5; }
   [data-theme="light"] .task-card.active { background: #e0f2f5; }
+  [data-theme="light"] .task-card.status-complete { border-left-color: #16a34a; }
+  [data-theme="light"] .task-card.status-running  { border-left-color: #0891b2; }
+  [data-theme="light"] .task-card.status-pending  { border-left-color: #ca8a04; }
 
   /* ── Touch targets ───────────────────────────────────────── */
   .toolbar-btn {

@@ -15,6 +15,7 @@ const _SHORTCUTS = [
   ["t", "Toggle dark/light theme"],
   ["/", "Focus task search"],
   ["1-9", "Switch to sidebar tab by position"],
+  ["Ctrl+K", "Command palette"],
   ["Ctrl+Shift+E", "Copy task summary to clipboard"],
   ["g h", "Go to Health tab"],
   ["g s", "Go to Settings tab"],
@@ -94,7 +95,83 @@ async function _copyTaskSummary() {
 let _pendingG = false;
 const _GO_MAP = { h: "health", s: "settings", b: "branches", m: "metrics", d: "diff", p: "priority", a: "agents", f: "forecast" };
 
+/* ── Command palette (Ctrl+K) ──────────────────────────────── */
+const _PALETTE_CMDS = [];
+
+function _buildPaletteCmds() {
+  _PALETTE_CMDS.length = 0;
+  // Tabs
+  [...document.querySelectorAll(".sidebar-tab")].forEach(t => {
+    const name = t.dataset.tab || t.textContent.trim().toLowerCase();
+    _PALETTE_CMDS.push({ label: `Tab: ${name}`, action: () => window.switchTab(name) });
+  });
+  // Tasks
+  (state.allTasks || []).forEach(t => {
+    _PALETTE_CMDS.push({ label: `Task: ${t.id}`, action: () => window.selectTask(t.id) });
+  });
+  // Actions
+  _PALETTE_CMDS.push({ label: "Toggle theme", action: () => window.toggleTheme() });
+  _PALETTE_CMDS.push({ label: "Pause/resume polling", action: () => { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); } });
+  _PALETTE_CMDS.push({ label: "Copy task summary", action: () => _copyTaskSummary() });
+  _PALETTE_CMDS.push({ label: "Toggle mute", action: () => window.toggleMute?.() });
+  _PALETTE_CMDS.push({ label: "Keyboard shortcuts", action: () => _showShortcuts() });
+}
+
+function _showPalette() {
+  let existing = document.getElementById("cmd-palette");
+  if (existing) { existing.remove(); return; }
+  _buildPaletteCmds();
+  const overlay = document.createElement("div");
+  overlay.id = "cmd-palette";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:20vh";
+  overlay.addEventListener("click", (ev) => { if (ev.target === overlay) overlay.remove(); });
+  const box = document.createElement("div");
+  box.style.cssText = "background:var(--surface);border:1px solid var(--border);border-radius:8px;width:90%;max-width:400px;max-height:60vh;display:flex;flex-direction:column;overflow:hidden";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Type to search commands...";
+  input.style.cssText = "padding:10px 14px;font-size:13px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font-family:var(--font);outline:none";
+  const list = document.createElement("div");
+  list.style.cssText = "overflow-y:auto;max-height:50vh";
+  let _sel = 0;
+
+  function render(q) {
+    const filtered = q ? _PALETTE_CMDS.filter(c => c.label.toLowerCase().includes(q.toLowerCase())) : _PALETTE_CMDS;
+    _sel = Math.min(_sel, Math.max(0, filtered.length - 1));
+    list.replaceChildren();
+    filtered.forEach((cmd, i) => {
+      const row = document.createElement("div");
+      row.style.cssText = `padding:6px 14px;font-size:11px;cursor:pointer;${i === _sel ? "background:var(--cyan);color:#000" : "color:var(--text)"}`;
+      row.textContent = cmd.label;
+      row.addEventListener("click", () => { overlay.remove(); cmd.action(); });
+      row.addEventListener("mouseenter", () => { _sel = i; render(input.value); });
+      list.appendChild(row);
+    });
+  }
+
+  input.addEventListener("input", () => { _sel = 0; render(input.value); });
+  input.addEventListener("keydown", (ev) => {
+    const q = input.value;
+    const filtered = q ? _PALETTE_CMDS.filter(c => c.label.toLowerCase().includes(q.toLowerCase())) : _PALETTE_CMDS;
+    if (ev.key === "ArrowDown") { ev.preventDefault(); _sel = Math.min(_sel + 1, filtered.length - 1); render(q); }
+    else if (ev.key === "ArrowUp") { ev.preventDefault(); _sel = Math.max(_sel - 1, 0); render(q); }
+    else if (ev.key === "Enter" && filtered[_sel]) { overlay.remove(); filtered[_sel].action(); }
+    else if (ev.key === "Escape") { overlay.remove(); }
+  });
+
+  box.append(input, list);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  render("");
+  input.focus();
+}
+
 document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key === "k") {
+    e.preventDefault();
+    _showPalette();
+    return;
+  }
   if (e.ctrlKey && e.shiftKey && e.key === "E") {
     e.preventDefault();
     _copyTaskSummary();

@@ -373,7 +373,11 @@ export function renderDetail(t) {
     });
   }
 
-  const nodes = [taskIdDiv, progressRow, branchProgressDiv, statusDiv];
+  const stickyHeader = document.createElement("div");
+  stickyHeader.className = "detail-sticky-header";
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, statusDiv);
+
+  const nodes = [stickyHeader];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
@@ -381,7 +385,15 @@ export function renderDetail(t) {
 
     const branchNameEl = document.createElement("div");
     branchNameEl.className = "branch-name";
-    branchNameEl.textContent = bname;
+    const collapseArrow = document.createElement("span");
+    collapseArrow.className = "branch-collapse-arrow";
+    collapseArrow.textContent = "▾";
+    branchNameEl.append(collapseArrow, " " + bname);
+    branchNameEl.style.cursor = "pointer";
+    branchNameEl.addEventListener("click", () => {
+      branchBlock.classList.toggle("collapsed");
+      collapseArrow.textContent = branchBlock.classList.contains("collapsed") ? "▸" : "▾";
+    });
     branchBlock.appendChild(branchNameEl);
 
     Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {

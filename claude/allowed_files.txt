@@ -95,6 +95,7 @@ solo_builder/tests/test_api_integration.py
 solo_builder/tests/test_utils_standalone.py
 solo_builder/api/static/dashboard_svg.js
 solo_builder/api/static/dashboard_keyboard.js
+solo_builder/api/static/dashboard_graph.js
 CHANGELOG.md
 tools/lint_dashboard_handlers.js
 .githooks/pre-commit

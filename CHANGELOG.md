@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.45.0 — 2026-03-12  Light Theme Status + Command Palette + Sticky Header + Collapsible Branches + Graph Module
+
+- **Light theme status card colors**: `[data-theme="light"]` variants for `.status-complete/running/pending` task cards — maintains WCAG AA contrast in light mode
+- **Ctrl+K command palette**: Fuzzy-search overlay across tabs, tasks, and actions (toggle theme, pause polling, copy summary, toggle mute, show shortcuts). Arrow keys navigate, Enter executes, Escape closes
+- **Sticky detail header**: Task ID, progress bar, branch progress, and status pinned at top of detail panel via `position: sticky; top: 0`
+- **Collapsible branch blocks**: Click branch name header to toggle `▾/▸` — collapsed branches hide subtask rows
+- **`dashboard_graph.js` extraction**: 113 lines (DAG SVG rendering + grid/graph toggle) extracted from dashboard.js. 19 ES modules total
+- **13 new tests**: command palette (4), sticky header (2), collapsible branches (3), graph module (4)
+- **97 dashboard E2E tests**, 2677 total, 0 failures
+
 ## v6.44.0 — 2026-03-12  Reduced Motion + Status Bar + Clipboard Export + Keyboard Module
 
 - **`prefers-reduced-motion`**: All CSS animations and transitions disabled when OS reduce-motion is set
