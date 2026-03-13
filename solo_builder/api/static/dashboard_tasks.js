@@ -195,6 +195,20 @@ export async function pollStatus() {
     updateNotifBadge(d.step);
     document.getElementById("hdr-rate").textContent =
       state.rateEma !== null ? state.rateEma.toFixed(1) : "—";
+    // ETA estimate
+    const etaEl = document.getElementById("hdr-eta");
+    if (etaEl) {
+      const remaining = d.total - d.verified;
+      if (d.complete) { etaEl.textContent = "done"; }
+      else if (state.rateEma > 0 && remaining > 0) {
+        const stepsLeft = Math.ceil(remaining / state.rateEma);
+        const secsLeft = stepsLeft * (state.pollMs / 1000);
+        if (secsLeft < 60) etaEl.textContent = `~${Math.round(secsLeft)}s`;
+        else if (secsLeft < 3600) etaEl.textContent = `~${Math.round(secsLeft / 60)}m`;
+        else etaEl.textContent = `~${(secsLeft / 3600).toFixed(1)}h`;
+        etaEl.title = `~${stepsLeft} steps remaining at ${state.rateEma.toFixed(2)} verified/step`;
+      } else { etaEl.textContent = ""; }
+    }
     document.title = d.complete
       ? "Solo Builder ✓ Complete"
       : `Solo Builder — Step ${d.step} (${d.pct}%)`;
@@ -398,6 +412,15 @@ export function renderGrid(tasks) {
       (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
       (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "");
 
+    // Total subtask count label
+    let stCountEl = card.querySelector(".card-st-count");
+    if (!stCountEl) {
+      stCountEl = document.createElement("span");
+      stCountEl.className = "card-st-count";
+      card.querySelector(".card-counts").after(stCountEl);
+    }
+    stCountEl.textContent = t.subtask_count > 0 ? `${t.subtask_count} subtask${t.subtask_count !== 1 ? "s" : ""}` : "";
+
     // Running subtask name on card
     let runNameEl = card.querySelector(".card-running-name");
     const _firstRunning = _findFirstRunning(t);
@@ -550,6 +573,21 @@ export function renderDetail(t) {
   timelineBtn.textContent = "⏱ Timeline";
   timelineBtn.addEventListener("click", () => window.toggleTaskTimeline(t.id));
   statusDiv.append(" ", timelineBtn);
+
+  const scrollRunBtn = document.createElement("button");
+  scrollRunBtn.className = "toolbar-btn";
+  scrollRunBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  scrollRunBtn.title = "Scroll to first running subtask";
+  scrollRunBtn.textContent = "▶ Running";
+  scrollRunBtn.addEventListener("click", () => {
+    const dc = document.getElementById("detail-content");
+    const dots = dc.querySelectorAll(".st-dot.dot-cyan");
+    if (dots.length > 0) {
+      const row = dots[0].closest(".subtask-row");
+      if (row) { row.scrollIntoView({ behavior: "smooth", block: "center" }); row.style.outline = "2px solid var(--cyan)"; setTimeout(() => { row.style.outline = ""; }, 1500); }
+    } else { toast("No running subtasks"); }
+  });
+  statusDiv.append(" ", scrollRunBtn);
 
   const depsBtn = document.createElement("button");
   depsBtn.className = "toolbar-btn";
@@ -773,13 +811,24 @@ export function renderDetail(t) {
       nameSpan.className = "st-name";
       nameSpan.textContent = sname;
 
+      // Status transition arrow (if recently changed)
+      let transSpan = null;
+      const _prev = _prevStatuses[sname];
+      if (_prev && _prev !== (s.status || "Pending")) {
+        transSpan = document.createElement("span");
+        transSpan.className = "st-transition";
+        transSpan.textContent = `${_prev}→${s.status}`;
+      }
+
       // Subtask elapsed time
       const stElapsed = document.createElement("span");
       stElapsed.className = "st-elapsed";
       const _stTime = _relativeTime(s.last_update_time);
       if (_stTime) stElapsed.textContent = _stTime;
 
-      row.append(cb, dot, nameSpan, stElapsed);
+      row.append(cb, dot, nameSpan);
+      if (transSpan) row.appendChild(transSpan);
+      row.appendChild(stElapsed);
 
       if (s.depends_on && s.depends_on.length) {
         const depWrap = document.createElement("span");

@@ -1586,5 +1586,108 @@ class TestKeyboardNextUnverified(unittest.TestCase):
         self.assertIn("All tasks fully verified", js)
 
 
+# ---------------------------------------------------------------------------
+# 60. Subtask row status transition arrow
+# ---------------------------------------------------------------------------
+
+class TestSubtaskStatusTransition(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_transition_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-transition", js)
+
+    def test_js_prev_status_check(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_prevStatuses", js)
+
+    def test_css_transition_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-transition", css)
+
+
+# ---------------------------------------------------------------------------
+# 61. Task card total subtask count
+# ---------------------------------------------------------------------------
+
+class TestCardSubtaskCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_st_count_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-st-count", js)
+
+    def test_js_subtask_label(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("subtask", js)
+
+    def test_css_st_count_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-st-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 62. Detail panel scroll-to-running
+# ---------------------------------------------------------------------------
+
+class TestScrollToRunning(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_scroll_run_button(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Running", js)
+
+    def test_js_scroll_to_running(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Scroll to first running subtask", js)
+
+    def test_js_dot_cyan_selector(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("dot-cyan", js)
+
+
+# ---------------------------------------------------------------------------
+# 63. Header ETA estimate
+# ---------------------------------------------------------------------------
+
+class TestHeaderETA(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_eta_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-eta", js)
+
+    def test_html_eta_span(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("hdr-eta", html)
+
+    def test_js_eta_calculation(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("stepsLeft", js)
+
+
+# ---------------------------------------------------------------------------
+# 64. Keyboard `x` expand/collapse branches
+# ---------------------------------------------------------------------------
+
+class TestKeyboardExpandCollapse(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_x_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"x"', js)
+
+    def test_js_calls_expand_all(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("expandAllBranches", js)
+
+    def test_js_calls_collapse_all(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("collapseAllBranches", js)
+
+
 if __name__ == "__main__":
     unittest.main()

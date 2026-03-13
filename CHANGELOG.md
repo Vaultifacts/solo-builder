@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.54.0 — 2026-03-12  Status Transition + Subtask Count + Scroll-to-Running + ETA + Expand Key
+
+- **Subtask status transition arrow**: Shows "Pending→Running" label on recently changed subtask rows
+- **Task card total subtask count**: "20 subtasks" label below counts on each card
+- **Scroll-to-running button**: "▶ Running" button in detail panel scrolls to and highlights first running subtask
+- **Header ETA estimate**: Estimated time to completion based on verified/step rate (e.g. "~5m")
+- **Keyboard `x` expand/collapse**: Press `x` to toggle all branch blocks in detail panel
+- **15 new tests**: transition (3), subtask count (3), scroll-to-running (3), ETA (3), expand key (3)
+- **243 dashboard E2E tests**, 2763 total, 0 failures
+
 ## v6.53.0 — 2026-03-12  Star Favorite + Subtask Elapsed + Task Notes + Fraction + Next Unverified
 
 - **Task card star (favorite)**: Toggle ★/☆ on task cards; persisted in localStorage (`sb-starred-tasks`)

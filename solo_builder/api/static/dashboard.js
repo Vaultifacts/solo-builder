@@ -548,6 +548,12 @@ document.addEventListener("keydown", function (e) {
     navigator.clipboard.writeText(state.selectedTask).then(() => toast(`Copied: ${state.selectedTask}`)).catch(() => {});
     return;
   }
+  if (e.key === "x" && state.selectedTask) {
+    const collapsed = document.querySelectorAll("#detail-content .branch-block.collapsed");
+    if (collapsed.length > 0) window.expandAllBranches();
+    else window.collapseAllBranches();
+    return;
+  }
   if (e.key === "r") { window.runStep(); return; }
   if (e.key === "g") { window.toggleView(); return; }
   if (e.key === "b") { window.switchTab("branches"); return; }
