@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.51.0 — 2026-03-12  Running Name + Branch % + Copy Key + Row Hover + Verified Counter
+
+- **Task card running subtask name**: Shows the currently running subtask name (e.g. "▶ ST-042") on each task card
+- **Branch completion percentage**: "75%" label next to branch name in detail panel headers
+- **Keyboard `c` to copy task ID**: Press `c` with a task selected to copy its ID to clipboard
+- **Subtask row hover highlight**: Subtask rows highlight with background on hover for readability
+- **Detail panel verified counter**: Green verified/total (pct%) summary in detail sticky header
+- **12 new tests**: running name (3), copy key (2), row hover (2), branch % (3), verified counter (2)
+- **196 dashboard E2E tests**, 2716 total, 0 failures
+
 ## v6.50.0 — 2026-03-12  Status Emoji + Search Count + Auto-Collapse + Sort Subtasks + Progress Tooltip
 
 - **Task card status emoji**: ✓/▶/◯/⏸/⊘ prefix on card mini-badge for quick visual status identification

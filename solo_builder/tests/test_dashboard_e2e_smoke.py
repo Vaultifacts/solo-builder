@@ -1278,5 +1278,99 @@ class TestHeaderProgressTooltip(unittest.TestCase):
         self.assertIn("Pending:", js)
 
 
+# ---------------------------------------------------------------------------
+# 45. Task card running subtask name
+# ---------------------------------------------------------------------------
+
+class TestCardRunningSubtaskName(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_find_first_running(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_findFirstRunning", js)
+
+    def test_js_card_running_name_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-running-name", js)
+
+    def test_css_running_name_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-running-name", css)
+
+
+# ---------------------------------------------------------------------------
+# 46. Keyboard shortcut `c` to copy task ID
+# ---------------------------------------------------------------------------
+
+class TestKeyboardCopyTaskId(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_c_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"c"', js)
+
+    def test_js_clipboard_write(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("navigator.clipboard.writeText", js)
+
+
+# ---------------------------------------------------------------------------
+# 47. Subtask row hover highlight
+# ---------------------------------------------------------------------------
+
+class TestSubtaskRowHover(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_css_hover_rule(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".subtask-row:hover", css)
+
+    def test_css_hover_background(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        # Verify hover sets a background
+        idx = css.index(".subtask-row:hover")
+        snippet = css[idx:idx+80]
+        self.assertIn("background", snippet)
+
+
+# ---------------------------------------------------------------------------
+# 48. Branch completion percentage
+# ---------------------------------------------------------------------------
+
+class TestBranchCompletionPercentage(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_branch_pct_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-pct", js)
+
+    def test_js_branch_pct_calc(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branchPctSpan", js)
+
+    def test_css_branch_pct_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-pct", css)
+
+
+# ---------------------------------------------------------------------------
+# 49. Detail panel verified counter (green text summary)
+# ---------------------------------------------------------------------------
+
+class TestDetailVerifiedCounter(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_detail_prog_pct(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-prog-pct", js)
+
+    def test_js_verified_total_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        # Format: verified/total (pct%)
+        self.assertIn("_verified}/${_total}", js)
+
+
 if __name__ == "__main__":
     unittest.main()

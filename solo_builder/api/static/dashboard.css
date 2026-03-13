@@ -715,6 +715,12 @@
   #poll-countdown { font-variant-numeric: tabular-nums; }
   /* ── Search match count ──────────────────────────────── */
   #search-match-count { font-variant-numeric: tabular-nums; }
+  /* ── Card running subtask name ───────────────────────── */
+  .card-running-name { font-size: 9px; color: var(--cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  /* ── Subtask row hover ───────────────────────────────── */
+  .subtask-row:hover { background: var(--bg3); }
+  /* ── Branch percentage ───────────────────────────────── */
+  .branch-pct { font-size: 10px; color: var(--dim); margin-left: 4px; }
 
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {

@@ -530,6 +530,10 @@ document.addEventListener("keydown", function (e) {
     }
   }
 
+  if (e.key === "c" && state.selectedTask) {
+    navigator.clipboard.writeText(state.selectedTask).then(() => toast(`Copied: ${state.selectedTask}`)).catch(() => {});
+    return;
+  }
   if (e.key === "r") { window.runStep(); return; }
   if (e.key === "g") { window.toggleView(); return; }
   if (e.key === "b") { window.switchTab("branches"); return; }

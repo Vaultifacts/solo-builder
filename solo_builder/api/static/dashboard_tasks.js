@@ -100,6 +100,16 @@ function _relativeTime(isoStr) {
 const _STATUS_EMOJI = { Verified: "✓", Running: "▶", Review: "⏸", Pending: "◯", Blocked: "⊘" };
 function _statusEmoji(status) { return _STATUS_EMOJI[status] || "◯"; }
 
+/* ── Find first running subtask name ───────────────────────── */
+function _findFirstRunning(t) {
+  for (const b of Object.values(t.branches || {})) {
+    for (const [sn, s] of Object.entries(b.subtasks || {})) {
+      if (s.status === "Running") return sn;
+    }
+  }
+  return null;
+}
+
 function _updateTasksPager() {
   const pager = document.getElementById("tasks-pager");
   const lbl   = document.getElementById("tasks-page-label");
@@ -344,6 +354,21 @@ export function renderGrid(tasks) {
       `${t.verified_subtasks}/${t.subtask_count} verified` +
       (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
       (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "");
+
+    // Running subtask name on card
+    let runNameEl = card.querySelector(".card-running-name");
+    const _firstRunning = _findFirstRunning(t);
+    if (_firstRunning) {
+      if (!runNameEl) {
+        runNameEl = document.createElement("div");
+        runNameEl.className = "card-running-name";
+        card.querySelector(".card-counts").after(runNameEl);
+      }
+      runNameEl.textContent = `▶ ${_firstRunning}`;
+      runNameEl.title = `Currently running: ${_firstRunning}`;
+    } else if (runNameEl) {
+      runNameEl.textContent = "";
+    }
 
     const depEl = card.querySelector(".card-deps");
     if (t.depends_on && t.depends_on.length) {
@@ -617,7 +642,13 @@ export function renderDetail(t) {
         readinessDot.title = `0/${_bs.total} verified — not started`;
       }
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot);
+    const branchPctSpan = document.createElement("span");
+    branchPctSpan.className = "branch-pct";
+    if (_bs && _bs.total > 0) {
+      const bPct = Math.round(_bs.verified / _bs.total * 100);
+      branchPctSpan.textContent = ` ${bPct}%`;
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan);
     branchNameEl.style.cursor = "pointer";
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");
