@@ -424,5 +424,53 @@ class TestRunHistoryEndpoint(_Base):
         self.assertIn("count", data)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: export task/branch filters (lines 144, 146), CSV rows (162)
+# ---------------------------------------------------------------------------
+
+class TestHistoryExportFilters(_Base):
+    def _make_state(self):
+        return {"step": 3, "dag": {
+            "TASK-A": {"branches": {"main": {"subtasks": {
+                "ST-1": {"status": "Verified", "history": [{"step": 1, "status": "Running"}, {"step": 2, "status": "Verified"}]},
+            }}}},
+            "TASK-B": {"branches": {"dev": {"subtasks": {
+                "ST-2": {"status": "Running", "history": [{"step": 1, "status": "Running"}]},
+            }}}},
+        }}
+
+    def test_export_task_filter(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/history/export?format=json&task=TASK-A")
+        d = r.get_json()
+        self.assertTrue(all(e["task"] == "TASK-A" for e in d))
+
+    def test_export_branch_filter(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/history/export?format=json&branch=dev")
+        d = r.get_json()
+        self.assertTrue(all(e["branch"] == "dev" for e in d))
+
+    def test_export_csv_with_data_rows(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/history/export")
+        lines = r.data.decode("utf-8").strip().splitlines()
+        self.assertGreater(len(lines), 1)  # header + data rows
+
+
+# ---------------------------------------------------------------------------
+# Coverage: diff corrupt backup (lines 180-181)
+# ---------------------------------------------------------------------------
+
+class TestDiffCorruptBackup(_Base):
+    def test_diff_corrupt_backup_returns_500(self):
+        self._write_state()
+        backup = Path(str(self._state_path) + ".1")
+        backup.write_text("NOT JSON", encoding="utf-8")
+        r = self.client.get("/diff")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
+
+
 if __name__ == "__main__":
     unittest.main()

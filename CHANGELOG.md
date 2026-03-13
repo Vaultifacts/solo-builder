@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.79.0 — 2026-03-13  Coverage Push Round 6 — history 100%, subtasks 100%
+
+- **14 new tests** across 2 existing test files
+- `history.py` 97% → **100%** — export task/branch filters, CSV data rows, corrupt backup diff
+- `subtasks.py` 94% → **100%** — min_age filter (both endpoints), export ValueError handlers, task/branch/name filters, stalled task filter
+
+### Stats
+- 3260 total tests, 0 failures
+- 14 source modules now at 100% coverage
+
 ## v6.78.0 — 2026-03-13  Coverage Push Round 5 — aawo_bridge 100%, policy 100%
 
 - **15 new tests** across 2 existing test files

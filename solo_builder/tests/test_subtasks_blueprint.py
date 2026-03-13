@@ -575,5 +575,118 @@ class TestStalled(_Base):
         self.assertEqual(data["threshold"], 3)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: GET /subtasks min_age filter (line 64)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksMinAgeFilter(_Base):
+    def test_min_age_filters_non_running(self):
+        self._write_state(step=10, dag={
+            "T1": {"branches": {"m": {"subtasks": {
+                "ST-1": {"status": "Pending"},
+                "ST-2": {"status": "Running", "last_update": 2},
+                "ST-3": {"status": "Running", "last_update": 9},
+            }}}},
+        })
+        d = self.client.get("/subtasks?min_age=3").get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertNotIn("ST-1", names)  # Pending filtered out
+        self.assertIn("ST-2", names)     # Running, age=8 >= 3
+        self.assertNotIn("ST-3", names)  # Running, age=1 < 3 (line 64)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: /subtasks/export ValueError handlers (lines 111-120)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksExportValueErrors(_Base):
+    def test_export_invalid_min_age(self):
+        self._write_state()
+        r = self.client.get("/subtasks/export?min_age=abc")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_invalid_limit(self):
+        self._write_state()
+        r = self.client.get("/subtasks/export?limit=abc")
+        self.assertEqual(r.status_code, 200)
+
+    def test_export_invalid_page(self):
+        self._write_state()
+        r = self.client.get("/subtasks/export?page=abc")
+        self.assertEqual(r.status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: /subtasks/export filters (lines 124, 127, 133, 135-138)
+# ---------------------------------------------------------------------------
+
+class TestSubtasksExportFilters(_Base):
+    def _make_state(self):
+        return {"step": 10, "dag": {
+            "TASK-A": {"branches": {"main": {"subtasks": {
+                "ST-1": {"status": "Verified", "output": "done"},
+                "ST-2": {"status": "Running", "last_update": 2, "output": ""},
+            }}, "dev": {"subtasks": {
+                "ST-3": {"status": "Pending", "output": ""},
+            }}}},
+        }}
+
+    def test_export_task_filter(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/subtasks/export?format=json&task=TASK-A")
+        d = r.get_json()
+        self.assertGreater(d["total"], 0)
+
+    def test_export_task_filter_no_match(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/subtasks/export?format=json&task=NONEXISTENT")
+        d = r.get_json()
+        self.assertEqual(d["total"], 0)
+
+    def test_export_branch_filter(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/subtasks/export?format=json&branch=dev")
+        d = r.get_json()
+        self.assertEqual(d["total"], 1)
+
+    def test_export_name_filter(self):
+        self._state_path.write_text(json.dumps(self._make_state()), encoding="utf-8")
+        r = self.client.get("/subtasks/export?format=json&name=ST-1")
+        d = r.get_json()
+        self.assertEqual(d["total"], 1)
+
+    def test_export_min_age_filter(self):
+        # Add ST-4 Running with recent last_update (age < min_age)
+        state = self._make_state()
+        state["dag"]["TASK-A"]["branches"]["main"]["subtasks"]["ST-4"] = {"status": "Running", "last_update": 9, "output": ""}
+        self._state_path.write_text(json.dumps(state), encoding="utf-8")
+        r = self.client.get("/subtasks/export?format=json&min_age=3")
+        d = r.get_json()
+        names = [s["subtask"] for s in d["subtasks"]]
+        self.assertIn("ST-2", names)      # age=8 >= 3
+        self.assertNotIn("ST-4", names)   # age=1 < 3 (line 138)
+        self.assertNotIn("ST-1", names)   # Verified, not Running
+
+
+# ---------------------------------------------------------------------------
+# Coverage: /stalled task filter (line 379)
+# ---------------------------------------------------------------------------
+
+class TestStalledTaskFilter(_Base):
+    def test_stalled_task_filter(self):
+        self._write_state(step=10, dag={
+            "TASK-A": {"branches": {"m": {"subtasks": {
+                "ST-1": {"status": "Running", "last_update": 2},
+            }}}},
+            "TASK-B": {"branches": {"m": {"subtasks": {
+                "ST-2": {"status": "Running", "last_update": 2},
+            }}}},
+        })
+        d = self.client.get("/stalled?task=TASK-A").get_json()
+        tasks = [s["task"] for s in d["stalled"]]
+        self.assertIn("TASK-A", tasks)
+        self.assertNotIn("TASK-B", tasks)
+
+
 if __name__ == "__main__":
     unittest.main()
