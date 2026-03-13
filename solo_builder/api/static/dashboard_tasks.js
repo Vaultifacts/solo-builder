@@ -185,7 +185,10 @@ export async function pollStatus() {
     document.getElementById("hdr-pct").textContent      = d.pct + "%";
     const fracEl = document.getElementById("hdr-fraction");
     if (fracEl) fracEl.textContent = `${d.verified}/${d.total}`;
-    document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified` + (d.review > 0 ? ` · ${d.review}⏸` : "");
+    if (state._initialStep == null) state._initialStep = d.step;
+    const stepDelta = d.step - state._initialStep;
+    const deltaStr = stepDelta > 0 ? ` (+${stepDelta})` : "";
+    document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified${deltaStr}` + (d.review > 0 ? ` · ${d.review}⏸` : "");
     if (d.step > state.prevStep) {
       const delta = (d.verified - state.prevVerified) / (d.step - state.prevStep);
       state.rateEma = state.rateEma === null ? delta : 0.3 * delta + 0.7 * state.rateEma;
@@ -420,6 +423,38 @@ export function renderGrid(tasks) {
       card.querySelector(".card-counts").after(stCountEl);
     }
     stCountEl.textContent = t.subtask_count > 0 ? `${t.subtask_count} subtask${t.subtask_count !== 1 ? "s" : ""}` : "";
+
+    // Progress ring SVG
+    let ringEl = card.querySelector(".card-progress-ring");
+    if (!ringEl) {
+      const NS = "http://www.w3.org/2000/svg";
+      ringEl = document.createElementNS(NS, "svg");
+      ringEl.setAttribute("class", "card-progress-ring");
+      ringEl.setAttribute("width", "20");
+      ringEl.setAttribute("height", "20");
+      ringEl.setAttribute("viewBox", "0 0 20 20");
+      const bgCircle = document.createElementNS(NS, "circle");
+      bgCircle.setAttribute("cx", "10"); bgCircle.setAttribute("cy", "10");
+      bgCircle.setAttribute("r", "8"); bgCircle.setAttribute("fill", "none");
+      bgCircle.setAttribute("stroke", "var(--bg3)"); bgCircle.setAttribute("stroke-width", "2");
+      const fgCircle = document.createElementNS(NS, "circle");
+      fgCircle.setAttribute("class", "ring-fg");
+      fgCircle.setAttribute("cx", "10"); fgCircle.setAttribute("cy", "10");
+      fgCircle.setAttribute("r", "8"); fgCircle.setAttribute("fill", "none");
+      fgCircle.setAttribute("stroke", "var(--green)"); fgCircle.setAttribute("stroke-width", "2");
+      fgCircle.setAttribute("stroke-linecap", "round");
+      fgCircle.setAttribute("transform", "rotate(-90 10 10)");
+      const circ = 2 * Math.PI * 8;
+      fgCircle.setAttribute("stroke-dasharray", `${circ}`);
+      fgCircle.setAttribute("stroke-dashoffset", `${circ}`);
+      ringEl.append(bgCircle, fgCircle);
+      card.querySelector(".card-bar-bg").after(ringEl);
+    }
+    const _ringFg = ringEl.querySelector(".ring-fg");
+    if (_ringFg) {
+      const circ = 2 * Math.PI * 8;
+      _ringFg.setAttribute("stroke-dashoffset", `${circ - (pct / 100) * circ}`);
+    }
 
     // Running subtask name on card
     let runNameEl = card.querySelector(".card-running-name");
@@ -729,9 +764,17 @@ export function renderDetail(t) {
     });
   }
 
+  // Branch stats summary
+  const branchSummary = document.createElement("div");
+  branchSummary.className = "branch-stats-summary";
+  const completeBranches = _branchStats.filter(b => b.verified === b.total && b.total > 0).length;
+  branchSummary.textContent = _branchStats.length > 0
+    ? `${completeBranches}/${_branchStats.length} branches complete`
+    : "";
+
   const stickyHeader = document.createElement("div");
   stickyHeader.className = "detail-sticky-header";
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, statusDiv);
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusDiv);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -829,6 +872,19 @@ export function renderDetail(t) {
       row.append(cb, dot, nameSpan);
       if (transSpan) row.appendChild(transSpan);
       row.appendChild(stElapsed);
+
+      // Inline verify button (non-verified only)
+      if (s.status !== "Verified") {
+        const inlineVerify = document.createElement("button");
+        inlineVerify.className = "st-inline-verify";
+        inlineVerify.title = `Verify ${sname}`;
+        inlineVerify.textContent = "✓";
+        inlineVerify.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          window._quickVerify(sname);
+        });
+        row.appendChild(inlineVerify);
+      }
 
       if (s.depends_on && s.depends_on.length) {
         const depWrap = document.createElement("span");

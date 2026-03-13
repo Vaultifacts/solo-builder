@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.55.0 — 2026-03-12  Progress Ring + Inline Verify + Branch Stats + Step Delta + Focus Search
+
+- **Task card progress ring**: Tiny circular SVG progress indicator on each card with animated dash offset
+- **Subtask row inline verify button**: Small ✓ button on non-verified subtask rows for one-click verification
+- **Branch stats summary**: "3/5 branches complete" line in detail panel sticky header
+- **Header step delta**: Shows "+N" steps completed since page load next to step counter
+- **Keyboard `f` focus search**: Press `f` to focus and select the task search input
+- **15 new tests**: progress ring (4), inline verify (4), branch stats (3), step delta (2), focus search (2)
+- **258 dashboard E2E tests**, 2778 total, 0 failures
+
 ## v6.54.0 — 2026-03-12  Status Transition + Subtask Count + Scroll-to-Running + ETA + Expand Key
 
 - **Subtask status transition arrow**: Shows "Pending→Running" label on recently changed subtask rows

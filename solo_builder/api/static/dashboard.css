@@ -738,6 +738,13 @@
   .st-transition { font-size: 8px; color: var(--yellow); margin-left: 4px; flex-shrink: 0; }
   /* ── Card subtask count label ────────────────────────── */
   .card-st-count { display: block; font-size: 8px; color: var(--dim); }
+  /* ── Progress ring ───────────────────────────────────── */
+  .card-progress-ring { flex-shrink: 0; vertical-align: middle; margin-left: 4px; }
+  /* ── Inline verify button ────────────────────────────── */
+  .st-inline-verify { background: none; border: 1px solid var(--green); color: var(--green); font-size: 9px; border-radius: 3px; padding: 0 3px; cursor: pointer; margin-left: auto; flex-shrink: 0; opacity: 0.5; }
+  .st-inline-verify:hover { opacity: 1; background: var(--green); color: #000; }
+  /* ── Branch stats summary ────────────────────────────── */
+  .branch-stats-summary { font-size: 9px; color: var(--dim); margin: 2px 0; }
 
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {

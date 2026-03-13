@@ -1689,5 +1689,109 @@ class TestKeyboardExpandCollapse(unittest.TestCase):
         self.assertIn("collapseAllBranches", js)
 
 
+# ---------------------------------------------------------------------------
+# 65. Task card progress ring
+# ---------------------------------------------------------------------------
+
+class TestCardProgressRing(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_progress_ring_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-progress-ring", js)
+
+    def test_js_ring_fg_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("ring-fg", js)
+
+    def test_js_stroke_dashoffset(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("stroke-dashoffset", js)
+
+    def test_css_ring_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-progress-ring", css)
+
+
+# ---------------------------------------------------------------------------
+# 66. Subtask row inline verify button
+# ---------------------------------------------------------------------------
+
+class TestInlineVerifyButton(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_inline_verify_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-inline-verify", js)
+
+    def test_js_calls_quick_verify(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_quickVerify", js)
+
+    def test_css_inline_verify_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-inline-verify", css)
+
+    def test_css_hover_style(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-inline-verify:hover", css)
+
+
+# ---------------------------------------------------------------------------
+# 67. Detail panel branch stats summary
+# ---------------------------------------------------------------------------
+
+class TestBranchStatsSummary(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_branch_summary_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-stats-summary", js)
+
+    def test_js_complete_branches_count(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branches complete", js)
+
+    def test_css_summary_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-stats-summary", css)
+
+
+# ---------------------------------------------------------------------------
+# 68. Header step delta
+# ---------------------------------------------------------------------------
+
+class TestHeaderStepDelta(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_initial_step_tracking(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_initialStep", js)
+
+    def test_js_delta_display(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("deltaStr", js)
+
+
+# ---------------------------------------------------------------------------
+# 69. Keyboard `f` focus search
+# ---------------------------------------------------------------------------
+
+class TestKeyboardFocusSearch(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_f_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"f"', js)
+
+    def test_js_focus_and_select(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("ts.focus()", js)
+        self.assertIn("ts.select()", js)
+
+
 if __name__ == "__main__":
     unittest.main()
