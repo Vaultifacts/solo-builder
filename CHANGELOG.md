@@ -1,5 +1,18 @@
 # Changelog
 
+## v6.64.0 — 2026-03-13  Blueprint Coverage Push — triggers 100%, dag 98%, metrics 96%
+
+- **67 new blueprint tests** across 5 new test files
+- `triggers.py` 55% → **100%** — all 10 POST trigger endpoints fully covered
+- `dag.py` 67% → **98%** — summary, export, import with validation edge cases
+- `metrics.py` 75% → **96%** — agents, forecast, metrics, summary, export (CSV + JSON + filters)
+- `live_summary.py` 50% → **88%** — all 3 check runners with pass/fail/cached paths
+- `core.py` 82% → **87%** — status, heartbeat, health with edge cases
+
+### Stats
+- 3031 total tests, 0 failures
+- 67 new blueprint coverage tests
+
 ## v6.63.0 — 2026-03-13  Bar Tooltip + Stalled Badge + Status Label + Refresh Dot + Info Key
 
 - **Card progress bar tooltip**: Hover progress bar shows verified/total ratio with percentage

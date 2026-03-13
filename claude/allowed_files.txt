@@ -269,3 +269,8 @@ solo_builder/tests/test_query_cmds_deep.py
 solo_builder/tests/test_subtask_cmds.py
 solo_builder/tests/test_dashboard_health_smoke.py
 solo_builder/tests/test_arch_score_regression.py
+solo_builder/tests/test_triggers_blueprint.py
+solo_builder/tests/test_dag_blueprint.py
+solo_builder/tests/test_core_blueprint.py
+solo_builder/tests/test_live_summary_blueprint.py
+solo_builder/tests/test_metrics_blueprint.py
