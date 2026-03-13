@@ -3450,5 +3450,98 @@ class TestKeyboardScrollUnverified(unittest.TestCase):
         self.assertIn("Scroll to first unverified", js)
 
 
+# ---------------------------------------------------------------------------
+# 145. Subtask output line highlight
+# ---------------------------------------------------------------------------
+
+class TestOutputLineHighlight(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_out_line_err_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("out-line-err", js)
+
+    def test_js_line_split(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_outLines", js)
+
+    def test_css_line_err_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".out-line-err", css)
+
+
+# ---------------------------------------------------------------------------
+# 146. Card progress ring percentage text
+# ---------------------------------------------------------------------------
+
+class TestRingPercentageText(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_ring_pct_text_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("ring-pct-text", js)
+
+    def test_js_ring_text_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_ringPctText", js)
+
+
+# ---------------------------------------------------------------------------
+# 147. Branch subtask name list tooltip
+# ---------------------------------------------------------------------------
+
+class TestBranchSubtaskTooltip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_st_names_variable(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_stNames", js)
+
+    def test_js_tooltip_join(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_stNames.join", js)
+
+
+# ---------------------------------------------------------------------------
+# 148. Detail collapse verified branches button
+# ---------------------------------------------------------------------------
+
+class TestCollapseVerifiedButton(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_collapse_verified_btn(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("collapseVerifiedBtn", js)
+
+    def test_js_all_green_check(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("allGreen", js)
+
+    def test_js_collapse_verified_title(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Collapse only verified", js)
+
+
+# ---------------------------------------------------------------------------
+# 149. Keyboard `y` yank output
+# ---------------------------------------------------------------------------
+
+class TestKeyboardYankOutput(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_y_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"y"', js)
+
+    def test_js_clipboard_write(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("navigator.clipboard.writeText", js)
+
+    def test_js_y_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Yank", js)
+
+
 if __name__ == "__main__":
     unittest.main()

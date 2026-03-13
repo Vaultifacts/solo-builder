@@ -546,7 +546,12 @@ export function renderGrid(tasks) {
       const circ = 2 * Math.PI * 8;
       fgCircle.setAttribute("stroke-dasharray", `${circ}`);
       fgCircle.setAttribute("stroke-dashoffset", `${circ}`);
-      ringEl.append(bgCircle, fgCircle);
+      const ringText = document.createElementNS(NS, "text");
+      ringText.setAttribute("class", "ring-pct-text");
+      ringText.setAttribute("x", "10"); ringText.setAttribute("y", "10");
+      ringText.setAttribute("text-anchor", "middle"); ringText.setAttribute("dominant-baseline", "central");
+      ringText.setAttribute("font-size", "6"); ringText.setAttribute("fill", "var(--dim)");
+      ringEl.append(bgCircle, fgCircle, ringText);
       card.querySelector(".card-bar-bg").after(ringEl);
     }
     const _ringFg = ringEl.querySelector(".ring-fg");
@@ -557,6 +562,8 @@ export function renderGrid(tasks) {
       const _milestoneColor = pct >= 100 ? "var(--green)" : pct >= 75 ? "#22d3ee" : pct >= 50 ? "#eab308" : "var(--green)";
       _ringFg.setAttribute("stroke", _milestoneColor);
     }
+    const _ringPctText = ringEl.querySelector(".ring-pct-text");
+    if (_ringPctText) _ringPctText.textContent = pct > 0 ? `${pct}` : "";
 
     // Segmented status bar
     let segBar = card.querySelector(".card-seg-bar");
@@ -981,6 +988,24 @@ export function renderDetail(t) {
   collapseAllBtn.addEventListener("click", () => window.collapseAllBranches());
   statusDiv.append(" ", collapseAllBtn);
 
+  const collapseVerifiedBtn = document.createElement("button");
+  collapseVerifiedBtn.className = "toolbar-btn";
+  collapseVerifiedBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:2px";
+  collapseVerifiedBtn.title = "Collapse only verified branches";
+  collapseVerifiedBtn.textContent = "▸ ✓";
+  collapseVerifiedBtn.addEventListener("click", () => {
+    document.querySelectorAll("#detail-content .branch-block").forEach(bb => {
+      const dots = bb.querySelectorAll(".st-dot");
+      const allGreen = dots.length > 0 && [...dots].every(d => d.classList.contains("dot-green"));
+      if (allGreen) {
+        bb.classList.add("collapsed");
+        const arrow = bb.querySelector(".branch-collapse-arrow");
+        if (arrow) arrow.textContent = "▸";
+      }
+    });
+  });
+  statusDiv.append(" ", collapseVerifiedBtn);
+
   const branchNames = Object.keys(branches);
   if (branchNames.length > 1) {
     const branchSelect = document.createElement("select");
@@ -1308,6 +1333,11 @@ export function renderDetail(t) {
       branchBlock.classList.toggle("branch-compact");
     });
     branchNameEl.appendChild(compactToggle);
+    // Branch subtask name list tooltip
+    const _stNames = Object.keys(bdata.subtasks || {});
+    if (_stNames.length > 0) {
+      branchNameEl.title = `${bname} subtasks:\n${_stNames.join("\n")}`;
+    }
     branchBlock.appendChild(branchNameEl);
 
     Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
@@ -1576,7 +1606,12 @@ export function renderDetail(t) {
 
         const expandContent = document.createElement("div");
         expandContent.className = "st-expand-content";
-        expandContent.textContent = rawOutput;
+        // Highlight error lines in expanded output
+        const _outLines = rawOutput.split("\n").map(line => {
+          if (/error|fail|exception|traceback/i.test(line)) return `<span class="out-line-err">${line.replace(/</g,"&lt;")}</span>`;
+          return line.replace(/</g,"&lt;");
+        });
+        expandContent.innerHTML = _outLines.join("\n");
 
         row.append(expandBtn, expandContent);
       }

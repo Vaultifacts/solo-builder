@@ -40,6 +40,7 @@ const _SHORTCUTS = [
   ["z", "Undo last verify (reset to Pending)"],
   ["q", "Cycle detail status filter"],
   ["u", "Scroll to first unverified subtask"],
+  ["y", "Yank (copy) first subtask output"],
 ];
 
 function _showShortcuts() {
@@ -275,6 +276,13 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (key === "l") { window.switchTab?.("journal"); return; }
+  if (key === "y") {
+    const outEl = document.querySelector("#detail-content .st-expand-content");
+    if (outEl && outEl.textContent) {
+      navigator.clipboard.writeText(outEl.textContent).then(() => toast("Output copied")).catch(() => toast("Copy failed"));
+    } else { toast("No output to copy"); }
+    return;
+  }
   if (key === "o") {
     const row = document.querySelector("#detail-content .subtask-row");
     if (row) { row.click(); } else { toast("No subtask rows visible"); }

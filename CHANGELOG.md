@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.74.0 — 2026-03-13  Dashboard UX Round 33 — line highlight, ring text, branch tooltip, collapse verified, yank key
+
+- **Subtask output line highlight**: Error/fail lines highlighted red in expanded output view
+- **Card ring percentage text**: Shows % number inside the circular progress ring SVG
+- **Branch subtask name list tooltip**: Hover branch header shows all subtask names
+- **Collapse verified branches button**: ▸ ✓ button collapses only fully-verified branches
+- **Keyboard `y` yank output**: Press y to copy first subtask's output to clipboard
+
+### Stats
+- 517 dashboard E2E smoke tests (13 new), 3193 total tests, 0 failures
+- 155 UX features across v6.39–v6.74
+
 ## v6.73.0 — 2026-03-13  Dashboard UX Round 32 — output time, milestone arc, compact branch, scroll-top, unverified key
 
 - **Subtask output timestamp**: Shows 📝 relative time when output was last updated
