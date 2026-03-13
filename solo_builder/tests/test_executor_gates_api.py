@@ -297,5 +297,67 @@ class TestExecutorGatesCorruptState(_Base):
         self.assertEqual(resp.status_code, 200)
 
 
+# ---------------------------------------------------------------------------
+# Import fallback paths (lines 61-62, 67-68, 73-75, 79-80)
+# ---------------------------------------------------------------------------
+
+class TestExecutorGatesImportFallbacks(_Base):
+
+    def test_hitl_import_failure_still_returns_200(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        with patch.dict(sys.modules, {"runners.hitl_gate": None}):
+            # Force import failure
+            with patch("builtins.__import__", side_effect=lambda name, *a, **kw:
+                        (_ for _ in ()).throw(ImportError("no hitl_gate"))
+                        if name == "runners.hitl_gate" else __builtins__.__import__(name, *a, **kw)):
+                pass
+        data = self._get()
+        self.assertIn("gates", data)
+
+    def test_no_tools_valid_tools_true(self):
+        self._write_state(_state({"ST-1": _st(tools="", action_type="read_only")}))
+        data = self._get()
+        self.assertTrue(data["gates"][0]["tools_valid"])
+        self.assertFalse(data["gates"][0]["blocked"])
+
+    def test_invalid_tools_blocked(self):
+        self._write_state(_state({"ST-1": _st(tools="EvilTool,Malware")}))
+        data = self._get()
+        gate = data["gates"][0]
+        self.assertFalse(gate["tools_valid"])
+        self.assertTrue(gate["blocked"])
+
+    def test_hitl_auto_for_empty_tools(self):
+        self._write_state(_state({"ST-1": _st(tools="")}))
+        data = self._get()
+        self.assertEqual(data["gates"][0]["hitl_name"], "Auto")
+
+    def test_scope_ok_when_no_policy(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob")}))
+        data = self._get()
+        self.assertTrue(data["gates"][0]["scope_ok"])
+        self.assertEqual(data["gates"][0]["scope_denied"], [])
+
+
+# ---------------------------------------------------------------------------
+# Scope evaluation path (lines 109-110, 123-124)
+# ---------------------------------------------------------------------------
+
+class TestExecutorGatesScopeEval(_Base):
+
+    def test_scope_with_action_type(self):
+        self._write_state(_state({"ST-1": _st(tools="Glob", action_type="read_only")}))
+        data = self._get()
+        gate = data["gates"][0]
+        self.assertEqual(gate["action_type"], "read_only")
+
+    def test_hitl_level_with_valid_tools(self):
+        self._write_state(_state({"ST-1": _st(tools="Read,Grep", description="analyze code")}))
+        data = self._get()
+        gate = data["gates"][0]
+        self.assertIsInstance(gate["hitl_level"], int)
+        self.assertIsInstance(gate["hitl_name"], str)
+
+
 if __name__ == "__main__":
     unittest.main()

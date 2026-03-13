@@ -152,5 +152,59 @@ class TestDashboardRoot(_Base):
         self.assertIn(r.status_code, (200, 304))
 
 
+# ---------------------------------------------------------------------------
+# core.py lines 33-34: settings read exception path
+# ---------------------------------------------------------------------------
+
+class TestStatusSettingsException(_Base):
+    def test_status_corrupt_settings_uses_default_threshold(self):
+        self._settings_path.write_text("NOT JSON", encoding="utf-8")
+        self._write_state({"step": 10, "dag": {
+            "TASK-1": {"branches": {"main": {"subtasks": {
+                "ST-1": {"status": "Running", "last_update": 4},
+            }}}},
+        }})
+        r = self.client.get("/status")
+        d = r.get_json()
+        # Default threshold = 5, age = 10 - 4 = 6 >= 5 → stalled
+        self.assertEqual(d["stalled"], 1)
+
+
+# ---------------------------------------------------------------------------
+# core.py lines 102-109: _read_version importlib.metadata fallback + unknown
+# ---------------------------------------------------------------------------
+
+class TestReadVersionFallback(_Base):
+    def test_health_version_returns_string(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/health")
+        d = r.get_json()
+        self.assertIsInstance(d["version"], str)
+        self.assertNotEqual(d["version"], "")
+
+    def test_health_version_fallback_to_importlib(self):
+        from api.blueprints import core as core_mod
+        orig_read = Path.read_text
+        def _failing_read(self_path, *a, **kw):
+            if "pyproject.toml" in str(self_path):
+                raise FileNotFoundError("no pyproject")
+            return orig_read(self_path, *a, **kw)
+        with patch.object(Path, "read_text", _failing_read):
+            ver = core_mod._read_version()
+        self.assertIsInstance(ver, str)
+
+    def test_health_version_unknown_when_all_fail(self):
+        from api.blueprints import core as core_mod
+        orig_read = Path.read_text
+        def _failing_read(self_path, *a, **kw):
+            if "pyproject.toml" in str(self_path):
+                raise FileNotFoundError("no pyproject")
+            return orig_read(self_path, *a, **kw)
+        with patch.object(Path, "read_text", _failing_read), \
+             patch("importlib.metadata.version", side_effect=Exception("nope")):
+            ver = core_mod._read_version()
+        self.assertEqual(ver, "unknown")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.65.0 — 2026-03-13  Coverage Push Round 2 — core 100%, health_detailed 100%, cache 99%
+
+- **19 new tests** across 4 existing test files
+- `core.py` 87% → **100%** — settings exception, _read_version importlib fallback + unknown
+- `health_detailed.py` 89% → **100%** — _load_tool fresh importlib path + cached module
+- `cache.py` 88% → **99%** — glob error 500, unlink OSError counting, corrupt stats 500
+- `executor_gates.py` 79% → **82%** — invalid tools blocked, scope eval, empty tools
+
+### Stats
+- 3050 total tests, 0 failures
+- 5 modules now at 98–100% coverage
+
 ## v6.64.0 — 2026-03-13  Blueprint Coverage Push — triggers 100%, dag 98%, metrics 96%
 
 - **67 new blueprint tests** across 5 new test files

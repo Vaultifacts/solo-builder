@@ -246,5 +246,68 @@ class TestCacheExportEndpoint(_Base):
         self.assertIn("cache.csv", r.headers.get("Content-Disposition", ""))
 
 
+# ---------------------------------------------------------------------------
+# Error paths — cache_stats (line 26-27), cache_clear (58-61), history (77-78), export (121-122)
+# ---------------------------------------------------------------------------
+
+class TestCacheStatsError(_Base):
+    def test_cache_stats_error_when_cache_dir_unreadable(self):
+        with patch.object(app_module, "CACHE_DIR", new=Path(self._tmp) / "nonexistent"):
+            # exists() returns False → empty list, no error
+            d = self.client.get("/cache").get_json()
+            self.assertEqual(d["entries"], 0)
+
+    def test_cache_stats_glob_exception_returns_500(self):
+        from unittest.mock import PropertyMock
+        bad = Path(self._tmp) / "bad_cache"
+        bad.mkdir()
+        with patch.object(app_module, "CACHE_DIR", new=bad), \
+             patch.object(Path, "glob", side_effect=PermissionError("denied")):
+            r = self.client.get("/cache")
+            self.assertEqual(r.status_code, 500)
+            self.assertIn("error", r.get_json())
+
+
+class TestCacheClearError(_Base):
+    def test_delete_cache_unlink_oserror_counts_errors(self):
+        self._make_cache_files(2)
+        orig_unlink = Path.unlink
+        call_count = [0]
+        def failing_unlink(self_path, *a, **kw):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise OSError("locked")
+            orig_unlink(self_path, *a, **kw)
+        with patch.object(Path, "unlink", failing_unlink):
+            data = self.client.delete("/cache").get_json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["errors"], 1)
+        self.assertEqual(data["deleted"], 1)
+
+    def test_delete_cache_glob_exception_returns_500(self):
+        with patch.object(Path, "glob", side_effect=PermissionError("denied")):
+            r = self.client.delete("/cache")
+            self.assertEqual(r.status_code, 500)
+            self.assertIn("error", r.get_json())
+
+
+class TestCacheHistoryError(_Base):
+    def test_cache_history_corrupt_stats_returns_500(self):
+        stats_path = self._cache_dir / "session_stats.json"
+        stats_path.write_text("NOT JSON", encoding="utf-8")
+        r = self.client.get("/cache/history")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
+
+
+class TestCacheExportError(_Base):
+    def test_cache_export_corrupt_stats_returns_500(self):
+        stats_path = self._cache_dir / "session_stats.json"
+        stats_path.write_text("NOT JSON", encoding="utf-8")
+        r = self.client.get("/cache/export")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("error", r.get_json())
+
+
 if __name__ == "__main__":
     unittest.main()

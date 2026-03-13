@@ -544,5 +544,46 @@ class TestHealthDetailedRepoHealth(_Base):
         self.assertIn("error", checks["repo_health"])
 
 
+# ---------------------------------------------------------------------------
+# _load_tool fresh-load path (lines 38-44 — importlib.util.spec_from_file_location)
+# ---------------------------------------------------------------------------
+
+class TestLoadToolFreshImport(unittest.TestCase):
+    """Cover the importlib.util path when module is NOT in sys.modules."""
+
+    def test_load_tool_fresh_import(self):
+        mod_name = "_test_fresh_load_dummy"
+        # Ensure not cached
+        sys.modules.pop(mod_name, None)
+        # Create a minimal .py file
+        import tempfile, importlib.util
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w") as f:
+            f.write("VALUE = 42\n")
+            tmp_path = f.name
+        try:
+            from pathlib import Path as P
+            # Patch _TOOLS_DIR so _load_tool finds our file
+            tools_dir = P(tmp_path).parent
+            file_name = P(tmp_path).stem
+            with patch.object(hd_mod, "_TOOLS_DIR", new=tools_dir):
+                result = hd_mod._load_tool(file_name)
+            self.assertEqual(result.VALUE, 42)
+            self.assertIn(file_name, sys.modules)
+        finally:
+            import os
+            os.unlink(tmp_path)
+            sys.modules.pop(file_name, None)
+
+    def test_load_tool_cached_returns_same(self):
+        mod_name = "_test_cached_mod"
+        fake_mod = MagicMock()
+        sys.modules[mod_name] = fake_mod
+        try:
+            result = hd_mod._load_tool(mod_name)
+            self.assertIs(result, fake_mod)
+        finally:
+            sys.modules.pop(mod_name, None)
+
+
 if __name__ == "__main__":
     unittest.main()
