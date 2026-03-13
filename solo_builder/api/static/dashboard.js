@@ -590,15 +590,33 @@ window.setPollInterval = function (ms) {
   state.pollMs = ms;
   localStorage.setItem("sb-poll-ms", ms);
   if (state.pollIntervalId !== null) clearInterval(state.pollIntervalId);
-  state.pollIntervalId = setInterval(tick, state.pollMs);
+  state.pollIntervalId = setInterval(() => { tick(); _startCountdown(); }, state.pollMs);
+  _startCountdown();
 };
 
 // Restore poll interval dropdown
 const pollSel = document.getElementById("poll-interval-select");
 if (pollSel) pollSel.value = String(state.pollMs);
 
+/* ── Poll countdown timer ──────────────────────────────────── */
+let _countdownId = null;
+let _countdownLeft = 0;
+function _startCountdown() {
+  _countdownLeft = Math.round(state.pollMs / 1000);
+  const el = document.getElementById("poll-countdown");
+  if (el) el.textContent = `${_countdownLeft}s`;
+  if (_countdownId) clearInterval(_countdownId);
+  _countdownId = setInterval(() => {
+    if (state.pollPaused) return;
+    _countdownLeft = Math.max(0, _countdownLeft - 1);
+    const el = document.getElementById("poll-countdown");
+    if (el) el.textContent = `${_countdownLeft}s`;
+  }, 1000);
+}
+
 tick();
-state.pollIntervalId = setInterval(tick, state.pollMs);
+_startCountdown();
+state.pollIntervalId = setInterval(() => { tick(); _startCountdown(); }, state.pollMs);
 
 /* ── Keyboard shortcuts (extracted to dashboard_keyboard.js) ── */
 import { trapFocus } from "./dashboard_keyboard.js";

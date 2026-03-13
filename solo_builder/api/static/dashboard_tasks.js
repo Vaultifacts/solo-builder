@@ -85,6 +85,17 @@ function _reorderTask(fromId, toId) {
   renderGrid(sorted);
 }
 
+/* ── Relative time helper ──────────────────────────────────── */
+function _relativeTime(isoStr) {
+  if (!isoStr) return "";
+  const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+  if (diff < 0 || isNaN(diff)) return "";
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 function _updateTasksPager() {
   const pager = document.getElementById("tasks-pager");
   const lbl   = document.getElementById("tasks-page-label");
@@ -348,6 +359,16 @@ export function renderGrid(tasks) {
       sparkEl.innerHTML = bars.map(p => `<span class="spark-bar" style="height:${Math.max(2, p * 12 / 100)}px"></span>`).join("");
     }
 
+    // Last-active relative time
+    let agoEl = card.querySelector(".card-ago");
+    if (!agoEl) {
+      agoEl = document.createElement("span");
+      agoEl.className = "card-ago";
+      card.appendChild(agoEl);
+    }
+    agoEl.textContent = _relativeTime(t.last_active);
+    agoEl.title = t.last_active || "";
+
     // Tooltip with branch breakdown
     if (_bEntries.length > 0) {
       const tipLines = _bEntries.map(([bn, bd]) => {
@@ -415,6 +436,11 @@ export function renderDetail(t) {
   const taskIdDiv = document.createElement("div");
   taskIdDiv.className = "detail-task-id";
   taskIdDiv.textContent = t.id;
+  taskIdDiv.title = "Click to copy task ID";
+  taskIdDiv.style.cursor = "pointer";
+  taskIdDiv.addEventListener("click", () => {
+    navigator.clipboard.writeText(t.id).then(() => toast(`Copied: ${t.id}`)).catch(() => {});
+  });
 
   const statusDiv = document.createElement("div");
   statusDiv.className = "detail-status";
@@ -626,6 +652,13 @@ export function renderDetail(t) {
       }
 
       if (rawOutput) {
+        const wc = rawOutput.split(/\s+/).filter(Boolean).length;
+        const wcBadge = document.createElement("span");
+        wcBadge.className = "st-wc-badge";
+        wcBadge.title = `${wc} words`;
+        wcBadge.textContent = wc > 999 ? `${(wc/1000).toFixed(1)}k` : `${wc}w`;
+        row.appendChild(wcBadge);
+
         const outSpan = document.createElement("span");
         outSpan.className = "st-output";
         outSpan.title = rawOutput.substring(0, 400);

@@ -34,6 +34,7 @@
     <button id="btn-stop" onclick="stopRun()" title="Stop auto-run after current step" style="background:#3a1a1a;color:#f77;border:1px solid #733;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏹ Stop</button>
   </div>
   <button id="btn-poll-pause" onclick="togglePollPause()" title="Pause/resume live polling" style="background:#1a2a1a;color:#6f6;border:1px solid #373;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--font)">⏸ Pause</button>
+  <span id="poll-countdown" title="Seconds until next poll" style="font-size:9px;color:var(--dim);min-width:18px;text-align:center">—</span>
   <select id="poll-interval-select" onchange="setPollInterval(+this.value)" title="Poll interval" style="background:var(--bg2);color:var(--dim);border:1px solid var(--border);border-radius:3px;font-size:10px;padding:1px 4px;font-family:var(--font)">
     <option value="2000">2s</option>
     <option value="5000">5s</option>

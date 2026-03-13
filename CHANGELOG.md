@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.49.0 — 2026-03-12  Poll Countdown + Relative Time + Word Count + Sticky Batch Bar + Copy Task ID
+
+- **Poll countdown timer**: Seconds-until-next-tick counter displayed next to pause button; resets on interval change
+- **Task card last-active time**: Relative timestamp ("2m ago") on each task card from `last_active` field
+- **Subtask output word count badge**: Small badge showing word count (e.g. "42w" or "1.2k") on subtask rows with output
+- **Sticky batch action bar**: Batch multi-select bar sticks to bottom of task grid when scrolling via `position: sticky`
+- **Copy task ID**: Click task ID in detail panel header to copy to clipboard; dotted underline on hover
+- **16 new tests**: countdown (4), relative time (4), word count (3), sticky bar (1), copy ID (4)
+- **169 dashboard E2E tests**, 2689 total, 0 failures
+
 ## v6.48.0 — 2026-03-12  Quick Verify + Tab Badges + Compact Mode + Sparklines + Bulk Verify
 
 - **Double-click quick-verify**: Double-click any subtask row to instantly verify it via POST /verify; checkbox guard prevents conflict with selection

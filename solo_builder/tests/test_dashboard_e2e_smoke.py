@@ -1060,5 +1060,117 @@ class TestBulkVerifyDetailPanel(unittest.TestCase):
         self.assertIn("Bulk verify", js)
 
 
+# ---------------------------------------------------------------------------
+# 35. Poll countdown timer
+# ---------------------------------------------------------------------------
+
+class TestPollCountdownTimer(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_countdown_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_startCountdown", js)
+
+    def test_js_countdown_interval(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_countdownLeft", js)
+
+    def test_html_countdown_element(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("poll-countdown", html)
+
+    def test_css_countdown_style(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("#poll-countdown", css)
+
+
+# ---------------------------------------------------------------------------
+# 36. Task card last-active relative time
+# ---------------------------------------------------------------------------
+
+class TestCardRelativeTime(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_relative_time_helper(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_relativeTime", js)
+
+    def test_js_card_ago_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-ago", js)
+
+    def test_css_card_ago_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-ago", css)
+
+    def test_js_time_units(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("s ago", js)
+        self.assertIn("m ago", js)
+        self.assertIn("h ago", js)
+
+
+# ---------------------------------------------------------------------------
+# 37. Subtask output word count badge
+# ---------------------------------------------------------------------------
+
+class TestSubtaskWordCountBadge(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_wc_badge_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-wc-badge", js)
+
+    def test_js_word_count_calc(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("split(/\\s+/)", js)
+
+    def test_css_wc_badge_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-wc-badge", css)
+
+
+# ---------------------------------------------------------------------------
+# 38. Sticky batch action bar
+# ---------------------------------------------------------------------------
+
+class TestStickyBatchBar(unittest.TestCase):
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_css_sticky_batch_bar(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("#batch-action-bar", css)
+        self.assertIn("sticky", css)
+
+
+# ---------------------------------------------------------------------------
+# 39. Detail panel copy-task-id
+# ---------------------------------------------------------------------------
+
+class TestCopyTaskId(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_clipboard_write(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("navigator.clipboard.writeText", js)
+
+    def test_js_copy_toast(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Copied:", js)
+
+    def test_css_hover_underline(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-task-id:hover", css)
+
+    def test_js_cursor_pointer(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Click to copy task ID", js)
+
+
 if __name__ == "__main__":
     unittest.main()

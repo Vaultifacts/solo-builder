@@ -703,6 +703,17 @@
     #btn-export, #btn-theme, #btn-view { font-size: 10px; padding: 2px 6px; }
   }
 
+  /* ── Card last-active relative time ────────────────────── */
+  .card-ago { font-size: 9px; color: var(--dim); display: block; margin-top: 2px; text-align: right; }
+  /* ── Subtask word count badge ─────────────────────────── */
+  .st-wc-badge { display: inline-block; background: var(--bg3); color: var(--dim); font-size: 8px; border-radius: 3px; padding: 0 3px; margin-left: 4px; flex-shrink: 0; }
+  /* ── Sticky batch action bar ─────────────────────────── */
+  #batch-action-bar { position: sticky; bottom: 0; z-index: 10; }
+  /* ── Copy task ID cursor ─────────────────────────────── */
+  .detail-task-id:hover { text-decoration: underline; text-decoration-style: dotted; }
+  /* ── Poll countdown ──────────────────────────────────── */
+  #poll-countdown { font-variant-numeric: tabular-nums; }
+
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
