@@ -185,10 +185,11 @@
     border: none;
     background: transparent;
     font-family: var(--font);
+    transition: color 0.15s, border-color 0.15s;
   }
   .sidebar-tab.active { color: var(--cyan); border-bottom: 2px solid var(--cyan); }
-  .sidebar-tab-content { display: none; overflow-y: auto; padding: 12px 16px; flex: 1; }
-  .sidebar-tab-content.active { display: block; }
+  .sidebar-tab-content { display: none; overflow-y: auto; padding: 12px 16px; flex: 1; opacity: 0; transition: opacity 0.15s ease-in; }
+  .sidebar-tab-content.active { display: block; opacity: 1; }
   .diff-entry { font-size: 11px; padding: 3px 0; }
   .diff-arrow { color: var(--dim); margin: 0 4px; }
   .diff-st { color: var(--cyan); font-weight: bold; }
@@ -567,6 +568,16 @@
     font-size: 11px;
     display: none;
     z-index: 999;
+  }
+
+  /* ── Loading skeleton ─────────────────────────────────────── */
+  @keyframes skeleton-pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.3; } }
+  .skeleton-card {
+    height: 56px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    animation: skeleton-pulse 1.2s ease-in-out infinite;
   }
 
   /* ── Responsive / tablet (768-1024px) ────────────────────── */

@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.43.0 — 2026-03-12  Escape Panels + Scroll Reset + Transitions + Go-To Keys + Skeleton
+
+- **Escape closes panels**: Escape key now dismisses dep graph and timeline panels (priority: shortcuts > modal > deps > timeline)
+- **Scroll-to-top on task select**: Detail panel scrolls to top when a new task card is clicked
+- **CSS transitions**: Sidebar tab color/border transitions (0.15s), tab content opacity fade-in (0.15s)
+- **`g` then key go-to shortcuts**: `g h` → Health, `g s` → Settings, `g b` → Branches, `g m` → Metrics, `g d` → Diff, `g p` → Priority, `g a` → Agents, `g f` → Forecast. 500ms timeout window
+- **Loading skeleton**: 3 pulsing placeholder cards (skeleton-pulse animation) shown before first poll completes
+- **6 new tests**: go-key combos, escape deps/tl, skeleton pulse + card CSS, skeleton in HTML, scrollTop
+- **82 dashboard E2E tests**, 2662+ total, 0 failures
+
 ## v6.42.0 — 2026-03-12  Focus Trap + Search Shortcut + Dep Click + Perf Avg + Tablet CSS
 
 - **Focus trap**: Tab key cycles within open modals and shortcuts overlay instead of escaping to background. `_trapFocus()` utility with Shift+Tab reverse cycling

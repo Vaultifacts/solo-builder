@@ -501,6 +501,14 @@ class TestTieredPollingStructure(unittest.TestCase):
     def test_perf_slow_warning(self):
         self.assertIn("SLOW", self._src)
 
+    def test_go_key_combos(self):
+        self.assertIn("_pendingG", self._src)
+        self.assertIn("_GO_MAP", self._src)
+
+    def test_escape_closes_deps_panel(self):
+        self.assertIn("detail-deps-panel", self._src)
+        self.assertIn("detail-tl-panel", self._src)
+
 
 # ---------------------------------------------------------------------------
 # 12. Subtask dependency graph toggle
@@ -545,6 +553,38 @@ class TestResponsiveBreakpoints(unittest.TestCase):
 
     def test_tablet_breakpoint(self):
         self.assertIn("max-width: 1024px", self._src)
+
+    def test_skeleton_pulse_animation(self):
+        self.assertIn("skeleton-pulse", self._src)
+
+    def test_skeleton_card_class(self):
+        self.assertIn(".skeleton-card", self._src)
+
+
+# ---------------------------------------------------------------------------
+# 14. Skeleton in served HTML
+# ---------------------------------------------------------------------------
+
+class TestDashboardSkeleton(_Base):
+
+    def setUp(self):
+        super().setUp()
+        self._html = self.client.get("/").data.decode("utf-8", errors="replace")
+
+    def test_skeleton_cards_in_html(self):
+        self.assertIn('class="skeleton-card"', self._html)
+
+
+# ---------------------------------------------------------------------------
+# 15. Scroll-to-top on task select
+# ---------------------------------------------------------------------------
+
+class TestScrollToTop(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_scroll_top_in_select_task(self):
+        src = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("scrollTop = 0", src)
 
 
 if __name__ == "__main__":

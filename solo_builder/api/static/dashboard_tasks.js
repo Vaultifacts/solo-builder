@@ -210,6 +210,8 @@ export async function selectTask(id) {
   window._resetSubtasksFilters?.();
   document.querySelectorAll(".task-card").forEach(c => c.classList.toggle("active", c.dataset.id === id));
   _updateTaskExportLinks(id);
+  const dp = document.getElementById("detail-content");
+  if (dp) dp.scrollTop = 0;
   try {
     const t = await api("/tasks/" + encodeURIComponent(id));
     state.tasksCache[id] = t;

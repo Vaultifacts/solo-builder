@@ -708,6 +708,10 @@ const _SHORTCUTS = [
   ["t", "Toggle dark/light theme"],
   ["/", "Focus task search"],
   ["1-9", "Switch to sidebar tab by position"],
+  ["g h", "Go to Health tab"],
+  ["g s", "Go to Settings tab"],
+  ["g b", "Go to Branches tab"],
+  ["g m", "Go to Metrics tab"],
 ];
 
 function _showShortcuts() {
@@ -755,16 +759,29 @@ function _trapFocus(container) {
   if (first) first.focus();
 }
 
+let _pendingG = false;
+const _GO_MAP = { h: "health", s: "settings", b: "branches", m: "metrics", d: "diff", p: "priority", a: "agents", f: "forecast" };
+
 document.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
   if (e.target.classList.contains("sidebar-tab")) return;
   const key = e.key;
+  if (_pendingG) {
+    _pendingG = false;
+    const tab = _GO_MAP[key];
+    if (tab) { window.switchTab(tab); return; }
+  }
+  if (key === "g") { _pendingG = true; setTimeout(() => { _pendingG = false; }, 500); return; }
   if (key === "?") { _showShortcuts(); return; }
   if (key === "Escape") {
     const sc = document.getElementById("shortcuts-overlay");
     if (sc) { sc.remove(); return; }
     const modal = document.querySelector(".modal-overlay[style*='flex']");
     if (modal) { modal.style.display = "none"; return; }
+    const deps = document.querySelector(".detail-deps-panel");
+    if (deps) { deps.remove(); return; }
+    const tl = document.querySelector(".detail-tl-panel");
+    if (tl) { tl.remove(); return; }
     return;
   }
   if (key === "j" || key === "ArrowDown") {
