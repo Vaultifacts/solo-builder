@@ -232,5 +232,89 @@ class TestMetricsExport(_Base):
         self.assertEqual(len(d), 0)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: agents settings exception (lines 35-36)
+# ---------------------------------------------------------------------------
+
+class TestAgentsSettingsException(_Base):
+    def test_agents_corrupt_settings_uses_defaults(self):
+        self._settings_path.write_text("NOT JSON", encoding="utf-8")
+        self._write_state({"step": 1, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {"S1": {"status": "Running", "last_update": 0}}}}},
+        }})
+        r = self.client.get("/agents")
+        d = r.get_json()
+        self.assertEqual(d["executor"]["max_per_step"], 6)  # default
+
+
+# ---------------------------------------------------------------------------
+# Coverage: metrics settings exception (lines 130-131)
+# ---------------------------------------------------------------------------
+
+class TestMetricsSettingsException(_Base):
+    def test_metrics_corrupt_settings_uses_defaults(self):
+        self._settings_path.write_text("NOT JSON", encoding="utf-8")
+        self._write_state({"step": 1, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {"S1": {"status": "Running", "last_update": 0}}}}},
+        }})
+        r = self.client.get("/metrics")
+        d = r.get_json()
+        self.assertEqual(d["step"], 1)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: metrics Review status (line 145)
+# ---------------------------------------------------------------------------
+
+class TestMetricsReviewStatus(_Base):
+    def test_metrics_counts_review_subtasks(self):
+        self._write_state({"step": 2, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {
+                "S1": {"status": "Review"},
+                "S2": {"status": "Verified"},
+            }}}},
+        }})
+        r = self.client.get("/metrics")
+        d = r.get_json()
+        self.assertEqual(d["review"], 1)
+        self.assertEqual(d["verified"], 1)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: metrics elapsed_s stat exception (lines 158-160)
+# ---------------------------------------------------------------------------
+
+class TestMetricsElapsedStatException(_Base):
+    def test_metrics_no_state_file_elapsed_none(self):
+        self._write_state({"step": 0, "dag": {}})
+        self._state_path.unlink()
+        r = self.client.get("/metrics")
+        d = r.get_json()
+        self.assertIsNone(d["elapsed_s"])
+
+    def test_metrics_with_step_has_steps_per_min(self):
+        self._write_state({"step": 10, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {"S1": {"status": "Verified"}}}}},
+        }})
+        import time as _t
+        # Mock stat to return ctime 60s ago
+        real_stat = Path.stat
+        def _fake_stat(self_path):
+            s = real_stat(self_path)
+            if "state" in str(self_path):
+                # Return a mock with st_ctime 60s ago
+                from unittest.mock import MagicMock
+                ms = MagicMock(wraps=s)
+                ms.st_ctime = _t.time() - 60
+                return ms
+            return s
+        with patch.object(Path, "stat", _fake_stat):
+            r = self.client.get("/metrics")
+        d = r.get_json()
+        self.assertIsNotNone(d["elapsed_s"])
+        self.assertGreater(d["elapsed_s"], 0)
+        self.assertIsNotNone(d["steps_per_min"])
+
+
 if __name__ == "__main__":
     unittest.main()

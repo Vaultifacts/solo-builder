@@ -151,5 +151,22 @@ class TestDagImport(_Base):
         self.assertEqual(r.status_code, 400)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: dag import with dag key pointing to non-dict (line 119)
+# ---------------------------------------------------------------------------
+
+class TestDagImportDagNotDict(_Base):
+    def test_import_dag_key_is_string(self):
+        self._write_state({"step": 0, "dag": {}})
+        r = self.client.post("/dag/import", json={"dag": "not a dict"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Invalid DAG", r.get_json()["error"])
+
+    def test_import_dag_key_is_list(self):
+        self._write_state({"step": 0, "dag": {}})
+        r = self.client.post("/dag/import", json={"dag": [1, 2]})
+        self.assertEqual(r.status_code, 400)
+
+
 if __name__ == "__main__":
     unittest.main()

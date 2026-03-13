@@ -309,5 +309,22 @@ class TestCacheExportError(_Base):
         self.assertIn("error", r.get_json())
 
 
+# ---------------------------------------------------------------------------
+# Coverage: cache export CSV with session data (line 156)
+# ---------------------------------------------------------------------------
+
+class TestCacheExportCsvWithData(_Base):
+    def test_cache_export_csv_with_sessions(self):
+        self._write_stats({"sessions": [
+            {"hits": 5, "misses": 2, "cumulative_hits": 5, "cumulative_misses": 2, "ended_at": "2026-01-01"},
+            {"hits": 3, "misses": 1, "cumulative_hits": 8, "cumulative_misses": 3, "ended_at": "2026-01-02"},
+        ]})
+        r = self.client.get("/cache/export")
+        self.assertEqual(r.status_code, 200)
+        lines = r.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 3)  # header + 2 data rows
+        self.assertIn("5", lines[1])  # hits in first row
+
+
 if __name__ == "__main__":
     unittest.main()

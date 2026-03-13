@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.76.0 — 2026-03-13  Coverage Push Round 4 — metrics 100%, cache 100%, dag 100%
+
+- **8 new tests** across 3 existing test files
+- `metrics.py` 96% → **100%** — settings exception, Review status, elapsed_s stat mock, steps_per_min
+- `cache.py` 99% → **100%** — CSV export with session data
+- `dag.py` 98% → **100%** — dag import with non-dict dag value
+
+### Stats
+- 3216 total tests, 0 failures
+- All 10 target blueprint modules at 98–100% coverage
+
 ## v6.75.0 — 2026-03-13  Dashboard UX Round 34 — output search, emoji tooltip, verified counter, task timer, Shift+R reset
 
 - **Subtask output search**: Inline search within expanded output with match highlighting
