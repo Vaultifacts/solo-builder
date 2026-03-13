@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.50.0 — 2026-03-12  Status Emoji + Search Count + Auto-Collapse + Sort Subtasks + Progress Tooltip
+
+- **Task card status emoji**: ✓/▶/◯/⏸/⊘ prefix on card mini-badge for quick visual status identification
+- **Search match count**: "N results" label appears next to search input when filtering tasks
+- **Auto-collapse verified branches**: Branches with all subtasks verified start collapsed in detail panel
+- **Subtask status sort toggle**: "⇅ Sort" button in detail panel sorts subtasks by status (Pending → Verified)
+- **Header progress bar tooltip**: Hover progress bar shows verified/running/pending/review breakdown
+- **15 new tests**: status emoji (3), search count (4), auto-collapse (3), sort toggle (3), tooltip (2)
+- **184 dashboard E2E tests**, 2704 total, 0 failures
+
 ## v6.49.0 — 2026-03-12  Poll Countdown + Relative Time + Word Count + Sticky Batch Bar + Copy Task ID
 
 - **Poll countdown timer**: Seconds-until-next-tick counter displayed next to pause button; resets on interval change

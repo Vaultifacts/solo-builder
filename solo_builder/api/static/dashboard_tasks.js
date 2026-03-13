@@ -96,6 +96,10 @@ function _relativeTime(isoStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+/* ── Status emoji prefix ───────────────────────────────────── */
+const _STATUS_EMOJI = { Verified: "✓", Running: "▶", Review: "⏸", Pending: "◯", Blocked: "⊘" };
+function _statusEmoji(status) { return _STATUS_EMOJI[status] || "◯"; }
+
 function _updateTasksPager() {
   const pager = document.getElementById("tasks-pager");
   const lbl   = document.getElementById("tasks-page-label");
@@ -138,6 +142,7 @@ export async function pollStatus() {
     if (reviewEl) { reviewEl.textContent = d.review > 0 ? `⏸${d.review}` : ""; reviewEl.style.display = d.review > 0 ? "" : "none"; }
     document.getElementById("hdr-total").textContent    = d.total;
     document.getElementById("hdr-bar").style.width      = d.pct + "%";
+    document.getElementById("hdr-bar").title            = `Verified: ${d.verified} | Running: ${d.running} | Pending: ${d.pending}${d.review > 0 ? ` | Review: ${d.review}` : ""}`;
     document.getElementById("hdr-pct").textContent      = d.pct + "%";
     document.getElementById("hdr-step").textContent     = `Step ${d.step} / ${d.total} — ${d.verified} verified` + (d.review > 0 ? ` · ${d.review}⏸` : "");
     if (d.step > state.prevStep) {
@@ -239,6 +244,11 @@ export function applyTaskSearch() {
       return ap - bp;
     });
   }
+  // Search match count
+  const matchEl = document.getElementById("search-match-count");
+  if (matchEl) {
+    matchEl.textContent = q ? `${filtered.length} result${filtered.length !== 1 ? "s" : ""}` : "";
+  }
   renderGrid(filtered);
 }
 
@@ -314,7 +324,7 @@ export function renderGrid(tasks) {
     card.classList.toggle("pinned", _getPinnedTasks().includes(t.id));
     card.classList.toggle("multi-selected", _selectedCards.has(t.id));
     card.querySelector(".card-mini-badge").className = `card-mini-badge ${statusClass(t.status)}`;
-    card.querySelector(".card-mini-badge").textContent = t.status || "Pending";
+    card.querySelector(".card-mini-badge").textContent = `${_statusEmoji(t.status)} ${t.status || "Pending"}`;
     const reviewBadge = card.querySelector(".card-review-badge");
     if (reviewBadge) {
       if (t.review_subtasks > 0) { reviewBadge.textContent = `⏸${t.review_subtasks}`; reviewBadge.style.display = ""; }
@@ -480,6 +490,29 @@ export function renderDetail(t) {
   depsBtn.textContent = "⊶ Deps";
   depsBtn.addEventListener("click", () => _toggleDepsGraph(t));
   statusDiv.append(" ", depsBtn);
+
+  const sortBtn = document.createElement("button");
+  sortBtn.className = "toolbar-btn";
+  sortBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  sortBtn.title = "Sort subtasks by status (Pending → Running → Review → Verified)";
+  sortBtn.textContent = "⇅ Sort";
+  sortBtn.addEventListener("click", () => {
+    const _ord = { Pending: 0, Running: 1, Review: 2, Verified: 3 };
+    const dc = document.getElementById("detail-content");
+    dc.querySelectorAll(".branch-block").forEach(bb => {
+      const rows = [...bb.querySelectorAll(".subtask-row")];
+      rows.sort((a, b) => {
+        const sa = a.querySelector(".st-dot")?.className || "";
+        const sb2 = b.querySelector(".st-dot")?.className || "";
+        const oa = sa.includes("green") ? 3 : sa.includes("cyan") ? 1 : sa.includes("yellow") ? 2 : 0;
+        const ob = sb2.includes("green") ? 3 : sb2.includes("cyan") ? 1 : sb2.includes("yellow") ? 2 : 0;
+        return oa - ob;
+      });
+      rows.forEach(r => bb.appendChild(r));
+    });
+    toast("Sorted subtasks by status");
+  });
+  statusDiv.append(" ", sortBtn);
 
   // ── Per-task progress bar + per-branch breakdown ──────────
   let _total = 0, _verified = 0, _running = 0, _review = 0, _pending = 0;
@@ -685,6 +718,12 @@ export function renderDetail(t) {
 
       branchBlock.appendChild(row);
     });
+
+    // Auto-collapse verified branches
+    if (_bs && _bs.verified === _bs.total && _bs.total > 0) {
+      branchBlock.classList.add("collapsed");
+      collapseArrow.textContent = "▸";
+    }
 
     nodes.push(branchBlock);
   });

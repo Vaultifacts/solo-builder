@@ -713,6 +713,8 @@
   .detail-task-id:hover { text-decoration: underline; text-decoration-style: dotted; }
   /* ── Poll countdown ──────────────────────────────────── */
   #poll-countdown { font-variant-numeric: tabular-nums; }
+  /* ── Search match count ──────────────────────────────── */
+  #search-match-count { font-variant-numeric: tabular-nums; }
 
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {

@@ -1172,5 +1172,111 @@ class TestCopyTaskId(unittest.TestCase):
         self.assertIn("Click to copy task ID", js)
 
 
+# ---------------------------------------------------------------------------
+# 40. Task card status emoji
+# ---------------------------------------------------------------------------
+
+class TestTaskCardStatusEmoji(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_status_emoji_map(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_STATUS_EMOJI", js)
+
+    def test_js_status_emoji_function(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_statusEmoji", js)
+
+    def test_js_verified_symbol(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"Verified"', js)
+
+
+# ---------------------------------------------------------------------------
+# 41. Search match count
+# ---------------------------------------------------------------------------
+
+class TestSearchMatchCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_match_count_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("search-match-count", js)
+
+    def test_html_match_count_span(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("search-match-count", html)
+
+    def test_js_result_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("result", js)
+
+    def test_css_match_count_style(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn("#search-match-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 42. Auto-collapse verified branches
+# ---------------------------------------------------------------------------
+
+class TestAutoCollapseVerifiedBranches(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_auto_collapse_logic(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Auto-collapse verified branches", js)
+
+    def test_js_collapsed_class_added(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        # Verify the collapsed class is added programmatically
+        self.assertIn('branchBlock.classList.add("collapsed")', js)
+
+    def test_js_arrow_set_to_collapsed(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        # Collapsed arrow symbol
+        self.assertIn('"▸"', js)
+
+
+# ---------------------------------------------------------------------------
+# 43. Subtask status sort toggle
+# ---------------------------------------------------------------------------
+
+class TestSubtaskStatusSort(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_sort_button(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Sort", js)
+
+    def test_js_sort_by_status(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Sorted subtasks by status", js)
+
+    def test_js_sort_order(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Pending", js)
+
+
+# ---------------------------------------------------------------------------
+# 44. Header progress bar tooltip
+# ---------------------------------------------------------------------------
+
+class TestHeaderProgressTooltip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_bar_title_set(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('hdr-bar").title', js)
+
+    def test_js_tooltip_breakdown(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Verified:", js)
+        self.assertIn("Running:", js)
+        self.assertIn("Pending:", js)
+
+
 if __name__ == "__main__":
     unittest.main()
