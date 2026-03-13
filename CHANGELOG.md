@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.80.0 — 2026-03-13  Coverage Push Round 7 — tasks 100%, control 100%, export_routes 100%
+
+- **5 new tests** across 3 existing test files
+- `tasks.py` 98% → **100%** — invalid page/limit ValueError handlers in branches + subtasks endpoints
+- `control.py` 96% → **100%** — resume OSError on unlink pause trigger
+- `export_routes.py` 99% → **100%** — non-matching journal block regex skip
+
+### Stats
+- 3265 total tests, 0 failures
+- All 17 blueprint modules + 3 utils modules at 100% coverage
+
 ## v6.79.0 — 2026-03-13  Coverage Push Round 6 — history 100%, subtasks 100%
 
 - **14 new tests** across 2 existing test files

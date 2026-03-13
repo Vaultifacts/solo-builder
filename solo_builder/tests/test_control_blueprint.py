@@ -212,5 +212,24 @@ class TestResumeEndpoint(_Base):
         self.assertEqual(r.status_code, 202)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: resume OSError on unlink (lines 87-88)
+# ---------------------------------------------------------------------------
+
+class TestResumeOSError(_Base):
+    def test_resume_oserror_on_unlink_still_ok(self):
+        pause_path = Path(self._tmp) / "state" / "pause_trigger"
+        pause_path.write_text("1")
+        orig_unlink = Path.unlink
+        def _failing_unlink(self_path, *a, **kw):
+            if "pause" in str(self_path):
+                raise OSError("locked")
+            orig_unlink(self_path, *a, **kw)
+        with patch.object(Path, "unlink", _failing_unlink):
+            r = self.client.post("/resume")
+        self.assertEqual(r.status_code, 202)
+        self.assertTrue(r.get_json()["ok"])
+
+
 if __name__ == "__main__":
     unittest.main()

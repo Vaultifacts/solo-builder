@@ -654,5 +654,38 @@ class TestPriority(_Base):
         self.assertEqual(risks, sorted(risks, reverse=True))
 
 
+# ---------------------------------------------------------------------------
+# Coverage: /tasks/<id>/branches invalid page (lines 344-345)
+# ---------------------------------------------------------------------------
+
+class TestTaskBranchesInvalidPage(_Base):
+    def test_branches_invalid_page_defaults_to_1(self):
+        self._write_state(step=1)
+        r = self.client.get("/tasks/T1/branches?page=abc")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["page"], 1)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: /tasks/<id>/subtasks invalid limit/page (lines 414-419)
+# ---------------------------------------------------------------------------
+
+class TestTaskSubtasksInvalidParams(_Base):
+    def test_subtasks_invalid_limit_defaults_to_0(self):
+        self._write_state(step=1)
+        r = self.client.get("/tasks/T1/subtasks?limit=abc")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["limit"], 0)
+
+    def test_subtasks_invalid_page_defaults_to_1(self):
+        self._write_state(step=1)
+        r = self.client.get("/tasks/T1/subtasks?page=abc")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertEqual(d["page"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

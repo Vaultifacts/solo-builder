@@ -372,5 +372,20 @@ class TestJournal(_Base):
         self.assertLessEqual(len(data["entries"][0]["output"]), 600)
 
 
+    def test_non_matching_block_skipped(self):
+        """Cover line 146 — block starting with ## but not matching the regex."""
+        content = (
+            "## Random Heading\n"
+            "Some text that doesn't match the journal format\n"
+            "---\n"
+            "## A1 · Task 1 / Branch b0 · Step 3\n"
+            "actual output\n"
+        )
+        self._journal_path.write_text(content, encoding="utf-8")
+        data = self.client.get("/journal").get_json()
+        self.assertEqual(len(data["entries"]), 1)
+        self.assertEqual(data["entries"][0]["subtask"], "A1")
+
+
 if __name__ == "__main__":
     unittest.main()
