@@ -39,6 +39,7 @@ const _SHORTCUTS = [
   ["e", "Export selected task as markdown"],
   ["z", "Undo last verify (reset to Pending)"],
   ["q", "Cycle detail status filter"],
+  ["u", "Scroll to first unverified subtask"],
 ];
 
 function _showShortcuts() {
@@ -239,6 +240,14 @@ document.addEventListener("keydown", (e) => {
   if (key === "/") { e.preventDefault(); const si = document.getElementById("task-search"); if (si) si.focus(); return; }
   if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
   if (key === "t") { window.toggleTheme(); return; }
+  if (key === "u") {
+    const dots = document.querySelectorAll("#detail-content .st-dot:not(.dot-green)");
+    if (dots.length > 0) {
+      const row = dots[0].closest(".subtask-row");
+      if (row) { row.scrollIntoView({ behavior: "smooth", block: "center" }); row.style.outline = "2px solid var(--yellow)"; setTimeout(() => { row.style.outline = ""; }, 1500); }
+    } else { toast("All subtasks verified"); }
+    return;
+  }
   if (key === "e") { _copyTaskSummary(); return; }
   if (key === "z") {
     const lastV = window._lastVerifiedSubtask;

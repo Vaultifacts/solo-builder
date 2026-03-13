@@ -553,6 +553,9 @@ export function renderGrid(tasks) {
     if (_ringFg) {
       const circ = 2 * Math.PI * 8;
       _ringFg.setAttribute("stroke-dashoffset", `${circ - (pct / 100) * circ}`);
+      // Milestone color at 25/50/75/100%
+      const _milestoneColor = pct >= 100 ? "var(--green)" : pct >= 75 ? "#22d3ee" : pct >= 50 ? "#eab308" : "var(--green)";
+      _ringFg.setAttribute("stroke", _milestoneColor);
     }
 
     // Segmented status bar
@@ -1294,6 +1297,17 @@ export function renderDetail(t) {
       if (_isCollapsed) localStorage.setItem(_collapseKey, "1");
       else localStorage.removeItem(_collapseKey);
     });
+    // Branch compact toggle — one-line summary vs full rows
+    const compactToggle = document.createElement("button");
+    compactToggle.className = "branch-compact-toggle toolbar-btn";
+    compactToggle.style.cssText = "font-size:8px;padding:0 4px;margin-left:4px";
+    compactToggle.textContent = "≡";
+    compactToggle.title = "Toggle compact branch view";
+    compactToggle.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      branchBlock.classList.toggle("branch-compact");
+    });
+    branchNameEl.appendChild(compactToggle);
     branchBlock.appendChild(branchNameEl);
 
     Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
@@ -1374,6 +1388,16 @@ export function renderDetail(t) {
       row.appendChild(stStep);
       row.appendChild(stElapsed);
       row.appendChild(stDuration);
+
+      // Output timestamp — when output was last updated
+      if (rawOutput && s.output_updated_at) {
+        const outTime = document.createElement("span");
+        outTime.className = "st-out-time";
+        const _outRel = _relativeTime(s.output_updated_at);
+        if (_outRel) outTime.textContent = `📝${_outRel}`;
+        outTime.title = `Output updated: ${s.output_updated_at}`;
+        row.appendChild(outTime);
+      }
 
       // Inline verify button (non-verified only)
       if (s.status !== "Verified") {
@@ -1598,12 +1622,25 @@ export function renderDetail(t) {
       scrollBar.className = "detail-scroll-progress";
       el.parentElement.insertBefore(scrollBar, el);
     }
+    // Scroll-to-top floating button
+    let scrollTopBtn = document.getElementById("detail-scroll-top");
+    if (!scrollTopBtn) {
+      scrollTopBtn = document.createElement("button");
+      scrollTopBtn.id = "detail-scroll-top";
+      scrollTopBtn.className = "detail-scroll-top-btn";
+      scrollTopBtn.textContent = "↑";
+      scrollTopBtn.title = "Scroll to top";
+      scrollTopBtn.addEventListener("click", () => el.scrollTo({ top: 0, behavior: "smooth" }));
+      el.parentElement.appendChild(scrollTopBtn);
+    }
     el.addEventListener("scroll", () => {
       const sb = document.getElementById("detail-scroll-progress");
       if (!sb) return;
       const pctScroll = el.scrollHeight > el.clientHeight
         ? Math.round(el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) : 0;
       sb.style.width = `${pctScroll}%`;
+      const stb = document.getElementById("detail-scroll-top");
+      if (stb) stb.style.display = el.scrollTop > 200 ? "block" : "none";
     });
   }
 

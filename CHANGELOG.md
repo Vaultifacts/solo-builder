@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.73.0 — 2026-03-13  Dashboard UX Round 32 — output time, milestone arc, compact branch, scroll-top, unverified key
+
+- **Subtask output timestamp**: Shows 📝 relative time when output was last updated
+- **Card completion milestone arc**: Progress ring changes color at 50%/75%/100% milestones
+- **Branch compact toggle**: ≡ button toggles one-line summary vs full subtask rows
+- **Detail scroll-to-top button**: Floating ↑ button appears when scrolled down 200px+
+- **Keyboard `u` scroll to unverified**: Press u to jump to first unverified subtask row
+
+### Stats
+- 504 dashboard E2E smoke tests (14 new), 3180 total tests, 0 failures
+- 150 UX features across v6.39–v6.73
+
 ## v6.72.0 — 2026-03-13  Dashboard UX Round 31 — syntax highlight, heatmap, branch time, zoom, quick filter
 
 - **Subtask output syntax highlight**: Error/success/warning keywords colored red/green/yellow in output preview

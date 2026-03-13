@@ -3350,5 +3350,105 @@ class TestKeyboardQuickFilter(unittest.TestCase):
         self.assertIn("Cycle detail status filter", js)
 
 
+# ---------------------------------------------------------------------------
+# 140. Subtask output timestamp
+# ---------------------------------------------------------------------------
+
+class TestSubtaskOutputTimestamp(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_out_time_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-out-time", js)
+
+    def test_js_output_updated_at(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("output_updated_at", js)
+
+    def test_css_out_time_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-out-time", css)
+
+
+# ---------------------------------------------------------------------------
+# 141. Card completion milestone arc
+# ---------------------------------------------------------------------------
+
+class TestCardMilestoneArc(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_milestone_color(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_milestoneColor", js)
+
+    def test_js_milestone_thresholds(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("pct >= 75", js)
+        self.assertIn("pct >= 50", js)
+
+
+# ---------------------------------------------------------------------------
+# 142. Branch compact toggle
+# ---------------------------------------------------------------------------
+
+class TestBranchCompactToggle(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_compact_toggle_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-compact-toggle", js)
+
+    def test_js_branch_compact_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-compact", js)
+
+    def test_css_branch_compact_hides_rows(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-compact .subtask-row", css)
+
+
+# ---------------------------------------------------------------------------
+# 143. Detail panel scroll-to-top button
+# ---------------------------------------------------------------------------
+
+class TestDetailScrollToTop(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_scroll_top_id(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-scroll-top", js)
+
+    def test_js_scroll_to_top(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("scrollTo", js)
+
+    def test_css_scroll_top_btn(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-scroll-top-btn", css)
+
+
+# ---------------------------------------------------------------------------
+# 144. Keyboard `u` scroll to unverified
+# ---------------------------------------------------------------------------
+
+class TestKeyboardScrollUnverified(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_u_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"u"', js)
+
+    def test_js_not_dot_green(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("dot-green", js)
+
+    def test_js_u_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Scroll to first unverified", js)
+
+
 if __name__ == "__main__":
     unittest.main()
