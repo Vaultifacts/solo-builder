@@ -26,6 +26,8 @@ async function pollHealth() {
 
 /* ── Performance profiling (?perf=1) ──────────────────────── */
 const _perfMode = new URLSearchParams(location.search).has("perf");
+const _perfHistory = [];
+const _PERF_WINDOW = 30;
 
 /* ── Polling loop ────────────────────────────────────────── */
 let _tickCount = 0;
@@ -70,10 +72,15 @@ async function tick() {
   }
   if (state.viewMode === "graph") renderGraph();
   if (_perfMode) {
-    const ms = (performance.now() - _t0).toFixed(1);
+    const elapsed = performance.now() - _t0;
+    const ms = elapsed.toFixed(1);
     const dom = document.querySelectorAll("*").length;
     const mem = performance.memory ? (performance.memory.usedJSHeapSize / 1048576).toFixed(1) + "MB" : "n/a";
-    console.log(`[perf] tick#${_tickCount} ${ms}ms | ${fast.length} polls | ${dom} DOM nodes | heap ${mem}`);
+    _perfHistory.push(elapsed);
+    if (_perfHistory.length > _PERF_WINDOW) _perfHistory.shift();
+    const avg = (_perfHistory.reduce((a, b) => a + b, 0) / _perfHistory.length).toFixed(1);
+    const warn = elapsed > 500 ? " ⚠ SLOW" : "";
+    console.log(`[perf] tick#${_tickCount} ${ms}ms (avg${avg}ms) | ${fast.length} polls | ${dom} DOM | heap ${mem}${warn}`);
   }
 }
 window.tick = tick;
@@ -375,7 +382,9 @@ window.openSubtaskModal = function (ev) {
   sdStatus.style.color = statusColor(ev.status);
   document.getElementById("sd-output").textContent = ev.output || "(no output)";
   document.getElementById("sd-sparkline").replaceChildren();
-  document.getElementById("st-modal-overlay").style.display = "flex";
+  const _modal = document.getElementById("st-modal-overlay");
+  _modal.style.display = "flex";
+  _trapFocus(_modal);
   api("/timeline/" + encodeURIComponent(ev.subtask)).then(function (td) {
     const hist = td.history || [];
     const sparkEl = document.getElementById("sd-sparkline");
@@ -697,6 +706,7 @@ const _SHORTCUTS = [
   ["Escape", "Close modal / shortcuts"],
   ["p", "Pause/resume polling"],
   ["t", "Toggle dark/light theme"],
+  ["/", "Focus task search"],
   ["1-9", "Switch to sidebar tab by position"],
 ];
 
@@ -727,6 +737,22 @@ function _showShortcuts() {
   }
   overlay.appendChild(card);
   document.body.appendChild(overlay);
+  _trapFocus(overlay);
+}
+
+function _trapFocus(container) {
+  const focusable = () => container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  const handler = (e) => {
+    if (e.key !== "Tab") return;
+    const els = [...focusable()];
+    if (!els.length) return;
+    const first = els[0], last = els[els.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  container.addEventListener("keydown", handler);
+  const first = [...focusable()][0];
+  if (first) first.focus();
 }
 
 document.addEventListener("keydown", (e) => {
@@ -761,6 +787,7 @@ document.addEventListener("keydown", (e) => {
     cards[prev].scrollIntoView({ block: "nearest" });
     return;
   }
+  if (key === "/") { e.preventDefault(); const si = document.getElementById("task-search"); if (si) si.focus(); return; }
   if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
   if (key === "t") { window.toggleTheme(); return; }
   if (key >= "1" && key <= "9") {

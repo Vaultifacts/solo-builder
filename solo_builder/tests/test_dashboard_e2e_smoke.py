@@ -487,6 +487,20 @@ class TestTieredPollingStructure(unittest.TestCase):
     def test_mute_state_init(self):
         self.assertIn("sb-mute", self._src)
 
+    def test_focus_trap_function(self):
+        self.assertIn("_trapFocus", self._src)
+
+    def test_slash_search_shortcut(self):
+        self.assertIn('"/"', self._src)
+        self.assertIn("task-search", self._src)
+
+    def test_perf_rolling_average(self):
+        self.assertIn("_perfHistory", self._src)
+        self.assertIn("_PERF_WINDOW", self._src)
+
+    def test_perf_slow_warning(self):
+        self.assertIn("SLOW", self._src)
+
 
 # ---------------------------------------------------------------------------
 # 12. Subtask dependency graph toggle
@@ -508,6 +522,29 @@ class TestDepsGraphFunction(unittest.TestCase):
 
     def test_imports_svg_el(self):
         self.assertIn('import { svgEl }', self._src)
+
+    def test_dep_graph_node_click(self):
+        self.assertIn("scrollIntoView", self._src)
+        self.assertIn("pointer", self._src)
+
+
+# ---------------------------------------------------------------------------
+# 13. Responsive CSS — tablet breakpoint
+# ---------------------------------------------------------------------------
+
+class TestResponsiveBreakpoints(unittest.TestCase):
+    """Verify dashboard.css has both tablet and mobile breakpoints."""
+
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def setUp(self):
+        self._src = self._CSS_PATH.read_text(encoding="utf-8")
+
+    def test_mobile_breakpoint(self):
+        self.assertIn("max-width: 768px", self._src)
+
+    def test_tablet_breakpoint(self):
+        self.assertIn("max-width: 1024px", self._src)
 
 
 if __name__ == "__main__":

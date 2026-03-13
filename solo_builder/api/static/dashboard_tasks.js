@@ -639,10 +639,23 @@ function _toggleDepsGraph(task) {
   names.forEach(n => {
     const p = pos[n];
     const col = stColor(allSt[n].status);
-    svg.appendChild(svgEl("rect", { x: p.x, y: p.y - NH / 2, width: NW, height: NH, rx: "3", fill: "var(--surface)", stroke: col, "stroke-width": "1" }));
-    const txt = svgEl("text", { x: p.x + NW / 2, y: p.y + 4, "text-anchor": "middle", "font-size": "9", fill: col, "font-family": "var(--font)" });
+    const rect = svgEl("rect", { x: p.x, y: p.y - NH / 2, width: NW, height: NH, rx: "3", fill: "var(--surface)", stroke: col, "stroke-width": "1" });
+    rect.style.cursor = "pointer";
+    rect.addEventListener("click", () => {
+      const rows = document.querySelectorAll("#detail-content .st-name");
+      for (const r of rows) {
+        if (r.textContent === n) {
+          const sr = r.closest(".subtask-row");
+          sr.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          sr.style.outline = "2px solid var(--cyan)";
+          setTimeout(() => { sr.style.outline = ""; }, 1500);
+          break;
+        }
+      }
+    });
+    const txt = svgEl("text", { x: p.x + NW / 2, y: p.y + 4, "text-anchor": "middle", "font-size": "9", fill: col, "font-family": "var(--font)", style: "pointer-events:none" });
     txt.textContent = n;
-    svg.appendChild(txt);
+    svg.append(rect, txt);
   });
 
   panel.appendChild(svg);

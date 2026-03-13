@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.42.0 — 2026-03-12  Focus Trap + Search Shortcut + Dep Click + Perf Avg + Tablet CSS
+
+- **Focus trap**: Tab key cycles within open modals and shortcuts overlay instead of escaping to background. `_trapFocus()` utility with Shift+Tab reverse cycling
+- **`/` search shortcut**: Pressing `/` focuses the task search input (vim-style). Added to `?` shortcuts panel
+- **Dep graph node click**: Clicking a subtask node in the SVG dependency graph scrolls to and highlights that subtask row (cyan outline, 1.5s)
+- **Perf rolling average**: `?perf=1` now shows 30-tick rolling average and `SLOW` warning when a tick exceeds 500ms
+- **Tablet responsive (768-1024px)**: 2-column layout — task list on left, detail+sidebar stacked on right. Compact tab sizing
+- **7 new tests**: focus trap, slash search, perf rolling avg, perf slow warn, dep node click, mobile+tablet breakpoints
+- **76 dashboard E2E tests**, 2649+ total, 0 failures
+
 ## v6.41.0 — 2026-03-12  Subtask Dep Graph + Keyboard Shortcuts + Mute + Perf Mode
 
 - **Subtask dependency graph**: "⊶ Deps" button in task detail panel renders a mini SVG DAG showing subtask nodes with colored status borders and dependency arrows. Topological layout with level assignment
