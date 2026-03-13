@@ -207,6 +207,7 @@ _PANEL_SUBMODULES = [
     "dashboard_history.js",
     "dashboard_analytics.js",
     "dashboard_svg.js",
+    "dashboard_keyboard.js",
 ]
 
 
@@ -477,22 +478,11 @@ class TestTieredPollingStructure(unittest.TestCase):
         # Health widgets should be in the slow tier
         self.assertIn("pollHealthDetailed", self._src)
 
-    def test_keyboard_shortcuts_panel(self):
-        self.assertIn("_SHORTCUTS", self._src)
-        self.assertIn("shortcuts-overlay", self._src)
-
     def test_perf_mode_flag(self):
         self.assertIn("_perfMode", self._src)
 
     def test_mute_state_init(self):
         self.assertIn("sb-mute", self._src)
-
-    def test_focus_trap_function(self):
-        self.assertIn("_trapFocus", self._src)
-
-    def test_slash_search_shortcut(self):
-        self.assertIn('"/"', self._src)
-        self.assertIn("task-search", self._src)
 
     def test_perf_rolling_average(self):
         self.assertIn("_perfHistory", self._src)
@@ -501,6 +491,33 @@ class TestTieredPollingStructure(unittest.TestCase):
     def test_perf_slow_warning(self):
         self.assertIn("SLOW", self._src)
 
+    def test_imports_keyboard_module(self):
+        self.assertIn("dashboard_keyboard.js", self._src)
+
+
+# ---------------------------------------------------------------------------
+# 11b. Keyboard shortcuts module
+# ---------------------------------------------------------------------------
+
+class TestKeyboardModule(unittest.TestCase):
+    """Verify dashboard_keyboard.js contains all keyboard features."""
+
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def setUp(self):
+        self._src = self._JS_PATH.read_text(encoding="utf-8")
+
+    def test_shortcuts_panel(self):
+        self.assertIn("_SHORTCUTS", self._src)
+        self.assertIn("shortcuts-overlay", self._src)
+
+    def test_focus_trap_function(self):
+        self.assertIn("trapFocus", self._src)
+
+    def test_slash_search_shortcut(self):
+        self.assertIn('"/"', self._src)
+        self.assertIn("task-search", self._src)
+
     def test_go_key_combos(self):
         self.assertIn("_pendingG", self._src)
         self.assertIn("_GO_MAP", self._src)
@@ -508,6 +525,10 @@ class TestTieredPollingStructure(unittest.TestCase):
     def test_escape_closes_deps_panel(self):
         self.assertIn("detail-deps-panel", self._src)
         self.assertIn("detail-tl-panel", self._src)
+
+    def test_copy_task_summary(self):
+        self.assertIn("_copyTaskSummary", self._src)
+        self.assertIn("clipboard", self._src)
 
 
 # ---------------------------------------------------------------------------

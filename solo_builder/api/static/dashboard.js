@@ -384,7 +384,7 @@ window.openSubtaskModal = function (ev) {
   document.getElementById("sd-sparkline").replaceChildren();
   const _modal = document.getElementById("st-modal-overlay");
   _modal.style.display = "flex";
-  _trapFocus(_modal);
+  trapFocus(_modal);
   api("/timeline/" + encodeURIComponent(ev.subtask)).then(function (td) {
     const hist = td.history || [];
     const sparkEl = document.getElementById("sd-sparkline");
@@ -697,120 +697,5 @@ if (pollSel) pollSel.value = String(state.pollMs);
 tick();
 state.pollIntervalId = setInterval(tick, state.pollMs);
 
-/* ── Keyboard shortcuts ──────────────────────────────────── */
-const _SHORTCUTS = [
-  ["?", "Show/hide this shortcuts panel"],
-  ["j / ↓", "Select next task"],
-  ["k / ↑", "Select previous task"],
-  ["Enter", "Open selected task detail"],
-  ["Escape", "Close modal / shortcuts"],
-  ["p", "Pause/resume polling"],
-  ["t", "Toggle dark/light theme"],
-  ["/", "Focus task search"],
-  ["1-9", "Switch to sidebar tab by position"],
-  ["g h", "Go to Health tab"],
-  ["g s", "Go to Settings tab"],
-  ["g b", "Go to Branches tab"],
-  ["g m", "Go to Metrics tab"],
-];
-
-function _showShortcuts() {
-  let overlay = document.getElementById("shortcuts-overlay");
-  if (overlay) { overlay.remove(); return; }
-  overlay = document.createElement("div");
-  overlay.id = "shortcuts-overlay";
-  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center";
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-  const card = document.createElement("div");
-  card.style.cssText = "background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 24px;max-width:360px;width:90%";
-  const title = document.createElement("div");
-  title.style.cssText = "font-size:14px;font-weight:bold;margin-bottom:10px;color:var(--cyan)";
-  title.textContent = "Keyboard Shortcuts";
-  card.appendChild(title);
-  for (const [key, desc] of _SHORTCUTS) {
-    const row = document.createElement("div");
-    row.style.cssText = "display:flex;justify-content:space-between;padding:3px 0;font-size:11px";
-    const k = document.createElement("span");
-    k.style.cssText = "font-weight:bold;color:var(--text);min-width:80px";
-    k.textContent = key;
-    const d = document.createElement("span");
-    d.style.color = "var(--dim)";
-    d.textContent = desc;
-    row.append(k, d);
-    card.appendChild(row);
-  }
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-  _trapFocus(overlay);
-}
-
-function _trapFocus(container) {
-  const focusable = () => container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-  const handler = (e) => {
-    if (e.key !== "Tab") return;
-    const els = [...focusable()];
-    if (!els.length) return;
-    const first = els[0], last = els[els.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  };
-  container.addEventListener("keydown", handler);
-  const first = [...focusable()][0];
-  if (first) first.focus();
-}
-
-let _pendingG = false;
-const _GO_MAP = { h: "health", s: "settings", b: "branches", m: "metrics", d: "diff", p: "priority", a: "agents", f: "forecast" };
-
-document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
-  if (e.target.classList.contains("sidebar-tab")) return;
-  const key = e.key;
-  if (_pendingG) {
-    _pendingG = false;
-    const tab = _GO_MAP[key];
-    if (tab) { window.switchTab(tab); return; }
-  }
-  if (key === "g") { _pendingG = true; setTimeout(() => { _pendingG = false; }, 500); return; }
-  if (key === "?") { _showShortcuts(); return; }
-  if (key === "Escape") {
-    const sc = document.getElementById("shortcuts-overlay");
-    if (sc) { sc.remove(); return; }
-    const modal = document.querySelector(".modal-overlay[style*='flex']");
-    if (modal) { modal.style.display = "none"; return; }
-    const deps = document.querySelector(".detail-deps-panel");
-    if (deps) { deps.remove(); return; }
-    const tl = document.querySelector(".detail-tl-panel");
-    if (tl) { tl.remove(); return; }
-    return;
-  }
-  if (key === "j" || key === "ArrowDown") {
-    e.preventDefault();
-    const cards = [...document.querySelectorAll(".task-card")];
-    if (!cards.length) return;
-    const cur = cards.findIndex(c => c.classList.contains("selected"));
-    const next = cur < cards.length - 1 ? cur + 1 : 0;
-    cards[next].click();
-    cards[next].scrollIntoView({ block: "nearest" });
-    return;
-  }
-  if (key === "k" || key === "ArrowUp") {
-    e.preventDefault();
-    const cards = [...document.querySelectorAll(".task-card")];
-    if (!cards.length) return;
-    const cur = cards.findIndex(c => c.classList.contains("selected"));
-    const prev = cur > 0 ? cur - 1 : cards.length - 1;
-    cards[prev].click();
-    cards[prev].scrollIntoView({ block: "nearest" });
-    return;
-  }
-  if (key === "/") { e.preventDefault(); const si = document.getElementById("task-search"); if (si) si.focus(); return; }
-  if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
-  if (key === "t") { window.toggleTheme(); return; }
-  if (key >= "1" && key <= "9") {
-    const tabs = [...document.querySelectorAll(".sidebar-tab")];
-    const idx = parseInt(key) - 1;
-    if (tabs[idx]) { tabs[idx].click(); }
-    return;
-  }
-});
+/* ── Keyboard shortcuts (extracted to dashboard_keyboard.js) ── */
+import { trapFocus } from "./dashboard_keyboard.js";

@@ -187,6 +187,9 @@ export function renderGrid(tasks) {
     }
     card.classList.toggle("active",  t.id === state.selectedTask);
     card.classList.toggle("blocked", isBlocked);
+    card.classList.remove("status-complete", "status-running", "status-pending");
+    const _taskPct = t.subtask_count > 0 ? t.verified_subtasks / t.subtask_count : 0;
+    card.classList.add(_taskPct >= 1 ? "status-complete" : t.running_subtasks > 0 ? "status-running" : "status-pending");
 
     const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
     card.querySelector(".card-bar-fg").style.width = pct + "%";

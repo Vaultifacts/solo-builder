@@ -219,12 +219,16 @@
   .task-card {
     background: var(--surface);
     border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
     border-radius: 4px;
     padding: 10px 12px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
     user-select: none;
   }
+  .task-card.status-complete { border-left-color: var(--green); }
+  .task-card.status-running  { border-left-color: var(--cyan); }
+  .task-card.status-pending  { border-left-color: var(--yellow); }
   .task-card:hover  { border-color: var(--cyan); }
   .task-card.active { border-color: var(--cyan); background: #0d1e22; }
   .task-card.blocked { opacity: 0.5; }
@@ -638,4 +642,13 @@
     .stat-val  { font-size: 16px; }
     .progress-wrap { min-width: 100%; }
     #btn-export, #btn-theme, #btn-view { font-size: 10px; padding: 2px 6px; }
+  }
+
+  /* ── Reduced motion ──────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }

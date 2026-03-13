@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.44.0 — 2026-03-12  Reduced Motion + Status Bar + Clipboard Export + Keyboard Module
+
+- **`prefers-reduced-motion`**: All CSS animations and transitions disabled when OS reduce-motion is set
+- **Task card status color bar**: Left border colored green (complete), cyan (running), or yellow (pending) — instant visual scan of pipeline state
+- **Ctrl+Shift+E clipboard export**: Copies selected task summary as markdown checklist (subtasks, status, progress)
+- **`dashboard_keyboard.js` extraction**: 147 lines of keyboard handlers (shortcuts, focus trap, go-to combos, clipboard) extracted from dashboard.js. 18 ES modules total
+- **CSS transitions**: Sidebar tab color transitions (0.15s), content opacity fade
+- **84 dashboard E2E tests**, 2664 total, 0 failures
+
 ## v6.43.0 — 2026-03-12  Escape Panels + Scroll Reset + Transitions + Go-To Keys + Skeleton
 
 - **Escape closes panels**: Escape key now dismisses dep graph and timeline panels (priority: shortcuts > modal > deps > timeline)
