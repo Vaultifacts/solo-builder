@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.62.0 — 2026-03-13  Pending Count + Scroll Progress + Escape Clear + Line Count + Active Highlight
+
+- **Card pending subtask count**: Shows pending count with ◯ symbol on card counts line
+- **Detail panel scroll progress**: Thin cyan progress bar tracking scroll position in detail panel
+- **Escape clears subtask search**: Pressing Escape now also clears the subtask search filter
+- **Subtask output line count**: Shows "NL" line count badge on subtask rows with multi-line output
+- **Card recently active highlight**: Cyan left border on cards active within the last 60 seconds
+
+### Stats
+- 368 dashboard E2E smoke tests (13 new), 2948 total tests, 0 failures
+- 110 UX features across v6.39–v6.62
+
 ## v6.61.0 — 2026-03-13  Sort Dropdown + Status Summary + Shortcuts Update + Hover Scale + Row Striping
 
 - **Card sort dropdown**: Sort task grid by name/progress/recent/status; persisted in localStorage

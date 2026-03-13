@@ -2454,5 +2454,100 @@ class TestSubtaskRowStriping(unittest.TestCase):
         self.assertIn(".subtask-row:nth-child(odd)", css)
 
 
+# ---------------------------------------------------------------------------
+# 100. Card pending subtask count
+# ---------------------------------------------------------------------------
+
+class TestCardPendingCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_pending_count_calc(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_pendingSt", js)
+
+    def test_js_pending_symbol(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("◯", js)
+
+
+# ---------------------------------------------------------------------------
+# 101. Detail panel scroll progress
+# ---------------------------------------------------------------------------
+
+class TestDetailScrollProgress(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_scroll_progress_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-scroll-progress", js)
+
+    def test_js_scroll_listener(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_scrollListenerAdded", js)
+
+    def test_css_scroll_bar_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-scroll-progress", css)
+
+
+# ---------------------------------------------------------------------------
+# 102. Escape clears subtask search
+# ---------------------------------------------------------------------------
+
+class TestEscapeClearsSubtaskSearch(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_st_search_clear(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-search", js)
+
+    def test_js_filter_subtasks_called(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("filterSubtasks", js)
+
+
+# ---------------------------------------------------------------------------
+# 103. Subtask output line count
+# ---------------------------------------------------------------------------
+
+class TestSubtaskOutputLineCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_line_count_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-line-count", js)
+
+    def test_js_line_split(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('split("\\n")', js)
+
+    def test_css_line_count_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-line-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 104. Card recently active highlight
+# ---------------------------------------------------------------------------
+
+class TestCardRecentlyActive(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_recently_active_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-recently-active", js)
+
+    def test_js_60s_threshold(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("< 60", js)
+
+    def test_css_recently_active_border(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-recently-active", css)
+
+
 if __name__ == "__main__":
     unittest.main()

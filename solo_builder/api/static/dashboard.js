@@ -493,6 +493,8 @@ document.addEventListener("keydown", function (e) {
     if (np) np.style.display = "none";
     const ts = document.getElementById("task-search");
     if (ts && ts.value) { ts.value = ""; applyTaskSearch(); }
+    const ss = document.getElementById("st-search");
+    if (ss && ss.value) { ss.value = ""; window.filterSubtasks(); }
     return;
   }
   if (e.key === "?") { window.openKeysModal(); return; }

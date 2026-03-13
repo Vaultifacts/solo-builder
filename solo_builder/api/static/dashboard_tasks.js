@@ -480,10 +480,12 @@ export function renderGrid(tasks) {
       pctLabel.textContent = pct > 0 ? `${pct}%` : "";
       pctLabel.className = `card-pct-label ${pct >= 80 ? "pct-high" : pct >= 50 ? "pct-mid" : "pct-low"}`;
     }
+    const _pendingSt = t.subtask_count - t.verified_subtasks - t.running_subtasks - (t.review_subtasks || 0);
     card.querySelector(".card-counts").textContent =
       `${t.verified_subtasks}/${t.subtask_count} verified` +
       (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
-      (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "");
+      (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "") +
+      (_pendingSt > 0 ? ` · ${_pendingSt}◯` : "");
 
     // Total subtask count label
     let stCountEl = card.querySelector(".card-st-count");
@@ -629,6 +631,10 @@ export function renderGrid(tasks) {
     }
     agoEl.textContent = _relativeTime(t.last_active);
     agoEl.title = t.last_active || "";
+
+    // Recently active highlight (active within 60s)
+    const _lastActiveSec = t.last_active ? (Date.now() - new Date(t.last_active).getTime()) / 1000 : Infinity;
+    card.classList.toggle("card-recently-active", _lastActiveSec < 60);
 
     // Tooltip with branch breakdown
     if (_bEntries.length > 0) {
@@ -1136,6 +1142,16 @@ export function renderDetail(t) {
         wcBadge.textContent = wc > 999 ? `${(wc/1000).toFixed(1)}k` : `${wc}w`;
         row.appendChild(wcBadge);
 
+        // Line count badge
+        const lineCount = rawOutput.split("\n").length;
+        if (lineCount > 1) {
+          const lcBadge = document.createElement("span");
+          lcBadge.className = "st-line-count";
+          lcBadge.title = `${lineCount} lines`;
+          lcBadge.textContent = `${lineCount}L`;
+          row.appendChild(lcBadge);
+        }
+
         const outSpan = document.createElement("span");
         outSpan.className = "st-output";
         outSpan.title = rawOutput.substring(0, 400);
@@ -1200,6 +1216,25 @@ export function renderDetail(t) {
   });
 
   el.replaceChildren(...nodes);
+
+  // Scroll progress indicator
+  if (!el._scrollListenerAdded) {
+    el._scrollListenerAdded = true;
+    let scrollBar = document.getElementById("detail-scroll-progress");
+    if (!scrollBar) {
+      scrollBar = document.createElement("div");
+      scrollBar.id = "detail-scroll-progress";
+      scrollBar.className = "detail-scroll-progress";
+      el.parentElement.insertBefore(scrollBar, el);
+    }
+    el.addEventListener("scroll", () => {
+      const sb = document.getElementById("detail-scroll-progress");
+      if (!sb) return;
+      const pctScroll = el.scrollHeight > el.clientHeight
+        ? Math.round(el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) : 0;
+      sb.style.width = `${pctScroll}%`;
+    });
+  }
 
   if (_changedSt) {
     const rows = el.querySelectorAll(".subtask-row .st-name");
