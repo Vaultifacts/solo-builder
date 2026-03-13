@@ -34,6 +34,7 @@ const _SHORTCUTS = [
   ["b", "Branches tab"],
   ["s", "Subtasks tab"],
   ["h", "History tab"],
+  ["l", "Journal tab"],
 ];
 
 function _showShortcuts() {
@@ -235,6 +236,7 @@ document.addEventListener("keydown", (e) => {
   if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
   if (key === "t") { window.toggleTheme(); return; }
   if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
+  if (key === "l") { window.switchTab?.("journal"); return; }
   if (key >= "1" && key <= "9") {
     const tabs = [...document.querySelectorAll(".sidebar-tab")];
     const idx = parseInt(key) - 1;

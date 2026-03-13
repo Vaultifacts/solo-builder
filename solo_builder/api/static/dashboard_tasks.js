@@ -642,6 +642,25 @@ export function renderGrid(tasks) {
       sparkEl.innerHTML = bars.map(p => `<span class="spark-bar" style="height:${Math.max(2, p * 12 / 100)}px"></span>`).join("");
     }
 
+    // Failure count badge (subtasks with error/fail in output)
+    let failBadge = card.querySelector(".card-fail-count");
+    const _failCount = _bEntries.reduce((acc, [, bd]) => {
+      return acc + Object.values(bd.subtasks || {}).filter(s =>
+        s.status === "Running" && s.output && /error|fail|exception/i.test(s.output)
+      ).length;
+    }, 0);
+    if (_failCount > 0) {
+      if (!failBadge) {
+        failBadge = document.createElement("span");
+        failBadge.className = "card-fail-count";
+        card.querySelector(".card-top").appendChild(failBadge);
+      }
+      failBadge.textContent = `✗${_failCount}`;
+      failBadge.title = `${_failCount} subtask(s) with errors`;
+    } else if (failBadge) {
+      failBadge.remove();
+    }
+
     // Last-active relative time
     let agoEl = card.querySelector(".card-ago");
     if (!agoEl) {
@@ -851,6 +870,23 @@ export function renderDetail(t) {
   });
   statusDiv.append(" ", mdExportBtn);
 
+  const jsonExportBtn = document.createElement("button");
+  jsonExportBtn.className = "toolbar-btn";
+  jsonExportBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  jsonExportBtn.title = "Download task detail as JSON";
+  jsonExportBtn.textContent = "{ } JSON";
+  jsonExportBtn.addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(t, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${t.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Downloaded " + t.id + ".json");
+  });
+  statusDiv.append(" ", jsonExportBtn);
+
   statusDiv.append(" ", sortBtn);
 
   const expandAllBtn = document.createElement("button");
@@ -957,7 +993,26 @@ export function renderDetail(t) {
       if (bs.running > 0) bExtra += ` ${bs.running}▶`;
       if (bs.review  > 0) bExtra += ` ${bs.review}⏸`;
       cnt.textContent = bExtra;
-      row.append(lbl, trk, cnt);
+      // Branch mini-ring SVG
+      const NS = "http://www.w3.org/2000/svg";
+      const miniRing = document.createElementNS(NS, "svg");
+      miniRing.setAttribute("class", "branch-mini-ring");
+      miniRing.setAttribute("width", "14");
+      miniRing.setAttribute("height", "14");
+      miniRing.setAttribute("viewBox", "0 0 14 14");
+      const bgC = document.createElementNS(NS, "circle");
+      bgC.setAttribute("cx", "7"); bgC.setAttribute("cy", "7"); bgC.setAttribute("r", "5");
+      bgC.setAttribute("fill", "none"); bgC.setAttribute("stroke", "var(--bg3)"); bgC.setAttribute("stroke-width", "2");
+      const fgC = document.createElementNS(NS, "circle");
+      fgC.setAttribute("cx", "7"); fgC.setAttribute("cy", "7"); fgC.setAttribute("r", "5");
+      fgC.setAttribute("fill", "none"); fgC.setAttribute("stroke", "var(--green)"); fgC.setAttribute("stroke-width", "2");
+      fgC.setAttribute("stroke-linecap", "round"); fgC.setAttribute("transform", "rotate(-90 7 7)");
+      const bCirc = 2 * Math.PI * 5;
+      fgC.setAttribute("stroke-dasharray", `${bCirc}`);
+      fgC.setAttribute("stroke-dashoffset", `${bCirc - (bpct / 100) * bCirc}`);
+      miniRing.append(bgC, fgC);
+
+      row.append(lbl, miniRing, trk, cnt);
       branchProgressDiv.appendChild(row);
     });
   }
@@ -1197,6 +1252,19 @@ export function renderDetail(t) {
         }
         row.appendChild(depWrap);
       }
+
+      // Output change indicator (shows "△" when output changed since last render)
+      const _prevOutputs = window._prevSubtaskOutputs || {};
+      const _prevOut = _prevOutputs[sname] || "";
+      if (rawOutput && _prevOut && rawOutput !== _prevOut) {
+        const changeBadge = document.createElement("span");
+        changeBadge.className = "st-output-changed";
+        changeBadge.textContent = "△";
+        changeBadge.title = "Output changed since last poll";
+        row.appendChild(changeBadge);
+      }
+      if (!window._prevSubtaskOutputs) window._prevSubtaskOutputs = {};
+      window._prevSubtaskOutputs[sname] = rawOutput;
 
       // Description preview (always show if available, truncated)
       if (s.description && !rawOutput) {

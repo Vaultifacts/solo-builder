@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.68.0 — 2026-03-13  Dashboard UX Round 27 — fail badge, output change, mini-ring, JSON export, journal key
+
+- **Card failure count badge**: Red ✗N badge on cards with error/fail/exception in subtask output
+- **Subtask output change indicator**: △ marker when subtask output changes between polls
+- **Branch progress mini-ring**: Tiny circular SVG per branch in detail panel progress rows
+- **Detail panel JSON export**: `{ } JSON` button downloads task detail as downloadable JSON file
+- **Keyboard `l` journal tab**: Press l to switch to journal tab
+
+### Stats
+- 420 dashboard E2E smoke tests (17 new), 3096 total tests, 0 failures
+- 125 UX features across v6.39–v6.68
+
 ## v6.67.0 — 2026-03-13  Dashboard UX Round 26 — retry btn, drag handle, branch time, breadcrumb, refresh key
 
 - **Subtask retry button**: ↻ button on Running subtasks to reset via POST /heal

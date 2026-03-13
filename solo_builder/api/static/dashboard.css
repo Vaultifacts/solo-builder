@@ -853,6 +853,12 @@
   .detail-bc-link { color: var(--cyan); cursor: pointer; }
   .detail-bc-link:hover { text-decoration: underline; }
   .detail-bc-current { color: var(--text); }
+  /* ── Card failure count badge ────────────────────────────── */
+  .card-fail-count { font-size: 9px; color: #ef4444; background: rgba(239,68,68,0.15); padding: 0 4px; border-radius: 3px; margin-left: 4px; }
+  /* ── Subtask output change indicator ────────────────────── */
+  .st-output-changed { font-size: 9px; color: var(--cyan); margin-left: 2px; opacity: 0.7; flex-shrink: 0; }
+  /* ── Branch mini-ring SVG ──────────────────────────────── */
+  .branch-mini-ring { flex-shrink: 0; vertical-align: middle; }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

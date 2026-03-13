@@ -2779,5 +2779,116 @@ class TestKeyboardForceRefresh(unittest.TestCase):
         self.assertIn("Refreshing", js)
 
 
+# ---------------------------------------------------------------------------
+# 115. Card failure count badge
+# ---------------------------------------------------------------------------
+
+class TestCardFailCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_fail_count_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-fail-count", js)
+
+    def test_js_fail_regex(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("error|fail|exception", js)
+
+    def test_css_fail_count_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-fail-count", css)
+
+
+# ---------------------------------------------------------------------------
+# 116. Subtask output change indicator
+# ---------------------------------------------------------------------------
+
+class TestSubtaskOutputChange(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_output_changed_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-output-changed", js)
+
+    def test_js_prev_outputs_tracking(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_prevSubtaskOutputs", js)
+
+    def test_js_change_badge_symbol(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("△", js)
+
+    def test_css_output_changed_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-output-changed", css)
+
+
+# ---------------------------------------------------------------------------
+# 117. Branch progress mini-ring
+# ---------------------------------------------------------------------------
+
+class TestBranchMiniRing(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_mini_ring_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-mini-ring", js)
+
+    def test_js_mini_ring_svg(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("createElementNS", js)
+
+    def test_css_mini_ring_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-mini-ring", css)
+
+
+# ---------------------------------------------------------------------------
+# 118. Detail panel JSON export
+# ---------------------------------------------------------------------------
+
+class TestDetailJsonExport(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_json_export_btn(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("jsonExportBtn", js)
+
+    def test_js_json_stringify(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("JSON.stringify(t, null, 2)", js)
+
+    def test_js_json_download(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".json", js)
+
+    def test_js_blob_creation(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("application/json", js)
+
+
+# ---------------------------------------------------------------------------
+# 119. Keyboard `l` journal tab
+# ---------------------------------------------------------------------------
+
+class TestKeyboardJournalTab(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_l_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"l"', js)
+
+    def test_js_journal_switch(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("journal", js)
+
+    def test_js_l_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Journal tab", js)
+
+
 if __name__ == "__main__":
     unittest.main()
