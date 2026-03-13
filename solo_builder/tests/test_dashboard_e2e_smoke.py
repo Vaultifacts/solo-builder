@@ -2253,5 +2253,111 @@ class TestRunningDotPulse(unittest.TestCase):
         self.assertIn("opacity", snippet)
 
 
+# ---------------------------------------------------------------------------
+# 90. Card blocked overlay
+# ---------------------------------------------------------------------------
+
+class TestCardBlockedOverlay(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_blocked_overlay_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-blocked-overlay", js)
+
+    def test_js_blocked_text(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Blocked", js)
+
+    def test_css_overlay_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-blocked-overlay", css)
+
+
+# ---------------------------------------------------------------------------
+# 91. Subtask search count
+# ---------------------------------------------------------------------------
+
+class TestSubtaskSearchCount(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _HTML_PATH = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+    def test_js_search_count_element(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-search-count", js)
+
+    def test_js_match_total_format(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("matchCount", js)
+
+    def test_html_search_count_span(self):
+        html = self._HTML_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-search-count", html)
+
+
+# ---------------------------------------------------------------------------
+# 92. Keyboard `w` compact toggle
+# ---------------------------------------------------------------------------
+
+class TestKeyboardCompactToggle(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+
+    def test_js_w_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"w"', js)
+
+    def test_js_calls_toggle_compact(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("toggleCompactMode", js)
+
+
+# ---------------------------------------------------------------------------
+# 93. Card percentage color
+# ---------------------------------------------------------------------------
+
+class TestCardPercentageColor(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_pct_classes(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("pct-high", js)
+        self.assertIn("pct-mid", js)
+        self.assertIn("pct-low", js)
+
+    def test_css_pct_high(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".pct-high", css)
+
+    def test_css_pct_mid(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".pct-mid", css)
+
+    def test_css_pct_low(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".pct-low", css)
+
+
+# ---------------------------------------------------------------------------
+# 94. Subtask dot status tooltip
+# ---------------------------------------------------------------------------
+
+class TestSubtaskDotTooltip(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_dot_title_set(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("dot.title", js)
+
+    def test_js_step_info_in_tooltip(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("step ${s.last_update}", js)
+
+    def test_css_dot_cursor(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-dot[title]", css)
+
+
 if __name__ == "__main__":
     unittest.main()

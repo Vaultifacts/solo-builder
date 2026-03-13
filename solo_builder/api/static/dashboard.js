@@ -572,6 +572,10 @@ document.addEventListener("keydown", function (e) {
     toast(isMuted === "1" ? "Sound muted" : "Sound unmuted");
     return;
   }
+  if (e.key === "w") {
+    window.toggleCompactMode();
+    return;
+  }
   if (e.key === "v" && state.selectedTask && state.tasksCache[state.selectedTask]) {
     const t = state.tasksCache[state.selectedTask];
     for (const b of Object.values(t.branches || {})) {

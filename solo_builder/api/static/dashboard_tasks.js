@@ -422,6 +422,19 @@ export function renderGrid(tasks) {
     }
     card.classList.toggle("active",  t.id === state.selectedTask);
     card.classList.toggle("blocked", isBlocked);
+
+    // Blocked overlay
+    let blockedOverlay = card.querySelector(".card-blocked-overlay");
+    if (isBlocked) {
+      if (!blockedOverlay) {
+        blockedOverlay = document.createElement("div");
+        blockedOverlay.className = "card-blocked-overlay";
+        blockedOverlay.textContent = "🔒 Blocked";
+        card.appendChild(blockedOverlay);
+      }
+    } else if (blockedOverlay) {
+      blockedOverlay.remove();
+    }
     card.classList.remove("status-complete", "status-running", "status-pending");
     const _taskPct = t.subtask_count > 0 ? t.verified_subtasks / t.subtask_count : 0;
     card.classList.add(_taskPct >= 1 ? "status-complete" : t.running_subtasks > 0 ? "status-running" : "status-pending");
@@ -448,7 +461,10 @@ export function renderGrid(tasks) {
     const pct = t.pct != null ? Math.round(t.pct) : (t.subtask_count > 0 ? Math.round(t.verified_subtasks / t.subtask_count * 100) : 0);
     card.querySelector(".card-bar-fg").style.width = pct + "%";
     const pctLabel = card.querySelector(".card-pct-label");
-    if (pctLabel) pctLabel.textContent = pct > 0 ? `${pct}%` : "";
+    if (pctLabel) {
+      pctLabel.textContent = pct > 0 ? `${pct}%` : "";
+      pctLabel.className = `card-pct-label ${pct >= 80 ? "pct-high" : pct >= 50 ? "pct-mid" : "pct-low"}`;
+    }
     card.querySelector(".card-counts").textContent =
       `${t.verified_subtasks}/${t.subtask_count} verified` +
       (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
@@ -1004,6 +1020,7 @@ export function renderDetail(t) {
 
       const dot = document.createElement("div");
       dot.className = `st-dot ${dotClass(s.status)}`;
+      dot.title = `${s.status || "Pending"}${s.last_update != null ? ` — step ${s.last_update}` : ""}`;
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "st-name";
@@ -1371,17 +1388,22 @@ window._applyTaskSearch = function () {
 
 window.filterSubtasks = function filterSubtasks() {
   const q = (document.getElementById("st-search").value || "").toLowerCase();
+  let matchCount = 0, totalCount = 0;
   document.querySelectorAll("#detail-content .subtask-row").forEach(row => {
+    totalCount++;
     const nameEl = row.querySelector(".st-name");
     const outEl = row.querySelector(".st-output");
     const name = (nameEl?.textContent || "").toLowerCase();
     const output = (outEl?.textContent || "").toLowerCase();
     const match = !q || name.includes(q) || output.includes(q);
+    if (match) matchCount++;
     row.style.display = match ? "" : "none";
     // Highlight matching text
     if (nameEl) nameEl.innerHTML = q && name.includes(q) ? _highlightText(nameEl.textContent, q) : _escHtml(nameEl.textContent);
     if (outEl) outEl.innerHTML = q && output.includes(q) ? _highlightText(outEl.textContent, q) : _escHtml(outEl.textContent);
   });
+  const stSearchCount = document.getElementById("st-search-count");
+  if (stSearchCount) stSearchCount.textContent = q ? `${matchCount}/${totalCount}` : "";
 };
 
 function _escHtml(str) {

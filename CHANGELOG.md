@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.60.0 — 2026-03-13  Blocked Overlay + Search Count + Compact Key + Pct Color + Dot Tooltip 🎯 100 UX
+
+- **Card blocked overlay**: Semi-transparent 🔒 overlay on blocked task cards
+- **Subtask search count**: Shows "N/M" matches when filtering subtasks in detail panel
+- **Keyboard `w` compact toggle**: Press w to toggle compact mode
+- **Card percentage color**: Progress % label turns green (≥80%), yellow (≥50%), red (<50%)
+- **Subtask dot status tooltip**: Hover status dot shows status name + step number
+
+### Stats
+- 343 dashboard E2E smoke tests (15 new), 2923 total tests, 0 failures
+- **🎯 100 UX features milestone** across v6.39–v6.60
+
 ## v6.59.0 — 2026-03-13  Step Number + Branch Badge + MD Export + Verify Key + Dot Pulse
 
 - **Subtask row step number**: Shows `sN` step number on each subtask row for quick reference
