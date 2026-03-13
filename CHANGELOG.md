@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.72.0 — 2026-03-13  Dashboard UX Round 31 — syntax highlight, heatmap, branch time, zoom, quick filter
+
+- **Subtask output syntax highlight**: Error/success/warning keywords colored red/green/yellow in output preview
+- **Card mini heatmap**: Tiny colored cells showing per-subtask status grid on cards (≤40 subtasks)
+- **Branch elapsed time**: Shows ⏱Nm total running time across branch subtasks
+- **Detail panel zoom level**: A−/A+ buttons to adjust detail panel font size (persisted)
+- **Keyboard `q` quick filter**: Press q to cycle through detail status filter pills
+
+### Stats
+- 490 dashboard E2E smoke tests (17 new), 3166 total tests, 0 failures
+- 145 UX features across v6.39–v6.72
+
 ## v6.71.0 — 2026-03-13  Dashboard UX Round 30 — word cloud, streak, health dot, filter memory, undo key
 
 - **Subtask output word cloud**: Top 5 frequent words shown as mini tags on output rows

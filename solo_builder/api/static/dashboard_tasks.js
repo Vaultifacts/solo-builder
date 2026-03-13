@@ -663,6 +663,25 @@ export function renderGrid(tasks) {
       sparkEl.innerHTML = bars.map(p => `<span class="spark-bar" style="height:${Math.max(2, p * 12 / 100)}px"></span>`).join("");
     }
 
+    // Mini heatmap — colored cells showing per-subtask status
+    let heatmapEl = card.querySelector(".card-heatmap");
+    if (t.subtask_count > 0 && t.subtask_count <= 40) {
+      if (!heatmapEl) {
+        heatmapEl = document.createElement("div");
+        heatmapEl.className = "card-heatmap";
+        card.appendChild(heatmapEl);
+      }
+      const cells = _bEntries.flatMap(([, bd]) =>
+        Object.values(bd.subtasks || {}).map(s => {
+          const st = s.status || "Pending";
+          return st === "Verified" ? "hm-v" : st === "Running" ? "hm-r" : st === "Review" ? "hm-rv" : "hm-p";
+        })
+      );
+      heatmapEl.innerHTML = cells.map(c => `<span class="hm-cell ${c}"></span>`).join("");
+    } else if (heatmapEl) {
+      heatmapEl.remove();
+    }
+
     // Failure count badge (subtasks with error/fail in output)
     let failBadge = card.querySelector(".card-fail-count");
     const _failCount = _bEntries.reduce((acc, [, bd]) => {
@@ -1139,7 +1158,35 @@ export function renderDetail(t) {
     });
   });
 
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch);
+  // Detail zoom controls
+  const zoomWrap = document.createElement("span");
+  zoomWrap.className = "detail-zoom-wrap";
+  const zoomOut = document.createElement("button");
+  zoomOut.className = "toolbar-btn detail-zoom-btn";
+  zoomOut.textContent = "A−";
+  zoomOut.title = "Decrease font size";
+  zoomOut.addEventListener("click", () => {
+    const cur = parseFloat(localStorage.getItem("sb-detail-zoom") || "1");
+    const next = Math.max(0.7, cur - 0.1);
+    localStorage.setItem("sb-detail-zoom", next.toFixed(1));
+    el.style.fontSize = `${next}em`;
+  });
+  const zoomIn = document.createElement("button");
+  zoomIn.className = "toolbar-btn detail-zoom-btn";
+  zoomIn.textContent = "A+";
+  zoomIn.title = "Increase font size";
+  zoomIn.addEventListener("click", () => {
+    const cur = parseFloat(localStorage.getItem("sb-detail-zoom") || "1");
+    const next = Math.min(1.5, cur + 0.1);
+    localStorage.setItem("sb-detail-zoom", next.toFixed(1));
+    el.style.fontSize = `${next}em`;
+  });
+  zoomWrap.append(zoomOut, zoomIn);
+  // Restore saved zoom
+  const _savedZoom = localStorage.getItem("sb-detail-zoom");
+  if (_savedZoom) el.style.fontSize = `${_savedZoom}em`;
+
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch, zoomWrap);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -1222,7 +1269,17 @@ export function renderDetail(t) {
       branchDiffSpan.textContent = `Δ${_branchChanged}`;
       branchDiffSpan.title = `${_branchChanged} subtask(s) changed status`;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchPctSpan, branchCountSpan, branchLastActive, branchDiffSpan);
+    // Branch elapsed time — total running time across subtasks
+    const branchElapsed = document.createElement("span");
+    branchElapsed.className = "branch-elapsed";
+    const _runningTimes = Object.values(bdata.subtasks || {}).filter(s => s.status === "Running" && s.started_at).map(s => (Date.now() - new Date(s.started_at).getTime()) / 1000);
+    if (_runningTimes.length > 0) {
+      const _totalSec = Math.round(_runningTimes.reduce((a, b) => a + b, 0));
+      const _em = Math.floor(_totalSec / 60);
+      branchElapsed.textContent = _em > 0 ? `⏱${_em}m` : `⏱${_totalSec}s`;
+      branchElapsed.title = `Total running time: ${_em}m across ${_runningTimes.length} subtask(s)`;
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchPctSpan, branchCountSpan, branchLastActive, branchElapsed, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
     // Restore collapsed state from localStorage
     const _collapseKey = `sb-branch-${t.id}-${bname}`;
@@ -1428,7 +1485,12 @@ export function renderDetail(t) {
         outSpan.className = "st-output";
         outSpan.title = rawOutput.substring(0, 400);
         const _flatOut = rawOutput.replace(/\n/g, " ");
-        outSpan.textContent = _flatOut.substring(0, 80);
+        // Syntax highlight keywords in output preview
+        const _highlighted = _flatOut.substring(0, 80)
+          .replace(/\b(error|fail(?:ed|ure)?|exception|traceback)\b/gi, '<span class="out-err">$1</span>')
+          .replace(/\b(success|passed|verified|complete(?:d)?)\b/gi, '<span class="out-ok">$1</span>')
+          .replace(/\b(warning|warn|deprecated)\b/gi, '<span class="out-warn">$1</span>');
+        outSpan.innerHTML = _highlighted;
         row.appendChild(outSpan);
 
         // Show more toggle for long output

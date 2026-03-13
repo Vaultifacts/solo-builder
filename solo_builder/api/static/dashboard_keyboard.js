@@ -38,6 +38,7 @@ const _SHORTCUTS = [
   ["o", "Open output modal for first subtask"],
   ["e", "Export selected task as markdown"],
   ["z", "Undo last verify (reset to Pending)"],
+  ["q", "Cycle detail status filter"],
 ];
 
 function _showShortcuts() {
@@ -254,6 +255,16 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
+  if (key === "q") {
+    const pills = [...document.querySelectorAll(".detail-filter-pill")];
+    if (pills.length > 0) {
+      const activeIdx = pills.findIndex(p => p.classList.contains("active"));
+      const nextIdx = (activeIdx + 1) % pills.length;
+      pills[nextIdx].click();
+      toast(`Filter: ${pills[nextIdx].dataset.filter || pills[nextIdx].textContent}`);
+    }
+    return;
+  }
   if (key === "l") { window.switchTab?.("journal"); return; }
   if (key === "o") {
     const row = document.querySelector("#detail-content .subtask-row");

@@ -3235,5 +3235,120 @@ class TestKeyboardUndoVerify(unittest.TestCase):
         self.assertIn("Undo last verify", js)
 
 
+# ---------------------------------------------------------------------------
+# 135. Subtask output syntax highlight
+# ---------------------------------------------------------------------------
+
+class TestOutputSyntaxHighlight(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_out_err_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("out-err", js)
+
+    def test_js_out_ok_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("out-ok", js)
+
+    def test_js_out_warn_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("out-warn", js)
+
+    def test_css_highlight_classes(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".out-err", css)
+        self.assertIn(".out-ok", css)
+        self.assertIn(".out-warn", css)
+
+
+# ---------------------------------------------------------------------------
+# 136. Card mini heatmap
+# ---------------------------------------------------------------------------
+
+class TestCardMiniHeatmap(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_heatmap_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-heatmap", js)
+
+    def test_js_hm_cell_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("hm-cell", js)
+
+    def test_css_heatmap_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-heatmap", css)
+        self.assertIn(".hm-v", css)
+
+
+# ---------------------------------------------------------------------------
+# 137. Branch elapsed time
+# ---------------------------------------------------------------------------
+
+class TestBranchElapsedTime(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_elapsed_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("branch-elapsed", js)
+
+    def test_js_running_times(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_runningTimes", js)
+
+    def test_css_elapsed_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".branch-elapsed", css)
+
+
+# ---------------------------------------------------------------------------
+# 138. Detail panel zoom level
+# ---------------------------------------------------------------------------
+
+class TestDetailZoom(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_zoom_wrap_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-zoom-wrap", js)
+
+    def test_js_zoom_localStorage(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("sb-detail-zoom", js)
+
+    def test_js_zoom_btn(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-zoom-btn", js)
+
+    def test_css_zoom_wrap(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".detail-zoom-wrap", css)
+
+
+# ---------------------------------------------------------------------------
+# 139. Keyboard `q` quick filter
+# ---------------------------------------------------------------------------
+
+class TestKeyboardQuickFilter(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_q_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"q"', js)
+
+    def test_js_cycle_pills(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("detail-filter-pill", js)
+
+    def test_js_q_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Cycle detail status filter", js)
+
+
 if __name__ == "__main__":
     unittest.main()
