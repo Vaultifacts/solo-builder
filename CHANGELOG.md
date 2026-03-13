@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.70.0 — 2026-03-13  Dashboard UX Round 29 — priority dot, ETA countdown, collapse memory, auto-scroll, export key
+
+- **Subtask priority indicator**: Colored dot based on action_type (red=full_execution, yellow=file_edit, green=read_only)
+- **Card ETA countdown**: Shows "~N steps" estimated time to completion per card
+- **Branch collapse memory**: Collapsed/expanded state persisted per branch in localStorage
+- **Detail auto-scroll to changed**: Auto-scrolls to subtask row when its status changes between polls
+- **Keyboard `e` export clipboard**: Press e to copy selected task summary as markdown
+
+### Stats
+- 455 dashboard E2E smoke tests (17 new), 3131 total tests, 0 failures
+- 135 UX features across v6.39–v6.70
+
 ## v6.69.0 — 2026-03-13  Dashboard UX Round 28 — duration timer, group headers, diff count, detail search, output key
 
 - **Subtask duration timer**: Elapsed time since Running subtask started (e.g. "2m15s")

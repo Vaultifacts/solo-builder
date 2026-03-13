@@ -36,6 +36,7 @@ const _SHORTCUTS = [
   ["h", "History tab"],
   ["l", "Journal tab"],
   ["o", "Open output modal for first subtask"],
+  ["e", "Export selected task as markdown"],
 ];
 
 function _showShortcuts() {
@@ -236,6 +237,7 @@ document.addEventListener("keydown", (e) => {
   if (key === "/") { e.preventDefault(); const si = document.getElementById("task-search"); if (si) si.focus(); return; }
   if (key === "p") { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Polling paused" : "Polling resumed"); return; }
   if (key === "t") { window.toggleTheme(); return; }
+  if (key === "e") { _copyTaskSummary(); return; }
   if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
   if (key === "l") { window.switchTab?.("journal"); return; }
   if (key === "o") {

@@ -692,6 +692,22 @@ export function renderGrid(tasks) {
     agoEl.textContent = _relativeTime(t.last_active);
     agoEl.title = t.last_active || "";
 
+    // Card ETA countdown
+    let etaEl = card.querySelector(".card-eta");
+    if (!etaEl) {
+      etaEl = document.createElement("span");
+      etaEl.className = "card-eta";
+      card.appendChild(etaEl);
+    }
+    if (t.verified_subtasks > 0 && t.verified_subtasks < t.subtask_count && t.verify_rate > 0) {
+      const remaining = t.subtask_count - t.verified_subtasks;
+      const etaSteps = Math.round(remaining / t.verify_rate);
+      etaEl.textContent = `~${etaSteps} steps`;
+      etaEl.title = `ETA: ~${etaSteps} steps at ${t.verify_rate.toFixed(2)}/step`;
+    } else {
+      etaEl.textContent = "";
+    }
+
     // Recently active highlight (active within 60s)
     const _lastActiveSec = t.last_active ? (Date.now() - new Date(t.last_active).getTime()) / 1000 : Infinity;
     card.classList.toggle("card-recently-active", _lastActiveSec < 60);
@@ -1169,9 +1185,18 @@ export function renderDetail(t) {
     }
     branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchPctSpan, branchCountSpan, branchLastActive, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
+    // Restore collapsed state from localStorage
+    const _collapseKey = `sb-branch-${t.id}-${bname}`;
+    if (localStorage.getItem(_collapseKey) === "1") {
+      branchBlock.classList.add("collapsed");
+      collapseArrow.textContent = "▸";
+    }
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");
-      collapseArrow.textContent = branchBlock.classList.contains("collapsed") ? "▸" : "▾";
+      const _isCollapsed = branchBlock.classList.contains("collapsed");
+      collapseArrow.textContent = _isCollapsed ? "▸" : "▾";
+      if (_isCollapsed) localStorage.setItem(_collapseKey, "1");
+      else localStorage.removeItem(_collapseKey);
     });
     branchBlock.appendChild(branchNameEl);
 
@@ -1207,6 +1232,14 @@ export function renderDetail(t) {
       nameSpan.className = "st-name";
       nameSpan.textContent = sname;
 
+      // Priority indicator based on action_type
+      const priSpan = document.createElement("span");
+      priSpan.className = "st-priority";
+      const _at = (s.action_type || "").toLowerCase();
+      if (_at === "full_execution") { priSpan.textContent = "●"; priSpan.classList.add("pri-high"); priSpan.title = "High priority: full execution"; }
+      else if (_at === "file_edit") { priSpan.textContent = "●"; priSpan.classList.add("pri-med"); priSpan.title = "Medium priority: file edit"; }
+      else if (_at === "read_only" || _at === "analysis") { priSpan.textContent = "●"; priSpan.classList.add("pri-low"); priSpan.title = "Low priority: read only"; }
+
       // Status transition arrow (if recently changed)
       let transSpan = null;
       const _prev = _prevStatuses[sname];
@@ -1240,7 +1273,7 @@ export function renderDetail(t) {
         }
       }
 
-      row.append(cb, dot, statusLabel, nameSpan);
+      row.append(cb, dot, statusLabel, nameSpan, priSpan);
       if (transSpan) row.appendChild(transSpan);
       row.appendChild(stStep);
       row.appendChild(stElapsed);
@@ -1416,6 +1449,23 @@ export function renderDetail(t) {
   });
 
   el.replaceChildren(...nodes);
+
+  // Auto-scroll to changed subtask
+  if (_changedSt) {
+    const changedRow = el.querySelector(`.st-name`);
+    const allNames = el.querySelectorAll(".st-name");
+    for (const nm of allNames) {
+      if (nm.textContent === _changedSt) {
+        const sr = nm.closest(".subtask-row");
+        if (sr) {
+          sr.scrollIntoView({ behavior: "smooth", block: "center" });
+          sr.style.outline = "2px solid var(--cyan)";
+          setTimeout(() => { sr.style.outline = ""; }, 2000);
+        }
+        break;
+      }
+    }
+  }
 
   // Scroll progress indicator
   if (!el._scrollListenerAdded) {

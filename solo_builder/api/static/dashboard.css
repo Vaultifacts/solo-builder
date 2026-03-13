@@ -868,6 +868,13 @@
   /* ── Detail inline search ──────────────────────────────── */
   .detail-inline-search { font-size: 10px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg2); color: var(--text); width: 100%; margin-top: 4px; font-family: var(--font); outline: none; }
   .detail-inline-search:focus { border-color: var(--cyan); }
+  /* ── Subtask priority indicator ──────────────────────────── */
+  .st-priority { font-size: 7px; margin-left: 3px; flex-shrink: 0; }
+  .st-priority.pri-high { color: #ef4444; }
+  .st-priority.pri-med { color: #f59e0b; }
+  .st-priority.pri-low { color: #22c55e; }
+  /* ── Card ETA countdown ────────────────────────────────── */
+  .card-eta { font-size: 8px; color: var(--dim); opacity: 0.6; }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

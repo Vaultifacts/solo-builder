@@ -3006,5 +3006,118 @@ class TestKeyboardOpenOutput(unittest.TestCase):
         self.assertIn("Open output modal", js)
 
 
+# ---------------------------------------------------------------------------
+# 125. Subtask priority indicator
+# ---------------------------------------------------------------------------
+
+class TestSubtaskPriority(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_priority_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("st-priority", js)
+
+    def test_js_action_type_check(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("full_execution", js)
+
+    def test_js_pri_high_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("pri-high", js)
+
+    def test_css_priority_classes(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".st-priority", css)
+        self.assertIn(".st-priority.pri-high", css)
+        self.assertIn(".st-priority.pri-med", css)
+        self.assertIn(".st-priority.pri-low", css)
+
+
+# ---------------------------------------------------------------------------
+# 126. Card ETA countdown
+# ---------------------------------------------------------------------------
+
+class TestCardETA(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+
+    def test_js_eta_class(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("card-eta", js)
+
+    def test_js_verify_rate(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("verify_rate", js)
+
+    def test_js_eta_steps(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("etaSteps", js)
+
+    def test_css_eta_class(self):
+        css = self._CSS_PATH.read_text(encoding="utf-8")
+        self.assertIn(".card-eta", css)
+
+
+# ---------------------------------------------------------------------------
+# 127. Branch collapse memory
+# ---------------------------------------------------------------------------
+
+class TestBranchCollapseMemory(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_collapse_key(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_collapseKey", js)
+
+    def test_js_localStorage_set(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("localStorage.setItem(_collapseKey", js)
+
+    def test_js_localStorage_get(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("localStorage.getItem(_collapseKey)", js)
+
+
+# ---------------------------------------------------------------------------
+# 128. Detail panel auto-scroll to changed
+# ---------------------------------------------------------------------------
+
+class TestAutoScrollToChanged(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+
+    def test_js_changed_st_variable(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_changedSt", js)
+
+    def test_js_scroll_into_view(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("scrollIntoView", js)
+
+    def test_js_cyan_outline(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("var(--cyan)", js)
+
+
+# ---------------------------------------------------------------------------
+# 129. Keyboard `e` export clipboard
+# ---------------------------------------------------------------------------
+
+class TestKeyboardExport(unittest.TestCase):
+    _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+
+    def test_js_e_key_handler(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn('"e"', js)
+
+    def test_js_copy_task_summary(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("_copyTaskSummary", js)
+
+    def test_js_e_in_shortcuts(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Export selected task", js)
+
+
 if __name__ == "__main__":
     unittest.main()
