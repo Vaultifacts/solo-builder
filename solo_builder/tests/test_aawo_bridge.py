@@ -388,5 +388,180 @@ class TestGetOutcomeStats(unittest.TestCase):
         self.assertIsNone(result)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: _aawo_path env var override (lines 37-38)
+# ---------------------------------------------------------------------------
+
+class TestAawoPathEnvVar(unittest.TestCase):
+    def test_env_var_override_existing_path(self):
+        import tempfile, os
+        tmp = tempfile.mkdtemp()
+        main_py = Path(tmp) / "main.py"
+        main_py.touch()
+        with patch.dict(os.environ, {"AAWO_RUNTIME_PATH": str(main_py)}):
+            result = bridge._aawo_path()
+        self.assertEqual(result, main_py)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_env_var_override_nonexistent_path(self):
+        import os
+        with patch.dict(os.environ, {"AAWO_RUNTIME_PATH": "/nonexistent/path/main.py"}):
+            result = bridge._aawo_path()
+        self.assertIsNone(result)
+
+    def test_no_config_returns_none(self):
+        import os
+        with patch.dict(os.environ, {}, clear=True), \
+             patch.object(bridge, "_load_settings", return_value={}):
+            env = os.environ.copy()
+            env.pop("AAWO_RUNTIME_PATH", None)
+            with patch.dict(os.environ, env, clear=True):
+                result = bridge._aawo_path()
+        self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: _load_settings exception (lines 53-54)
+# ---------------------------------------------------------------------------
+
+class TestLoadSettingsException(unittest.TestCase):
+    def test_load_settings_file_not_found(self):
+        with patch.object(Path, "read_text", side_effect=OSError("missing")):
+            result = bridge._load_settings()
+        self.assertEqual(result, {})
+
+
+# ---------------------------------------------------------------------------
+# Coverage: get_outcome_stats empty lines (line 122), OSError (134-136)
+# ---------------------------------------------------------------------------
+
+class TestOutcomeStatsEdgeCases(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.mkdtemp()
+        self._runtime_dir = Path(self._tmp) / "runtime"
+        self._runtime_dir.mkdir()
+        self._main_py = self._runtime_dir / "main.py"
+        self._main_py.touch()
+        self._logs_dir = self._runtime_dir / "storage" / "logs"
+        self._logs_dir.mkdir(parents=True)
+        self._outcomes_file = self._logs_dir / "outcomes.jsonl"
+
+    def tearDown(self):
+        import shutil; shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_empty_lines_skipped(self):
+        with open(self._outcomes_file, "w", encoding="utf-8") as f:
+            f.write("\n\n")
+            f.write(json.dumps({"agent_id": "a", "outcome": "success"}) + "\n")
+            f.write("\n")
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py):
+            result = bridge.get_outcome_stats()
+        self.assertEqual(result["a"]["total"], 1)
+
+    def test_oserror_returns_none(self):
+        self._outcomes_file.touch()
+        orig_read = Path.read_text
+        def _fail(self_path, *a, **kw):
+            if "outcomes" in str(self_path):
+                raise OSError("denied")
+            return orig_read(self_path, *a, **kw)
+        with patch.object(bridge, "_aawo_path", return_value=self._main_py), \
+             patch.object(Path, "read_text", _fail):
+            result = bridge.get_outcome_stats()
+        self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: run_cycle OSError (lines 173-175)
+# ---------------------------------------------------------------------------
+
+class TestRunCycleOSError(unittest.TestCase):
+    def test_run_cycle_oserror_returns_false(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        main_py = Path(tmp) / "main.py"
+        main_py.touch()
+        with patch.object(bridge, "_aawo_path", return_value=main_py), \
+             patch.object(bridge, "_load_settings", return_value={"AAWO_TIMEOUT": 5}), \
+             patch("subprocess.run", side_effect=OSError("no python")):
+            result = bridge.run_cycle()
+        self.assertFalse(result)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: record_outcome (lines 213, 227-228, 230-235)
+# ---------------------------------------------------------------------------
+
+class TestRecordOutcomeEdgeCases(unittest.TestCase):
+    def test_record_outcome_no_path_returns_false(self):
+        with patch.object(bridge, "_aawo_path", return_value=None):
+            result = bridge.record_outcome("agent", "success")
+        self.assertFalse(result)
+
+    def test_record_outcome_nonzero_exit_returns_false(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        main_py = Path(tmp) / "main.py"
+        main_py.touch()
+        with patch.object(bridge, "_aawo_path", return_value=main_py), \
+             patch.object(bridge, "_load_settings", return_value={}), \
+             patch("subprocess.run", return_value=_mock_run("", returncode=1)):
+            result = bridge.record_outcome("agent", "fail", "desc")
+        self.assertFalse(result)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_record_outcome_timeout_returns_false(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        main_py = Path(tmp) / "main.py"
+        main_py.touch()
+        with patch.object(bridge, "_aawo_path", return_value=main_py), \
+             patch.object(bridge, "_load_settings", return_value={}), \
+             patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 10)):
+            result = bridge.record_outcome("agent", "success")
+        self.assertFalse(result)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_record_outcome_oserror_returns_false(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        main_py = Path(tmp) / "main.py"
+        main_py.touch()
+        with patch.object(bridge, "_aawo_path", return_value=main_py), \
+             patch.object(bridge, "_load_settings", return_value={}), \
+             patch("subprocess.run", side_effect=OSError("no python")):
+            result = bridge.record_outcome("agent", "fail")
+        self.assertFalse(result)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_record_outcome_with_duration(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        main_py = Path(tmp) / "main.py"
+        main_py.touch()
+        with patch.object(bridge, "_aawo_path", return_value=main_py), \
+             patch.object(bridge, "_load_settings", return_value={}), \
+             patch("subprocess.run", return_value=_mock_run("")) as mock_run:
+            result = bridge.record_outcome("agent", "success", duration_s=1.5)
+        self.assertTrue(result)
+        call_args = mock_run.call_args[0][0]
+        self.assertIn("--duration", call_args)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: enrich_subtask no agent_id (line 254)
+# ---------------------------------------------------------------------------
+
+class TestEnrichNoAgentId(unittest.TestCase):
+    def test_enrich_no_agent_id_returns_unchanged(self):
+        decision = {"selected_agent_id": "", "policy_blocked": False}
+        with patch.object(bridge, "route_task", return_value=decision):
+            result = bridge.enrich_subtask({}, "do stuff")
+        self.assertEqual(result, {})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -285,5 +285,37 @@ class TestBothEndpointsCoexist(_Base):
         self.assertTrue(scope_ok)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: hitl exception path (lines 49-50)
+# ---------------------------------------------------------------------------
+
+class TestPolicyHitlExceptionPath(_Base):
+    def test_hitl_load_policy_raises_returns_ok_false(self):
+        from utils import hitl_policy as hp_mod
+        with patch.object(hp_mod, "load_policy", side_effect=RuntimeError("broken")):
+            r = self.client.get("/policy/hitl")
+        d = r.get_json()
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(d["ok"])
+        self.assertIn("error", d)
+        self.assertEqual(d["policy"], {})
+
+
+# ---------------------------------------------------------------------------
+# Coverage: scope exception path (lines 87-88)
+# ---------------------------------------------------------------------------
+
+class TestPolicyScopeExceptionPath(_Base):
+    def test_scope_load_policy_raises_returns_ok_false(self):
+        from utils import tool_scope_policy as sp_mod
+        with patch.object(sp_mod, "load_scope_policy", side_effect=RuntimeError("broken")):
+            r = self.client.get("/policy/scope")
+        d = r.get_json()
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(d["ok"])
+        self.assertIn("error", d)
+        self.assertEqual(d["policy"], {})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.78.0 — 2026-03-13  Coverage Push Round 5 — aawo_bridge 100%, policy 100%
+
+- **15 new tests** across 2 existing test files
+- `aawo_bridge.py` 86% → **100%** — env var override, _load_settings exception, outcome stats edge cases, run_cycle OSError, record_outcome timeout/OSError/non-zero, enrich no agent_id
+- `policy.py` 87% → **100%** — hitl/scope exception handler paths
+
+### Stats
+- 3246 total tests, 0 failures
+- 12 source modules now at 100% coverage
+
 ## v6.77.0 — 2026-03-13  Dashboard UX Round 35 — byte size, step counter, run dot, status chip, Shift+V verify
 
 - **Subtask output byte size**: KB/MB size badge on output rows
