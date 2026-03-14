@@ -300,6 +300,25 @@ def agent_stats(
             "patch_threshold_hits": safety.get("patch_threshold_hits", 0),
         },
         "reliability": _reliability_stats(state),
+        "usage": _usage_stats(state),
+    }
+
+
+def _usage_stats(state: Dict) -> Dict[str, Any]:
+    """
+    Extract cumulative AI usage statistics from persisted state.
+
+    Returns a dict suitable for API/bot consumption.
+    Always returns a valid dict even when usage_state is absent
+    (backward compatibility with older state files).
+    """
+    us = state.get("usage_state", {})
+    return {
+        "total_calls": us.get("total_calls", 0),
+        "total_tokens": us.get("total_tokens", 0),
+        "total_cost_usd": us.get("total_cost_usd", 0.0),
+        "total_deferred": us.get("total_deferred", 0),
+        "by_agent": us.get("by_agent", {}),
     }
 
 

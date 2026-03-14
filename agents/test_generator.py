@@ -75,6 +75,7 @@ class TestGenerator:
             self._root,
             cfg.get("TEST_GENERATOR_OUTPUT_DIR", "tests/generated"),
         )
+        self.max_test_gens_per_step = cfg.get("MAX_TEST_GENERATIONS_PER_STEP", 0)
         self._client     = None
         self.available   = self._init_client()
         self._generated: set = set()  # track subtasks already handled
@@ -111,6 +112,7 @@ class TestGenerator:
             return 0
 
         written = 0
+        gens_this_step = 0
 
         for task_name, task_data in dag.items():
             for branch_name, branch_data in task_data.get("branches", {}).items():
@@ -122,9 +124,6 @@ class TestGenerator:
                         continue
                     if st_name in self._generated:
                         continue
-                    # Check AI budget
-                    if budget is not None and budget.exhausted:
-                        continue
 
                     output      = st_data.get("output", "").strip()
                     description = st_data.get("description", "").strip()
@@ -132,9 +131,31 @@ class TestGenerator:
                     if not self._has_python_content(output):
                         continue
 
-                    test_code = self._ask_claude(description, output)
+                    # Throughput cap: defer excess generations
+                    if (self.max_test_gens_per_step > 0
+                            and gens_this_step >= self.max_test_gens_per_step):
+                        alerts.append(
+                            f"  {YELLOW}[TestGenerator]{RESET} "
+                            f"{CYAN}{st_name}{RESET} deferred (throughput cap)"
+                        )
+                        continue
+
+                    # Check AI budget — fail-safe: do NOT skip silently
+                    if budget is not None and budget.exhausted:
+                        alerts.append(
+                            f"  {YELLOW}[TestGenerator]{RESET} "
+                            f"{CYAN}{st_name}{RESET} deferred (budget exhausted)"
+                        )
+                        continue
+
+                    test_code, usage_tokens = self._ask_claude(description, output)
+
+                    gens_this_step += 1
                     if budget is not None:
                         budget.consume(1)
+                        budget.record_usage(
+                            tokens=usage_tokens, agent="TestGenerator",
+                        )
                     if not test_code:
                         continue
 
@@ -170,8 +191,8 @@ class TestGenerator:
         return list(dict.fromkeys(self._PY_FILE_RE.findall(output)))
 
     # ── Claude interaction ───────────────────────────────────────────────
-    def _ask_claude(self, description: str, output: str) -> str:
-        """Ask Claude to generate pytest tests. Returns raw Python or ''."""
+    def _ask_claude(self, description: str, output: str) -> Tuple[str, int]:
+        """Ask Claude to generate pytest tests. Returns (raw_python, usage_tokens)."""
         prompt = _TEST_GEN_PROMPT.format(
             description=description or "(no description)",
             output=output or "(empty output)",
@@ -183,12 +204,14 @@ class TestGenerator:
                 messages=[{"role": "user", "content": prompt}],
             )
             reply = msg.content[0].text.strip()
+            usage_tokens = getattr(msg.usage, "input_tokens", 0) + \
+                           getattr(msg.usage, "output_tokens", 0)
         except Exception:
-            return ""
+            return "", 0
 
         # Strip markdown fences if Claude included them despite instructions
         reply = self._strip_fences(reply)
-        return reply
+        return reply, usage_tokens
 
     @staticmethod
     def _strip_fences(text: str) -> str:

@@ -109,34 +109,62 @@ class FindingHistory:
 
 class StepBudget:
     """
-    Tracks AI-backed calls within a single pipeline step.
-    Once the budget is exhausted, agents should defer work.
+    Tracks AI-backed calls, tokens, and estimated cost within a single
+    pipeline step.  Once any limit is reached, agents should defer work.
+
+    All limits default to 0 (unlimited) for backward compatibility.
     """
 
-    def __init__(self, max_calls: int = 0) -> None:
-        self.max_calls = max_calls   # 0 = unlimited
-        self.used      = 0
-        self.deferred  = 0           # count of work items deferred
+    def __init__(
+        self,
+        max_calls: int = 0,
+        max_tokens: int = 0,
+        max_cost_usd: float = 0.0,
+    ) -> None:
+        self.max_calls    = max_calls      # 0 = unlimited
+        self.max_tokens   = max_tokens     # 0 = unlimited
+        self.max_cost_usd = max_cost_usd   # 0.0 = unlimited
+        self.used         = 0
+        self.deferred     = 0              # count of work items deferred
+        self.tokens_used  = 0
+        self.cost_usd     = 0.0
 
     @property
     def exhausted(self) -> bool:
-        if self.max_calls <= 0:
-            return False
-        return self.used >= self.max_calls
+        if self.max_calls > 0 and self.used >= self.max_calls:
+            return True
+        if self.max_tokens > 0 and self.tokens_used >= self.max_tokens:
+            return True
+        if self.max_cost_usd > 0 and self.cost_usd >= self.max_cost_usd:
+            return True
+        return False
 
     def consume(self, n: int = 1) -> bool:
         """
         Try to consume n calls from the budget.
         Returns True if allowed, False if budget exhausted.
         """
-        if self.max_calls <= 0:
-            self.used += n
-            return True
-        if self.used + n > self.max_calls:
+        if self.exhausted:
+            self.deferred += n
+            return False
+        if self.max_calls > 0 and self.used + n > self.max_calls:
             self.deferred += n
             return False
         self.used += n
         return True
+
+    def record_usage(
+        self,
+        tokens: int = 0,
+        cost_usd: float = 0.0,
+        agent: str = "",
+    ) -> None:
+        """
+        Record token and cost usage after an AI call completes.
+        Called by agents that have access to SDK response metadata.
+        """
+        self.tokens_used += tokens
+        self.cost_usd += cost_usd
 
     @property
     def remaining(self) -> int:

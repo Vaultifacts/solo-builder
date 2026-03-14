@@ -77,6 +77,7 @@ class PatchReviewer:
                                     cfg.get("ANTHROPIC_MODEL", "claude-sonnet-4-6"))
         self._max_tokens  = cfg.get("PATCH_REVIEWER_MAX_TOKENS", 256)
         self.max_rejections = cfg.get("MAX_PATCH_REJECTIONS", 3)
+        self.max_reviews_per_step = cfg.get("MAX_PATCH_REVIEWS_PER_STEP", 0)
         self._client      = None
         self.available    = self._init_client()
         # Rejection tracking: {subtask_name: {"count": N, "reasons": [...]}}
@@ -137,6 +138,7 @@ class PatchReviewer:
             return {}
 
         results: Dict[str, str] = {}
+        reviews_this_step = 0
 
         for task_name, task_data in dag.items():
             for branch_name, branch_data in task_data.get("branches", {}).items():
@@ -156,15 +158,36 @@ class PatchReviewer:
                         results[st_name] = "approved"
                         continue
 
-                    # Check AI budget before calling Claude
-                    if budget is not None and budget.exhausted:
-                        results[st_name] = "approved"
+                    # Throughput cap: defer excess reviews
+                    if (self.max_reviews_per_step > 0
+                            and reviews_this_step >= self.max_reviews_per_step):
+                        results[st_name] = "deferred"
+                        alerts.append(
+                            f"  {YELLOW}[PatchReviewer]{RESET} "
+                            f"{CYAN}{st_name}{RESET} deferred (throughput cap)"
+                        )
                         continue
 
-                    approved, reason = self._ask_claude(description, output)
+                    # Check AI budget before calling Claude
+                    # Fail-safe: do NOT auto-approve when budget exhausted
+                    if budget is not None and budget.exhausted:
+                        results[st_name] = "deferred"
+                        alerts.append(
+                            f"  {YELLOW}[PatchReviewer]{RESET} "
+                            f"{CYAN}{st_name}{RESET} deferred (budget exhausted)"
+                        )
+                        continue
 
+                    approved, reason, usage_tokens = self._ask_claude(
+                        description, output,
+                    )
+
+                    reviews_this_step += 1
                     if budget is not None:
                         budget.consume(1)
+                        budget.record_usage(
+                            tokens=usage_tokens, agent="PatchReviewer",
+                        )
 
                     if approved:
                         results[st_name] = "approved"
@@ -225,11 +248,13 @@ class PatchReviewer:
         return results
 
     # ── Claude interaction ───────────────────────────────────────────────
-    def _ask_claude(self, description: str, output: str) -> Tuple[bool, str]:
+    def _ask_claude(
+        self, description: str, output: str,
+    ) -> Tuple[bool, str, int]:
         """
         Send the patch to Claude for review.
 
-        Returns (approved: bool, reason: str).
+        Returns (approved: bool, reason: str, usage_tokens: int).
         """
         prompt = _REVIEW_PROMPT.format(
             description=description or "(no description)",
@@ -242,11 +267,14 @@ class PatchReviewer:
                 messages=[{"role": "user", "content": prompt}],
             )
             reply = msg.content[0].text.strip()
+            usage_tokens = getattr(msg.usage, "input_tokens", 0) + \
+                           getattr(msg.usage, "output_tokens", 0)
         except Exception as exc:
             # On SDK failure, approve by default so pipeline isn't blocked
-            return True, f"SDK error (auto-approved): {str(exc)[:100]}"
+            return True, f"SDK error (auto-approved): {str(exc)[:100]}", 0
 
-        return self._parse_verdict(reply)
+        approved, reason = self._parse_verdict(reply)
+        return approved, reason, usage_tokens
 
     @staticmethod
     def _parse_verdict(reply: str) -> Tuple[bool, str]:

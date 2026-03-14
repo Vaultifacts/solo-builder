@@ -80,6 +80,7 @@ class RepoAnalyzer:
         self.max_findings  = cfg.get("REPO_ANALYZER_MAX_FINDINGS", 20)
         self.max_per_analysis = cfg.get("MAX_DYNAMIC_TASKS_PER_ANALYSIS", 5)
         self.max_total     = cfg.get("MAX_DYNAMIC_TASKS_TOTAL", 50)
+        self.max_findings_per_step = cfg.get("MAX_REPO_ANALYZER_FINDINGS_PER_STEP", 0)
         self.large_file    = cfg.get("REPO_ANALYZER_LARGE_FILE", 500)
         self.scan_dirs: List[str] = cfg.get(
             "REPO_ANALYZER_SCAN_DIRS", [".", "utils", "api", "agents"]
@@ -206,6 +207,9 @@ class RepoAnalyzer:
         # Also respect remaining global budget
         remaining_global = max(0, self.max_total - self._dynamic_tasks_created)
         effective_cap = min(effective_cap, remaining_global)
+        # Throughput cap: limit findings per step (0 = unlimited)
+        if self.max_findings_per_step > 0:
+            effective_cap = min(effective_cap, self.max_findings_per_step)
 
         return new_findings[:effective_cap]
 

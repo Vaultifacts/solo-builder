@@ -492,8 +492,8 @@ class TestBudgetDeferral(unittest.TestCase):
         }
         results = pr.review_step(dag, {"A1": "review"}, 6, {"Branch A": []}, [],
                                   budget=budget)
-        # Should auto-approve due to exhausted budget
-        self.assertEqual(results["A1"], "approved")
+        # Should defer (fail-safe) when budget exhausted — NOT auto-approve
+        self.assertEqual(results["A1"], "deferred")
         pr._client.messages.create.assert_not_called()
 
     def test_test_generator_respects_budget(self):

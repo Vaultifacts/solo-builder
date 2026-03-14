@@ -64,6 +64,7 @@ from agents.test_generator import TestGenerator
 from utils.repo_index import RepoIndex
 from utils.safety import StepBudget
 from utils.invariants import check_post_phase
+from core.budget import UsageTracker
 from core.persistence import (
     rotate_backups, save_state_to_disk, load_state_from_disk,
     apply_backward_compat_defaults, write_heartbeat,
@@ -103,7 +104,12 @@ CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
 ANTHROPIC_MODEL       : str  = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
 ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
 REVIEW_MODE           : bool = bool(_CFG.get("REVIEW_MODE",       False))
-MAX_AI_CALLS_PER_STEP : int  = _CFG.get("MAX_AI_CALLS_PER_STEP",  0)  # 0 = unlimited
+MAX_AI_CALLS_PER_STEP : int   = _CFG.get("MAX_AI_CALLS_PER_STEP",  0)   # 0 = unlimited
+MAX_AI_TOKENS_PER_STEP: int   = _CFG.get("MAX_AI_TOKENS_PER_STEP", 0)   # 0 = unlimited
+MAX_AI_COST_USD_PER_STEP: float = _CFG.get("MAX_AI_COST_USD_PER_STEP", 0.0)
+MAX_PATCH_REVIEWS_PER_STEP: int = _CFG.get("MAX_PATCH_REVIEWS_PER_STEP", 0)
+MAX_TEST_GENS_PER_STEP: int   = _CFG.get("MAX_TEST_GENERATIONS_PER_STEP", 0)
+MAX_RA_FINDINGS_PER_STEP: int = _CFG.get("MAX_REPO_ANALYZER_FINDINGS_PER_STEP", 0)
 WEBHOOK_URL           : str  = _CFG.get("WEBHOOK_URL",            "")
 
 # One-liner context injected at the front of every Claude prompt so the model
@@ -774,6 +780,7 @@ class Executor:
         priority_list: List[Tuple[str, str, str, int]],
         step: int,
         memory_store: Dict,
+        budget: "StepBudget | None" = None,
     ) -> Dict[str, str]:
         """
         Advance up to max_per_step subtasks.
@@ -803,18 +810,27 @@ class Executor:
                 advanced += 1
 
             elif status == "Running":
+                # Budget gate: don't dispatch AI work when budget exhausted
+                if budget is not None and budget.exhausted:
+                    break
                 st_tools    = st_data.get("tools", "").strip()
                 description = st_data.get("description", "").strip()
                 if st_tools:
                     if self.sdk_tool.available:
+                        if budget is not None and not budget.consume(1):
+                            break
                         # SDK tool-use (preferred — no subprocess overhead)
                         sdk_tool_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
                         advanced += 1
                     elif self.claude.available:
+                        if budget is not None and not budget.consume(1):
+                            break
                         # Subprocess fallback when SDK unavailable
                         claude_jobs.append((task_name, branch_name, st_name, st_data, st_tools))
                         advanced += 1
                 elif self.anthropic.available:
+                    if budget is not None and not budget.consume(1):
+                        break
                     # No tools — use SDK directly (faster, no subprocess)
                     raw_prompt = (
                         description
@@ -1321,6 +1337,7 @@ class SoloBuilderCLI:
                                         stall_threshold=STALL_THRESHOLD)
         self.running  = True
         self._last_budget = StepBudget(max_calls=0)  # observability placeholder
+        self._usage_tracker = UsageTracker()
         self._recovery_state = {
             "last_completed_step": 0,
             "last_started_step": 0,
@@ -1379,7 +1396,11 @@ class SoloBuilderCLI:
         step_alerts: List[str] = []
 
         # Per-step AI budget guard
-        budget = StepBudget(max_calls=MAX_AI_CALLS_PER_STEP)
+        budget = StepBudget(
+            max_calls=MAX_AI_CALLS_PER_STEP,
+            max_tokens=MAX_AI_TOKENS_PER_STEP,
+            max_cost_usd=MAX_AI_COST_USD_PER_STEP,
+        )
 
         # 0. RepoAnalyzer: scan for tech debt and inject new subtasks
         #    Fail-open: analysis is advisory; skip on failure
@@ -1440,23 +1461,51 @@ class SoloBuilderCLI:
 
         # 4. Executor: advance subtasks
         #    Fail-closed: execution failures must not be silently skipped
+        _pre_exec = (budget.used, budget.tokens_used, budget.cost_usd)
         actions = self._run_phase("Executor", lambda: self.executor.execute_step(
-            self.dag, priority, self.step, self.memory_store
+            self.dag, priority, self.step, self.memory_store,
+            budget=budget,
         ), step_alerts, fail_open=False) or {}
+        _post_exec = (budget.used, budget.tokens_used, budget.cost_usd)
+        if _post_exec[0] > _pre_exec[0]:
+            self._usage_tracker.record(
+                "Executor",
+                calls=_post_exec[0] - _pre_exec[0],
+                tokens=_post_exec[1] - _pre_exec[1],
+                cost_usd=_post_exec[2] - _pre_exec[2],
+            )
 
         # 4b. PatchReviewer: critique Executor output before verification
         #    Fail-closed: must not silently verify unsafe work
+        _pre_pr = (budget.used, budget.tokens_used, budget.cost_usd)
         self._run_phase("PatchReviewer", lambda: self.patch_reviewer.review_step(
             self.dag, actions, self.step, self.memory_store, step_alerts,
             budget=budget,
         ), step_alerts, fail_open=False)
+        _post_pr = (budget.used, budget.tokens_used, budget.cost_usd)
+        if _post_pr[0] > _pre_pr[0]:
+            self._usage_tracker.record(
+                "PatchReviewer",
+                calls=_post_pr[0] - _pre_pr[0],
+                tokens=_post_pr[1] - _pre_pr[1],
+                cost_usd=_post_pr[2] - _pre_pr[2],
+            )
 
         # 4c. TestGenerator: generate pytest tests for Python output
         #    Fail-open: tests are supplementary
+        _pre_tg = (budget.used, budget.tokens_used, budget.cost_usd)
         self._run_phase("TestGenerator", lambda: self.test_generator.generate_tests(
             self.dag, actions, self.step, self.memory_store, step_alerts,
             budget=budget,
         ), step_alerts, fail_open=True)
+        _post_tg = (budget.used, budget.tokens_used, budget.cost_usd)
+        if _post_tg[0] > _pre_tg[0]:
+            self._usage_tracker.record(
+                "TestGenerator",
+                calls=_post_tg[0] - _pre_tg[0],
+                tokens=_post_tg[1] - _pre_tg[1],
+                cost_usd=_post_tg[2] - _pre_tg[2],
+            )
 
         # Post-phase invariant check: Executor pipeline
         for _inv in check_post_phase(self.dag, "Executor"):
@@ -1508,11 +1557,20 @@ class SoloBuilderCLI:
 
         # Budget deferral alert
         if budget.deferred > 0:
+            parts = [f"{budget.deferred} AI call(s) deferred"]
+            if budget.max_calls > 0:
+                parts.append(f"calls {budget.used}/{budget.max_calls}")
+            if budget.max_tokens > 0:
+                parts.append(f"tokens {budget.tokens_used}/{budget.max_tokens}")
+            if budget.max_cost_usd > 0:
+                parts.append(f"cost ${budget.cost_usd:.4f}/${budget.max_cost_usd:.4f}")
             step_alerts.append(
-                f"  {YELLOW}[Budget]{RESET} {budget.deferred} AI call(s) deferred "
-                f"(used {budget.used}/{budget.max_calls})"
+                f"  {YELLOW}[Budget]{RESET} {' │ '.join(parts)}"
             )
         self._last_budget = budget  # retain for observability
+
+        # Roll up step usage into cumulative tracker
+        self._usage_tracker.record_step(budget)
 
         # Mark step completed in recovery metadata
         self._recovery_state["last_completed_step"] = self.step
@@ -1565,6 +1623,7 @@ class SoloBuilderCLI:
                 "patch_threshold_hits":    self.patch_reviewer.threshold_hits,
             },
             "recovery_state":   self._recovery_state,
+            "usage_state":      self._usage_tracker.to_dict(),
         }
         ok = save_state_to_disk(STATE_PATH, payload, silent=silent)
         if ok and not silent:
@@ -1637,6 +1696,10 @@ class SoloBuilderCLI:
                 self._recovery_state["persistence_fallback_count"] = (
                     self._recovery_state.get("persistence_fallback_count", 0) + 1
                 )
+            # Restore cumulative usage tracker
+            us = payload.get("usage_state")
+            if us:
+                self._usage_tracker = UsageTracker.from_dict(us)
             if repairs:
                 self._recovery_state["partial_work_repair_count"] = (
                     self._recovery_state.get("partial_work_repair_count", 0)
@@ -3091,6 +3154,21 @@ class SoloBuilderCLI:
                   f"deferred: {b.deferred}")
         else:
             print(f"  {CYAN}AI Budget{RESET}     unlimited")
+        if b.tokens_used > 0 or b.cost_usd > 0:
+            print(f"                tokens: {b.tokens_used}  "
+                  f"cost: ${b.cost_usd:.4f}")
+        # Cumulative usage
+        ut = self._usage_tracker
+        print(f"  {'─' * 55}")
+        print(f"  {BOLD}{CYAN}Cumulative AI Usage{RESET}")
+        print(f"  {CYAN}Totals{RESET}        calls: {ut.total_calls}  "
+              f"tokens: {ut.total_tokens}  "
+              f"cost: ${ut.total_cost_usd:.4f}  "
+              f"deferred: {ut.total_deferred}")
+        if ut.by_agent:
+            for agent, v in ut.by_agent.items():
+                print(f"  {DIM}  {agent}: calls={v['calls']}  "
+                      f"tokens={v['tokens']}  cost=${v['cost_usd']:.4f}{RESET}")
         print(f"  {'─' * 55}\n")
 
     def _cmd_forecast(self) -> None:

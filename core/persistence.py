@@ -141,6 +141,15 @@ def apply_backward_compat_defaults(payload: Dict[str, Any]) -> Dict[str, Any]:
     ss.setdefault("patch_rejections", {})
     ss.setdefault("patch_threshold_hits", 0)
 
+    # Cumulative AI usage tracking (added for budget/cost controls)
+    payload.setdefault("usage_state", {})
+    us = payload["usage_state"]
+    us.setdefault("total_calls", 0)
+    us.setdefault("total_tokens", 0)
+    us.setdefault("total_cost_usd", 0.0)
+    us.setdefault("total_deferred", 0)
+    us.setdefault("by_agent", {})
+
     # Recovery metadata (added for runtime reliability hardening)
     payload.setdefault("recovery_state", {})
     rs = payload["recovery_state"]
