@@ -52,6 +52,7 @@ const _SHORTCUTS = [
   ["Shift+G", "Go to first running subtask"],
   ["Shift+H", "Toggle history tab"],
   ["Shift+T", "Toggle dark/light theme"],
+  ["Shift+L", "Toggle journal tab"],
 ];
 
 function _showShortcuts() {
@@ -273,6 +274,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "L" && e.shiftKey) {
+    window.switchTab?.("journal");
     return;
   }
   if (key === "T" && e.shiftKey) {

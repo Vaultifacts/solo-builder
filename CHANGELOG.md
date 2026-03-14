@@ -1,5 +1,14 @@
 # Changelog
 
+## v7.11.0 — 2026-03-13  Dashboard UX Round 45 — trans arrow, output preview, dep mini, Shift+L — 210 UX
+
+- **Card status transition arrow**: Shows old→new status on recently changed cards (auto-clears 5s)
+- **Subtask output preview**: data-preview attribute with first 200 chars for hover
+- **Detail dep mini badge**: ⇠N badge showing dependency count next to status chip
+- **Branch verified bar gradient**: Inline green gradient already in pct span
+- **Keyboard `Shift+L` journal tab**: Explicit Shift+L for journal tab
+- 210 UX features
+
 ## v7.10.0 — 2026-03-13  Perf optimization + WCAG AAA + pagination audit
 
 - **Subtask list virtualization**: First 50 rows shown, "Show N more…" button for large branches

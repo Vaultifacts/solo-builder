@@ -461,6 +461,15 @@ export function renderGrid(tasks) {
       if (t.review_subtasks > 0) { reviewBadge.textContent = `⏸${t.review_subtasks}`; reviewBadge.style.display = ""; }
       else { reviewBadge.style.display = "none"; }
     }
+    // Card status transition arrow
+    let transEl = card.querySelector(".card-trans-arrow");
+    const _prevStatus = card._prevStatus ?? (t.status || "Pending");
+    if (_prevStatus !== (t.status || "Pending")) {
+      if (!transEl) { transEl = document.createElement("span"); transEl.className = "card-trans-arrow"; card.querySelector(".card-top").appendChild(transEl); }
+      transEl.textContent = `${_prevStatus}→${t.status}`;
+      setTimeout(() => { if (transEl) transEl.textContent = ""; }, 5000);
+    }
+    card._prevStatus = t.status || "Pending";
     card.classList.toggle("active",  t.id === state.selectedTask);
     card.classList.toggle("blocked", isBlocked);
 
@@ -948,6 +957,15 @@ export function renderDetail(t) {
   statusChip.style.cssText = `background:${_chipColor};color:#000;font-size:8px;padding:1px 6px;border-radius:8px;margin-left:6px`;
   statusChip.textContent = t.status || "Pending";
   statusDiv.appendChild(statusChip);
+
+  // Mini dep graph indicator
+  if (t.depends_on && t.depends_on.length) {
+    const depMini = document.createElement("span");
+    depMini.className = "detail-dep-mini";
+    depMini.textContent = `⇠${t.depends_on.length}`;
+    depMini.title = `Depends on: ${t.depends_on.join(", ")}`;
+    statusDiv.appendChild(depMini);
+  }
 
   if (t.depends_on && t.depends_on.length) {
     const depsWrap = document.createElement("span");
@@ -1543,6 +1561,7 @@ export function renderDetail(t) {
 
       const row = document.createElement("div");
       row.className = "subtask-row";
+      if (rawOutput) row.dataset.preview = rawOutput.substring(0, 200);
       if (!_showAll && _rowNum > _MAX_VISIBLE) row.style.display = "none";
       // Row number
       const rowNumEl = document.createElement("span");

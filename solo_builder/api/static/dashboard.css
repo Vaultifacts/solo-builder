@@ -949,6 +949,10 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card status transition arrow ────────────────────────── */
+  .card-trans-arrow { font-size: 8px; color: var(--cyan); margin-left: 4px; }
+  /* ── Detail dep mini badge ─────────────────────────────── */
+  .detail-dep-mini { font-size: 8px; color: #ff9800; margin-left: 4px; }
   /* ── Subtask row fade-in ────────────────────────────────── */
   .subtask-row { animation: st-fade-in 0.3s ease; }
   @keyframes st-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }

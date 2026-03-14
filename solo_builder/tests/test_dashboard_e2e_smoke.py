@@ -4018,5 +4018,29 @@ class TestKeyboardShiftT(unittest.TestCase):
         self.assertIn('"T"', js)
         self.assertIn("toggleTheme", js)
 
+# 205-209: Round 45
+class TestCardTransArrow(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("card-trans-arrow", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".card-trans-arrow", self._CSS.read_text(encoding="utf-8"))
+
+class TestRowOutputPreview(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self): self.assertIn("data-preview", self._JS.read_text(encoding="utf-8"))
+
+class TestDetailDepMini(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-dep-mini", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-dep-mini", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftL(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"L"', js)
+        self.assertIn("Shift+L", js)
+
 if __name__ == "__main__":
     unittest.main()
