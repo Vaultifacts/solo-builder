@@ -100,6 +100,7 @@ class TestGenerator:
         step: int,
         memory_store: Dict,
         alerts: List[str],
+        budget=None,
     ) -> int:
         """
         Scan Executor results for Python code and generate tests.
@@ -121,6 +122,9 @@ class TestGenerator:
                         continue
                     if st_name in self._generated:
                         continue
+                    # Check AI budget
+                    if budget is not None and budget.exhausted:
+                        continue
 
                     output      = st_data.get("output", "").strip()
                     description = st_data.get("description", "").strip()
@@ -129,6 +133,8 @@ class TestGenerator:
                         continue
 
                     test_code = self._ask_claude(description, output)
+                    if budget is not None:
+                        budget.consume(1)
                     if not test_code:
                         continue
 

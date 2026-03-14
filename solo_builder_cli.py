@@ -62,6 +62,7 @@ from agents.repo_analyzer import RepoAnalyzer
 from agents.patch_reviewer import PatchReviewer
 from agents.test_generator import TestGenerator
 from utils.repo_index import RepoIndex
+from utils.safety import StepBudget
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ CLAUDE_ALLOWED_TOOLS  : str = _CFG.get("CLAUDE_ALLOWED_TOOLS", "")
 ANTHROPIC_MODEL       : str  = _CFG.get("ANTHROPIC_MODEL",      "claude-sonnet-4-6")
 ANTHROPIC_MAX_TOKENS  : int  = _CFG.get("ANTHROPIC_MAX_TOKENS", 300)
 REVIEW_MODE           : bool = bool(_CFG.get("REVIEW_MODE",       False))
+MAX_AI_CALLS_PER_STEP : int  = _CFG.get("MAX_AI_CALLS_PER_STEP",  0)  # 0 = unlimited
 WEBHOOK_URL           : str  = _CFG.get("WEBHOOK_URL",            "")
 
 # One-liner context injected at the front of every Claude prompt so the model
@@ -1354,6 +1356,7 @@ class SoloBuilderCLI:
         self.display  = TerminalDisplay(bar_width=BAR_WIDTH,
                                         stall_threshold=STALL_THRESHOLD)
         self.running  = True
+        self._last_budget = StepBudget(max_calls=0)  # observability placeholder
 
         os.makedirs(PDF_OUTPUT_PATH, exist_ok=True)
 
@@ -1368,9 +1371,13 @@ class SoloBuilderCLI:
         self.step += 1
         step_alerts: List[str] = []
 
+        # Per-step AI budget guard
+        budget = StepBudget(max_calls=MAX_AI_CALLS_PER_STEP)
+
         # 0. RepoAnalyzer: scan for tech debt and inject new subtasks
         ra_added = self.repo_analyzer.analyze(
             self.dag, self.memory_store, self.step, step_alerts,
+            budget=budget,
         )
 
         # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps,
@@ -1415,11 +1422,13 @@ class SoloBuilderCLI:
         # 4b. PatchReviewer: critique Executor output before verification
         review_results = self.patch_reviewer.review_step(
             self.dag, actions, self.step, self.memory_store, step_alerts,
+            budget=budget,
         )
 
         # 4c. TestGenerator: generate pytest tests for Python output
         tests_written = self.test_generator.generate_tests(
             self.dag, actions, self.step, self.memory_store, step_alerts,
+            budget=budget,
         )
 
         # 5. Verifier: fix any status inconsistencies
@@ -1463,6 +1472,14 @@ class SoloBuilderCLI:
                 _f.write(f"{self.step},{_hb_v},{_hb_t},{_hb_p},{_hb_r},{_hb_rv}")
         except OSError:
             pass
+
+        # Budget deferral alert
+        if budget.deferred > 0:
+            step_alerts.append(
+                f"  {YELLOW}[Budget]{RESET} {budget.deferred} AI call(s) deferred "
+                f"(used {budget.used}/{budget.max_calls})"
+            )
+        self._last_budget = budget  # retain for observability
 
         # Accumulate alerts
         self.alerts = (self.alerts + step_alerts)[-MAX_ALERTS:]
@@ -1517,6 +1534,12 @@ class SoloBuilderCLI:
             "memory_store":     self.memory_store,
             "alerts":           self.alerts,
             "meta_history":     self.meta._history,
+            "safety_state": {
+                "dynamic_tasks_created":   self.repo_analyzer.dynamic_tasks_created,
+                "ra_last_run_step":        self.repo_analyzer._last_run_step,
+                "patch_rejections":        self.patch_reviewer._rejections,
+                "patch_threshold_hits":    self.patch_reviewer.threshold_hits,
+            },
         }
         try:
             with open(STATE_PATH, "w", encoding="utf-8") as f:
@@ -1551,6 +1574,13 @@ class SoloBuilderCLI:
                 self.meta.verify_rate = sum(r["verified"] for r in recent) / window
             # Rebuild ShadowAgent expected state map
             self.shadow.update_expected(self.dag)
+            # Restore safety state (backward-compatible — may be absent)
+            ss = payload.get("safety_state", {})
+            self.repo_analyzer._dynamic_tasks_created = ss.get("dynamic_tasks_created", 0)
+            self.repo_analyzer._last_run_step = ss.get("ra_last_run_step",
+                                                        self.repo_analyzer._last_run_step)
+            self.patch_reviewer._rejections = ss.get("patch_rejections", {})
+            self.patch_reviewer.threshold_hits = ss.get("patch_threshold_hits", 0)
             return True
         except Exception as exc:
             print(f"  {RED}Load failed: {exc}{RESET}")
@@ -2992,6 +3022,23 @@ class SoloBuilderCLI:
         print(f"  {CYAN}MetaOptimizer{RESET} history: {len(self.meta._history)} entries  "
               f"heal_rate: {self.meta.heal_rate:.2f}  verify_rate: {self.meta.verify_rate:.2f}")
         print(f"                forecast: {self.meta.forecast(self.dag)}")
+        # Safety Guard observability
+        print(f"  {'─' * 55}")
+        print(f"  {BOLD}{CYAN}Safety Guard{RESET}")
+        ra = self.repo_analyzer
+        print(f"  {CYAN}RepoAnalyzer{RESET}  dynamic tasks: {ra.dynamic_tasks_created}/{ra.max_total}  "
+              f"cooldown: {ra.cooldown_remaining_at(self.step)} steps")
+        pr = self.patch_reviewer
+        rej_total = sum(v.get("count", 0) for v in pr._rejections.values())
+        print(f"  {CYAN}PatchReviewer{RESET} rejections: {rej_total}  "
+              f"threshold hits: {pr.threshold_hits}  "
+              f"max_per_subtask: {pr.max_rejections}")
+        b = self._last_budget
+        if b.max_calls > 0:
+            print(f"  {CYAN}AI Budget{RESET}     last step: {b.used}/{b.max_calls} used  "
+                  f"deferred: {b.deferred}")
+        else:
+            print(f"  {CYAN}AI Budget{RESET}     unlimited")
         print(f"  {'─' * 55}\n")
 
     def _cmd_forecast(self) -> None:

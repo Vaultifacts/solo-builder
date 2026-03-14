@@ -10,13 +10,18 @@ Responsibilities:
     2. Ask Claude (via Anthropic SDK) to critique the patch.
     3. Reject patches that break style, violate task description,
        or remove important code — resetting the subtask to Pending.
+
+Safety features (Dynamic Task Safety Guard):
+    - Tracks rejection count per subtask
+    - After MAX_PATCH_REJECTIONS, moves to Review instead of Pending
+    - Optional AI budget integration
 """
 
 import os
 from typing import Any, Dict, List, Tuple
 
 from utils.helper_functions import (
-    CYAN, GREEN, RED, RESET, YELLOW,
+    BLINK, CYAN, GREEN, RED, RESET, YELLOW,
     add_memory_snapshot,
 )
 
@@ -42,6 +47,8 @@ APPROVED — if the output passes all criteria.
 REJECTED: <reason> — if it fails any criterion.
 """
 
+ALERT_REJECTION_LIMIT = f"{BLINK}{YELLOW}⚠ REJECTION LIMIT ⚠{RESET}"
+
 
 class PatchReviewer:
     """
@@ -52,24 +59,30 @@ class PatchReviewer:
     sends the output + task description to Claude for critique.
 
     If rejected:
-        - Resets subtask status back to Pending
-        - Clears shadow to Pending
-        - Appends an alert
+        - Increments rejection counter for the subtask
+        - If under MAX_PATCH_REJECTIONS: resets to Pending for retry
+        - If at/over threshold: moves to Review with alert (needs human attention)
 
     Configurable via settings keys:
-        PATCH_REVIEWER_ENABLED   (bool, default True)
-        PATCH_REVIEWER_MODEL     (str,  default from ANTHROPIC_MODEL)
-        PATCH_REVIEWER_MAX_TOKENS (int, default 256)
+        PATCH_REVIEWER_ENABLED    (bool, default True)
+        PATCH_REVIEWER_MODEL      (str,  default from ANTHROPIC_MODEL)
+        PATCH_REVIEWER_MAX_TOKENS (int,  default 256)
+        MAX_PATCH_REJECTIONS      (int,  default 3)
     """
 
     def __init__(self, settings: Dict[str, Any] | None = None) -> None:
         cfg = settings or {}
-        self.enabled    = cfg.get("PATCH_REVIEWER_ENABLED", True)
-        self._model     = cfg.get("PATCH_REVIEWER_MODEL",
-                                  cfg.get("ANTHROPIC_MODEL", "claude-sonnet-4-6"))
-        self._max_tokens = cfg.get("PATCH_REVIEWER_MAX_TOKENS", 256)
-        self._client    = None
-        self.available  = self._init_client()
+        self.enabled      = cfg.get("PATCH_REVIEWER_ENABLED", True)
+        self._model       = cfg.get("PATCH_REVIEWER_MODEL",
+                                    cfg.get("ANTHROPIC_MODEL", "claude-sonnet-4-6"))
+        self._max_tokens  = cfg.get("PATCH_REVIEWER_MAX_TOKENS", 256)
+        self.max_rejections = cfg.get("MAX_PATCH_REJECTIONS", 3)
+        self._client      = None
+        self.available    = self._init_client()
+        # Rejection tracking: {subtask_name: {"count": N, "reasons": [...]}}
+        self._rejections: Dict[str, Dict[str, Any]] = {}
+        # Observability counter
+        self.threshold_hits: int = 0
 
     def _init_client(self) -> bool:
         """Initialise the Anthropic SDK client; return False if unavailable."""
@@ -85,6 +98,15 @@ class PatchReviewer:
         except ImportError:
             return False
 
+    # ── Rejection tracking ───────────────────────────────────────────────
+    def rejection_count(self, st_name: str) -> int:
+        """Return the number of times a subtask has been rejected."""
+        return self._rejections.get(st_name, {}).get("count", 0)
+
+    def rejection_reasons(self, st_name: str) -> List[str]:
+        """Return the list of rejection reasons for a subtask."""
+        return self._rejections.get(st_name, {}).get("reasons", [])
+
     # ── Public API ───────────────────────────────────────────────────────
     def review_step(
         self,
@@ -93,6 +115,7 @@ class PatchReviewer:
         step: int,
         memory_store: Dict,
         alerts: List[str],
+        budget=None,
     ) -> Dict[str, str]:
         """
         Review subtasks that the Executor just advanced.
@@ -104,10 +127,11 @@ class PatchReviewer:
         step             : Current pipeline step number.
         memory_store     : Branch → memory snapshots.
         alerts           : Mutable alert list for the current step.
+        budget           : Optional StepBudget for AI call tracking.
 
         Returns
         -------
-        Dict mapping subtask_name → "approved" | "rejected".
+        Dict mapping subtask_name → "approved" | "rejected" | "escalated".
         """
         if not self.available:
             return {}
@@ -132,7 +156,15 @@ class PatchReviewer:
                         results[st_name] = "approved"
                         continue
 
+                    # Check AI budget before calling Claude
+                    if budget is not None and budget.exhausted:
+                        results[st_name] = "approved"
+                        continue
+
                     approved, reason = self._ask_claude(description, output)
+
+                    if budget is not None:
+                        budget.consume(1)
 
                     if approved:
                         results[st_name] = "approved"
@@ -141,23 +173,54 @@ class PatchReviewer:
                             f"{CYAN}{st_name}{RESET} approved"
                         )
                     else:
-                        # Reject: reset to Pending
-                        st_data["status"]      = "Pending"
-                        st_data["shadow"]      = "Pending"
-                        st_data["last_update"] = step
-                        st_data.setdefault("history", []).append(
-                            {"status": "Pending", "step": step,
-                             "note": f"PatchReviewer rejected: {reason}"}
-                        )
-                        add_memory_snapshot(
-                            memory_store, branch_name,
-                            f"{st_name}_patch_rejected", step,
-                        )
-                        results[st_name] = "rejected"
-                        alerts.append(
-                            f"  {RED}[PatchReviewer]{RESET} "
-                            f"{CYAN}{st_name}{RESET} rejected: {reason}"
-                        )
+                        # Track rejection
+                        if st_name not in self._rejections:
+                            self._rejections[st_name] = {"count": 0, "reasons": []}
+                        self._rejections[st_name]["count"] += 1
+                        self._rejections[st_name]["reasons"].append(reason)
+                        rej_count = self._rejections[st_name]["count"]
+
+                        if rej_count >= self.max_rejections:
+                            # Escalate: move to Review instead of Pending
+                            st_data["status"]      = "Review"
+                            st_data["shadow"]      = "Pending"
+                            st_data["last_update"] = step
+                            st_data.setdefault("history", []).append(
+                                {"status": "Review", "step": step,
+                                 "note": f"PatchReviewer escalated after "
+                                         f"{rej_count} rejections: {reason}"}
+                            )
+                            add_memory_snapshot(
+                                memory_store, branch_name,
+                                f"{st_name}_rejection_limit_reached", step,
+                            )
+                            results[st_name] = "escalated"
+                            self.threshold_hits += 1
+                            alerts.append(
+                                f"  {ALERT_REJECTION_LIMIT} "
+                                f"{CYAN}{st_name}{RESET} rejected {rej_count}x "
+                                f"→ moved to Review (needs human attention)"
+                            )
+                        else:
+                            # Normal reject: reset to Pending for retry
+                            st_data["status"]      = "Pending"
+                            st_data["shadow"]      = "Pending"
+                            st_data["last_update"] = step
+                            st_data.setdefault("history", []).append(
+                                {"status": "Pending", "step": step,
+                                 "note": f"PatchReviewer rejected ({rej_count}/"
+                                         f"{self.max_rejections}): {reason}"}
+                            )
+                            add_memory_snapshot(
+                                memory_store, branch_name,
+                                f"{st_name}_patch_rejected", step,
+                            )
+                            results[st_name] = "rejected"
+                            alerts.append(
+                                f"  {RED}[PatchReviewer]{RESET} "
+                                f"{CYAN}{st_name}{RESET} rejected ({rej_count}/"
+                                f"{self.max_rejections}): {reason}"
+                            )
 
         return results
 

@@ -19,5 +19,10 @@
     "ANTHROPIC_MODEL": "claude-sonnet-4-6",
     "ANTHROPIC_MAX_TOKENS": 256,
     "REVIEW_MODE": true,
-    "WEBHOOK_URL": "not-a-url"
+    "WEBHOOK_URL": "not-a-url",
+    "REPO_ANALYZER_COOLDOWN_STEPS": 15,
+    "MAX_DYNAMIC_TASKS_PER_ANALYSIS": 5,
+    "MAX_DYNAMIC_TASKS_TOTAL": 50,
+    "MAX_PATCH_REJECTIONS": 3,
+    "MAX_AI_CALLS_PER_STEP": 0
 }
