@@ -13,6 +13,16 @@ from pathlib import Path
 
 from flask import Flask, jsonify, abort, send_from_directory, request
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from utils.runtime_views import (
+    priority_queue as _priority_queue,
+    stalled_subtasks as _stalled_subtasks,
+    agent_stats as _agent_stats,
+    forecast_summary as _forecast_summary,
+    per_task_stats as _per_task_stats,
+)
+
 app = Flask(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -41,6 +51,14 @@ def _load_state() -> dict:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {"dag": {}, "step": 0}
+
+
+def _load_cfg() -> dict:
+    """Load settings.json with fallback defaults."""
+    try:
+        return json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def _load_dag() -> dict:
@@ -301,36 +319,7 @@ def generate_export():
 def stats():
     """Per-task breakdown: verified, total, pct, avg steps to complete."""
     dag = _load_dag()
-    tasks = []
-    grand_v = grand_t = 0
-    all_dur: list = []
-    for task_id, task_data in dag.items():
-        tv = tt = 0
-        durs: list = []
-        for b in task_data.get("branches", {}).values():
-            for st in b.get("subtasks", {}).values():
-                tt += 1
-                if st.get("status") == "Verified":
-                    tv += 1
-                    h = st.get("history", [])
-                    if len(h) >= 2:
-                        durs.append(h[-1].get("step", 0) - h[0].get("step", 0))
-        pct = round(tv / tt * 100, 1) if tt else 0
-        avg = round(sum(durs) / len(durs), 1) if durs else None
-        tasks.append({
-            "id": task_id, "verified": tv, "total": tt,
-            "pct": pct, "avg_steps": avg,
-            "status": task_data.get("status"),
-        })
-        grand_v += tv
-        grand_t += tt
-        all_dur.extend(durs)
-    return jsonify({
-        "tasks": tasks,
-        "grand_verified": grand_v, "grand_total": grand_t,
-        "grand_pct": round(grand_v / grand_t * 100, 1) if grand_t else 0,
-        "grand_avg_steps": round(sum(all_dur) / len(all_dur), 1) if all_dur else None,
-    })
+    return jsonify(_per_task_stats(dag))
 
 
 @app.get("/search")
@@ -557,27 +546,11 @@ def priority():
     state = _load_state()
     dag = state.get("dag", {})
     step = state.get("step", 0)
-    candidates = []
-    for task_name, task in dag.items():
-        deps_met = all(dag.get(d, {}).get("status") == "Verified"
-                       for d in task.get("depends_on", []))
-        if not deps_met:
-            continue
-        for branch_name, branch in task.get("branches", {}).items():
-            for st_name, st_data in branch.get("subtasks", {}).items():
-                status = st_data.get("status", "Pending")
-                if status not in ("Pending", "Running"):
-                    continue
-                age = step - st_data.get("last_update", 0)
-                risk = 1000 + age * 10 if status == "Running" else age * 8
-                candidates.append({
-                    "subtask": st_name, "task": task_name,
-                    "branch": branch_name, "status": status,
-                    "risk": risk, "age": age,
-                })
-    candidates.sort(key=lambda x: x["risk"], reverse=True)
+    cfg = _load_cfg()
+    threshold = int(cfg.get("STALL_THRESHOLD", 10))
+    candidates = _priority_queue(dag, step, stall_threshold=threshold, limit=30)
     return jsonify({"step": step, "count": len(candidates),
-                    "queue": candidates[:30]})
+                    "queue": candidates})
 
 
 @app.get("/stalled")
@@ -586,24 +559,9 @@ def stalled():
     state = _load_state()
     dag = state.get("dag", {})
     step = state.get("step", 0)
-    threshold = 5
-    try:
-        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
-        threshold = int(cfg.get("STALL_THRESHOLD", 5))
-    except Exception:
-        pass
-    stuck = []
-    for task_name, task in dag.items():
-        for branch_name, branch in task.get("branches", {}).items():
-            for st_name, st_data in branch.get("subtasks", {}).items():
-                if st_data.get("status") == "Running":
-                    age = step - st_data.get("last_update", 0)
-                    if age >= threshold:
-                        stuck.append({
-                            "subtask": st_name, "task": task_name,
-                            "branch": branch_name, "age": age,
-                        })
-    stuck.sort(key=lambda x: x["age"], reverse=True)
+    cfg = _load_cfg()
+    threshold = int(cfg.get("STALL_THRESHOLD", 10))
+    stuck = _stalled_subtasks(dag, step, stall_threshold=threshold)
     return jsonify({"step": step, "threshold": threshold,
                     "count": len(stuck), "stalled": stuck})
 
@@ -612,51 +570,11 @@ def stalled():
 def agents():
     """Return agent statistics as JSON."""
     state = _load_state()
-    dag = state.get("dag", {})
-    step = state.get("step", 0)
-    healed = state.get("healed_total", 0)
-    meta_history = state.get("meta_history", [])
-    threshold = 5
-    max_per_step = 6
-    try:
-        cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
-        threshold = int(cfg.get("STALL_THRESHOLD", 5))
-        max_per_step = int(cfg.get("EXECUTOR_MAX_PER_STEP", 6))
-    except Exception:
-        pass
-    total = verified = running = stalled_count = 0
-    for task in dag.values():
-        for branch in task.get("branches", {}).values():
-            for st_data in branch.get("subtasks", {}).values():
-                total += 1
-                s = st_data.get("status", "Pending")
-                if s == "Verified":
-                    verified += 1
-                elif s == "Running":
-                    running += 1
-                    age = step - st_data.get("last_update", 0)
-                    if age >= threshold:
-                        stalled_count += 1
-    heal_rate = verify_rate = 0.0
-    if meta_history:
-        window = min(10, len(meta_history))
-        recent = meta_history[-window:]
-        heal_rate = round(sum(r.get("healed", 0) for r in recent) / window, 3)
-        verify_rate = round(sum(r.get("verified", 0) for r in recent) / window, 3)
-    remaining = total - verified
-    eta = round(remaining / (verify_rate + 1e-6)) if verify_rate > 0 else None
-    return jsonify({
-        "step": step,
-        "planner": {"cache_interval": 5},
-        "executor": {"max_per_step": max_per_step},
-        "healer": {"healed_total": healed, "threshold": threshold,
-                   "currently_stalled": stalled_count},
-        "meta": {"history_len": len(meta_history),
-                 "heal_rate": heal_rate, "verify_rate": verify_rate},
-        "forecast": {"total": total, "verified": verified, "remaining": remaining,
-                     "pct": round(verified / total * 100) if total else 0,
-                     "eta_steps": eta},
-    })
+    cfg = _load_cfg()
+    threshold = int(cfg.get("STALL_THRESHOLD", 10))
+    max_per_step = int(cfg.get("EXECUTOR_MAX_PER_STEP", 6))
+    return jsonify(_agent_stats(state, stall_threshold=threshold,
+                                executor_max_per_step=max_per_step))
 
 
 @app.get("/forecast")
@@ -666,32 +584,7 @@ def forecast():
     dag = state.get("dag", {})
     step = state.get("step", 0)
     meta_history = state.get("meta_history", [])
-    total = verified = running = pending = review = 0
-    for task in dag.values():
-        for branch in task.get("branches", {}).values():
-            for st_data in branch.get("subtasks", {}).values():
-                total += 1
-                s = st_data.get("status", "Pending")
-                if s == "Verified": verified += 1
-                elif s == "Running": running += 1
-                elif s == "Pending": pending += 1
-                elif s == "Review": review += 1
-    remaining = total - verified
-    pct = round(verified / total * 100, 1) if total else 0
-    verify_rate = heal_rate = 0.0
-    if meta_history:
-        window = min(10, len(meta_history))
-        recent = meta_history[-window:]
-        verify_rate = round(sum(r.get("verified", 0) for r in recent) / window, 3)
-        heal_rate = round(sum(r.get("healed", 0) for r in recent) / window, 3)
-    eta = round(remaining / (verify_rate + 1e-6)) if verify_rate > 0 else None
-    return jsonify({
-        "step": step, "total": total, "verified": verified,
-        "running": running, "pending": pending, "review": review,
-        "remaining": remaining, "pct": pct,
-        "verify_rate": verify_rate, "heal_rate": heal_rate,
-        "eta_steps": eta,
-    })
+    return jsonify(_forecast_summary(dag, meta_history, step))
 
 
 @app.post("/heal")

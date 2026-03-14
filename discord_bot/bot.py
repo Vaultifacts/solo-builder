@@ -45,6 +45,18 @@ except ImportError:
 import discord
 from discord import app_commands
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from utils.runtime_views import (
+    priority_queue as _priority_queue,
+    stalled_subtasks as _stalled_subtasks,
+    agent_stats as _agent_stats,
+    forecast_summary as _forecast_summary,
+    per_task_stats as _per_task_stats,
+    compute_rates as _compute_rates,
+    dag_summary as _dag_summary,
+)
+
 _ROOT          = Path(__file__).resolve().parent.parent   # solo_builder/
 STATE_PATH     = _ROOT / "state" / "solo_builder_state.json"
 STEP_PATH      = _ROOT / "state" / "step.txt"
@@ -84,6 +96,14 @@ def _load_state() -> dict:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {"dag": {}, "step": 0}
+
+
+def _load_cfg() -> dict:
+    """Load settings.json with fallback defaults."""
+    try:
+        return json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def _has_work(dag: dict) -> bool:
@@ -222,33 +242,20 @@ def _format_history(state: dict, limit: int = 20) -> str:
 def _format_stats(state: dict) -> str:
     """Return a formatted per-task stats table."""
     dag = state.get("dag", {})
+    data = _per_task_stats(dag)
     lines = ["**Per-Task Statistics**", "```"]
     lines.append(f"{'Task':<12} {'V':>4} {'Tot':>4} {'Pct':>5}  {'Avg':>5}")
     lines.append("─" * 38)
-    grand_v = grand_t = 0
-    all_dur: list = []
-    for task_name, task_data in dag.items():
-        tv = tt = 0
-        durs: list = []
-        for b in task_data.get("branches", {}).values():
-            for st in b.get("subtasks", {}).values():
-                tt += 1
-                if st.get("status") == "Verified":
-                    tv += 1
-                    h = st.get("history", [])
-                    if len(h) >= 2:
-                        durs.append(h[-1].get("step", 0) - h[0].get("step", 0))
-        pct = round(tv / tt * 100, 1) if tt else 0
-        avg = f"{sum(durs)/len(durs):.1f}" if durs else "—"
-        mark = "✅" if tv == tt and tt > 0 else "▶" if tv > 0 else "⏳"
-        lines.append(f"{mark} {task_name:<10} {tv:>4} {tt:>4} {pct:>4}%  {avg:>5}")
-        grand_v += tv
-        grand_t += tt
-        all_dur.extend(durs)
+    for t in data["tasks"]:
+        avg = f"{t['avg_steps']:.1f}" if t["avg_steps"] is not None else "—"
+        mark = "✅" if t["verified"] == t["total"] and t["total"] > 0 \
+               else "▶" if t["verified"] > 0 else "⏳"
+        lines.append(f"{mark} {t['id']:<10} {t['verified']:>4} {t['total']:>4} "
+                     f"{t['pct']:>4}%  {avg:>5}")
     lines.append("─" * 38)
-    gp = round(grand_v / grand_t * 100, 1) if grand_t else 0
-    ga = f"{sum(all_dur)/len(all_dur):.1f}" if all_dur else "—"
-    lines.append(f"  {'TOTAL':<10} {grand_v:>4} {grand_t:>4} {gp:>4}%  {ga:>5}")
+    ga = f"{data['grand_avg_steps']:.1f}" if data["grand_avg_steps"] is not None else "—"
+    lines.append(f"  {'TOTAL':<10} {data['grand_verified']:>4} {data['grand_total']:>4} "
+                 f"{data['grand_pct']:>4}%  {ga:>5}")
     lines.append("```")
     return "\n".join(lines)
 
@@ -259,28 +266,17 @@ def _format_priority(state: dict) -> str:
     step = state.get("step", 0)
     if not dag:
         return "No tasks in DAG."
-    candidates = []
-    for task_name, task in dag.items():
-        deps_met = all(dag.get(d, {}).get("status") == "Verified"
-                       for d in task.get("depends_on", []))
-        if not deps_met:
-            continue
-        for branch in task.get("branches", {}).values():
-            for st_name, st_data in branch.get("subtasks", {}).items():
-                status = st_data.get("status", "Pending")
-                if status not in ("Pending", "Running"):
-                    continue
-                age = step - st_data.get("last_update", 0)
-                risk = 1000 + age * 10 if status == "Running" else age * 8
-                candidates.append((st_name, task_name, status, risk))
-    candidates.sort(key=lambda x: x[3], reverse=True)
+    cfg = _load_cfg()
+    threshold = int(cfg.get("STALL_THRESHOLD", 10))
+    candidates = _priority_queue(dag, step, stall_threshold=threshold)
     if not candidates:
         return "✅ **Priority Queue** — empty (all subtasks Verified or blocked)"
     lines = [f"**Priority Queue** ({len(candidates)} candidates, step {step})", "```"]
-    for i, (st_name, task_name, status, risk) in enumerate(candidates[:15]):
+    for i, c in enumerate(candidates[:15]):
         marker = "▶ " if i < 6 else "  "
-        icon = "▶" if status == "Running" else "⏳"
-        lines.append(f"{marker}{icon} {st_name:<5} {status:<9} risk={risk:<5} {task_name}")
+        icon = "▶" if c["status"] == "Running" else "⏳"
+        lines.append(f"{marker}{icon} {c['subtask']:<5} {c['status']:<9} "
+                     f"risk={c['risk']:<5} {c['task']}")
     if len(candidates) > 15:
         lines.append(f"… and {len(candidates) - 15} more")
     lines.append("```")
@@ -292,27 +288,15 @@ def _format_stalled(state: dict) -> str:
     """Show subtasks stuck in Running longer than STALL_THRESHOLD."""
     dag = state.get("dag", {})
     step = state.get("step", 0)
-    threshold = 5
-    try:
-        cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
-        threshold = int(cfg.get("STALL_THRESHOLD", 5))
-    except Exception:
-        pass
-    stuck = []
-    for task_name, task in dag.items():
-        for branch in task.get("branches", {}).values():
-            for st_name, st_data in branch.get("subtasks", {}).items():
-                if st_data.get("status") == "Running":
-                    age = step - st_data.get("last_update", 0)
-                    if age >= threshold:
-                        desc = (st_data.get("description") or "")[:40]
-                        stuck.append((st_name, task_name, age, desc))
-    stuck.sort(key=lambda x: x[2], reverse=True)
+    cfg = _load_cfg()
+    threshold = int(cfg.get("STALL_THRESHOLD", 10))
+    stuck = _stalled_subtasks(dag, step, stall_threshold=threshold)
     if not stuck:
         return f"✅ **Stalled Subtasks** — none (threshold: {threshold} steps)"
     lines = [f"⚠️ **Stalled Subtasks** ({len(stuck)}, threshold: {threshold} steps)", "```"]
-    for st_name, task_name, age, desc in stuck:
-        lines.append(f"  {st_name:<5} stalled {age} steps  {task_name} — {desc}")
+    for s in stuck:
+        desc = s["description"][:40]
+        lines.append(f"  {s['subtask']:<5} stalled {s['age']} steps  {s['task']} — {desc}")
     lines.append("```")
     lines.append("_SelfHealer auto-resets after threshold_")
     return "\n".join(lines)
@@ -320,51 +304,36 @@ def _format_stalled(state: dict) -> str:
 
 def _format_agents(state: dict) -> str:
     """Show agent statistics from state file."""
-    step = state.get("step", 0)
-    dag = state.get("dag", {})
-    healed = state.get("healed_total", 0)
-    meta_history = state.get("meta_history", [])
-    # Compute live stats
-    total = verified = running = pending = stalled_count = 0
-    threshold = 5
-    try:
-        cfg = json.loads((_ROOT / "config" / "settings.json").read_text(encoding="utf-8"))
-        threshold = int(cfg.get("STALL_THRESHOLD", 5))
-    except Exception:
-        pass
-    for task in dag.values():
-        for branch in task.get("branches", {}).values():
-            for st_data in branch.get("subtasks", {}).values():
-                total += 1
-                s = st_data.get("status", "Pending")
-                if s == "Verified":
-                    verified += 1
-                elif s == "Running":
-                    running += 1
-                    age = step - st_data.get("last_update", 0)
-                    if age >= threshold:
-                        stalled_count += 1
-                elif s == "Pending":
-                    pending += 1
-    heal_rate = verify_rate = 0.0
-    if meta_history:
-        window = min(10, len(meta_history))
-        recent = meta_history[-window:]
-        heal_rate = sum(r.get("healed", 0) for r in recent) / window
-        verify_rate = sum(r.get("verified", 0) for r in recent) / window
-    pct = round(verified / total * 100) if total else 0
-    eta = f"~{(total - verified) / (verify_rate + 1e-6):.0f} steps" if verify_rate > 0 else "N/A"
+    cfg = _load_cfg()
+    threshold = int(cfg.get("STALL_THRESHOLD", 10))
+    max_per_step = int(cfg.get("EXECUTOR_MAX_PER_STEP", 6))
+    a = _agent_stats(state, stall_threshold=threshold,
+                     executor_max_per_step=max_per_step)
+    step = a["step"]
+    healed = a["healer"]["healed_total"]
+    stalled_count = a["healer"]["currently_stalled"]
+    meta_len = a["meta"]["history_len"]
+    heal_rate = a["meta"]["heal_rate"]
+    verify_rate = a["meta"]["verify_rate"]
+    fc = a["forecast"]
+    pct = fc["pct"]
+    eta = f"~{fc['eta_steps']} steps" if fc["eta_steps"] is not None else "N/A"
+    sg = a.get("safety_guard", {})
     lines = [
         f"**Agent Statistics** (step {step})",
         "```",
         f"Planner       cache refreshes every 5 steps",
-        f"Executor      max_per_step: {cfg.get('EXECUTOR_MAX_PER_STEP', 6) if 'cfg' in dir() else 6}",
+        f"Executor      max_per_step: {max_per_step}",
         f"SelfHealer    healed: {healed}  threshold: {threshold}  stalled now: {stalled_count}",
         f"ShadowAgent   tracking subtask states",
-        f"MetaOptimizer {len(meta_history)} entries  heal_rate: {heal_rate:.2f}  verify_rate: {verify_rate:.2f}",
-        f"Forecast      {pct}% done ({verified}/{total})  ETA: {eta}",
-        "```",
+        f"MetaOptimizer {meta_len} entries  heal_rate: {heal_rate:.2f}  verify_rate: {verify_rate:.2f}",
+        f"Forecast      {pct}% done ({fc['verified']}/{fc['total']})  ETA: {eta}",
     ]
+    if sg.get("dynamic_tasks_created", 0) > 0 or sg.get("patch_threshold_hits", 0) > 0:
+        lines.append(f"SafetyGuard   dynamic_tasks: {sg['dynamic_tasks_created']}  "
+                     f"rejections: {sg['patch_rejections_total']}  "
+                     f"threshold_hits: {sg['patch_threshold_hits']}")
+    lines.append("```")
     return "\n".join(lines)
 
 
@@ -373,25 +342,9 @@ def _format_forecast(state: dict) -> str:
     dag = state.get("dag", {})
     step = state.get("step", 0)
     meta_history = state.get("meta_history", [])
-    total = verified = running = pending = review = 0
-    for task in dag.values():
-        for branch in task.get("branches", {}).values():
-            for st_data in branch.get("subtasks", {}).values():
-                total += 1
-                s = st_data.get("status", "Pending")
-                if s == "Verified": verified += 1
-                elif s == "Running": running += 1
-                elif s == "Pending": pending += 1
-                elif s == "Review": review += 1
-    remaining = total - verified
-    pct = round(verified / total * 100, 1) if total else 0
-    verify_rate = heal_rate = 0.0
-    if meta_history:
-        window = min(10, len(meta_history))
-        recent = meta_history[-window:]
-        verify_rate = sum(r.get("verified", 0) for r in recent) / window
-        heal_rate = sum(r.get("healed", 0) for r in recent) / window
-    eta = f"~{remaining / verify_rate:.0f} steps" if verify_rate > 0 else "N/A"
+    fc = _forecast_summary(dag, meta_history, step)
+    eta = f"~{fc['eta_steps']} steps" if fc["eta_steps"] is not None else "N/A"
+    pct = fc["pct"]
     bar_len = 20
     filled = round(bar_len * pct / 100)
     bar = "█" * filled + "░" * (bar_len - filled)
@@ -399,10 +352,10 @@ def _format_forecast(state: dict) -> str:
         f"**Completion Forecast** (step {step})",
         "```",
         f"Progress   {bar} {pct}%",
-        f"Breakdown  {verified}✓  {running}▶  {pending}⏳  {review}⏸",
-        f"Remaining  {remaining} subtasks",
-        f"Verify     {verify_rate:.2f}/step (last 10)",
-        f"Heal       {heal_rate:.2f}/step (last 10)",
+        f"Breakdown  {fc['verified']}✓  {fc['running']}▶  {fc['pending']}⏳  {fc['review']}⏸",
+        f"Remaining  {fc['remaining']} subtasks",
+        f"Verify     {fc['verify_rate']:.2f}/step (last 10)",
+        f"Heal       {fc['heal_rate']:.2f}/step (last 10)",
         f"ETA        {eta}",
         "```",
     ]
