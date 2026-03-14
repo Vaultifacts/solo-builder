@@ -1,5 +1,9 @@
 # Changelog
 
+## v6.99.0 — 2026-03-13  Bot formatters 89% → 91% — stalled filters, diff, log tests
+
+- `bot_formatters.py` 89% → **91%** — stalled min_age/task/branch filters, agents edge cases, diff with backup, log with journal
+
 ## v6.98.0 — 2026-03-13  Dashboard UX Round 39 — big pct, row hover, branch bar, last-mod, Shift+P
 
 - **Card large progress text**: Big faded % number overlay on each card

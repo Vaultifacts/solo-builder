@@ -398,5 +398,82 @@ class TestFormatStatsVerified(unittest.TestCase):
         self.assertIn("Task0", r)
 
 
+class TestFormatStalledFilters(unittest.TestCase):
+    def test_stalled_with_min_age(self):
+        r = fmt._format_stalled(_state(step=100), min_age=50)
+        self.assertIn("A1", r)
+
+    def test_stalled_task_filter(self):
+        r = fmt._format_stalled(_state(step=100), task_filter="NOPE")
+        self.assertIn("none", r)
+
+    def test_stalled_branch_filter(self):
+        r = fmt._format_stalled(_state(step=100), branch_filter="NOPE")
+        self.assertIn("none", r)
+
+    def test_stalled_multi_branch(self):
+        st = {"step": 100, "dag": {
+            "T0": {"status": "R", "branches": {"B1": {"subtasks": {"S1": {"status": "Running", "last_update": 0}}},
+                                                "B2": {"subtasks": {"S2": {"status": "Running", "last_update": 0}}}}}}}
+        r = fmt._format_stalled(st)
+        self.assertIn("S1", r)
+        self.assertIn("S2", r)
+
+    def test_stalled_settings_exception(self):
+        with patch.object(Path, "read_text", side_effect=OSError("no")):
+            r = fmt._format_stalled(_state(step=100))
+        self.assertIn("A1", r)
+
+
+class TestFormatAgentsEdge(unittest.TestCase):
+    def test_agents_with_pending(self):
+        st = _state({"A1": {"status": "Pending", "last_update": 0, "output": ""}},
+                     meta_history=[{"verified": 0, "healed": 0}])
+        r = fmt._format_agents(st)
+        self.assertIsInstance(r, str)
+
+    def test_agents_settings_exception(self):
+        with patch.object(Path, "read_text", side_effect=OSError("no")):
+            r = fmt._format_agents(_state(meta_history=[{"verified": 1, "healed": 0}]))
+        self.assertIsInstance(r, str)
+
+
+class TestFormatDiffWithBackup(unittest.TestCase):
+    def test_diff_with_backup(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        state_path = Path(tmp) / "state" / "solo_builder_state.json"
+        state_path.parent.mkdir(parents=True)
+        state_path.write_text('{"step":2,"dag":{"T0":{"branches":{"B":{"subtasks":{"S1":{"status":"Verified"}}}}}}}')
+        backup = Path(str(state_path) + ".1")
+        backup.write_text('{"step":1,"dag":{"T0":{"branches":{"B":{"subtasks":{"S1":{"status":"Running"}}}}}}}')
+        with patch.object(fmt, "_ROOT", new=Path(tmp)):
+            r = fmt._format_diff()
+        self.assertIsInstance(r, str)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatLogWithFile(unittest.TestCase):
+    def test_log_with_journal(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        journal = Path(tmp) / "journal.md"
+        journal.write_text("## A1 \u00b7 Task 1 / Branch b0 \u00b7 Step 3\noutput here\n---\n", encoding="utf-8")
+        with patch.object(fmt, "_ROOT", new=Path(tmp)):
+            r = fmt._format_log("")
+        self.assertIsInstance(r, str)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_log_with_subtask_filter(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        journal = Path(tmp) / "journal.md"
+        journal.write_text("## A1 \u00b7 Task 1 / Branch b0 \u00b7 Step 3\noutput\n---\n## B2 \u00b7 Task 1 / Branch b0 \u00b7 Step 4\nother\n", encoding="utf-8")
+        with patch.object(fmt, "_ROOT", new=Path(tmp)):
+            r = fmt._format_log("A1")
+        self.assertIn("A1", r)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()
