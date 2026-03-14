@@ -1534,12 +1534,16 @@ export function renderDetail(t) {
     branchBlock.appendChild(branchNameEl);
 
     let _rowNum = 0;
-    Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+    const _MAX_VISIBLE = 50;
+    const _stEntries = Object.entries(bdata.subtasks || {});
+    let _showAll = _stEntries.length <= _MAX_VISIBLE;
+    _stEntries.forEach(([sname, s]) => {
       _rowNum++;
       const rawOutput = s.output || "";
 
       const row = document.createElement("div");
       row.className = "subtask-row";
+      if (!_showAll && _rowNum > _MAX_VISIBLE) row.style.display = "none";
       // Row number
       const rowNumEl = document.createElement("span");
       rowNumEl.className = "st-row-num";
@@ -1870,6 +1874,18 @@ export function renderDetail(t) {
 
       branchBlock.appendChild(row);
     });
+
+    // "Show more" button for virtualized lists
+    if (!_showAll && _stEntries.length > _MAX_VISIBLE) {
+      const moreBtn = document.createElement("button");
+      moreBtn.className = "toolbar-btn branch-show-more";
+      moreBtn.textContent = `Show ${_stEntries.length - _MAX_VISIBLE} more…`;
+      moreBtn.addEventListener("click", () => {
+        branchBlock.querySelectorAll(".subtask-row[style*='none']").forEach(r => r.style.display = "");
+        moreBtn.remove();
+      });
+      branchBlock.appendChild(moreBtn);
+    }
 
     // Auto-collapse verified branches
     if (_bs && _bs.verified === _bs.total && _bs.total > 0) {

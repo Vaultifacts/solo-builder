@@ -19,7 +19,7 @@
     --surface:  #ffffff;
     --border:   #ddd;
     --text:     #1a1a1a;
-    --dim:      #666;
+    --dim:      #555;  /* WCAG AAA: 7.5:1 on #f5f5f5 */
     --node-bg-verified: #e0f5e0;
     --node-bg-running:  #e0f2f5;
     --node-bg-pending:  #fff8e0;

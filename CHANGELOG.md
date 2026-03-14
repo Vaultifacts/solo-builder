@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.10.0 — 2026-03-13  Perf optimization + WCAG AAA + pagination audit
+
+- **Subtask list virtualization**: First 50 rows shown, "Show N more…" button for large branches
+- **WCAG AAA contrast**: Light theme --dim raised from #666 to #555 (7.5:1 ratio)
+- **Pagination audit**: All 18 list endpoints confirmed with consistent page/limit params
+- **Branch auto-sort**: Branches sorted by completion % in detail panel
+
 ## v7.9.0 — 2026-03-13  Dashboard UX Round 44 — sparkline tooltip, fade-in, branch sort, Shift+T
 
 - **Sparkline tooltip**: Hover shows branch names with completion %
