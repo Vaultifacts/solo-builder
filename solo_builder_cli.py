@@ -64,6 +64,19 @@ from agents.test_generator import TestGenerator
 from utils.repo_index import RepoIndex
 from utils.safety import StepBudget
 from utils.invariants import check_post_phase
+from core.persistence import (
+    rotate_backups, save_state_to_disk, load_state_from_disk,
+    apply_backward_compat_defaults, write_heartbeat,
+)
+from core.dag_transitions import (
+    record_history, roll_up, update_branch_status, update_task_status,
+    deps_met, verify_rollup, find_stalled,
+)
+from core.triggers import (
+    consume_json_trigger as _consume_json_trigger_fn,
+    consume_flag_trigger, write_flag_trigger, trigger_exists,
+    trigger_path, all_trigger_paths, cleanup_stale_triggers,
+)
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -364,10 +377,7 @@ class Planner:
 
     def _deps_met(self, dag: Dict, task_name: str) -> bool:
         """Return True if every task this task depends on is Verified."""
-        for dep in dag.get(task_name, {}).get("depends_on", []):
-            if dag.get(dep, {}).get("status") != "Verified":
-                return False
-        return True
+        return deps_met(dag, task_name)
 
     def adjust_weights(self, key: str, delta: float) -> None:
         """Hook for MetaOptimizer to tune heuristic weights."""
@@ -784,7 +794,7 @@ class Executor:
             if status == "Pending":
                 st_data["status"]      = "Running"
                 st_data["last_update"] = step
-                st_data.setdefault("history", []).append({"status": "Running", "step": step})
+                record_history(st_data, "Running", step)
                 dag[task_name]["status"]                              = "Running"
                 dag[task_name]["branches"][branch_name]["status"]     = "Running"
                 add_memory_snapshot(memory_store, branch_name, f"{st_name}_started", step)
@@ -941,24 +951,11 @@ class Executor:
     @staticmethod
     def _record_history(st_data: Dict, new_status: str, step: int) -> None:
         """Append a status transition to the subtask's history timeline."""
-        st_data.setdefault("history", []).append({"status": new_status, "step": step})
+        record_history(st_data, new_status, step)
 
     # ── Roll-up helpers ──────────────────────────────────────────────────────
     def _roll_up(self, dag: Dict, task_name: str, branch_name: str) -> None:
-        self._update_branch(dag, task_name, branch_name)
-        self._update_task(dag, task_name)
-
-    def _update_branch(self, dag: Dict, task_name: str, branch_name: str) -> None:
-        sts = dag[task_name]["branches"][branch_name]["subtasks"]
-        if all(s.get("status") == "Verified" for s in sts.values()):
-            dag[task_name]["branches"][branch_name]["status"] = "Verified"
-
-    def _update_task(self, dag: Dict, task_name: str) -> None:
-        branches = dag[task_name]["branches"]
-        if all(b.get("status") == "Verified" for b in branches.values()):
-            dag[task_name]["status"] = "Verified"
-        elif any(b.get("status") == "Running" for b in branches.values()):
-            dag[task_name]["status"] = "Running"
+        roll_up(dag, task_name, branch_name)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1028,34 +1025,7 @@ class Verifier:
         Scan all branch and task statuses; correct any inconsistencies.
         Returns list of correction messages.
         """
-        fixes: List[str] = []
-        for task_name, task_data in dag.items():
-            for branch_name, branch_data in task_data.get("branches", {}).items():
-                sts              = branch_data.get("subtasks", {})
-                all_v            = all(s.get("status") == "Verified" for s in sts.values())
-                any_r            = any(s.get("status") == "Running"  for s in sts.values())
-                cur_branch_status = branch_data.get("status", "Pending")
-
-                if all_v and cur_branch_status != "Verified":
-                    branch_data["status"] = "Verified"
-                    fixes.append(f"Branch {branch_name}: Pending/Running → Verified")
-                elif any_r and cur_branch_status == "Pending":
-                    branch_data["status"] = "Running"
-                    fixes.append(f"Branch {branch_name}: Pending → Running")
-
-            branches = task_data.get("branches", {})
-            all_bv   = all(b.get("status") == "Verified" for b in branches.values())
-            any_br   = any(b.get("status") == "Running"  for b in branches.values())
-            cur_t    = task_data.get("status", "Pending")
-
-            if all_bv and cur_t != "Verified":
-                task_data["status"] = "Verified"
-                fixes.append(f"Task {task_name}: → Verified")
-            elif any_br and cur_t == "Pending":
-                task_data["status"] = "Running"
-                fixes.append(f"Task {task_name}: → Running")
-
-        return fixes
+        return verify_rollup(dag)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1072,15 +1042,7 @@ class SelfHealer:
         self, dag: Dict, step: int
     ) -> List[Tuple[str, str, str, int]]:
         """Return list of (task, branch, subtask, staleness) for stalled subtasks."""
-        stalled: List[Tuple[str, str, str, int]] = []
-        for task_name, task_data in dag.items():
-            for branch_name, branch_data in task_data.get("branches", {}).items():
-                for st_name, st_data in branch_data.get("subtasks", {}).items():
-                    if st_data.get("status") == "Running":   # Review subtasks are not stalled
-                        age = step - st_data.get("last_update", 0)
-                        if age >= self.stall_threshold:
-                            stalled.append((task_name, branch_name, st_name, age))
-        return stalled
+        return find_stalled(dag, step, self.stall_threshold)
 
     def heal(
         self,
@@ -1469,22 +1431,7 @@ class SoloBuilderCLI:
             self.save_state(silent=True)
 
         # Heartbeat: write live counters every step for Discord bot real-time tracking
-        _hb = os.path.join(_HERE, "state", "step.txt")
-        try:
-            _hb_v = _hb_t = _hb_p = _hb_r = _hb_rv = 0
-            for _ht in self.dag.values():
-                for _hb2 in _ht["branches"].values():
-                    for _hs in _hb2["subtasks"].values():
-                        _hb_t += 1
-                        _st = _hs.get("status", "")
-                        if _st == "Verified":  _hb_v  += 1
-                        elif _st == "Pending": _hb_p  += 1
-                        elif _st == "Running": _hb_r  += 1
-                        elif _st == "Review":  _hb_rv += 1
-            with open(_hb, "w") as _f:
-                _f.write(f"{self.step},{_hb_v},{_hb_t},{_hb_p},{_hb_r},{_hb_rv}")
-        except OSError:
-            pass
+        write_heartbeat(os.path.join(_HERE, "state", "step.txt"), self.step, self.dag)
 
         # Budget deferral alert
         if budget.deferred > 0:
@@ -1523,22 +1470,6 @@ class SoloBuilderCLI:
     # ── Persistence ──────────────────────────────────────────────────────────
     def save_state(self, silent: bool = False) -> None:
         """Serialize full runtime state to JSON on disk."""
-        os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-        # Rotate backups: .3 → delete, .2 → .3, .1 → .2, current → .1
-        if os.path.exists(STATE_PATH):
-            for i in range(3, 1, -1):
-                src = f"{STATE_PATH}.{i - 1}"
-                dst = f"{STATE_PATH}.{i}"
-                if os.path.exists(src):
-                    try:
-                        os.replace(src, dst)
-                    except OSError:
-                        pass
-            try:
-                import shutil
-                shutil.copy2(STATE_PATH, f"{STATE_PATH}.1")
-            except OSError:
-                pass
         payload = {
             "step":             self.step,
             "snapshot_counter": self.snapshot_counter,
@@ -1554,31 +1485,29 @@ class SoloBuilderCLI:
                 "patch_threshold_hits":    self.patch_reviewer.threshold_hits,
             },
         }
-        try:
-            with open(STATE_PATH, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2)
-            if not silent:
-                print(f"  {GREEN}State saved → {STATE_PATH}{RESET}")
-        except Exception as exc:
-            print(f"  {RED}Save failed: {exc}{RESET}")
+        ok = save_state_to_disk(STATE_PATH, payload, silent=silent)
+        if ok and not silent:
+            print(f"  {GREEN}State saved → {STATE_PATH}{RESET}")
+        elif not ok:
+            print(f"  {RED}Save failed{RESET}")
 
     def load_state(self) -> bool:
         """
         Load state from disk into this instance.
         Returns True if loaded successfully, False otherwise.
         """
-        if not os.path.exists(STATE_PATH):
+        payload = load_state_from_disk(STATE_PATH)
+        if payload is None:
             return False
         try:
-            with open(STATE_PATH, "r", encoding="utf-8") as f:
-                payload = json.load(f)
+            apply_backward_compat_defaults(payload)
             self.step             = payload["step"]
             self.snapshot_counter = payload["snapshot_counter"]
             self.healer.healed_total = payload["healed_total"]
             self.dag              = payload["dag"]
             self.memory_store     = payload["memory_store"]
             self.alerts           = payload["alerts"]
-            self.meta._history    = payload.get("meta_history", [])
+            self.meta._history    = payload["meta_history"]
             # Rebuild MetaOptimizer rolling rates
             if self.meta._history:
                 window = min(10, len(self.meta._history))
@@ -1587,13 +1516,13 @@ class SoloBuilderCLI:
                 self.meta.verify_rate = sum(r["verified"] for r in recent) / window
             # Rebuild ShadowAgent expected state map
             self.shadow.update_expected(self.dag)
-            # Restore safety state (backward-compatible — may be absent)
-            ss = payload.get("safety_state", {})
-            self.repo_analyzer._dynamic_tasks_created = ss.get("dynamic_tasks_created", 0)
+            # Restore safety state
+            ss = payload["safety_state"]
+            self.repo_analyzer._dynamic_tasks_created = ss["dynamic_tasks_created"]
             self.repo_analyzer._last_run_step = ss.get("ra_last_run_step",
                                                         self.repo_analyzer._last_run_step)
-            self.patch_reviewer._rejections = ss.get("patch_rejections", {})
-            self.patch_reviewer.threshold_hits = ss.get("patch_threshold_hits", 0)
+            self.patch_reviewer._rejections = ss["patch_rejections"]
+            self.patch_reviewer.threshold_hits = ss["patch_threshold_hits"]
             return True
         except Exception as exc:
             print(f"  {RED}Load failed: {exc}{RESET}")
@@ -1659,19 +1588,8 @@ class SoloBuilderCLI:
     # ── Trigger helpers ────────────────────────────────────────────────────
     @staticmethod
     def _consume_json_trigger(path: str):
-        """Read, parse, and atomically delete a JSON trigger file.
-
-        Returns the parsed dict/list on success, or *None* if the file
-        doesn't exist or can't be read.
-        """
-        if not os.path.exists(path):
-            return None
-        try:
-            data = json.loads(open(path, encoding="utf-8").read())
-            os.remove(path)
-            return data
-        except Exception:
-            return None
+        """Read, parse, and atomically delete a JSON trigger file."""
+        return _consume_json_trigger_fn(path)
 
     # ── Auto-run ─────────────────────────────────────────────────────────────
     def _cmd_auto(self, args: str) -> None:
@@ -1702,22 +1620,23 @@ class SoloBuilderCLI:
         print(f"  {CYAN}Auto-run: {label}  │  delay={AUTO_STEP_DELAY}s  │  Ctrl+C to pause{RESET}")
         time.sleep(0.6)
 
-        _trigger     = os.path.join(_HERE, "state", "run_trigger")
-        _stoptrig    = os.path.join(_HERE, "state", "stop_trigger")
-        _attrigger   = os.path.join(_HERE, "state", "add_task_trigger.json")
-        _abtrigger   = os.path.join(_HERE, "state", "add_branch_trigger.json")
-        _pbtrigger   = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
-        _dtrigger    = os.path.join(_HERE, "state", "describe_trigger.json")
-        _rntrigger   = os.path.join(_HERE, "state", "rename_trigger.json")
-        _ttrigger    = os.path.join(_HERE, "state", "tools_trigger.json")
-        _rtrigger    = os.path.join(_HERE, "state", "reset_trigger")
-        _snaptrigger = os.path.join(_HERE, "state", "snapshot_trigger")
-        _settrigger  = os.path.join(_HERE, "state", "set_trigger.json")
-        _deptrigger  = os.path.join(_HERE, "state", "depends_trigger.json")
-        _undeptrigger = os.path.join(_HERE, "state", "undepends_trigger.json")
-        _undotrigger  = os.path.join(_HERE, "state", "undo_trigger")
-        _pausetrigger = os.path.join(_HERE, "state", "pause_trigger")
-        _healtrigger  = os.path.join(_HERE, "state", "heal_trigger.json")
+        _sd           = os.path.join(_HERE, "state")
+        _trigger      = trigger_path(_sd, "run")
+        _stoptrig     = trigger_path(_sd, "stop")
+        _attrigger    = trigger_path(_sd, "add_task")
+        _abtrigger    = trigger_path(_sd, "add_branch")
+        _pbtrigger    = trigger_path(_sd, "prioritize_branch")
+        _dtrigger     = trigger_path(_sd, "describe")
+        _rntrigger    = trigger_path(_sd, "rename")
+        _ttrigger     = trigger_path(_sd, "tools")
+        _rtrigger     = trigger_path(_sd, "reset")
+        _snaptrigger  = trigger_path(_sd, "snapshot")
+        _settrigger   = trigger_path(_sd, "set")
+        _deptrigger   = trigger_path(_sd, "depends")
+        _undeptrigger = trigger_path(_sd, "undepends")
+        _undotrigger  = trigger_path(_sd, "undo")
+        _pausetrigger = trigger_path(_sd, "pause")
+        _healtrigger  = trigger_path(_sd, "heal")
         try:
             while True:
                 self.run_step()
@@ -1738,23 +1657,19 @@ class SoloBuilderCLI:
                 # external verify requests aren't skipped when auto-mode is running.
                 _waited  = 0.0
                 _stopped = False
-                _vtrigger = os.path.join(_HERE, "state", "verify_trigger.json")
+                _vtrigger = trigger_path(_sd, "verify")
                 while _waited < AUTO_STEP_DELAY:
-                    if os.path.exists(_stoptrig):
-                        try:
-                            os.remove(_stoptrig)
-                        except OSError:
-                            pass
+                    if consume_flag_trigger(_stoptrig):
                         _stopped = True
                         break
                     # Pause gate: spin while pause_trigger exists (don't advance _waited)
-                    while os.path.exists(_pausetrigger):
+                    while trigger_exists(_pausetrigger):
                         if _waited < 0.05:  # first detection — print once
                             print(f"  {YELLOW}Auto-run paused remotely. Waiting for resume…{RESET}", flush=True)
                             _waited = 0.05
                         time.sleep(0.2)
                         # Still honour stop during pause
-                        if os.path.exists(_stoptrig):
+                        if trigger_exists(_stoptrig):
                             break
                     vdata = self._consume_json_trigger(_vtrigger)
                     if vdata:
@@ -1814,41 +1729,19 @@ class SoloBuilderCLI:
                         dep_dep    = depdata.get("dep", "").strip()
                         if dep_target and dep_dep:
                             self._cmd_depends(f"{dep_target} {dep_dep}")
-                    if os.path.exists(_undeptrigger):
-                        try:
-                            uddata = json.loads(
-                                open(_undeptrigger, encoding="utf-8").read()
-                            )
-                            os.remove(_undeptrigger)
-                            ud_target = uddata.get("target", "").strip()
-                            ud_dep    = uddata.get("dep", "").strip()
-                            if ud_target and ud_dep:
-                                self._cmd_undepends(f"{ud_target} {ud_dep}")
-                        except Exception:
-                            pass
-                    if os.path.exists(_rtrigger):
-                        try:
-                            os.remove(_rtrigger)
-                        except OSError:
-                            pass
+                    uddata = self._consume_json_trigger(_undeptrigger)
+                    if uddata:
+                        ud_target = uddata.get("target", "").strip()
+                        ud_dep    = uddata.get("dep", "").strip()
+                        if ud_target and ud_dep:
+                            self._cmd_undepends(f"{ud_target} {ud_dep}")
+                    if consume_flag_trigger(_rtrigger):
                         self._cmd_reset()
-                    if os.path.exists(_snaptrigger):
-                        try:
-                            os.remove(_snaptrigger)
-                        except OSError:
-                            pass
+                    if consume_flag_trigger(_snaptrigger):
                         self._take_snapshot(auto=False)
-                    if os.path.exists(_undotrigger):
-                        try:
-                            os.remove(_undotrigger)
-                        except OSError:
-                            pass
+                    if consume_flag_trigger(_undotrigger):
                         self._cmd_undo()
-                    if os.path.exists(_trigger):
-                        try:
-                            os.remove(_trigger)
-                        except OSError:
-                            pass
+                    if consume_flag_trigger(_trigger):
                         break
                     time.sleep(0.05)
                     _waited += 0.05
@@ -2694,8 +2587,8 @@ class SoloBuilderCLI:
         st["shadow"]      = "Done"
         st["output"]      = note
         st["last_update"] = self.step
-        st.setdefault("history", []).append({"status": "Verified", "step": self.step})
-        self.executor._roll_up(self.dag, task_name, branch_name)
+        record_history(st, "Verified", self.step)
+        roll_up(self.dag, task_name, branch_name)
         print(f"  {GREEN}v {st_target} ({task_name}) verified (was {prev}). Note: {note[:60]}{RESET}")
         self.display.render(self.dag, self.memory_store, self.step,
                             self.alerts, self.meta.forecast(self.dag))
@@ -3146,25 +3039,20 @@ class SoloBuilderCLI:
 
     def _cmd_pause(self) -> None:
         """pause — write pause_trigger to pause a running auto loop."""
-        p = os.path.join(_HERE, "state", "pause_trigger")
-        if os.path.exists(p):
+        p = trigger_path(os.path.join(_HERE, "state"), "pause")
+        if trigger_exists(p):
             print(f"  {YELLOW}Already paused.{RESET}")
             return
-        os.makedirs(os.path.dirname(p), exist_ok=True)
-        with open(p, "w") as f:
-            f.write("1")
+        write_flag_trigger(p)
         print(f"  {YELLOW}Pause signal written — auto-run will pause after the current step.{RESET}")
 
     def _cmd_resume(self) -> None:
         """resume — remove pause_trigger to resume a paused auto loop."""
-        p = os.path.join(_HERE, "state", "pause_trigger")
-        if not os.path.exists(p):
+        p = trigger_path(os.path.join(_HERE, "state"), "pause")
+        if not trigger_exists(p):
             print(f"  {YELLOW}Not paused.{RESET}")
             return
-        try:
-            os.remove(p)
-        except OSError:
-            pass
+        consume_flag_trigger(p)
         print(f"  {GREEN}Resumed — auto-run will continue.{RESET}")
 
     def _cmd_stats(self) -> None:
@@ -3576,30 +3464,10 @@ def main() -> None:
 
     # ── Run ──────────────────────────────────────────────────────────────────
     _LOCK_PATH  = os.path.join(_HERE, "state", "solo_builder.lock")
-    _STOP_PATH  = os.path.join(_HERE, "state", "stop_trigger")
-    _RUN_PATH   = os.path.join(_HERE, "state", "run_trigger")
-    _AT_PATH    = os.path.join(_HERE, "state", "add_task_trigger.json")
-    _AB_PATH    = os.path.join(_HERE, "state", "add_branch_trigger.json")
-    _PB_PATH    = os.path.join(_HERE, "state", "prioritize_branch_trigger.json")
-    _D_PATH     = os.path.join(_HERE, "state", "describe_trigger.json")
-    _T_PATH     = os.path.join(_HERE, "state", "tools_trigger.json")
-    _R_PATH     = os.path.join(_HERE, "state", "reset_trigger")
-    _SNAP_PATH  = os.path.join(_HERE, "state", "snapshot_trigger")
-    _SET_PATH   = os.path.join(_HERE, "state", "set_trigger.json")
-    _DEP_PATH   = os.path.join(_HERE, "state", "depends_trigger.json")
-    _UDEP_PATH  = os.path.join(_HERE, "state", "undepends_trigger.json")
-    _UNDO_PATH  = os.path.join(_HERE, "state", "undo_trigger")
-    _PAUSE_PATH = os.path.join(_HERE, "state", "pause_trigger")
-    _HEAL_PATH  = os.path.join(_HERE, "state", "heal_trigger.json")
-    os.makedirs(os.path.join(_HERE, "state"), exist_ok=True)
+    _state_dir  = os.path.join(_HERE, "state")
+    os.makedirs(_state_dir, exist_ok=True)
     # Clear stale triggers from previous runs
-    for _stale in (_STOP_PATH, _RUN_PATH, _AT_PATH, _AB_PATH, _PB_PATH,
-                   _D_PATH, _T_PATH, _R_PATH, _SNAP_PATH, _SET_PATH,
-                   _DEP_PATH, _UDEP_PATH, _UNDO_PATH, _PAUSE_PATH, _HEAL_PATH):
-        try:
-            os.remove(_stale)
-        except FileNotFoundError:
-            pass
+    cleanup_stale_triggers(_state_dir)
     _acquire_lock(_LOCK_PATH)
     cli = None
     try:
