@@ -4183,5 +4183,25 @@ class TestKeyboardShiftE(unittest.TestCase):
         self.assertIn("Shift+E", js)
         self.assertIn("export", js)
 
+# 235-239: Round 51
+class TestPinnedStarGlow(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".task-card.pinned .card-pin-btn", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchHeaderHover(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".branch-name:hover", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailBorderLeft(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("border-left: 1px solid var(--border)", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftQ(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"Q"', js)
+        self.assertIn("priority", js)
+
 if __name__ == "__main__":
     unittest.main()

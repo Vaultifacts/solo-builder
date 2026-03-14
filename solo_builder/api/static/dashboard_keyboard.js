@@ -59,6 +59,7 @@ const _SHORTCUTS = [
   ["Shift+A", "Toggle agents tab"],
   ["Shift+W", "Toggle stalled tab"],
   ["Shift+E", "Toggle export tab"],
+  ["Shift+Q", "Toggle priority tab"],
 ];
 
 function _showShortcuts() {
@@ -280,6 +281,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "Q" && e.shiftKey) {
+    window.switchTab?.("priority");
     return;
   }
   if (key === "E" && e.shiftKey && !e.ctrlKey) {

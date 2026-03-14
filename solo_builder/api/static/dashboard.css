@@ -949,6 +949,16 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card pinned star glow ──────────────────────────────── */
+  .task-card.pinned .card-pin-btn { color: #fbbf24; text-shadow: 0 0 4px rgba(251,191,36,0.5); }
+  /* ── Subtask row verified strikethrough ────────────────── */
+  .subtask-row .st-name { transition: opacity 0.2s; }
+  [data-theme="light"] .subtask-row:has(.dot-green) .st-name { opacity: 0.5; }
+  /* ── Branch header hover bg ────────────────────────────── */
+  .branch-name:hover { background: rgba(255,255,255,0.03); border-radius: 3px; }
+  [data-theme="light"] .branch-name:hover { background: rgba(0,0,0,0.03); }
+  /* ── Detail panel border-left ──────────────────────────── */
+  .detail-panel { border-left: 1px solid var(--border); }
   /* ── Card focus outline ─────────────────────────────────── */
   .task-card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   /* ── Subtask row gap ───────────────────────────────────── */

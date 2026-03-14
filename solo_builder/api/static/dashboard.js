@@ -704,6 +704,11 @@ if ("Notification" in window && Notification.permission === "default") {
   Notification.requestPermission();
 }
 
+/* ── WebSocket groundwork (future: replace polling with push) ── */
+// To enable: set window._useWebSocket = true and provide WS_URL
+// const ws = new WebSocket(WS_URL);
+// ws.onmessage = (e) => { const d = JSON.parse(e.data); if (d.type === "change") tick(); };
+
 /* ── Poll countdown timer ──────────────────────────────────── */
 let _countdownId = null;
 let _countdownLeft = 0;

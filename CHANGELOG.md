@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.1.0 — 2026-03-13  Dashboard UX Round 51 + WS groundwork + localStorage audit + test profiling — 240 UX
+
+- **UX Round 51**: Pinned star glow, branch hover bg, detail border-left, Shift+Q priority (240 UX)
+- **WebSocket groundwork**: Commented placeholder in dashboard.js for future WS push
+- **localStorage audit**: 16 sb-* keys confirmed — no orphans
+- **Test profiling**: 3600 tests in 87s — no optimization needed (slowest: 4s timeout test)
+
 ## v8.0.0 — 2026-03-13  Dashboard UX Round 50 — 235 UX milestone! Session persistence, Swagger UI, /health/summary
 
 - **Dashboard UX Round 49**: Theme transition, hover lift, active border, header gradient, Shift+W
