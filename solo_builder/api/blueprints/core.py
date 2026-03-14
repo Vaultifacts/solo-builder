@@ -1,9 +1,9 @@
-"""Core blueprint — GET /, /status, /heartbeat, /health."""
+"""Core blueprint — GET /, /status, /heartbeat, /health, /changes."""
 import json
 import time
 from pathlib import Path
 
-from flask import Blueprint, jsonify, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory
 
 from ..helpers import _load_state
 
@@ -127,4 +127,43 @@ def health():
         "step":             state.get("step", 0),
         "state_file_exists": _app.STATE_PATH.exists(),
         "total_subtasks":   total_subtasks,
+    })
+
+
+@core_bp.get("/changes")
+def changes():
+    """Lightweight change detection endpoint (TASK-412 hybrid).
+
+    Query params:
+      since  — step number; returns changes since that step
+
+    Response:
+      {step, changed: bool, changes: [{subtask, task, branch, old_status, new_status, step}]}
+    """
+    state = _load_state()
+    dag   = state.get("dag", {})
+    step  = state.get("step", 0)
+    since = request.args.get("since", type=int, default=0)
+
+    result = []
+    for task_id, task_data in dag.items():
+        for br_name, br_data in task_data.get("branches", {}).items():
+            for st_name, st_data in br_data.get("subtasks", {}).items():
+                history = st_data.get("history", [])
+                for entry in history:
+                    if entry.get("step", 0) > since:
+                        result.append({
+                            "subtask": st_name,
+                            "task":    task_id,
+                            "branch":  br_name,
+                            "status":  entry.get("status", ""),
+                            "step":    entry.get("step", 0),
+                        })
+    result.sort(key=lambda e: e["step"])
+    return jsonify({
+        "step":    step,
+        "since":   since,
+        "changed": len(result) > 0,
+        "count":   len(result),
+        "changes": result,
     })

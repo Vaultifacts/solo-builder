@@ -1,5 +1,11 @@
 # Changelog
 
+## v6.88.0 — 2026-03-13  TASK-412 — GET /changes hybrid endpoint for real-time updates
+
+- **GET /changes?since=N**: Lightweight change detection endpoint returning subtask status transitions since step N
+- No new dependencies — reads existing history entries from state.json
+- 3 new tests covering empty, filtered, and all-changes scenarios
+
 ## v6.87.0 — 2026-03-13  Dashboard UX Round 36 — trunc badge, task age, merge btn, copy all, Shift+C
 
 - **Subtask output truncation indicator**: "…" badge when output exceeds 1KB

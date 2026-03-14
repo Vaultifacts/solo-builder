@@ -206,5 +206,46 @@ class TestReadVersionFallback(_Base):
         self.assertEqual(ver, "unknown")
 
 
+# ---------------------------------------------------------------------------
+# GET /changes (TASK-412)
+# ---------------------------------------------------------------------------
+
+class TestChangesEndpoint(_Base):
+    def test_changes_empty(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/changes")
+        d = r.get_json()
+        self.assertFalse(d["changed"])
+        self.assertEqual(d["changes"], [])
+
+    def test_changes_since_filter(self):
+        self._write_state({"step": 5, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {
+                "ST-1": {"status": "Verified", "history": [
+                    {"step": 2, "status": "Running"},
+                    {"step": 4, "status": "Verified"},
+                ]},
+            }}}},
+        }})
+        r = self.client.get("/changes?since=3")
+        d = r.get_json()
+        self.assertTrue(d["changed"])
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["changes"][0]["status"], "Verified")
+
+    def test_changes_since_zero_returns_all(self):
+        self._write_state({"step": 3, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {
+                "ST-1": {"status": "Running", "history": [
+                    {"step": 1, "status": "Pending"},
+                    {"step": 2, "status": "Running"},
+                ]},
+            }}}},
+        }})
+        r = self.client.get("/changes?since=0")
+        d = r.get_json()
+        self.assertEqual(d["count"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()
