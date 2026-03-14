@@ -310,5 +310,93 @@ class TestFormatStalledWithThreshold(unittest.TestCase):
         self.assertIn("A2", r)
 
 
+class TestFormatSubtasksFiltered(unittest.TestCase):
+    def test_no_match_returns_warning(self):
+        r = fmt._format_subtasks(_state(), "NOPE", "")
+        self.assertIsInstance(r, str)
+
+    def test_status_filter_no_match(self):
+        r = fmt._format_subtasks(_state(), "", "Verified")
+        self.assertIsInstance(r, str)
+
+    def test_long_output_truncated(self):
+        st = {"A1": {"status": "Running", "last_update": 0, "output": "x" * 200, "description": "d"}}
+        # Create many subtasks to exceed 1900 chars
+        big = {}
+        for i in range(30):
+            big[f"ST-{i}"] = {"status": "Running", "last_update": 0, "output": "x" * 100, "description": f"d{i}"}
+        r = fmt._format_subtasks(_state(big), "", "")
+        self.assertIsInstance(r, str)
+
+
+class TestFormatHistoryWithDurations(unittest.TestCase):
+    def test_verified_with_history(self):
+        st = {"A1": {"status": "Verified", "last_update": 5, "output": "done",
+              "history": [{"step": 1, "status": "Pending"}, {"step": 3, "status": "Running"}, {"step": 5, "status": "Verified"}]}}
+        r = fmt._format_stats(_state(st))
+        self.assertIn("Task0", r)
+
+
+class TestFormatHistoryFiltersEdge(unittest.TestCase):
+    def test_status_filter_excludes(self):
+        r = fmt._format_history(_state(), 10, status_filter="Verified")
+        self.assertIsInstance(r, str)
+
+    def test_branch_filter_excludes(self):
+        r = fmt._format_history(_state(), 10, branch_filter="NOPE")
+        self.assertIsInstance(r, str)
+
+    def test_task_filter_excludes(self):
+        r = fmt._format_history(_state(), 10, task_filter="NOPE")
+        self.assertIsInstance(r, str)
+
+
+class TestFormatCacheEdge(unittest.TestCase):
+    def test_cache_exception(self):
+        with patch("discord_bot.bot_formatters.Path.glob", side_effect=OSError("nope")):
+            r = fmt._format_cache(clear=False)
+        self.assertIn("Could not", r)
+
+    def test_cache_clear_with_files(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        cache_dir = Path(tmp) / "cache"
+        cache_dir.mkdir()
+        (cache_dir / "entry.json").write_text("{}")
+        with patch.object(fmt, "_ROOT", new=Path(tmp)):
+            r = fmt._format_cache(clear=True)
+        self.assertIsInstance(r, str)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatTaskProgressEmpty(unittest.TestCase):
+    def test_no_branches(self):
+        st = {"step": 1, "dag": {"Task0": {"status": "Pending", "branches": {}}}}
+        r = fmt._format_task_progress(st, "Task0")
+        self.assertIn("no branches", r)
+
+
+class TestFormatTasksEmpty(unittest.TestCase):
+    def test_no_tasks(self):
+        r = fmt._format_tasks({"dag": {}, "step": 0})
+        self.assertIn("No tasks", r)
+
+
+class TestSubtasksToCsvStatusFilter(unittest.TestCase):
+    def test_status_filter_excludes(self):
+        r = fmt._subtasks_to_csv(_state(), status_filter="Verified")
+        self.assertNotIn(b"A1", r)
+
+
+class TestFormatStatsVerified(unittest.TestCase):
+    def test_stats_with_verified_durations(self):
+        sts = {}
+        for i in range(3):
+            sts[f"S{i}"] = {"status": "Verified", "last_update": i+2, "output": "ok",
+                            "history": [{"step": 1, "status": "Pending"}, {"step": i+2, "status": "Verified"}]}
+        r = fmt._format_stats(_state(sts))
+        self.assertIn("Task0", r)
+
+
 if __name__ == "__main__":
     unittest.main()

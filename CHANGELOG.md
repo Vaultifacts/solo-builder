@@ -1,5 +1,9 @@
 # Changelog
 
+## v6.96.0 — 2026-03-13  Bot formatters 86% → 89% — 13 new edge case tests
+
+- `bot_formatters.py` 86% → **89%** — filter no-match, truncation, verified durations, cache exception, empty tasks/branches
+
 ## v6.95.0 — 2026-03-13  Dashboard UX Round 38 — verified delta, row nums, collapse count, total size, Shift+S
 
 - **Card verified delta badge**: +N green badge when verified count increases (auto-clears after 3s)
