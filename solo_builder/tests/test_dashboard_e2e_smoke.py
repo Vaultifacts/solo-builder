@@ -3998,5 +3998,25 @@ class TestKeyboardShiftH(unittest.TestCase):
         self.assertIn('"H"', js)
         self.assertIn("history", js)
 
+# 200-204: Round 44
+class TestSparklineTooltip(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self): self.assertIn("sparkEl.title", self._JS.read_text(encoding="utf-8"))
+
+class TestRowFadeIn(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("st-fade-in", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchAutoSort(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self): self.assertIn("_sortedBranches", self._JS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftT(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"T"', js)
+        self.assertIn("toggleTheme", js)
+
 if __name__ == "__main__":
     unittest.main()

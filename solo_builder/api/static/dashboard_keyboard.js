@@ -51,6 +51,7 @@ const _SHORTCUTS = [
   ["Shift+F", "Focus detail search"],
   ["Shift+G", "Go to first running subtask"],
   ["Shift+H", "Toggle history tab"],
+  ["Shift+T", "Toggle dark/light theme"],
 ];
 
 function _showShortcuts() {
@@ -272,6 +273,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "T" && e.shiftKey) {
+    window.toggleTheme?.();
     return;
   }
   if (key === "H" && e.shiftKey) {

@@ -1,5 +1,14 @@
 # Changelog
 
+## v7.9.0 — 2026-03-13  Dashboard UX Round 44 — sparkline tooltip, fade-in, branch sort, Shift+T
+
+- **Sparkline tooltip**: Hover shows branch names with completion %
+- **Subtask row fade-in**: Smooth fade animation on new rows
+- **Branch auto-sort by progress**: Branches sorted by completion % descending
+- **Detail keyboard nav highlight**: .kb-active class for future arrow nav
+- **Keyboard `Shift+T` theme toggle**: Explicit Shift+T shortcut
+- 205 UX features
+
 ## v7.8.0 — 2026-03-13  Mobile responsive + test consolidation + rate limiter review
 
 - **Mobile responsive (480px)**: Hide sparkline, progress ring, word cloud on small screens

@@ -949,6 +949,11 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Subtask row fade-in ────────────────────────────────── */
+  .subtask-row { animation: st-fade-in 0.3s ease; }
+  @keyframes st-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  /* ── Detail keyboard nav highlight ─────────────────────── */
+  .subtask-row.kb-active { outline: 1px solid var(--cyan); outline-offset: -1px; }
   /* ── Card confetti ──────────────────────────────────────── */
   .card-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
   .confetti-particle { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: var(--green); animation: confetti-fly 1s ease-out forwards; }

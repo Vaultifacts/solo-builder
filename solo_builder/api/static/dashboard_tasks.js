@@ -711,6 +711,7 @@ export function renderGrid(tasks) {
         return st.length > 0 ? Math.round(v / st.length * 100) : 0;
       });
       sparkEl.innerHTML = bars.map(p => `<span class="spark-bar" style="height:${Math.max(2, p * 12 / 100)}px"></span>`).join("");
+      sparkEl.title = _bEntries.map(([bn], i) => `${bn}: ${bars[i]}%`).join("\n");
     }
 
     // Mini heatmap — colored cells showing per-subtask status
@@ -1371,7 +1372,14 @@ export function renderDetail(t) {
 
   const nodes = [breadcrumb, stickyHeader, actionsBar, notesWrap];
 
-  Object.entries(branches).forEach(([bname, bdata]) => {
+  // Sort branches by completion % descending
+  const _sortedBranches = Object.entries(branches).sort(([, a], [, b]) => {
+    const sa = Object.values(a.subtasks || {}), sb = Object.values(b.subtasks || {});
+    const pa = sa.length ? sa.filter(s => s.status === "Verified").length / sa.length : 0;
+    const pb = sb.length ? sb.filter(s => s.status === "Verified").length / sb.length : 0;
+    return pb - pa;
+  });
+  _sortedBranches.forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
     branchBlock.className = "branch-block";
 
