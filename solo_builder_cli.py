@@ -6,6 +6,7 @@ Agents:
   RepoAnalyzer   → scans repo for tech debt, injects new subtasks
   Planner        → prioritizes subtasks by risk
   Executor       → advances subtask lifecycle (Pending → Running → Verified)
+  PatchReviewer  → critiques Executor output, rejects bad patches
   ShadowAgent    → tracks expected states, detects & resolves conflicts
   Verifier       → enforces DAG consistency (branch/task status roll-up)
   SelfHealer     → detects stalled subtasks and resets them
@@ -57,6 +58,7 @@ except ImportError:
     _PDF_OK = False
 
 from agents.repo_analyzer import RepoAnalyzer
+from agents.patch_reviewer import PatchReviewer
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -1299,8 +1301,8 @@ class SoloBuilderCLI:
 
     Step lifecycle:
         RepoAnalyzer → Planner → ShadowAgent (conflicts) → SelfHealer
-        → Executor → Verifier → ShadowAgent (update expected)
-        → MetaOptimizer → display
+        → Executor → PatchReviewer → Verifier
+        → ShadowAgent (update expected) → MetaOptimizer → display
     """
 
     def __init__(self) -> None:
@@ -1318,14 +1320,15 @@ class SoloBuilderCLI:
         self._last_verified_tasks: int = 0   # triggers cache refresh when a task unblocks
 
         # Agents
-        self.repo_analyzer = RepoAnalyzer(settings=_CFG)
-        self.planner  = Planner(stall_threshold=STALL_THRESHOLD)
-        self.executor = Executor(max_per_step=EXEC_MAX_PER_STEP,
-                                 verify_prob=EXEC_VERIFY_PROB)
-        self.shadow   = ShadowAgent()
-        self.verifier = Verifier()
-        self.healer   = SelfHealer(stall_threshold=STALL_THRESHOLD)
-        self.meta     = MetaOptimizer()
+        self.repo_analyzer  = RepoAnalyzer(settings=_CFG)
+        self.planner        = Planner(stall_threshold=STALL_THRESHOLD)
+        self.executor       = Executor(max_per_step=EXEC_MAX_PER_STEP,
+                                       verify_prob=EXEC_VERIFY_PROB)
+        self.patch_reviewer = PatchReviewer(settings=_CFG)
+        self.shadow         = ShadowAgent()
+        self.verifier       = Verifier()
+        self.healer         = SelfHealer(stall_threshold=STALL_THRESHOLD)
+        self.meta           = MetaOptimizer()
         self.display  = TerminalDisplay(bar_width=BAR_WIDTH,
                                         stall_threshold=STALL_THRESHOLD)
         self.running  = True
@@ -1385,6 +1388,11 @@ class SoloBuilderCLI:
         # 4. Executor: advance subtasks
         actions = self.executor.execute_step(
             self.dag, priority, self.step, self.memory_store
+        )
+
+        # 4b. PatchReviewer: critique Executor output before verification
+        review_results = self.patch_reviewer.review_step(
+            self.dag, actions, self.step, self.memory_store, step_alerts,
         )
 
         # 5. Verifier: fix any status inconsistencies
