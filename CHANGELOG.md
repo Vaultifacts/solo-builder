@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.84.0 — 2026-03-13  Coverage Push Round 11 — bot_commands 0% → 27%, anthropic_runner 100%
+
+- **19 new tests** in new `test_bot_commands_coverage.py`
+- `bot_commands.py` 0% → **27%** — heal, reset_task, reset_branch, bulk_reset, bulk_verify, help text, key map
+- Patched `_bot()` lazy import for test isolation
+
+### Stats
+- 3301 total tests, 0 failures
+
 ## v6.83.0 — 2026-03-13  Coverage Push Round 10 — middleware 100%, discord_role_guard 100%, threat_model 97%
 
 - **3 new tests** across 3 existing test files + 1 new test in blueprint_load_tool
