@@ -1,0 +1,146 @@
+{
+  "__init__.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 1,
+    "todo_density": 0.0
+  },
+  "agents/__init__.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 10,
+    "todo_density": 0.0
+  },
+  "agents/patch_reviewer.py": {
+    "code_ownership": 1,
+    "dep_depth": 1,
+    "file_size": 201,
+    "todo_density": 0.0
+  },
+  "agents/repo_analyzer.py": {
+    "code_ownership": 1,
+    "dep_depth": 1,
+    "file_size": 305,
+    "todo_density": 0.0
+  },
+  "agents/test_generator.py": {
+    "code_ownership": 1,
+    "dep_depth": 1,
+    "file_size": 222,
+    "todo_density": 0.0
+  },
+  "agents/test_patch_reviewer.py": {
+    "code_ownership": 1,
+    "dep_depth": 1,
+    "file_size": 226,
+    "todo_density": 0.0
+  },
+  "agents/test_repo_analyzer.py": {
+    "code_ownership": 1,
+    "dep_depth": 2,
+    "file_size": 273,
+    "todo_density": 2.93
+  },
+  "agents/test_test_generator.py": {
+    "code_ownership": 1,
+    "dep_depth": 1,
+    "file_size": 264,
+    "todo_density": 0.0
+  },
+  "api/app.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 724,
+    "todo_density": 0.0
+  },
+  "api/test_app.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 817,
+    "todo_density": 0.0
+  },
+  "discord_bot/__init__.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 0,
+    "todo_density": 0.0
+  },
+  "discord_bot/bot.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 1944,
+    "todo_density": 0.0
+  },
+  "discord_bot/test_bot.py": {
+    "code_ownership": 1,
+    "dep_depth": 2,
+    "file_size": 2382,
+    "todo_density": 0.0
+  },
+  "gen_demo_cast.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 120,
+    "todo_density": 0.0
+  },
+  "make_demo_cast.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 207,
+    "todo_density": 0.0
+  },
+  "profiler_harness.py": {
+    "code_ownership": 1,
+    "dep_depth": 1,
+    "file_size": 333,
+    "todo_density": 0.0
+  },
+  "solo_builder_cli.py": {
+    "code_ownership": 2,
+    "dep_depth": 6,
+    "file_size": 3578,
+    "todo_density": 0.0
+  },
+  "solo_builder_live_multi_snapshot.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 389,
+    "todo_density": 0.0
+  },
+  "tests/__init__.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 0,
+    "todo_density": 0.0
+  },
+  "tests/generated/__init__.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 0,
+    "todo_density": 0.0
+  },
+  "utils/__init__.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 0,
+    "todo_density": 0.0
+  },
+  "utils/helper_functions.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 185,
+    "todo_density": 0.0
+  },
+  "utils/repo_index.py": {
+    "code_ownership": 1,
+    "dep_depth": 0,
+    "file_size": 235,
+    "todo_density": 0.43
+  },
+  "utils/test_repo_index.py": {
+    "code_ownership": 1,
+    "dep_depth": 2,
+    "file_size": 313,
+    "todo_density": 0.96
+  }
+}

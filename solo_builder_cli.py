@@ -61,6 +61,7 @@ except ImportError:
 from agents.repo_analyzer import RepoAnalyzer
 from agents.patch_reviewer import PatchReviewer
 from agents.test_generator import TestGenerator
+from utils.repo_index import RepoIndex
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -327,12 +328,15 @@ def _append_journal(
 class Planner:
     """Prioritizes subtasks by computed risk score. Higher = more urgent."""
 
-    def __init__(self, stall_threshold: int) -> None:
+    def __init__(self, stall_threshold: int, repo_index=None) -> None:
         self.stall_threshold = stall_threshold
         # Meta-optimizer adjustable weights
         self.w_stall    = 1.0
         self.w_staleness = 1.0
         self.w_shadow   = 1.0
+        self.w_repo     = 1.0
+        # Repository structure index (optional)
+        self.repo_index = repo_index
 
     # ── Public ──────────────────────────────────────────────────────────────
     def prioritize(
@@ -370,6 +374,8 @@ class Planner:
             self.w_staleness = max(0.1, self.w_staleness + delta)
         elif key == "shadow":
             self.w_shadow   = max(0.1, self.w_shadow   + delta)
+        elif key == "repo":
+            self.w_repo     = max(0.1, self.w_repo     + delta)
 
     # ── Private ─────────────────────────────────────────────────────────────
     def _risk(self, st_data: Dict, step: int) -> int:
@@ -392,6 +398,12 @@ class Planner:
                 risk += int(50 * self.w_shadow)
         else:
             risk = 0
+
+        # Repo-awareness bonus: boost risk for subtasks touching risky files
+        if self.repo_index is not None:
+            description = st_data.get("description", "")
+            repo_bonus = self.repo_index.subtask_risk(description)
+            risk += int(repo_bonus * self.w_repo)
 
         return risk
 
@@ -1321,9 +1333,16 @@ class SoloBuilderCLI:
         self._last_priority_step: int = -(DAG_UPDATE_INTERVAL + 1)  # force first run
         self._last_verified_tasks: int = 0   # triggers cache refresh when a task unblocks
 
+        # Build / load repository structure index for repo-aware planning
+        self._repo_index = RepoIndex(root=_HERE)
+        if not self._repo_index.load():
+            self._repo_index.build()
+            self._repo_index.save()
+
         # Agents
         self.repo_analyzer  = RepoAnalyzer(settings=_CFG)
-        self.planner        = Planner(stall_threshold=STALL_THRESHOLD)
+        self.planner        = Planner(stall_threshold=STALL_THRESHOLD,
+                                      repo_index=self._repo_index)
         self.executor       = Executor(max_per_step=EXEC_MAX_PER_STEP,
                                        verify_prob=EXEC_VERIFY_PROB)
         self.patch_reviewer = PatchReviewer(settings=_CFG)
