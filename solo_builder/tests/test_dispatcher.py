@@ -606,5 +606,61 @@ class TestStartMethod(unittest.TestCase):
         self.assertFalse(self.cli.running)
 
 
+    def test_interactive_resume_with_saved_state(self):
+        """Cover lines 382-389: interactive resume prompt with 'y' answer."""
+        import json as _json
+        state_data = {"step": 5, "dag": {"T1": {"branches": {"m": {"subtasks": {"S1": {"status": "Verified"}}}}}}}
+        call_count = [0]
+        def _input_handler(*a):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return "y"  # resume prompt
+            self.cli.running = False
+            return ""
+        with patch("commands.dispatcher.os.path.exists", return_value=True), \
+             patch("builtins.open", unittest.mock.mock_open(
+                 read_data=_json.dumps(state_data))), \
+             patch("commands.dispatcher.dag_stats",
+                   return_value={"verified": 1, "total": 1}, create=True), \
+             patch("builtins.print"), patch("time.sleep"), \
+             patch("builtins.input", side_effect=_input_handler):
+            self.cli.start(headless=False)
+        self.cli.load_state.assert_called()
+
+    def test_interactive_resume_corrupt_state(self):
+        """Cover lines 388-389: exception in resume block caught gracefully."""
+        def _input_handler(*a):
+            self.cli.running = False
+            return ""
+        with patch("commands.dispatcher.os.path.exists", return_value=True), \
+             patch("builtins.open", side_effect=Exception("corrupt")), \
+             patch("builtins.print"), patch("time.sleep"), \
+             patch("builtins.input", side_effect=_input_handler):
+            self.cli.start(headless=False)
+        # Should not crash — corrupt save is silently ignored
+        self.assertFalse(self.cli.running)
+
+    def test_interactive_resume_decline(self):
+        """Cover line 382: interactive resume prompt with 'n' answer."""
+        import json as _json
+        state_data = {"step": 2, "dag": {}}
+        call_count = [0]
+        def _input_handler(*a):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return "n"  # decline resume
+            self.cli.running = False
+            return ""
+        with patch("commands.dispatcher.os.path.exists", return_value=True), \
+             patch("builtins.open", unittest.mock.mock_open(
+                 read_data=_json.dumps(state_data))), \
+             patch("commands.dispatcher.dag_stats",
+                   return_value={"verified": 0, "total": 0}, create=True), \
+             patch("builtins.print"), patch("time.sleep"), \
+             patch("builtins.input", side_effect=_input_handler):
+            self.cli.start(headless=False)
+        self.cli.load_state.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

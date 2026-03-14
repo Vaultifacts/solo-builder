@@ -815,5 +815,14 @@ class TestResponseCacheExceptionPaths(unittest.TestCase):
             cache.persist_stats()
 
 
+    def test_clear_glob_exception_returns_zero(self):
+        """lines 140-141: exception in clear() glob returns 0."""
+        cache = ResponseCache(cache_dir=self._tmp)
+        cache.set(ResponseCache.make_key("x"), "v")
+        with patch("runners.cache.Path.glob", side_effect=Exception("io error")):
+            count = cache.clear()
+        self.assertEqual(count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

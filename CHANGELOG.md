@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.81.0 — 2026-03-13  Coverage Push Round 8 — dispatcher 100%, cache 100%
+
+- **4 new tests** across 2 existing test files
+- `dispatcher.py` 97% → **100%** — interactive resume prompt (y/n), corrupt state exception handler
+- `runners/cache.py` 98% → **100%** — clear() glob exception path
+
+### Stats
+- 3269 total tests, 0 failures
+- 22 source modules now at 100% coverage (all 17 blueprints + 5 non-blueprint modules)
+
 ## v6.80.0 — 2026-03-13  Coverage Push Round 7 — tasks 100%, control 100%, export_routes 100%
 
 - **5 new tests** across 3 existing test files
