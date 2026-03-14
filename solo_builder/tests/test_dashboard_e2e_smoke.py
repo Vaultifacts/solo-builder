@@ -4113,5 +4113,29 @@ class TestKeyboardShiftM(unittest.TestCase):
         self.assertIn('"M"', js)
         self.assertIn("metrics", js)
 
+# 220-224: Round 48
+class TestCardGridGap(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("#task-grid", self._CSS.read_text(encoding="utf-8"))
+
+class TestSubtaskMinHeight(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("min-height: 24px", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchBlockBorder(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".branch-block", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailScrollSmooth(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("scroll-behavior: smooth", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftA(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"A"', js)
+        self.assertIn("agents", js)
+
 if __name__ == "__main__":
     unittest.main()

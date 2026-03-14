@@ -56,6 +56,7 @@ const _SHORTCUTS = [
   ["Shift+L", "Toggle journal tab"],
   ["Shift+B", "Toggle branches tab"],
   ["Shift+M", "Toggle metrics tab"],
+  ["Shift+A", "Toggle agents tab"],
 ];
 
 function _showShortcuts() {
@@ -277,6 +278,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "A" && e.shiftKey) {
+    window.switchTab?.("agents");
     return;
   }
   if (key === "M" && e.shiftKey) {

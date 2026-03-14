@@ -1,5 +1,7 @@
 # Changelog
 
+## v7.17.0 — 2026-03-13  Dashboard UX Round 48 — grid gap, min-height, branch border, smooth scroll, Shift+A — 225 UX
+
 ## v7.16.0 — 2026-03-13  i18n full rollout + /changes tests + project summary
 
 - **i18n strings expanded**: 15 new keys (notifications, branches, status, misc)

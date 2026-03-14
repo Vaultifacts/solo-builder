@@ -949,6 +949,14 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card grid gap increase ─────────────────────────────── */
+  #task-grid { gap: 8px; }
+  /* ── Subtask row min-height ────────────────────────────── */
+  .subtask-row { min-height: 24px; align-items: center; }
+  /* ── Branch block margin ───────────────────────────────── */
+  .branch-block { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 4px; padding: 4px; }
+  /* ── Detail panel scroll smooth ────────────────────────── */
+  #detail-content { scroll-behavior: smooth; }
   /* ── Card selected ring ─────────────────────────────────── */
   .task-card.active { outline: 2px solid var(--cyan); outline-offset: -2px; }
   /* ── Subtask row zebra dark ────────────────────────────── */
