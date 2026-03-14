@@ -4213,5 +4213,90 @@ class TestKeyboardShiftQ(unittest.TestCase):
         self.assertIn('"Q"', js)
         self.assertIn("priority", js)
 
+# 240-248: v8.2.x — WS, collapse-all, popup, run history sparkline
+
+_TASKS_JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+_DASH_JS  = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.js"
+_DASH_CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+_DASH_HTML = Path(__file__).resolve().parents[1] / "api" / "dashboard.html"
+
+
+class TestRunHistorySparkline(unittest.TestCase):
+    """Run history ring buffer and card-hist-spark element."""
+
+    def test_ring_buffer_declared(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("_taskVerifiedHistory", js)
+        self.assertIn("_HIST_RING_SIZE", js)
+
+    def test_push_on_change_only(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("_pushTaskHistory", js)
+
+    def test_hist_spark_class_rendered(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("card-hist-spark", js)
+
+    def test_hist_spark_tooltip(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("Progress history", js)
+
+    def test_ring_size_is_8(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("_HIST_RING_SIZE = 8", js)
+
+
+class TestCollapseAllButtonToggle(unittest.TestCase):
+    """⊟ Collapse / ⊞ Expand toolbar button label reflects state."""
+
+    def test_btn_in_html(self):
+        html = _DASH_HTML.read_text(encoding="utf-8")
+        self.assertIn("btn-collapse-all", html)
+        self.assertIn("⊟ Collapse", html)
+
+    def test_toggle_updates_label(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("⊞ Expand", js)
+        self.assertIn("⊟ Collapse", js)
+        self.assertIn("btn-collapse-all", js)
+
+    def test_load_sync_function(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("_syncCollapseBtn", js)
+
+
+class TestOutputPopupStaleDataFix(unittest.TestCase):
+    """_dismissOutputPopup clears stale subtask data."""
+
+    def test_dismiss_clears_text(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn('_outputPopupText = ""', js)
+
+    def test_dismiss_removes_dataset_subtask(self):
+        js = _TASKS_JS.read_text(encoding="utf-8")
+        self.assertIn("delete _outputPopup.dataset.subtask", js)
+
+    def test_popup_pinned_css(self):
+        css = _DASH_CSS.read_text(encoding="utf-8")
+        self.assertIn("st-output-popup-pinned", css)
+
+
+class TestWsDotClientCount(unittest.TestCase):
+    """● Live (N) dot shows ws_clients count."""
+
+    def test_update_ws_dot_function(self):
+        js = _DASH_JS.read_text(encoding="utf-8")
+        self.assertIn("_updateWsDot", js)
+
+    def test_ws_client_count_var(self):
+        js = _DASH_JS.read_text(encoding="utf-8")
+        self.assertIn("_wsClientCount", js)
+
+    def test_live_count_suffix(self):
+        js = _DASH_JS.read_text(encoding="utf-8")
+        self.assertIn("● Live", js)
+        self.assertIn("_wsClientCount > 1", js)
+
+
 if __name__ == "__main__":
     unittest.main()
