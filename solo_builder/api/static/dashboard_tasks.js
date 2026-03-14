@@ -8,42 +8,72 @@ const _TASKS_LIMIT    = 50;
 /* ── Subtask output hover popup ───────────────────────────── */
 let _outputPopup = null;
 let _outputPopupPinned = false;
+let _outputPopupText = "";
+
+function _dismissOutputPopup() {
+  _outputPopupPinned = false;
+  if (_outputPopup) {
+    _outputPopup.classList.remove("st-output-popup-pinned");
+    _outputPopup.style.display = "none";
+  }
+}
+
 function _ensurePopup() {
   if (!_outputPopup) {
     _outputPopup = document.createElement("div");
     _outputPopup.id = "st-output-popup";
     _outputPopup.className = "st-output-popup";
-    // Click to pin/unpin
     _outputPopup.addEventListener("click", (ev) => {
       ev.stopPropagation();
       _outputPopupPinned = !_outputPopupPinned;
       _outputPopup.classList.toggle("st-output-popup-pinned", _outputPopupPinned);
       _outputPopup.title = _outputPopupPinned ? "Click to unpin" : "Click to pin";
+      // Re-render to show/hide header+copy button
+      _renderPopupContent(_outputPopup, _outputPopupText, _outputPopup.dataset.subtask || "");
     });
-    // Escape unpins and hides
     document.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape" && _outputPopupPinned) {
-        _outputPopupPinned = false;
-        _outputPopup.classList.remove("st-output-popup-pinned");
-        _outputPopup.style.display = "none";
-      }
+      if (ev.key === "Escape" && _outputPopupPinned) _dismissOutputPopup();
     });
-    // Click outside unpins and hides
     document.addEventListener("click", () => {
-      if (_outputPopupPinned) {
-        _outputPopupPinned = false;
-        _outputPopup.classList.remove("st-output-popup-pinned");
-        _outputPopup.style.display = "none";
-      }
+      if (_outputPopupPinned) _dismissOutputPopup();
     });
     document.body.appendChild(_outputPopup);
   }
   return _outputPopup;
 }
-function _showOutputPopup(ev, text) {
+
+function _renderPopupContent(popup, text, subtaskName) {
+  popup.replaceChildren();
+
+  if (subtaskName && _outputPopupPinned) {
+    // Pinned header: subtask name + copy button
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border)";
+    const nameEl = document.createElement("span");
+    nameEl.style.cssText = "font-size:9px;color:var(--cyan);letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px";
+    nameEl.textContent = subtaskName;
+    const copyBtn = document.createElement("button");
+    copyBtn.style.cssText = "background:none;border:1px solid var(--border);border-radius:3px;color:var(--dim);font-size:9px;padding:1px 5px;cursor:pointer;flex-shrink:0;margin-left:6px";
+    copyBtn.textContent = "📋 copy";
+    copyBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      navigator.clipboard.writeText(text).then(() => { copyBtn.textContent = "✓ copied"; setTimeout(() => { copyBtn.textContent = "📋 copy"; }, 1500); }).catch(() => {});
+    });
+    hdr.append(nameEl, copyBtn);
+    popup.appendChild(hdr);
+  }
+
+  const body = document.createElement("pre");
+  body.style.cssText = "margin:0;font-size:10px;white-space:pre-wrap;word-break:break-word;font-family:var(--font)";
+  body.textContent = text.length > 600 ? text.substring(0, 600) + "…" : text;
+  popup.appendChild(body);
+}
+
+function _showOutputPopup(ev, text, subtaskName) {
   if (_outputPopupPinned) return;
+  _outputPopupText = text;
   const popup = _ensurePopup();
-  popup.textContent = text.length > 600 ? text.substring(0, 600) + "…" : text;
+  _renderPopupContent(popup, text, subtaskName);
   popup.title = "Click to pin";
   popup.style.display = "block";
   const x = Math.min(ev.clientX + 12, window.innerWidth - 340);
@@ -1887,7 +1917,11 @@ export function renderDetail(t) {
 
         // Hover preview popup for full output
         if (rawOutput.length > 40) {
-          outSpan.addEventListener("mouseenter", (ev) => _showOutputPopup(ev, rawOutput));
+          outSpan.addEventListener("mouseenter", (ev) => {
+            const popup = _ensurePopup();
+            popup.dataset.subtask = sname;
+            _showOutputPopup(ev, rawOutput, sname);
+          });
           outSpan.addEventListener("mouseleave", _hideOutputPopup);
           outSpan.style.cursor = "help";
         }

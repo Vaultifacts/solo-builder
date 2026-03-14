@@ -138,6 +138,14 @@ class TestHealthEndpoint(_Base):
         self.assertEqual(d["total_subtasks"], 1)
         self.assertIn("uptime_s", d)
 
+    def test_health_ws_clients_field(self):
+        self._write_state({"step": 0, "dag": {}})
+        r = self.client.get("/health")
+        d = r.get_json()
+        self.assertIn("ws_clients", d)
+        self.assertIsInstance(d["ws_clients"], int)
+        self.assertGreaterEqual(d["ws_clients"], 0)
+
     def test_health_no_state_file(self):
         r = self.client.get("/health")
         d = r.get_json()

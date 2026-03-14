@@ -8,18 +8,23 @@ async function pollHealth() {
   try {
     const h = await api("/health");
     const el = document.getElementById("hdr-uptime");
-    if (!el) return;
-    const s = Math.floor(h.uptime_s || 0);
-    const hh = Math.floor(s / 3600);
-    const mm = Math.floor((s % 3600) / 60);
-    const ss = s % 60;
-    const label = hh > 0
-      ? `up ${hh}h${String(mm).padStart(2,"0")}m`
-      : mm > 0
-        ? `up ${mm}m${String(ss).padStart(2,"0")}s`
-        : `up ${ss}s`;
-    el.textContent = label;
-    el.title = `Server uptime: ${s}s · step ${h.step}`;
+    if (el) {
+      const s = Math.floor(h.uptime_s || 0);
+      const hh = Math.floor(s / 3600);
+      const mm = Math.floor((s % 3600) / 60);
+      const ss = s % 60;
+      const label = hh > 0
+        ? `up ${hh}h${String(mm).padStart(2,"0")}m`
+        : mm > 0
+          ? `up ${mm}m${String(ss).padStart(2,"0")}s`
+          : `up ${ss}s`;
+      el.textContent = label;
+      el.title = `Server uptime: ${s}s · step ${h.step}`;
+    }
+    if (typeof h.ws_clients === "number") {
+      _wsClientCount = h.ws_clients;
+      _updateWsDot();
+    }
   } catch (_) {}
 }
 
@@ -704,6 +709,22 @@ if ("Notification" in window && Notification.permission === "default") {
   Notification.requestPermission();
 }
 
+/* ── WS dot updater ───────────────────────────────────────── */
+let _wsClientCount = 0;
+function _updateWsDot() {
+  const dot = document.getElementById("ws-dot");
+  if (!dot) return;
+  if (window._wsStatus && window._wsStatus()) {
+    const count = _wsClientCount > 1 ? ` (${_wsClientCount})` : "";
+    dot.textContent = `● Live${count}`;
+    dot.style.color = "var(--green)";
+  } else {
+    dot.textContent = "○ Poll";
+    dot.style.color = "var(--dim)";
+  }
+}
+window._updateWsDot = _updateWsDot;
+
 /* ── WebSocket real-time push ──────────────────────────────── */
 (function _initWebSocket() {
   const WS_URL = `ws://${location.host}/ws`;
@@ -721,8 +742,7 @@ if ("Notification" in window && Notification.permission === "default") {
     _ws.onopen = () => {
       _wsOk = true;
       _reconnectMs = 1000;
-      const dot = document.getElementById("ws-dot");
-      if (dot) { dot.textContent = "● Live"; dot.style.color = "var(--green)"; }
+      _updateWsDot();
       // Slow down the poll interval to a safety-net heartbeat (30s)
       // so we're not wasting requests while WS is active.
       if (state.pollMs < 30000) {
@@ -741,8 +761,7 @@ if ("Notification" in window && Notification.permission === "default") {
     _ws.onclose = _ws.onerror = () => {
       _wsOk = false;
       _ws = null;
-      const dot = document.getElementById("ws-dot");
-      if (dot) { dot.textContent = "○ Poll"; dot.style.color = "var(--dim)"; }
+      _updateWsDot();
       // Restore fast polling while WS is down
       if (state._priorPollMs) {
         _setPollInterval(state._priorPollMs);
