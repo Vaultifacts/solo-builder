@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.87.0 — 2026-03-13  Dashboard UX Round 36 — trunc badge, task age, merge btn, copy all, Shift+C
+
+- **Subtask output truncation indicator**: "…" badge when output exceeds 1KB
+- **Card task age**: Shows 📅 relative time since task creation
+- **Branch merge button**: "Merge ✓" on fully-verified branches
+- **Detail panel copy all outputs**: 📋 All button copies all subtask outputs
+- **Keyboard `Shift+C` copy all**: Copies all visible subtask outputs
+
+### Stats
+- 556 dashboard E2E smoke tests (9 new), 3403 total tests, 0 failures
+- 165 UX features across v6.39–v6.87
+
 ## v6.86.0 — 2026-03-13  Coverage Push Round 13 — bot_commands 90% → 99%
 
 - **24 new tests** extending `test_bot_commands_coverage.py`

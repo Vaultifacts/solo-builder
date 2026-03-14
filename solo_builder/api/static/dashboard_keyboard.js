@@ -43,6 +43,7 @@ const _SHORTCUTS = [
   ["y", "Yank (copy) first subtask output"],
   ["Shift+R", "Reset selected task"],
   ["Shift+V", "Verify all unverified subtasks"],
+  ["Shift+C", "Copy all subtask outputs"],
 ];
 
 function _showShortcuts() {
@@ -264,6 +265,13 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "C" && e.shiftKey && !e.ctrlKey) {
+    const outputs = [...document.querySelectorAll("#detail-content .st-expand-content")].map(el => el.textContent).filter(Boolean);
+    if (outputs.length > 0) {
+      navigator.clipboard.writeText(outputs.join("\n---\n")).then(() => toast(`Copied ${outputs.length} outputs`)).catch(() => toast("Copy failed"));
+    } else { toast("No outputs to copy"); }
     return;
   }
   if (key === "V" && e.shiftKey) {

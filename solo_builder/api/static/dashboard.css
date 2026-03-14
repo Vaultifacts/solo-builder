@@ -924,6 +924,10 @@
   .branch-run-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
   .branch-run-dot.active { background: var(--cyan); animation: branch-run-pulse 1.5s infinite; }
   @keyframes branch-run-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  /* ── Subtask truncation indicator ────────────────────────── */
+  .st-trunc-badge { font-size: 10px; color: var(--yellow); margin-left: 2px; flex-shrink: 0; opacity: 0.7; }
+  /* ── Card task age ─────────────────────────────────────── */
+  .card-task-age { font-size: 8px; color: var(--dim); opacity: 0.5; }
   /* ── Reduced motion ──────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

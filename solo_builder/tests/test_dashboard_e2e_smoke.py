@@ -3752,5 +3752,57 @@ class TestKeyboardShiftVerifyAll(unittest.TestCase):
         self.assertIn("Verify all unverified", js)
 
 
+# ---------------------------------------------------------------------------
+# 160. Subtask output truncation indicator
+# ---------------------------------------------------------------------------
+class TestTruncationIndicator(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self):
+        self.assertIn("st-trunc-badge", self._JS.read_text(encoding="utf-8"))
+    def test_css(self):
+        self.assertIn(".st-trunc-badge", self._CSS.read_text(encoding="utf-8"))
+
+# ---------------------------------------------------------------------------
+# 161. Card task age
+# ---------------------------------------------------------------------------
+class TestCardTaskAge(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self):
+        self.assertIn("card-task-age", self._JS.read_text(encoding="utf-8"))
+    def test_css(self):
+        self.assertIn(".card-task-age", self._CSS.read_text(encoding="utf-8"))
+
+# ---------------------------------------------------------------------------
+# 162. Branch merge button
+# ---------------------------------------------------------------------------
+class TestBranchMergeButton(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self):
+        self.assertIn("branch-merge-btn", self._JS.read_text(encoding="utf-8"))
+    def test_js_merge_text(self):
+        self.assertIn("Merge", self._JS.read_text(encoding="utf-8"))
+
+# ---------------------------------------------------------------------------
+# 163. Detail panel copy all outputs
+# ---------------------------------------------------------------------------
+class TestCopyAllOutputs(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self):
+        self.assertIn("copyAllBtn", self._JS.read_text(encoding="utf-8"))
+    def test_js_all_outputs(self):
+        self.assertIn("allOutputs", self._JS.read_text(encoding="utf-8"))
+
+# ---------------------------------------------------------------------------
+# 164. Keyboard Shift+C copy all
+# ---------------------------------------------------------------------------
+class TestKeyboardShiftC(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"C"', js)
+        self.assertIn("Shift+C", js)
+
 if __name__ == "__main__":
     unittest.main()

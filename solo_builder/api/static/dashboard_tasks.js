@@ -764,6 +764,19 @@ export function renderGrid(tasks) {
     }
     card._prevVerifiedCount = _curStreak;
 
+    // Card task age
+    let taskAgeEl = card.querySelector(".card-task-age");
+    if (!taskAgeEl) {
+      taskAgeEl = document.createElement("span");
+      taskAgeEl.className = "card-task-age";
+      card.appendChild(taskAgeEl);
+    }
+    if (t.created_at) {
+      const _ageRel = _relativeTime(t.created_at);
+      if (_ageRel) taskAgeEl.textContent = `📅${_ageRel}`;
+      taskAgeEl.title = `Created: ${t.created_at}`;
+    }
+
     // Recently active highlight (active within 60s)
     const _lastActiveSec = t.last_active ? (Date.now() - new Date(t.last_active).getTime()) / 1000 : Infinity;
     card.classList.toggle("card-recently-active", _lastActiveSec < 60);
@@ -1035,6 +1048,24 @@ export function renderDetail(t) {
     });
   });
   statusDiv.append(" ", collapseVerifiedBtn);
+
+  // Copy all outputs button
+  const copyAllBtn = document.createElement("button");
+  copyAllBtn.className = "toolbar-btn";
+  copyAllBtn.style.cssText = "font-size:9px;padding:2px 6px;margin-left:4px";
+  copyAllBtn.title = "Copy all subtask outputs to clipboard";
+  copyAllBtn.textContent = "📋 All";
+  copyAllBtn.addEventListener("click", () => {
+    const allOutputs = [];
+    Object.entries(branches).forEach(([bn, bd]) => {
+      Object.entries(bd.subtasks || {}).forEach(([sn, s]) => {
+        if (s.output) allOutputs.push(`## ${sn} (${bn})\n${s.output}`);
+      });
+    });
+    if (allOutputs.length === 0) { toast("No outputs to copy"); return; }
+    navigator.clipboard.writeText(allOutputs.join("\n\n")).then(() => toast(`Copied ${allOutputs.length} outputs`)).catch(() => {});
+  });
+  statusDiv.append(" ", copyAllBtn);
 
   const branchNames = Object.keys(branches);
   if (branchNames.length > 1) {
@@ -1377,6 +1408,16 @@ export function renderDetail(t) {
       branchBlock.classList.toggle("branch-compact");
     });
     branchNameEl.appendChild(compactToggle);
+    // Branch merge button — shown only on fully-verified branches
+    if (_bs && _bs.verified === _bs.total && _bs.total > 0) {
+      const mergeBtn = document.createElement("button");
+      mergeBtn.className = "branch-merge-btn toolbar-btn";
+      mergeBtn.textContent = "Merge ✓";
+      mergeBtn.title = `All ${_bs.total} subtasks verified — ready to merge`;
+      mergeBtn.style.cssText = "font-size:8px;padding:0 4px;margin-left:4px;color:#22c55e";
+      mergeBtn.addEventListener("click", (ev) => { ev.stopPropagation(); toast(`${bname}: merge-ready (${_bs.total} verified)`); });
+      branchNameEl.appendChild(mergeBtn);
+    }
     // Branch subtask name list tooltip
     const _stNames = Object.keys(bdata.subtasks || {});
     if (_stNames.length > 0) {
@@ -1576,6 +1617,15 @@ export function renderDetail(t) {
         sizeBadge.textContent = _bytes >= 1024 ? `${(_bytes / 1024).toFixed(1)}KB` : `${_bytes}B`;
         sizeBadge.title = `${_bytes} bytes`;
         row.appendChild(sizeBadge);
+
+        // Truncation indicator — show "…" when output > 1KB
+        if (_bytes > 1024) {
+          const truncBadge = document.createElement("span");
+          truncBadge.className = "st-trunc-badge";
+          truncBadge.textContent = "…";
+          truncBadge.title = `Output truncated (${sizeBadge.textContent})`;
+          row.appendChild(truncBadge);
+        }
 
         // Line count badge
         const lineCount = rawOutput.split("\n").length;
