@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.95.0 — 2026-03-13  Dashboard UX Round 38 — verified delta, row nums, collapse count, total size, Shift+S
+
+- **Card verified delta badge**: +N green badge when verified count increases (auto-clears after 3s)
+- **Subtask row number**: #1, #2, #3 numbering on detail panel subtask rows
+- **Branch collapse count**: "(N hidden)" indicator when branch is collapsed
+- **Detail panel total output size**: KB total across all subtask outputs in header
+- **Keyboard `Shift+S` trigger snapshot**: Press Shift+S to trigger PDF snapshot
+
+### Stats
+- 573 dashboard E2E smoke tests (9 new), 175 UX features across v6.39–v6.95
+
 ## v6.94.0 — 2026-03-13  Dashboard /changes integration — incremental change polling
 
 - Dashboard polls `/changes?since=N` on every tick for incremental updates

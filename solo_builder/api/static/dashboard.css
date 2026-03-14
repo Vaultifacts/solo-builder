@@ -934,6 +934,14 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card verified delta badge ───────────────────────────── */
+  .card-verified-delta { font-size: 9px; color: var(--green); margin-left: 4px; font-weight: bold; }
+  /* ── Subtask row number ────────────────────────────────── */
+  .st-row-num { font-size: 8px; color: var(--dim); opacity: 0.4; min-width: 18px; flex-shrink: 0; }
+  /* ── Branch collapse count ─────────────────────────────── */
+  .branch-collapse-count { font-size: 8px; color: var(--dim); margin-left: 4px; opacity: 0.6; }
+  /* ── Detail total output size ──────────────────────────── */
+  .detail-total-size { font-size: 8px; color: var(--dim); margin-left: 8px; opacity: 0.6; }
   /* ── Subtask truncation indicator ────────────────────────── */
   .st-trunc-badge { font-size: 10px; color: var(--yellow); margin-left: 2px; flex-shrink: 0; opacity: 0.7; }
   /* ── Card task age ─────────────────────────────────────── */

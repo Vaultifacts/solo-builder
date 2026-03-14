@@ -3843,5 +3843,37 @@ class TestKeyboardShiftD(unittest.TestCase):
         self.assertIn('"D"', js)
         self.assertIn("dag/export", js)
 
+# 170-174: Round 38
+class TestCardVerifiedDelta(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("card-verified-delta", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".card-verified-delta", self._CSS.read_text(encoding="utf-8"))
+
+class TestSubtaskRowNumber(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("st-row-num", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".st-row-num", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchCollapseCount(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("branch-collapse-count", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".branch-collapse-count", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailTotalSize(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-total-size", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-total-size", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftS(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"S"', js)
+        self.assertIn("snapshot", js)
+
 if __name__ == "__main__":
     unittest.main()

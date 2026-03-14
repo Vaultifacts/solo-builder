@@ -45,6 +45,7 @@ const _SHORTCUTS = [
   ["Shift+V", "Verify all unverified subtasks"],
   ["Shift+C", "Copy all subtask outputs"],
   ["Shift+D", "Download DAG as JSON"],
+  ["Shift+S", "Trigger snapshot"],
 ];
 
 function _showShortcuts() {
@@ -266,6 +267,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "S" && e.shiftKey) {
+    fetch(state.base + "/snapshot", { method: "POST" }).then(() => toast("Snapshot triggered")).catch(() => toast("Snapshot failed"));
     return;
   }
   if (key === "D" && e.shiftKey) {

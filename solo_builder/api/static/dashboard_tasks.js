@@ -487,6 +487,13 @@ export function renderGrid(tasks) {
       void card.offsetWidth; // reflow to restart animation
       card.classList.add("card-pulse");
     }
+    // Verified delta badge
+    let deltaEl = card.querySelector(".card-verified-delta");
+    if (t.verified_subtasks > _prevV) {
+      if (!deltaEl) { deltaEl = document.createElement("span"); deltaEl.className = "card-verified-delta"; card.querySelector(".card-top").appendChild(deltaEl); }
+      deltaEl.textContent = `+${t.verified_subtasks - _prevV}`;
+      setTimeout(() => { if (deltaEl) deltaEl.textContent = ""; }, 3000);
+    }
     card._prevVerified = t.verified_subtasks;
 
     // Card completion celebration (flash when task reaches 100%)
@@ -1278,13 +1285,22 @@ export function renderDetail(t) {
   const _savedZoom = localStorage.getItem("sb-detail-zoom");
   if (_savedZoom) el.style.fontSize = `${_savedZoom}em`;
 
+  // Total output size
+  const totalSizeEl = document.createElement("span");
+  totalSizeEl.className = "detail-total-size";
+  const _totalBytes = Object.values(branches).reduce((acc, bd) =>
+    acc + Object.values(bd.subtasks || {}).reduce((a, s) => a + (s.output || "").length, 0), 0);
+  if (_totalBytes > 0) {
+    totalSizeEl.textContent = _totalBytes >= 1024 ? `${(_totalBytes / 1024).toFixed(1)}KB total` : `${_totalBytes}B total`;
+  }
+
   // Auto-refresh timer
   const refreshTimer = document.createElement("span");
   refreshTimer.className = "detail-refresh-timer";
   refreshTimer.textContent = "just now";
   window._detailLastRefresh = Date.now();
 
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch, zoomWrap, refreshTimer);
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch, zoomWrap, totalSizeEl, refreshTimer);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -1406,13 +1422,23 @@ export function renderDetail(t) {
       branchBlock.classList.add("collapsed");
       collapseArrow.textContent = "▸";
     }
+    // Collapse count indicator
+    const collapseCountEl = document.createElement("span");
+    collapseCountEl.className = "branch-collapse-count";
+    branchNameEl.appendChild(collapseCountEl);
+    const _updateCollapseCount = () => {
+      const n = Object.keys(bdata.subtasks || {}).length;
+      collapseCountEl.textContent = branchBlock.classList.contains("collapsed") ? `(${n} hidden)` : "";
+    };
     branchNameEl.addEventListener("click", () => {
       branchBlock.classList.toggle("collapsed");
       const _isCollapsed = branchBlock.classList.contains("collapsed");
       collapseArrow.textContent = _isCollapsed ? "▸" : "▾";
       if (_isCollapsed) localStorage.setItem(_collapseKey, "1");
       else localStorage.removeItem(_collapseKey);
+      _updateCollapseCount();
     });
+    _updateCollapseCount();
     // Branch compact toggle — one-line summary vs full rows
     const compactToggle = document.createElement("button");
     compactToggle.className = "branch-compact-toggle toolbar-btn";
@@ -1441,11 +1467,18 @@ export function renderDetail(t) {
     }
     branchBlock.appendChild(branchNameEl);
 
+    let _rowNum = 0;
     Object.entries(bdata.subtasks || {}).forEach(([sname, s]) => {
+      _rowNum++;
       const rawOutput = s.output || "";
 
       const row = document.createElement("div");
       row.className = "subtask-row";
+      // Row number
+      const rowNumEl = document.createElement("span");
+      rowNumEl.className = "st-row-num";
+      rowNumEl.textContent = `#${_rowNum}`;
+      row.appendChild(rowNumEl);
       row.addEventListener("click", (ev) => { if (!ev.target.closest(".st-checkbox")) window.showModal(sname, s); });
       row.addEventListener("dblclick", (ev) => {
         ev.preventDefault();
