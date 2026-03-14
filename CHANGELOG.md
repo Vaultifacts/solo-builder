@@ -1,5 +1,9 @@
 # Changelog
 
+## v7.2.0 — 2026-03-13  Bot formatters 91% → 98% — diff, log, stalled, priority edge cases
+
+- `bot_formatters.py` 91% → **98%** — _format_diff with changes/corrupt, _format_log with journal/read error/no entries, stalled filters, priority edge cases, agents verified/pending/review
+
 ## v7.1.0 — 2026-03-13  Dashboard UX Round 40 — mini icons, name copy, ID prefix, Shift+X
 
 - **Card mini status icons**: ✓N/▶N/⏸N/◯N colored inline icons on counts

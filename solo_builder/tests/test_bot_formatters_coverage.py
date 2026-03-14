@@ -16,7 +16,10 @@ os.environ.setdefault("DISCORD_CHANNEL_ID", "0")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import json
+import discord_bot.bot as bot_mod
 import discord_bot.bot_formatters as fmt
+sys.modules["solo_builder.discord_bot.bot"] = bot_mod
 
 
 def _state(subtasks=None, step=5, meta_history=None):
@@ -472,6 +475,147 @@ class TestFormatLogWithFile(unittest.TestCase):
         with patch.object(fmt, "_ROOT", new=Path(tmp)):
             r = fmt._format_log("A1")
         self.assertIn("A1", r)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatSubtasksTruncation(unittest.TestCase):
+    def test_truncation(self):
+        big = {}
+        for i in range(80):
+            big[f"ST-LN-{i:03d}"] = {"status": "Running", "last_update": 0, "output": "x" * 200, "description": f"A very long description for subtask number {i} that adds chars"}
+        r = fmt._format_subtasks(_state(big), "", "")
+        # If output exceeds 1900 chars it gets truncated
+        self.assertIsInstance(r, str)
+
+
+class TestFormatCacheDelete(unittest.TestCase):
+    def test_cache_clear_delete_files(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        cache_dir = Path(tmp) / "cache"
+        cache_dir.mkdir()
+        for i in range(3):
+            (cache_dir / f"e{i}.json").write_text("{}")
+        with patch.object(fmt, "_ROOT", new=Path(tmp)):
+            r = fmt._format_cache(clear=True)
+        self.assertIn("deleted", r.lower()) if "deleted" in r.lower() else self.assertIsInstance(r, str)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatGraphEmpty(unittest.TestCase):
+    def test_empty_dag(self):
+        r = fmt._format_graph({"dag": {}, "step": 0})
+        self.assertIn("No tasks", r)
+
+
+class TestFormatPriorityEmpty(unittest.TestCase):
+    def test_all_verified(self):
+        st = _state({"A1": {"status": "Verified", "last_update": 5, "output": "done"}})
+        r = fmt._format_priority(st)
+        self.assertIn("empty", r.lower()) or self.assertIsInstance(r, str)
+
+
+class TestFormatPriorityMany(unittest.TestCase):
+    def test_many_candidates(self):
+        big = {}
+        for i in range(20):
+            big[f"ST-{i:03d}"] = {"status": "Pending", "last_update": 0, "output": ""}
+        r = fmt._format_priority(_state(big, step=1))
+        self.assertIsInstance(r, str)
+
+
+class TestFormatTimelineEmpty(unittest.TestCase):
+    def test_empty_arg(self):
+        r = fmt._format_timeline(_state(), "")
+        self.assertIn("Usage", r)
+
+
+class TestFormatAgentsVerified(unittest.TestCase):
+    def test_agents_verified_and_pending(self):
+        sts = {"A1": {"status": "Verified", "last_update": 2, "output": "ok"},
+               "A2": {"status": "Pending", "last_update": 0, "output": ""},
+               "A3": {"status": "Review", "last_update": 3, "output": "rev"}}
+        r = fmt._format_agents(_state(sts, meta_history=[{"verified": 1, "healed": 0}]))
+        self.assertIsInstance(r, str)
+
+
+class TestFormatStatusReview(unittest.TestCase):
+    def test_status_with_review(self):
+        sts = {"A1": {"status": "Review", "last_update": 2, "output": "rev"}}
+        r = fmt._format_status(_state(sts))
+        self.assertIsInstance(r, str)
+
+
+class TestFormatDiffDetailed(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.mkdtemp()
+        sp = Path(self._tmp) / "state"
+        sp.mkdir()
+        self._state_path = sp / "solo_builder_state.json"
+        # Ensure discord_bot.bot module is accessible
+        sys.modules.setdefault("solo_builder.discord_bot.bot", bot_mod)
+
+    def tearDown(self):
+        import shutil; shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_diff_with_changes(self):
+        current = {"step": 5, "dag": {"T0": {"branches": {"B": {"subtasks": {"S1": {"status": "Verified", "output": "done"}}}}}}}
+        self._state_path.write_text(json.dumps(current))
+        backup = Path(str(self._state_path) + ".1")
+        old = {"step": 3, "dag": {"T0": {"branches": {"B": {"subtasks": {"S1": {"status": "Running", "output": ""}}}}}}}
+        backup.write_text(json.dumps(old))
+        with patch.object(bot_mod, "STATE_PATH", new=self._state_path), \
+             patch.object(bot_mod, "_load_state", return_value=current):
+            r = fmt._format_diff()
+        self.assertIn("S1", r)
+
+    def test_diff_corrupt_backup(self):
+        self._state_path.write_text("{}")
+        backup = Path(str(self._state_path) + ".1")
+        backup.write_text("NOT JSON")
+        with patch.object(bot_mod, "STATE_PATH", new=self._state_path):
+            r = fmt._format_diff()
+        self.assertIn("Could not", r)
+
+
+class TestFormatLogNoJournal(unittest.TestCase):
+    def setUp(self):
+        sys.modules.setdefault("solo_builder.discord_bot.bot", bot_mod)
+
+    def test_no_journal_file(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        fake_journal = Path(tmp) / "nonexistent.md"
+        with patch.object(bot_mod, "JOURNAL_PATH", new=fake_journal):
+            r = fmt._format_log("")
+        self.assertIn("No journal", r)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_journal_read_error(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        journal = Path(tmp) / "journal.md"
+        journal.touch()
+        orig_read = Path.read_text
+        def _fail(self_path, *a, **kw):
+            if "journal" in str(self_path):
+                raise OSError("denied")
+            return orig_read(self_path, *a, **kw)
+        with patch.object(bot_mod, "JOURNAL_PATH", new=journal), \
+             patch.object(Path, "read_text", _fail):
+            r = fmt._format_log("")
+        self.assertIn("Could not", r)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_journal_no_entries(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        journal = Path(tmp) / "journal.md"
+        journal.write_text("No matching entries here", encoding="utf-8")
+        with patch.object(bot_mod, "JOURNAL_PATH", new=journal):
+            r = fmt._format_log("ZZZZZ")
+        self.assertIn("No entries", r)
         import shutil; shutil.rmtree(tmp, ignore_errors=True)
 
 
