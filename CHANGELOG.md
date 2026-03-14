@@ -1,5 +1,11 @@
 # Changelog
 
+## v6.93.0 — 2026-03-13  TASK-418 — PWA/offline support with service worker
+
+- **Service worker** `sw.js`: Caches dashboard shell assets for offline access
+- Network-first for API calls (status, tasks, health), cache-first for static assets
+- Registration in `dashboard.html` — graceful fallback if SW not supported
+
 ## v6.92.0 — 2026-03-13  Bot formatters 80% → 86% + 17 new tests
 
 - `bot_formatters.py` 80% → **86%** — CSV exports, multi-branch status, history filters, stalled/priority edge cases
