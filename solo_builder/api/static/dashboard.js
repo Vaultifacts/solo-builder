@@ -62,6 +62,16 @@ async function tick() {
               pollPreReleaseDetailed(), pollLiveSummaryDetailed(), pollRepoHealthDetailed());
   }
   await Promise.all(fast);
+  // Poll /changes for incremental updates
+  try {
+    const lastStep = state._lastChangeStep || 0;
+    const cd = await api("/changes?since=" + lastStep);
+    if (cd.changed && cd.count > 0) {
+      state._lastChangeStep = cd.step;
+      const changeEl = document.getElementById("hdr-changes");
+      if (changeEl) changeEl.textContent = `Δ${cd.count}`;
+    }
+  } catch (_) {}
   // Update tab badges from cached state
   try {
     const sd = await api("/stalled");

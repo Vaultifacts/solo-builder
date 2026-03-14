@@ -1,5 +1,11 @@
 # Changelog
 
+## v6.94.0 — 2026-03-13  Dashboard /changes integration — incremental change polling
+
+- Dashboard polls `/changes?since=N` on every tick for incremental updates
+- Header shows `ΔN` badge with recent change count
+- Uses `state._lastChangeStep` to track last polled step
+
 ## v6.93.0 — 2026-03-13  TASK-418 — PWA/offline support with service worker
 
 - **Service worker** `sw.js`: Caches dashboard shell assets for offline access
