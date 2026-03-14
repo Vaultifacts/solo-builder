@@ -7,6 +7,7 @@ Agents:
   Planner        → prioritizes subtasks by risk
   Executor       → advances subtask lifecycle (Pending → Running → Verified)
   PatchReviewer  → critiques Executor output, rejects bad patches
+  TestGenerator  → generates pytest tests for Executor code output
   ShadowAgent    → tracks expected states, detects & resolves conflicts
   Verifier       → enforces DAG consistency (branch/task status roll-up)
   SelfHealer     → detects stalled subtasks and resets them
@@ -59,6 +60,7 @@ except ImportError:
 
 from agents.repo_analyzer import RepoAnalyzer
 from agents.patch_reviewer import PatchReviewer
+from agents.test_generator import TestGenerator
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -1301,7 +1303,7 @@ class SoloBuilderCLI:
 
     Step lifecycle:
         RepoAnalyzer → Planner → ShadowAgent (conflicts) → SelfHealer
-        → Executor → PatchReviewer → Verifier
+        → Executor → PatchReviewer → TestGenerator → Verifier
         → ShadowAgent (update expected) → MetaOptimizer → display
     """
 
@@ -1325,6 +1327,7 @@ class SoloBuilderCLI:
         self.executor       = Executor(max_per_step=EXEC_MAX_PER_STEP,
                                        verify_prob=EXEC_VERIFY_PROB)
         self.patch_reviewer = PatchReviewer(settings=_CFG)
+        self.test_generator = TestGenerator(settings=_CFG)
         self.shadow         = ShadowAgent()
         self.verifier       = Verifier()
         self.healer         = SelfHealer(stall_threshold=STALL_THRESHOLD)
@@ -1392,6 +1395,11 @@ class SoloBuilderCLI:
 
         # 4b. PatchReviewer: critique Executor output before verification
         review_results = self.patch_reviewer.review_step(
+            self.dag, actions, self.step, self.memory_store, step_alerts,
+        )
+
+        # 4c. TestGenerator: generate pytest tests for Python output
+        tests_written = self.test_generator.generate_tests(
             self.dag, actions, self.step, self.memory_store, step_alerts,
         )
 

@@ -92,6 +92,15 @@ jobs:
       - name: Run API unit tests (71 tests)
         run: PYTHONIOENCODING=utf-8 python api/test_app.py
 
+      - name: Run generated tests (if any exist)
+        run: |
+          if ls tests/generated/test_*.py 1>/dev/null 2>&1; then
+            pip install pytest
+            PYTHONIOENCODING=utf-8 python -m pytest tests/generated/ -v --tb=short || true
+          else
+            echo "No generated tests found — skipping"
+          fi
+
       - name: Profiler dry-run (patch smoke test)
         run: PYTHONIOENCODING=utf-8 python profiler_harness.py --dry-run
 
