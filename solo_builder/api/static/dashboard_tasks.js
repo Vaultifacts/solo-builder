@@ -64,7 +64,6 @@ function _renderPopupContent(popup, text, subtaskName) {
   }
 
   const body = document.createElement("pre");
-  body.style.cssText = "margin:0;font-size:10px;white-space:pre-wrap;word-break:break-word;font-family:var(--font)";
   body.textContent = text.length > 600 ? text.substring(0, 600) + "…" : text;
   popup.appendChild(body);
 }
