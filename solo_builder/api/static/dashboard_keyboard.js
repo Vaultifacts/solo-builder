@@ -50,6 +50,7 @@ const _SHORTCUTS = [
   ["Shift+X", "Expand all branches"],
   ["Shift+F", "Focus detail search"],
   ["Shift+G", "Go to first running subtask"],
+  ["Shift+H", "Toggle history tab"],
 ];
 
 function _showShortcuts() {
@@ -271,6 +272,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "H" && e.shiftKey) {
+    window.switchTab?.("history");
     return;
   }
   if (key === "G" && e.shiftKey) {

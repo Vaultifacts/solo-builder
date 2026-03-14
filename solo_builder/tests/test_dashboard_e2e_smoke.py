@@ -3978,5 +3978,25 @@ class TestKeyboardShiftG(unittest.TestCase):
         self.assertIn('"G"', js)
         self.assertIn("Shift+G", js)
 
+# 195-199: Round 43
+class TestCardConfetti(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("card-confetti", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn("confetti-fly", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailFullscreen(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-fullscreen", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-fullscreen", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftH(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"H"', js)
+        self.assertIn("history", js)
+
 if __name__ == "__main__":
     unittest.main()

@@ -503,6 +503,17 @@ export function renderGrid(tasks) {
       card.classList.remove("card-complete-flash");
       void card.offsetWidth;
       card.classList.add("card-complete-flash");
+      // Confetti burst
+      const confetti = document.createElement("div");
+      confetti.className = "card-confetti";
+      for (let i = 0; i < 8; i++) {
+        const p = document.createElement("span");
+        p.className = "confetti-particle";
+        p.style.setProperty("--angle", `${i * 45}deg`);
+        confetti.appendChild(p);
+      }
+      card.appendChild(confetti);
+      setTimeout(() => confetti.remove(), 1500);
     }
     card._wasComplete = _isComplete;
 
@@ -1348,6 +1359,7 @@ export function renderDetail(t) {
     { label: "↺ Reset", action: () => window.resetTask(t.id) },
     { label: "📋 Copy ID", action: () => navigator.clipboard.writeText(t.id).then(() => toast(`Copied: ${t.id}`)) },
     { label: "▶ Running", action: () => { const d = document.querySelector("#detail-content .st-dot.dot-cyan"); if (d) d.closest(".subtask-row")?.scrollIntoView({ behavior: "smooth", block: "center" }); } },
+    { label: "⛶ Fullscreen", action: () => { document.getElementById("detail-panel")?.classList.toggle("detail-fullscreen"); } },
   ];
   _actions.forEach(a => {
     const btn = document.createElement("button");
@@ -1399,7 +1411,7 @@ export function renderDetail(t) {
     branchVerifiedBadge.className = "branch-verified-cnt";
     if (_bs && _bs.verified > 0) {
       branchVerifiedBadge.textContent = `${_bs.verified}✓`;
-      branchVerifiedBadge.title = `${_bs.verified} verified subtask(s)`;
+      branchVerifiedBadge.title = `${_bs.verified} of ${_bs.total} verified`;
     }
     // Branch health dot — based on stalled/running ratio
     const branchHealthDot = document.createElement("span");

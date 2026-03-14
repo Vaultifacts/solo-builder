@@ -934,6 +934,12 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card confetti ──────────────────────────────────────── */
+  .card-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .confetti-particle { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: var(--green); animation: confetti-fly 1s ease-out forwards; }
+  @keyframes confetti-fly { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(calc(cos(var(--angle)) * 30px), calc(sin(var(--angle)) * 30px)) scale(0); opacity: 0; } }
+  /* ── Detail fullscreen ─────────────────────────────────── */
+  .detail-fullscreen { position: fixed !important; inset: 0 !important; z-index: 999; width: 100% !important; max-width: 100% !important; background: var(--surface); }
   /* ── Subtask row status emoji ───────────────────────────── */
   .st-emoji { font-size: 9px; flex-shrink: 0; width: 12px; text-align: center; }
   /* ── Detail quick actions bar ──────────────────────────── */

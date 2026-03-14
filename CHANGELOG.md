@@ -1,5 +1,16 @@
 # Changelog
 
+## v7.7.0 — 2026-03-13  Dashboard UX Round 43 — confetti, fullscreen, Shift+H — 200 UX milestone!
+
+- **Card completion confetti**: Particle burst animation on 100% completion
+- **Detail panel fullscreen toggle**: ⛶ button expands detail to full viewport
+- **Branch verified tooltip**: Shows "N of M verified" on hover
+- **Subtask row drag placeholder**: Groundwork for future drag reorder
+- **Keyboard `Shift+H` toggle history**: Switch to history tab
+
+### Stats
+- 200 UX features milestone! 603 dashboard E2E smoke tests
+
 ## v7.6.0 — 2026-03-13  Browser notifications + v7.5 milestone + arch review
 
 - **Browser notifications**: Notification API alerts on status changes when tab is hidden
