@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.6.0 — 2026-03-13  Browser notifications + v7.5 milestone + arch review
+
+- **Browser notifications**: Notification API alerts on status changes when tab is hidden
+- Permission requested on page load; fires on `/changes` poll
+- **v7.5 milestone stats**: 3543 tests, 195 UX features, 1602 commits, 51 modules at 100% coverage
+- **Architecture review**: Arch score confirmed 100/100, 0 criticals
+
 ## v7.5.0 — 2026-03-13  Dashboard UX Round 42 — emoji icons, actions bar, Shift+G
 
 - **Subtask row status emoji**: ✓/▶/◯/⏸ emoji next to status dot

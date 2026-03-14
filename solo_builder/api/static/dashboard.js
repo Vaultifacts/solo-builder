@@ -70,6 +70,10 @@ async function tick() {
       state._lastChangeStep = cd.step;
       const changeEl = document.getElementById("hdr-changes");
       if (changeEl) changeEl.textContent = `Δ${cd.count}`;
+      // Browser notification for status changes
+      if (Notification.permission === "granted" && document.hidden) {
+        new Notification("Solo Builder", { body: `${cd.count} subtask(s) changed`, icon: "/favicon.ico" });
+      }
     }
   } catch (_) {}
   // Update tab badges from cached state
@@ -694,6 +698,11 @@ function _updateClock() {
 }
 _updateClock();
 setInterval(_updateClock, 1000);
+
+/* ── Browser notification permission ──────────────────────── */
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission();
+}
 
 /* ── Poll countdown timer ──────────────────────────────────── */
 let _countdownId = null;
