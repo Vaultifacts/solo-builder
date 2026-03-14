@@ -63,6 +63,7 @@ from agents.patch_reviewer import PatchReviewer
 from agents.test_generator import TestGenerator
 from utils.repo_index import RepoIndex
 from utils.safety import StepBudget
+from utils.invariants import check_post_phase
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -1380,6 +1381,10 @@ class SoloBuilderCLI:
             budget=budget,
         )
 
+        # Post-phase invariant check: RepoAnalyzer
+        for _inv in check_post_phase(self.dag, "RepoAnalyzer"):
+            step_alerts.append(f"  {YELLOW}[Invariant]{RESET} {_inv}")
+
         # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps,
         #    or immediately when a task flips to Verified — which unblocks dependents)
         verified_tasks = sum(
@@ -1431,11 +1436,19 @@ class SoloBuilderCLI:
             budget=budget,
         )
 
+        # Post-phase invariant check: Executor pipeline
+        for _inv in check_post_phase(self.dag, "Executor"):
+            step_alerts.append(f"  {YELLOW}[Invariant]{RESET} {_inv}")
+
         # 5. Verifier: fix any status inconsistencies
         fixes = self.verifier.verify(self.dag)
         if VERBOSITY == "DEBUG":
             for fix in fixes:
                 step_alerts.append(f"  {DIM}Verifier: {fix}{RESET}")
+
+        # Post-phase invariant check: Verifier
+        for _inv in check_post_phase(self.dag, "Verifier"):
+            step_alerts.append(f"  {YELLOW}[Invariant]{RESET} {_inv}")
 
         # 6. ShadowAgent: update expected state map
         self.shadow.update_expected(self.dag)
