@@ -7,18 +7,44 @@ const _TASKS_LIMIT    = 50;
 
 /* ── Subtask output hover popup ───────────────────────────── */
 let _outputPopup = null;
+let _outputPopupPinned = false;
 function _ensurePopup() {
   if (!_outputPopup) {
     _outputPopup = document.createElement("div");
     _outputPopup.id = "st-output-popup";
     _outputPopup.className = "st-output-popup";
+    // Click to pin/unpin
+    _outputPopup.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      _outputPopupPinned = !_outputPopupPinned;
+      _outputPopup.classList.toggle("st-output-popup-pinned", _outputPopupPinned);
+      _outputPopup.title = _outputPopupPinned ? "Click to unpin" : "Click to pin";
+    });
+    // Escape unpins and hides
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && _outputPopupPinned) {
+        _outputPopupPinned = false;
+        _outputPopup.classList.remove("st-output-popup-pinned");
+        _outputPopup.style.display = "none";
+      }
+    });
+    // Click outside unpins and hides
+    document.addEventListener("click", () => {
+      if (_outputPopupPinned) {
+        _outputPopupPinned = false;
+        _outputPopup.classList.remove("st-output-popup-pinned");
+        _outputPopup.style.display = "none";
+      }
+    });
     document.body.appendChild(_outputPopup);
   }
   return _outputPopup;
 }
 function _showOutputPopup(ev, text) {
+  if (_outputPopupPinned) return;
   const popup = _ensurePopup();
   popup.textContent = text.length > 600 ? text.substring(0, 600) + "…" : text;
+  popup.title = "Click to pin";
   popup.style.display = "block";
   const x = Math.min(ev.clientX + 12, window.innerWidth - 340);
   const y = Math.min(ev.clientY + 16, window.innerHeight - 200);
@@ -26,6 +52,7 @@ function _showOutputPopup(ev, text) {
   popup.style.top  = y + "px";
 }
 function _hideOutputPopup() {
+  if (_outputPopupPinned) return;
   if (_outputPopup) _outputPopup.style.display = "none";
 }
 let _tasksPage        = 1;

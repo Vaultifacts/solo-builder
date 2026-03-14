@@ -514,10 +514,24 @@ export async function pollHealthDetailed() {
     hdrText.textContent = `System Health: ${d.ok ? "OK" : "FAIL"}`;
     hdr.append(hdrText);
 
+    // Fetch ws_clients from /health endpoint
+    let wsClients = 0;
+    try {
+      const hd = await api("/health");
+      wsClients = hd.ws_clients ?? 0;
+    } catch (_) {}
+
+    const wsRow = mkRow("WS Clients", true, `${wsClients} connected dashboard${wsClients !== 1 ? "s" : ""}`);
+    wsRow.querySelector("span:last-child").style.color = wsClients > 0 ? "var(--green)" : "var(--dim)";
+    wsRow.querySelector("span[style*='background']").style.background = "var(--surface)";
+    wsRow.querySelector("span[style*='background']").style.color = "var(--dim)";
+    wsRow.querySelector("span[style*='background']").textContent = wsClients > 0 ? `${wsClients}` : "0";
+
     const nodes = [hdr, mkRow("State Valid", sv.ok, svDetail),
                         mkRow("Config Drift", cd.ok, cdDetail),
                         mkRow("Metrics Alerts", ma.ok, maDetail),
-                        mkRow("SLO Status", slo.ok !== false, sloDetail)];
+                        mkRow("SLO Status", slo.ok !== false, sloDetail),
+                        wsRow];
 
     if (sloResults.length) {
       sloResults.forEach(r => {

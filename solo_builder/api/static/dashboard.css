@@ -744,7 +744,8 @@
   .card-star-btn { background: none; border: none; color: var(--yellow); font-size: 12px; cursor: pointer; padding: 0 2px; }
   .card-star-btn:hover { transform: scale(1.2); }
   /* ── Subtask output hover popup ─────────────────────── */
-  .st-output-popup { display:none; position:fixed; z-index:9000; background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-size:10px; color:var(--text); white-space:pre-wrap; word-break:break-word; max-width:320px; max-height:180px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.5); pointer-events:none; line-height:1.4; }
+  .st-output-popup { display:none; position:fixed; z-index:9000; background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-size:10px; color:var(--text); white-space:pre-wrap; word-break:break-word; max-width:320px; max-height:180px; overflow:auto; box-shadow:0 4px 16px rgba(0,0,0,0.5); pointer-events:none; line-height:1.4; cursor:pointer; }
+  .st-output-popup.st-output-popup-pinned { pointer-events:all; border-color:var(--cyan); box-shadow:0 4px 20px rgba(0,200,255,0.2); max-height:320px; }
   /* ── Task card collapse ──────────────────────────────── */
   .card-collapse-btn { background: none; border: none; color: var(--dim); font-size: 9px; cursor: pointer; padding: 0 2px; opacity: 0.4; transition: opacity 0.15s; }
   .card-collapse-btn:hover { opacity: 1; }

@@ -2422,6 +2422,15 @@ class TestShortcutsOverlayKeys(unittest.TestCase):
         self.assertIn("Verify first unverified", js)
         self.assertIn("Select all task cards", js)
 
+    def test_shift_z_collapse_all_in_overlay(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("Shift+Z", js)
+        self.assertIn("Collapse / expand all task cards", js)
+
+    def test_shift_z_handler_calls_toggle_collapse_all(self):
+        js = self._JS_PATH.read_text(encoding="utf-8")
+        self.assertIn("toggleCollapseAll", js)
+
 
 # ---------------------------------------------------------------------------
 # 98. Card hover scale
