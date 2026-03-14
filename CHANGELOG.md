@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.83.0 — 2026-03-13  Coverage Push Round 10 — middleware 100%, discord_role_guard 100%, threat_model 97%
+
+- **3 new tests** across 3 existing test files + 1 new test in blueprint_load_tool
+- `middleware.py` 98% → **100%** — rate limiter current_count expired entry eviction
+- `discord_role_guard.py` 98% → **100%** — load_role_config with None settings_path
+- `threat_model.py` 78% → **97%** — _load_tool fresh import path
+
+### Stats
+- 3282 total tests, 0 failures
+- 26 source modules now at 100% coverage
+
 ## v6.82.0 — 2026-03-13  Coverage Push Round 9 — anthropic_runner 100%
 
 - **13 new tests** in new test file `test_anthropic_runner.py`

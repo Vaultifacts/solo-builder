@@ -221,5 +221,21 @@ class TestETagResponse(unittest.TestCase):
         self.assertEqual(r1.headers["ETag"], r2.headers["ETag"])
 
 
+# ---------------------------------------------------------------------------
+# Coverage: current_count expired entry eviction (line 113)
+# ---------------------------------------------------------------------------
+
+class TestRateLimiterCurrentCount(unittest.TestCase):
+    def test_current_count_evicts_expired(self):
+        from api.middleware import ApiRateLimiter
+        import time, collections
+        rl = ApiRateLimiter(read_limit=10, write_limit=5, window=1)
+        # Add an entry that's already expired
+        rl._read["127.0.0.1"].append(time.time() - 2)  # 2s ago, window=1s
+        rl._read["127.0.0.1"].append(time.time())       # current
+        count = rl.current_count("127.0.0.1", is_write=False)
+        self.assertEqual(count, 1)  # expired entry evicted
+
+
 if __name__ == "__main__":
     unittest.main()

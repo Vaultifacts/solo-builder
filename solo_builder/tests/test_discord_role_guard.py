@@ -230,5 +230,15 @@ class TestCheckAdminRole(unittest.TestCase):
         self.assertTrue(result.allowed)
 
 
+# ---------------------------------------------------------------------------
+# Coverage: load_role_config with None settings_path (line 73)
+# ---------------------------------------------------------------------------
+
+class TestLoadRoleConfigDefaultPath(unittest.TestCase):
+    def test_load_with_none_uses_default(self):
+        cfg = load_role_config(settings_path=None)
+        self.assertIsInstance(cfg, RoleConfig)
+
+
 if __name__ == "__main__":
     unittest.main()

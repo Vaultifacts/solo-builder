@@ -18,6 +18,7 @@ import api.blueprints.ci_quality     as ci_mod
 import api.blueprints.pre_release    as pr_mod
 import api.blueprints.slo            as slo_mod
 import api.blueprints.prompt_regression as preg_mod
+import api.blueprints.threat_model     as tm_mod
 
 # (tool_name, blueprint_module, sys_modules_key)
 _CASES = [
@@ -27,6 +28,7 @@ _CASES = [
     ("pre_release_check",     pr_mod,   "pre_release_check"),
     ("slo_check",             slo_mod,  "slo_check"),
     ("prompt_regression_check", preg_mod, "prompt_regression_check"),
+    ("threat_model_check",    tm_mod,   "threat_model_check"),
 ]
 
 
@@ -64,6 +66,10 @@ class TestLoadToolRealImport(unittest.TestCase):
 
     def test_prompt_regression_check_loads(self):
         mod = preg_mod._load_tool("prompt_regression_check")
+        self.assertIsNotNone(mod)
+
+    def test_threat_model_check_loads(self):
+        mod = tm_mod._load_tool("threat_model_check")
         self.assertIsNotNone(mod)
 
 
