@@ -28,6 +28,22 @@ const _STRINGS = {
   "action.no_task": "No task selected",
   // Keyboard
   "kb.shortcuts": "Keyboard Shortcuts",
+  // Notifications
+  "notif.changes": "subtask(s) changed",
+  "notif.title": "Solo Builder",
+  // Branches
+  "branch.merge_ready": "merge-ready",
+  "branch.hidden": "hidden",
+  "branch.all_verified": "All subtasks verified",
+  // Status
+  "status.verified": "Verified",
+  "status.running": "Running",
+  "status.pending": "Pending",
+  "status.review": "Review",
+  // Misc
+  "misc.no_data": "No data available",
+  "misc.loading": "Loading…",
+  "misc.error": "An error occurred",
 };
 
 export function t(key, fallback) {

@@ -277,5 +277,39 @@ class TestChangesEndpoint(_Base):
         self.assertEqual(d["count"], 2)
 
 
+# ---------------------------------------------------------------------------
+# GET /changes incremental polling
+# ---------------------------------------------------------------------------
+
+class TestChangesIncremental(_Base):
+    def test_changes_incremental_no_overlap(self):
+        """Verify since=4 only returns step>4 changes."""
+        self._write_state({"step": 6, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {
+                "ST-1": {"status": "Verified", "history": [
+                    {"step": 2, "status": "Running"},
+                    {"step": 3, "status": "Review"},
+                    {"step": 5, "status": "Verified"},
+                ]},
+            }}}},
+        }})
+        r = self.client.get("/changes?since=4")
+        d = r.get_json()
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["changes"][0]["step"], 5)
+
+    def test_changes_multiple_subtasks(self):
+        self._write_state({"step": 5, "dag": {
+            "T1": {"branches": {"m": {"subtasks": {
+                "S1": {"status": "Verified", "history": [{"step": 3, "status": "Verified"}]},
+                "S2": {"status": "Running", "history": [{"step": 4, "status": "Running"}]},
+            }}}},
+        }})
+        r = self.client.get("/changes?since=2")
+        d = r.get_json()
+        self.assertEqual(d["count"], 2)
+        self.assertTrue(d["changed"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,21 @@
 # Changelog
 
+## v7.16.0 — 2026-03-13  i18n full rollout + /changes tests + project summary
+
+- **i18n strings expanded**: 15 new keys (notifications, branches, status, misc)
+- **2 new /changes incremental tests**: Verify since filter + multi-subtask changes
+- **Project summary**: v7 feature list documented in CHANGELOG
+
+### v7 Project Summary
+- 220 UX features across 47 dashboard rounds
+- 3580+ tests, 0 failures, 630+ dashboard E2E
+- 51 modules at 100% coverage, bot_formatters 100%, bot_commands 99%
+- PWA: service worker + manifest + browser notifications + i18n
+- WCAG AAA contrast, mobile responsive (320-1024px), 4 breakpoints
+- 97 OpenAPI routes, 0 drift, arch score 100/100
+- TASK-412 (/changes), TASK-418 (PWA), /health/aawo, /perf endpoints
+- 19 ES modules, tiered polling (~85% API reduction), ETag caching
+
 ## v7.15.0 — 2026-03-13  Dashboard UX Round 47 — selected ring, zebra, bold branch, sticky border, Shift+M — 220 UX
 
 - **Card selected ring**: Cyan outline on active/selected task card
