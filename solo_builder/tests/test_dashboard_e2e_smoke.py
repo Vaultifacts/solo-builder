@@ -4089,5 +4089,29 @@ class TestI18nUsedInKeyboard(unittest.TestCase):
     _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
     def test_imports_i18n(self): self.assertIn("i18n.js", self._JS.read_text(encoding="utf-8"))
 
+# 215-219: Round 47
+class TestCardSelectedRing(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".task-card.active", self._CSS.read_text(encoding="utf-8"))
+
+class TestSubtaskZebraDark(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("nth-child(odd)", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchHeaderBold(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("font-weight: 600", self._CSS.read_text(encoding="utf-8"))
+
+class TestStickyHeaderBorder(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".detail-sticky-header", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftM(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"M"', js)
+        self.assertIn("metrics", js)
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,13 @@
 # Changelog
 
+## v7.15.0 — 2026-03-13  Dashboard UX Round 47 — selected ring, zebra, bold branch, sticky border, Shift+M — 220 UX
+
+- **Card selected ring**: Cyan outline on active/selected task card
+- **Subtask zebra dark**: Alternating row backgrounds for dark+light themes
+- **Branch header bold**: Font-weight 600 on branch names for hierarchy
+- **Detail sticky header border**: Bottom border + padding on sticky header
+- **Keyboard `Shift+M` metrics tab**: Toggle metrics tab
+
 ## v7.14.0 — 2026-03-13  i18n integration + PWA/manifest/SW smoke tests
 
 - **i18n integration**: `import { t as i18n }` in keyboard module, `i18n()` used for toast strings

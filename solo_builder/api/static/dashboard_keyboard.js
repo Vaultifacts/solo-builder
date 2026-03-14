@@ -55,6 +55,7 @@ const _SHORTCUTS = [
   ["Shift+T", "Toggle dark/light theme"],
   ["Shift+L", "Toggle journal tab"],
   ["Shift+B", "Toggle branches tab"],
+  ["Shift+M", "Toggle metrics tab"],
 ];
 
 function _showShortcuts() {
@@ -276,6 +277,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "M" && e.shiftKey) {
+    window.switchTab?.("metrics");
     return;
   }
   if (key === "B" && e.shiftKey) {
