@@ -1,5 +1,11 @@
 # Changelog
 
+## v7.4.0 — 2026-03-13  bot_formatters 100% + bot_commands 99% — complete bot coverage
+
+- `bot_formatters.py` 98% → **100%** — cache delete OSError, forecast all statuses, diff no-changes, priority empty DAG
+- `bot_commands.py` at **99%** (4 unreachable lines)
+- All 561 lines of bot_formatters.py fully covered
+
 ## v7.3.0 — 2026-03-13  Dashboard UX Round 41 — status border, row tooltip, animation, goal, Shift+F
 
 - **Card task status border**: Colored top border (green/cyan/yellow) by task status

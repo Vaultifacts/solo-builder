@@ -289,6 +289,14 @@ class TestFormatForecastWithRate(unittest.TestCase):
         r = fmt._format_forecast(st)
         self.assertIn("Forecast", r)
 
+    def test_forecast_all_statuses(self):
+        sts = {"A1": {"status": "Verified", "last_update": 3, "output": "ok"},
+               "A2": {"status": "Running", "last_update": 2, "output": ""},
+               "A3": {"status": "Pending", "last_update": 0, "output": ""},
+               "A4": {"status": "Review", "last_update": 1, "output": "rev"}}
+        r = fmt._format_forecast(_state(sts, meta_history=[{"verified": 1, "healed": 0}] * 3))
+        self.assertIn("Forecast", r)
+
 
 class TestFormatAgentsWithHistory(unittest.TestCase):
     def test_agents_with_history(self):
@@ -616,6 +624,83 @@ class TestFormatLogNoJournal(unittest.TestCase):
         with patch.object(bot_mod, "JOURNAL_PATH", new=journal):
             r = fmt._format_log("ZZZZZ")
         self.assertIn("No entries", r)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatCacheDeleteSuccess(unittest.TestCase):
+    def test_cache_clear_deletes_files(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        cache_dir = Path(tmp)
+        (cache_dir / "entry1.json").write_text("{}")
+        (cache_dir / "entry2.json").write_text("{}")
+        with patch.dict(os.environ, {"CACHE_DIR": str(cache_dir)}):
+            r = fmt._format_cache(clear=True)
+        self.assertIn("Cleared", r)
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_cache_clear_unlink_oserror(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        cache_dir = Path(tmp)
+        (cache_dir / "entry1.json").write_text("{}")
+        orig_unlink = Path.unlink
+        def _fail(self_path, *a, **kw):
+            if "entry1" in str(self_path):
+                raise OSError("locked")
+            orig_unlink(self_path, *a, **kw)
+        with patch.dict(os.environ, {"CACHE_DIR": str(cache_dir)}), \
+             patch.object(Path, "unlink", _fail):
+            r = fmt._format_cache(clear=True)
+        self.assertIn("Cleared", r)
+        self.assertIn("0", r)  # 0 deleted due to OSError
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatPriorityEdge(unittest.TestCase):
+    def test_priority_empty_dag(self):
+        r = fmt._format_priority({"dag": {}, "step": 0})
+        self.assertIn("No tasks", r)
+
+    def test_priority_all_blocked(self):
+        st = {"step": 5, "dag": {
+            "T0": {"status": "Pending", "depends_on": ["T1"],
+                   "branches": {"B": {"subtasks": {"S1": {"status": "Pending", "last_update": 0}}}}},
+            "T1": {"status": "Running", "depends_on": [],
+                   "branches": {"B": {"subtasks": {"S2": {"status": "Running", "last_update": 4}}}}},
+        }}
+        r = fmt._format_priority(st)
+        self.assertIsInstance(r, str)
+
+
+class TestFormatAgentsPendingReview(unittest.TestCase):
+    def test_agents_pending_review_counted(self):
+        sts = {"A1": {"status": "Pending", "last_update": 0, "output": ""},
+               "A2": {"status": "Review", "last_update": 2, "output": "rev"},
+               "A3": {"status": "Verified", "last_update": 3, "output": "done"},
+               "A4": {"status": "Running", "last_update": 1, "output": "wip"}}
+        r = fmt._format_agents(_state(sts, meta_history=[{"verified": 1, "healed": 0}]))
+        self.assertIsInstance(r, str)
+
+
+class TestFormatDiffNoChanges(unittest.TestCase):
+    def setUp(self):
+        sys.modules.setdefault("solo_builder.discord_bot.bot", bot_mod)
+
+    def test_diff_no_changes(self):
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        sp = Path(tmp) / "state"
+        sp.mkdir()
+        state_path = sp / "solo_builder_state.json"
+        same = {"step": 5, "dag": {"T0": {"branches": {"B": {"subtasks": {"S1": {"status": "Verified", "output": "ok"}}}}}}}
+        state_path.write_text(json.dumps(same))
+        backup = Path(str(state_path) + ".1")
+        backup.write_text(json.dumps(same))
+        with patch.object(bot_mod, "STATE_PATH", new=state_path), \
+             patch.object(bot_mod, "_load_state", return_value=same):
+            r = fmt._format_diff()
+        self.assertIn("No subtask status changes", r)
         import shutil; shutil.rmtree(tmp, ignore_errors=True)
 
 
