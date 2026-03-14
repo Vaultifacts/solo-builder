@@ -46,6 +46,7 @@ const _SHORTCUTS = [
   ["Shift+C", "Copy all subtask outputs"],
   ["Shift+D", "Download DAG as JSON"],
   ["Shift+S", "Trigger snapshot"],
+  ["Shift+P", "Toggle pause auto-run"],
 ];
 
 function _showShortcuts() {
@@ -267,6 +268,12 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "P" && e.shiftKey) {
+    fetch(state.base + (state.pollPaused ? "/resume" : "/pause"), { method: "POST" })
+      .then(() => { state.pollPaused = !state.pollPaused; toast(state.pollPaused ? "Auto paused" : "Auto resumed"); })
+      .catch(() => toast("Failed"));
     return;
   }
   if (key === "S" && e.shiftKey) {

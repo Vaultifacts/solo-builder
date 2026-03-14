@@ -515,6 +515,15 @@ export function renderGrid(tasks) {
       pctLabel.textContent = pct > 0 ? `${pct}%` : "";
       pctLabel.className = `card-pct-label ${pct >= 80 ? "pct-high" : pct >= 50 ? "pct-mid" : "pct-low"}`;
     }
+    // Card large progress text
+    let bigPctEl = card.querySelector(".card-big-pct");
+    if (!bigPctEl) {
+      bigPctEl = document.createElement("div");
+      bigPctEl.className = "card-big-pct";
+      card.appendChild(bigPctEl);
+    }
+    bigPctEl.textContent = pct > 0 ? `${pct}%` : "";
+
     const _pendingSt = t.subtask_count - t.verified_subtasks - t.running_subtasks - (t.review_subtasks || 0);
     // Card status text color
     const countsEl = card.querySelector(".card-counts");
@@ -892,6 +901,16 @@ export function renderDetail(t) {
     taskTimer.title = `Created: ${t.created_at}`;
   }
   taskIdDiv.appendChild(taskTimer);
+
+  // Last modified time
+  const lastModEl = document.createElement("span");
+  lastModEl.className = "detail-last-mod";
+  if (t.last_active) {
+    const _modRel = _relativeTime(t.last_active);
+    if (_modRel) lastModEl.textContent = `✎${_modRel}`;
+    lastModEl.title = `Last modified: ${t.last_active}`;
+  }
+  taskIdDiv.appendChild(lastModEl);
 
   const statusDiv = document.createElement("div");
   statusDiv.className = "detail-status";
@@ -1344,6 +1363,8 @@ export function renderDetail(t) {
     if (_bs && _bs.total > 0) {
       const bPct = Math.round(_bs.verified / _bs.total * 100);
       branchPctSpan.textContent = ` ${bPct}%`;
+      // Inline pct bar
+      branchPctSpan.style.cssText += `;background:linear-gradient(90deg,rgba(34,197,94,0.2) ${bPct}%,transparent ${bPct}%);padding:0 4px;border-radius:3px`;
     }
     const branchCountSpan = document.createElement("span");
     branchCountSpan.className = "branch-st-count";

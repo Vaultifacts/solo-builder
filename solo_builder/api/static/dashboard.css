@@ -934,6 +934,12 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card large progress text ────────────────────────────── */
+  .card-big-pct { position: absolute; right: 6px; bottom: 6px; font-size: 16px; font-weight: bold; color: var(--dim); opacity: 0.15; pointer-events: none; }
+  /* ── Subtask row hover highlight ───────────────────────── */
+  .subtask-row:hover { border-left: 2px solid var(--cyan); padding-left: 2px; }
+  /* ── Detail last-modified ──────────────────────────────── */
+  .detail-last-mod { font-size: 9px; color: var(--dim); margin-left: 8px; }
   /* ── Card verified delta badge ───────────────────────────── */
   .card-verified-delta { font-size: 9px; color: var(--green); margin-left: 4px; font-weight: bold; }
   /* ── Subtask row number ────────────────────────────────── */

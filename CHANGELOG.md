@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.98.0 — 2026-03-13  Dashboard UX Round 39 — big pct, row hover, branch bar, last-mod, Shift+P
+
+- **Card large progress text**: Big faded % number overlay on each card
+- **Subtask row hover highlight**: Cyan left border on hover for readability
+- **Branch verified percentage bar**: Inline green gradient in branch header pct
+- **Detail panel last-modified**: ✎ relative time since task last modified
+- **Keyboard `Shift+P` toggle pause**: Press Shift+P to toggle auto-run pause
+
+### Stats
+- 580 dashboard E2E smoke tests (7 new), 180 UX features across v6.39–v6.98
+
 ## v6.97.0 — 2026-03-13  Performance audit — GET /perf endpoint + OpenAPI update
 
 - **GET /perf**: Backend performance metrics (state file size, task/subtask counts, step)

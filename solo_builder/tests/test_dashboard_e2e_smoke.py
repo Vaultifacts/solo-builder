@@ -3875,5 +3875,33 @@ class TestKeyboardShiftS(unittest.TestCase):
         self.assertIn('"S"', js)
         self.assertIn("snapshot", js)
 
+# 175-179: Round 39
+class TestCardBigPct(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("card-big-pct", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".card-big-pct", self._CSS.read_text(encoding="utf-8"))
+
+class TestSubtaskRowHover(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".subtask-row:hover", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchPctBar(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self): self.assertIn("linear-gradient", self._JS.read_text(encoding="utf-8"))
+
+class TestDetailLastMod(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-last-mod", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-last-mod", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftP(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"P"', js)
+        self.assertIn("Shift+P", js)
+
 if __name__ == "__main__":
     unittest.main()
