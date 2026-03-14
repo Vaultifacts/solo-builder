@@ -3804,5 +3804,44 @@ class TestKeyboardShiftC(unittest.TestCase):
         self.assertIn('"C"', js)
         self.assertIn("Shift+C", js)
 
+# 165-169: Round 37
+class TestCardStatusTextColor(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self):
+        css = self._CSS.read_text(encoding="utf-8")
+        self.assertIn(".counts-done", css)
+        self.assertIn(".counts-active", css)
+
+class TestSubtaskDepCount(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self):
+        self.assertIn("st-dep-count", self._JS.read_text(encoding="utf-8"))
+    def test_css(self):
+        self.assertIn(".st-dep-count", self._CSS.read_text(encoding="utf-8"))
+
+class TestBranchStatusSummary(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self):
+        self.assertIn("branch-status-line", self._JS.read_text(encoding="utf-8"))
+    def test_css(self):
+        self.assertIn(".branch-status-line", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailRefreshTimer(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self):
+        self.assertIn("detail-refresh-timer", self._JS.read_text(encoding="utf-8"))
+    def test_css(self):
+        self.assertIn(".detail-refresh-timer", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftD(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"D"', js)
+        self.assertIn("dag/export", js)
+
 if __name__ == "__main__":
     unittest.main()

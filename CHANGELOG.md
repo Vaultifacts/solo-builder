@@ -1,5 +1,16 @@
 # Changelog
 
+## v6.91.0 — 2026-03-13  Dashboard UX Round 37 — status colors, dep count, branch summary, refresh timer, Shift+D
+
+- **Card status text color**: Counts line green (done), cyan (active), dim (idle)
+- **Subtask dependency count badge**: N↗ badge next to dep chips
+- **Branch status summary line**: "2✓ 1▶ 1◯" compact status in branch header
+- **Detail panel refresh timer**: "just now" timestamp in sticky header
+- **Keyboard `Shift+D` download DAG**: Downloads DAG as JSON file
+
+### Stats
+- 564 dashboard E2E smoke tests (8 new), 170 UX features across v6.39–v6.91
+
 ## v6.90.0 — 2026-03-13  Bot formatters coverage 68% → 80% + OpenAPI spec update
 
 - **35 new tests** in `test_bot_formatters_coverage.py`

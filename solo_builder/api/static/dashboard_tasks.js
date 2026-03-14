@@ -509,7 +509,10 @@ export function renderGrid(tasks) {
       pctLabel.className = `card-pct-label ${pct >= 80 ? "pct-high" : pct >= 50 ? "pct-mid" : "pct-low"}`;
     }
     const _pendingSt = t.subtask_count - t.verified_subtasks - t.running_subtasks - (t.review_subtasks || 0);
-    card.querySelector(".card-counts").textContent =
+    // Card status text color
+    const countsEl = card.querySelector(".card-counts");
+    countsEl.className = `card-counts ${pct >= 100 ? "counts-done" : t.running_subtasks > 0 ? "counts-active" : "counts-idle"}`;
+    countsEl.textContent =
       `${t.verified_subtasks}/${t.subtask_count} verified` +
       (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
       (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "") +
@@ -1275,7 +1278,13 @@ export function renderDetail(t) {
   const _savedZoom = localStorage.getItem("sb-detail-zoom");
   if (_savedZoom) el.style.fontSize = `${_savedZoom}em`;
 
-  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch, zoomWrap);
+  // Auto-refresh timer
+  const refreshTimer = document.createElement("span");
+  refreshTimer.className = "detail-refresh-timer";
+  refreshTimer.textContent = "just now";
+  window._detailLastRefresh = Date.now();
+
+  stickyHeader.append(taskIdDiv, progressRow, branchProgressDiv, branchSummary, statusSummary, filterPills, statusDiv, detailSearch, zoomWrap, refreshTimer);
 
   // Task notes
   const notesWrap = document.createElement("div");
@@ -1382,7 +1391,14 @@ export function renderDetail(t) {
       branchRunDot.classList.add("active");
       branchRunDot.title = `${_bs.running} running`;
     }
-    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchRunDot, branchPctSpan, branchCountSpan, branchVerifiedBadge, branchLastActive, branchElapsed, branchDiffSpan);
+    // Branch status summary line
+    const branchStatusLine = document.createElement("span");
+    branchStatusLine.className = "branch-status-line";
+    if (_bs) {
+      const _bPending = _bs.total - _bs.verified - _bs.running - (_bs.review || 0);
+      branchStatusLine.textContent = `${_bs.verified}✓ ${_bs.running}▶ ${_bPending}◯`;
+    }
+    branchNameEl.append(collapseArrow, " " + bname, readinessDot, branchHealthDot, branchRunDot, branchPctSpan, branchCountSpan, branchVerifiedBadge, branchStatusLine, branchLastActive, branchElapsed, branchDiffSpan);
     branchNameEl.style.cursor = "pointer";
     // Restore collapsed state from localStorage
     const _collapseKey = `sb-branch-${t.id}-${bname}`;
@@ -1577,6 +1593,12 @@ export function renderDetail(t) {
           });
           depWrap.appendChild(chip);
         }
+        // Dependency count badge
+        const depCntBadge = document.createElement("span");
+        depCntBadge.className = "st-dep-count";
+        depCntBadge.textContent = `${s.depends_on.length}↗`;
+        depCntBadge.title = `${s.depends_on.length} dependencies`;
+        depWrap.appendChild(depCntBadge);
         row.appendChild(depWrap);
       }
 

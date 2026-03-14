@@ -44,6 +44,7 @@ const _SHORTCUTS = [
   ["Shift+R", "Reset selected task"],
   ["Shift+V", "Verify all unverified subtasks"],
   ["Shift+C", "Copy all subtask outputs"],
+  ["Shift+D", "Download DAG as JSON"],
 ];
 
 function _showShortcuts() {
@@ -265,6 +266,16 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "D" && e.shiftKey) {
+    fetch(state.base + "/dag/export").then(r => r.blob()).then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "dag_export.json"; a.click();
+      URL.revokeObjectURL(url);
+      toast("DAG downloaded");
+    }).catch(() => toast("Download failed"));
     return;
   }
   if (key === "C" && e.shiftKey && !e.ctrlKey) {
