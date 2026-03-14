@@ -4064,5 +4064,30 @@ class TestKeyboardShiftB(unittest.TestCase):
         self.assertIn('"B"', js)
         self.assertIn("Shift+B", js)
 
+# i18n + manifest smoke tests
+class TestI18nFile(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "i18n.js"
+    def test_exists(self): self.assertTrue(self._JS.exists())
+    def test_has_strings(self): self.assertIn("hdr.title", self._JS.read_text(encoding="utf-8"))
+    def test_exports_t(self): self.assertIn("export function t", self._JS.read_text(encoding="utf-8"))
+
+class TestManifestFile(unittest.TestCase):
+    _JSON = Path(__file__).resolve().parents[1] / "api" / "static" / "manifest.json"
+    def test_exists(self): self.assertTrue(self._JSON.exists())
+    def test_valid_json(self):
+        import json
+        data = json.loads(self._JSON.read_text(encoding="utf-8"))
+        self.assertIn("name", data)
+        self.assertEqual(data["display"], "standalone")
+
+class TestSwFile(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "sw.js"
+    def test_exists(self): self.assertTrue(self._JS.exists())
+    def test_has_cache_name(self): self.assertIn("CACHE_NAME", self._JS.read_text(encoding="utf-8"))
+
+class TestI18nUsedInKeyboard(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_imports_i18n(self): self.assertIn("i18n.js", self._JS.read_text(encoding="utf-8"))
+
 if __name__ == "__main__":
     unittest.main()

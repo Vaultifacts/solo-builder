@@ -4,6 +4,7 @@
  */
 import { state } from "./dashboard_state.js";
 import { toast } from "./dashboard_utils.js";
+import { t as i18n } from "./i18n.js";
 
 /* ── Keyboard shortcuts ──────────────────────────────────── */
 const _SHORTCUTS = [
@@ -349,7 +350,7 @@ document.addEventListener("keydown", (e) => {
     else { toast("No task selected"); }
     return;
   }
-  if (key === "r") { toast("Refreshing…"); window.tick?.(); return; }
+  if (key === "r") { toast(i18n("action.refreshing", "Refreshing…")); window.tick?.(); return; }
   if (key === "q") {
     const pills = [...document.querySelectorAll(".detail-filter-pill")];
     if (pills.length > 0) {

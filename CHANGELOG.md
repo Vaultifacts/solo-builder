@@ -1,5 +1,11 @@
 # Changelog
 
+## v7.14.0 — 2026-03-13  i18n integration + PWA/manifest/SW smoke tests
+
+- **i18n integration**: `import { t as i18n }` in keyboard module, `i18n()` used for toast strings
+- **E2E smoke tests**: 7 new tests for i18n.js, manifest.json, sw.js, keyboard i18n import
+- OpenAPI 0 drift confirmed
+
 ## v7.13.0 — 2026-03-13  Dashboard UX Round 46 — opacity, active row, shadow, ellipsis, Shift+B — 215 UX
 
 - **Card complete opacity**: Completed cards fade to 70% opacity (hover restores)
