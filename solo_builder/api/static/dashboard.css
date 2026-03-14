@@ -701,6 +701,21 @@
     .stat-val  { font-size: 16px; }
     .progress-wrap { min-width: 100%; }
     #btn-export, #btn-theme, #btn-view { font-size: 10px; padding: 2px 6px; }
+    .task-card { min-width: 120px; }
+    .card-big-pct { display: none; }
+    .card-heatmap { display: none; }
+    .detail-actions-bar { flex-wrap: wrap; }
+    .detail-inline-search { width: 100%; }
+  }
+
+  @media (max-width: 480px) {
+    header h1 { font-size: 10px; }
+    .stat-val { font-size: 14px; }
+    .card-sparkline { display: none; }
+    .card-progress-ring { display: none; }
+    .st-word-cloud { display: none; }
+    .branch-last-active { display: none; }
+    .branch-elapsed { display: none; }
   }
 
   /* ── Card last-active relative time ────────────────────── */

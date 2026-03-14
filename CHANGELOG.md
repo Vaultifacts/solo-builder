@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.8.0 — 2026-03-13  Mobile responsive + test consolidation + rate limiter review
+
+- **Mobile responsive (480px)**: Hide sparkline, progress ring, word cloud on small screens
+- **Mobile responsive (768px)**: Compact task cards, full-width search, hide heatmap
+- **Test consolidation**: 3548 tests clean, no redundancies found
+- **Rate limiter review**: read_limit=300 confirmed optimal with tiered polling
+
 ## v7.7.0 — 2026-03-13  Dashboard UX Round 43 — confetti, fullscreen, Shift+H — 200 UX milestone!
 
 - **Card completion confetti**: Particle burst animation on 100% completion
