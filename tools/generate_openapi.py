@@ -192,6 +192,17 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "gates": {"type": "array", "items": {"type": "object"}},
      }}},
+    {"path": "/changes",                 "method": "GET", "tag": "Core",   "summary": "Lightweight change detection since a given step (TASK-412)",
+     "response": {"type": "object", "properties": {
+         "step": {"type": "integer"}, "since": {"type": "integer"},
+         "changed": {"type": "boolean"}, "count": {"type": "integer"},
+         "changes": {"type": "array", "items": {"type": "object"}},
+     }}},
+    {"path": "/health/aawo",             "method": "GET", "tag": "Health", "summary": "AAWO status: active agents, outcome stats, agent configs",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "available": {"type": "boolean"},
+         "active_agents": {"type": "array"}, "outcome_stats": {"type": "object"},
+     }}},
     {"path": "/health/live-summary",     "method": "GET", "tag": "Health", "summary": "Live in-process health summary (threat-model + context-window + slo)",
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "checks": {"type": "object"},

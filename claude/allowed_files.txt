@@ -276,3 +276,4 @@ solo_builder/tests/test_live_summary_blueprint.py
 solo_builder/tests/test_metrics_blueprint.py
 solo_builder/tests/test_anthropic_runner.py
 solo_builder/tests/test_bot_commands_coverage.py
+solo_builder/tests/test_bot_formatters_coverage.py

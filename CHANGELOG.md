@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.90.0 — 2026-03-13  Bot formatters coverage 68% → 80% + OpenAPI spec update
+
+- **35 new tests** in `test_bot_formatters_coverage.py`
+- `bot_formatters.py` 68% → **80%** — all 18 formatter functions tested
+- OpenAPI spec updated with `/changes` + `/health/aawo` routes (92 → 94 routes)
+- Drift tests passing again (0 route mismatches)
+
+### Stats
+- 3442 total tests, 0 failures
+
 ## v6.89.0 — 2026-03-13  AAWO expansion — GET /health/aawo standalone endpoint
 
 - **GET /health/aawo**: Standalone AAWO status endpoint with active_agents, outcome_stats, agent_configs
