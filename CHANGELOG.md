@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.85.0 — 2026-03-13  Coverage Push Round 12 — bot_commands 0% → 90%
+
+- **69 new tests** extending `test_bot_commands_coverage.py`
+- `bot_commands.py` 27% → **90%** — full _handle_text_command dispatcher coverage (all 44 command branches)
+- Covers: status, run, auto, stop, verify, export, add_task, add_branch, output, describe, tools, reset, snapshot, prioritize_branch, depends, undepends, set, undo, pause, resume, config, graph, priority, stalled, heal, reset_task, reset_branch, bulk_reset, bulk_verify, task_progress, agents, forecast, tasks, diff, filter, timeline, stats, cache, history, search, log, branches, subtasks, rename, heartbeat, help
+
+### Stats
+- 3370 total tests, 0 failures
+
 ## v6.84.0 — 2026-03-13  Coverage Push Round 11 — bot_commands 0% → 27%, anthropic_runner 100%
 
 - **19 new tests** in new `test_bot_commands_coverage.py`

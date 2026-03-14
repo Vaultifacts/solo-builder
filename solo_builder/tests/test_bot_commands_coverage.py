@@ -167,5 +167,446 @@ class TestHelpText(unittest.TestCase):
         self.assertIn("STALL_THRESHOLD", cmd_mod._KEY_MAP)
 
 
+# ---------------------------------------------------------------------------
+# _handle_text_command dispatcher tests
+# ---------------------------------------------------------------------------
+
+import asyncio
+from unittest.mock import AsyncMock
+
+
+class _DispatchBase(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._sp = Path(self._tmp) / "state"
+        self._sp.mkdir()
+        # Patch all trigger paths (module-level globals in bot.py)
+        attrs = {
+            "STATE_PATH": self._sp / "state.json",
+            "SETTINGS_PATH": self._sp / "settings.json",
+            "TRIGGER_PATH": self._sp / "run_trigger",
+            "STOP_TRIGGER": self._sp / "stop_trigger",
+            "VERIFY_TRIGGER": self._sp / "verify.json",
+            "DESCRIBE_TRIGGER": self._sp / "describe.json",
+            "TOOLS_TRIGGER": self._sp / "tools.json",
+            "RENAME_TRIGGER": self._sp / "rename.json",
+            "HEAL_TRIGGER": self._sp / "heal.json",
+            "ADD_TASK_TRIGGER": self._sp / "add_task.json",
+            "ADD_BRANCH_TRIGGER": self._sp / "add_branch.json",
+            "PRIORITY_BRANCH_TRIGGER": self._sp / "priority.json",
+            "DEPENDS_TRIGGER": self._sp / "depends.json",
+            "UNDEPENDS_TRIGGER": self._sp / "undepends.json",
+            "RESET_TRIGGER": self._sp / "reset_trigger",
+            "SNAPSHOT_TRIGGER": self._sp / "snapshot_trigger",
+            "PAUSE_TRIGGER": self._sp / "pause_trigger",
+            "UNDO_TRIGGER": self._sp / "undo_trigger",
+            "SET_TRIGGER": self._sp / "set.json",
+            "OUTPUTS_PATH": self._sp / "outputs.md",
+            "SNAPSHOTS_DIR": self._sp / "snapshots",
+            "STEP_PATH": self._sp / "step.txt",
+        }
+        (self._sp / "settings.json").write_text("{}", encoding="utf-8")
+        self._patches = [patch.object(bot_mod, k, new=v) for k, v in attrs.items()]
+        self._patches.append(patch.object(cmd_mod, "_bot", return_value=bot_mod))
+        bot_mod._send = AsyncMock()
+        bot_mod._load_state = MagicMock(return_value=_state())
+        bot_mod._auto_running = MagicMock(return_value=False)
+        bot_mod._read_heartbeat = MagicMock(return_value=None)
+        bot_mod._auto_task = None
+        for p in self._patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self._patches:
+            p.stop()
+        import shutil
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _msg(self, content):
+        m = MagicMock()
+        m.content = content
+        m.channel = MagicMock()
+        m.channel.id = 123
+        return m
+
+    def _run(self, content):
+        asyncio.run(cmd_mod._handle_text_command(self._msg(content)))
+
+
+class TestDispatchStatus(_DispatchBase):
+    def test_status(self):
+        self._run("status")
+        bot_mod._send.assert_called_once()
+
+    def test_status_auto_running(self):
+        bot_mod._auto_running.return_value = True
+        bot_mod.PAUSE_TRIGGER.write_text("1")
+        self._run("status")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("paused", args[1])
+
+
+class TestDispatchRun(_DispatchBase):
+    def test_run_has_work(self):
+        self._run("run")
+        self.assertTrue(bot_mod.TRIGGER_PATH.exists())
+
+    def test_run_complete(self):
+        bot_mod._load_state.return_value = _state({"A1": {"status": "Verified", "last_update": 0, "output": ""}})
+        self._run("run")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("complete", args[1])
+
+
+class TestDispatchVerify(_DispatchBase):
+    def test_verify_usage(self):
+        self._run("verify")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_verify_with_subtask(self):
+        self._run("verify A1 looks good")
+        self.assertTrue(bot_mod.VERIFY_TRIGGER.exists())
+
+
+class TestDispatchAddTask(_DispatchBase):
+    def test_add_task_usage(self):
+        self._run("add_task")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_add_task_success(self):
+        self._run("add_task Build OAuth flow")
+        self.assertTrue(bot_mod.ADD_TASK_TRIGGER.exists())
+
+
+class TestDispatchAddBranch(_DispatchBase):
+    def test_add_branch_usage(self):
+        self._run("add_branch")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_add_branch_success(self):
+        self._run("add_branch 0 Add error handling")
+        self.assertTrue(bot_mod.ADD_BRANCH_TRIGGER.exists())
+
+
+class TestDispatchOutput(_DispatchBase):
+    def test_output_usage(self):
+        self._run("output")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_output_found(self):
+        self._run("output A1")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchDescribe(_DispatchBase):
+    def test_describe_usage(self):
+        self._run("describe A1")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_describe_success(self):
+        self._run("describe A1 Implement retry logic")
+        self.assertTrue(bot_mod.DESCRIBE_TRIGGER.exists())
+
+
+class TestDispatchTools(_DispatchBase):
+    def test_tools_usage(self):
+        self._run("tools A1")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_tools_success(self):
+        self._run("tools A1 Read,Glob,Grep")
+        self.assertTrue(bot_mod.TOOLS_TRIGGER.exists())
+
+
+class TestDispatchReset(_DispatchBase):
+    def test_reset_warn(self):
+        self._run("reset")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("destroy", args[1])
+
+    def test_reset_confirm(self):
+        self._run("reset confirm")
+        self.assertTrue(bot_mod.RESET_TRIGGER.exists())
+
+
+class TestDispatchSimpleCommands(_DispatchBase):
+    def test_undo(self):
+        self._run("undo")
+        self.assertTrue(bot_mod.UNDO_TRIGGER.exists())
+
+    def test_stop(self):
+        self._run("stop")
+        self.assertTrue(bot_mod.STOP_TRIGGER.exists())
+
+    def test_graph(self):
+        self._run("graph")
+        bot_mod._send.assert_called_once()
+
+    def test_priority(self):
+        self._run("priority")
+        bot_mod._send.assert_called_once()
+
+    def test_stalled(self):
+        self._run("stalled")
+        bot_mod._send.assert_called_once()
+
+    def test_agents(self):
+        self._run("agents")
+        bot_mod._send.assert_called_once()
+
+    def test_forecast(self):
+        self._run("forecast")
+        bot_mod._send.assert_called_once()
+
+    def test_tasks(self):
+        self._run("tasks")
+        bot_mod._send.assert_called_once()
+
+    def test_diff(self):
+        self._run("diff")
+        bot_mod._send.assert_called_once()
+
+    def test_stats(self):
+        self._run("stats")
+        bot_mod._send.assert_called_once()
+
+    def test_cache(self):
+        self._run("cache")
+        bot_mod._send.assert_called_once()
+
+    def test_cache_clear(self):
+        self._run("cache clear")
+        bot_mod._send.assert_called_once()
+
+    def test_help(self):
+        self._run("help")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("status", args[1])
+
+    def test_help_question(self):
+        self._run("?")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchHistory(_DispatchBase):
+    def test_history_default(self):
+        self._run("history")
+        bot_mod._send.assert_called_once()
+
+    def test_history_with_n(self):
+        self._run("history 5")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchSearch(_DispatchBase):
+    def test_search(self):
+        self._run("search auth")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchFilter(_DispatchBase):
+    def test_filter(self):
+        self._run("filter Running")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchTimeline(_DispatchBase):
+    def test_timeline(self):
+        self._run("timeline A1")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchLog(_DispatchBase):
+    def test_log(self):
+        self._run("log A1")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchBranches(_DispatchBase):
+    def test_branches(self):
+        self._run("branches")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchSubtasks(_DispatchBase):
+    def test_subtasks(self):
+        self._run("subtasks")
+        bot_mod._send.assert_called_once()
+
+    def test_subtasks_with_filters(self):
+        self._run("subtasks task=Task0 status=Running")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchRename(_DispatchBase):
+    def test_rename_usage(self):
+        self._run("rename A1")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_rename_success(self):
+        self._run("rename A1 New description")
+        self.assertTrue(bot_mod.RENAME_TRIGGER.exists())
+
+
+class TestDispatchHeartbeat(_DispatchBase):
+    def test_heartbeat_no_data(self):
+        self._run("heartbeat")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("No heartbeat", args[1])
+
+    def test_heartbeat_with_data(self):
+        bot_mod._read_heartbeat.return_value = (10, 5, 20, 8, 3, 4)
+        self._run("heartbeat")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Step 10", args[1])
+
+
+class TestDispatchSet(_DispatchBase):
+    def test_set_key_value(self):
+        self._run("set STALL_THRESHOLD=10")
+        self.assertTrue(bot_mod.SET_TRIGGER.exists())
+
+    def test_set_show_value(self):
+        self._run("set STALL_THRESHOLD")
+        bot_mod._send.assert_called_once()
+
+    def test_set_unknown_key(self):
+        self._run("set NONEXISTENT_KEY")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Unknown", args[1])
+
+
+class TestDispatchDepends(_DispatchBase):
+    def test_depends_graph(self):
+        self._run("depends")
+        bot_mod._send.assert_called_once()
+
+    def test_depends_add(self):
+        self._run("depends Task0 Task1")
+        self.assertTrue(bot_mod.DEPENDS_TRIGGER.exists())
+
+
+class TestDispatchUndepends(_DispatchBase):
+    def test_undepends_usage(self):
+        self._run("undepends Task0")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_undepends_success(self):
+        self._run("undepends Task0 Task1")
+        self.assertTrue(bot_mod.UNDEPENDS_TRIGGER.exists())
+
+
+class TestDispatchPrioritizeBranch(_DispatchBase):
+    def test_prioritize_usage(self):
+        self._run("prioritize_branch Task0")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+    def test_prioritize_success(self):
+        self._run("prioritize_branch Task0 BranchA")
+        self.assertTrue(bot_mod.PRIORITY_BRANCH_TRIGGER.exists())
+
+
+class TestDispatchPause(_DispatchBase):
+    def test_pause_no_auto(self):
+        self._run("pause")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("No auto", args[1])
+
+    def test_pause_with_auto(self):
+        bot_mod._auto_running.return_value = True
+        self._run("pause")
+        self.assertTrue(bot_mod.PAUSE_TRIGGER.exists())
+
+
+class TestDispatchResume(_DispatchBase):
+    def test_resume_not_paused(self):
+        self._run("resume")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Not paused", args[1])
+
+    def test_resume_paused(self):
+        bot_mod.PAUSE_TRIGGER.write_text("1")
+        self._run("resume")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Resumed", args[1])
+
+
+class TestDispatchConfig(_DispatchBase):
+    def test_config(self):
+        self._run("config")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchAuto(_DispatchBase):
+    def test_auto_already_running(self):
+        bot_mod._auto_running.return_value = True
+        self._run("auto")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("already running", args[1])
+
+    def test_auto_start(self):
+        bot_mod._run_auto = AsyncMock()
+        self._run("auto 5")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchSnapshot(_DispatchBase):
+    def test_snapshot_no_pdf(self):
+        self._run("snapshot")
+        self.assertTrue(bot_mod.SNAPSHOT_TRIGGER.exists())
+
+
+class TestDispatchExport(_DispatchBase):
+    def test_export_no_file(self):
+        self._run("export")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("No export", args[1])
+
+
+class TestDispatchHealCmd(_DispatchBase):
+    def test_heal_dispatch(self):
+        self._run("heal A1")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchResetTask(_DispatchBase):
+    def test_reset_task_dispatch(self):
+        self._run("reset_task Task0")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchResetBranch(_DispatchBase):
+    def test_reset_branch_dispatch(self):
+        self._run("reset_branch Task0 BranchA")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchBulkReset(_DispatchBase):
+    def test_bulk_reset_dispatch(self):
+        self._run("bulk_reset A1")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchBulkVerify(_DispatchBase):
+    def test_bulk_verify_dispatch(self):
+        self._run("bulk_verify A1")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchTaskProgress(_DispatchBase):
+    def test_task_progress_dispatch(self):
+        self._run("task_progress Task0")
+        bot_mod._send.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
