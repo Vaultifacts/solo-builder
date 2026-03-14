@@ -3,6 +3,7 @@ solo_builder_cli.py
 Solo Builder AI Agent CLI — main entry point.
 
 Agents:
+  RepoAnalyzer   → scans repo for tech debt, injects new subtasks
   Planner        → prioritizes subtasks by risk
   Executor       → advances subtask lifecycle (Pending → Running → Verified)
   ShadowAgent    → tracks expected states, detects & resolves conflicts
@@ -54,6 +55,8 @@ try:
     _PDF_OK = True
 except ImportError:
     _PDF_OK = False
+
+from agents.repo_analyzer import RepoAnalyzer
 
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -1295,8 +1298,9 @@ class SoloBuilderCLI:
     Orchestrates all agents and handles the interactive CLI loop.
 
     Step lifecycle:
-        Planner → ShadowAgent (conflicts) → SelfHealer → Executor
-        → Verifier → ShadowAgent (update expected) → MetaOptimizer → display
+        RepoAnalyzer → Planner → ShadowAgent (conflicts) → SelfHealer
+        → Executor → Verifier → ShadowAgent (update expected)
+        → MetaOptimizer → display
     """
 
     def __init__(self) -> None:
@@ -1314,6 +1318,7 @@ class SoloBuilderCLI:
         self._last_verified_tasks: int = 0   # triggers cache refresh when a task unblocks
 
         # Agents
+        self.repo_analyzer = RepoAnalyzer(settings=_CFG)
         self.planner  = Planner(stall_threshold=STALL_THRESHOLD)
         self.executor = Executor(max_per_step=EXEC_MAX_PER_STEP,
                                  verify_prob=EXEC_VERIFY_PROB)
@@ -1337,6 +1342,11 @@ class SoloBuilderCLI:
         """Execute one full agent pipeline step."""
         self.step += 1
         step_alerts: List[str] = []
+
+        # 0. RepoAnalyzer: scan for tech debt and inject new subtasks
+        ra_added = self.repo_analyzer.analyze(
+            self.dag, self.memory_store, self.step, step_alerts,
+        )
 
         # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps,
         #    or immediately when a task flips to Verified — which unblocks dependents)
