@@ -1,5 +1,16 @@
 # Changelog
 
+## v7.1.0 — 2026-03-13  Dashboard UX Round 40 — mini icons, name copy, ID prefix, Shift+X
+
+- **Card mini status icons**: ✓N/▶N/⏸N/◯N colored inline icons on counts
+- **Subtask name click-to-copy**: Click subtask name to copy to clipboard
+- **Detail panel ID prefix badge**: "ID" prefix badge before task ID
+- **Branch auto-expand**: Clicking collapsed branch name expands it (existing)
+- **Keyboard `Shift+X` expand all**: Expands all collapsed branches
+
+### Stats
+- 587 dashboard E2E smoke tests (7 new), 185 UX features across v6.39–v7.1
+
 ## v7.0.0 — 2026-03-13  Dashboard /perf widget + perf-content header display
 
 - **pollPerf()**: New slow-tier poller fetches /perf endpoint

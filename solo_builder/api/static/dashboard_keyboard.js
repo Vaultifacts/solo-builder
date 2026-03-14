@@ -47,6 +47,7 @@ const _SHORTCUTS = [
   ["Shift+D", "Download DAG as JSON"],
   ["Shift+S", "Trigger snapshot"],
   ["Shift+P", "Toggle pause auto-run"],
+  ["Shift+X", "Expand all branches"],
 ];
 
 function _showShortcuts() {
@@ -268,6 +269,11 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "X" && e.shiftKey) {
+    window.expandAllBranches?.();
+    toast("Expanded all branches");
     return;
   }
   if (key === "P" && e.shiftKey) {

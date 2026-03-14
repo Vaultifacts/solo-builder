@@ -528,11 +528,11 @@ export function renderGrid(tasks) {
     // Card status text color
     const countsEl = card.querySelector(".card-counts");
     countsEl.className = `card-counts ${pct >= 100 ? "counts-done" : t.running_subtasks > 0 ? "counts-active" : "counts-idle"}`;
-    countsEl.textContent =
-      `${t.verified_subtasks}/${t.subtask_count} verified` +
-      (t.running_subtasks > 0 ? ` · ${t.running_subtasks}▶` : "") +
-      (t.review_subtasks  > 0 ? ` · ${t.review_subtasks}⏸`  : "") +
-      (_pendingSt > 0 ? ` · ${_pendingSt}◯` : "");
+    countsEl.innerHTML =
+      `<span class="cnt-icon cnt-v">✓${t.verified_subtasks}</span>/${t.subtask_count}` +
+      (t.running_subtasks > 0 ? ` · <span class="cnt-icon cnt-r">▶${t.running_subtasks}</span>` : "") +
+      (t.review_subtasks  > 0 ? ` · <span class="cnt-icon cnt-rv">⏸${t.review_subtasks}</span>`  : "") +
+      (_pendingSt > 0 ? ` · <span class="cnt-icon cnt-p">◯${_pendingSt}</span>` : "");
 
     // Card step counter
     let stepEl = card.querySelector(".card-step-num");
@@ -883,7 +883,7 @@ export function renderDetail(t) {
 
   const taskIdDiv = document.createElement("div");
   taskIdDiv.className = "detail-task-id";
-  taskIdDiv.textContent = t.id;
+  taskIdDiv.innerHTML = `<span class="detail-id-prefix">ID</span> ${t.id}`;
   taskIdDiv.title = "Click to copy task ID";
   taskIdDiv.style.cursor = "pointer";
   taskIdDiv.addEventListener("click", () => {
@@ -1524,8 +1524,13 @@ export function renderDetail(t) {
       statusLabel.textContent = s.status || "Pending";
 
       const nameSpan = document.createElement("span");
-      nameSpan.className = "st-name";
+      nameSpan.className = "st-name st-name-copy";
       nameSpan.textContent = sname;
+      nameSpan.title = "Click to copy name";
+      nameSpan.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        navigator.clipboard.writeText(sname).then(() => toast(`Copied: ${sname}`)).catch(() => {});
+      });
 
       // Priority indicator based on action_type
       const priSpan = document.createElement("span");

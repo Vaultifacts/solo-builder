@@ -3903,5 +3903,31 @@ class TestKeyboardShiftP(unittest.TestCase):
         self.assertIn('"P"', js)
         self.assertIn("Shift+P", js)
 
+# 180-184: Round 40
+class TestCardMiniIcons(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("cnt-icon", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".cnt-v", self._CSS.read_text(encoding="utf-8"))
+
+class TestSubtaskNameCopy(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("st-name-copy", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".st-name-copy", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailIdPrefix(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-id-prefix", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-id-prefix", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftX(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"X"', js)
+        self.assertIn("expandAllBranches", js)
+
 if __name__ == "__main__":
     unittest.main()

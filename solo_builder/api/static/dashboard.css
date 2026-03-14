@@ -934,6 +934,17 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card mini status icons ─────────────────────────────── */
+  .cnt-icon { font-size: 9px; }
+  .cnt-v { color: var(--green); }
+  .cnt-r { color: var(--cyan); }
+  .cnt-rv { color: var(--yellow); }
+  .cnt-p { color: var(--dim); }
+  /* ── Subtask name copy cursor ──────────────────────────── */
+  .st-name-copy { cursor: pointer; }
+  .st-name-copy:hover { text-decoration: underline; }
+  /* ── Detail ID prefix badge ────────────────────────────── */
+  .detail-id-prefix { font-size: 8px; background: var(--bg3); color: var(--dim); padding: 1px 4px; border-radius: 3px; margin-right: 4px; }
   /* ── Card large progress text ────────────────────────────── */
   .card-big-pct { position: absolute; right: 6px; bottom: 6px; font-size: 16px; font-weight: bold; color: var(--dim); opacity: 0.15; pointer-events: none; }
   /* ── Subtask row hover highlight ───────────────────────── */
