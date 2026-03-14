@@ -934,6 +934,14 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Card task status border ────────────────────────────── */
+  .task-card.status-complete { border-top: 2px solid var(--green); }
+  .task-card.status-running { border-top: 2px solid var(--cyan); }
+  .task-card.status-pending { border-top: 2px solid var(--yellow); }
+  /* ── Branch collapse animation ─────────────────────────── */
+  .branch-block { transition: max-height 0.2s ease; overflow: hidden; }
+  /* ── Detail task goal ──────────────────────────────────── */
+  .detail-goal { font-size: 10px; color: var(--dim); font-style: italic; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* ── Card mini status icons ─────────────────────────────── */
   .cnt-icon { font-size: 9px; }
   .cnt-v { color: var(--green); }

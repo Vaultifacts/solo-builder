@@ -912,6 +912,15 @@ export function renderDetail(t) {
   }
   taskIdDiv.appendChild(lastModEl);
 
+  // Task description/goal
+  if (t.goal) {
+    const goalDiv = document.createElement("div");
+    goalDiv.className = "detail-goal";
+    goalDiv.textContent = t.goal;
+    goalDiv.title = t.goal;
+    taskIdDiv.after(goalDiv);
+  }
+
   const statusDiv = document.createElement("div");
   statusDiv.className = "detail-status";
 
@@ -1498,7 +1507,9 @@ export function renderDetail(t) {
       // Row number
       const rowNumEl = document.createElement("span");
       rowNumEl.className = "st-row-num";
+      const _totalSt = Object.keys(bdata.subtasks || {}).length;
       rowNumEl.textContent = `#${_rowNum}`;
+      rowNumEl.title = `Subtask ${_rowNum} of ${_totalSt}`;
       row.appendChild(rowNumEl);
       row.addEventListener("click", (ev) => { if (!ev.target.closest(".st-checkbox")) window.showModal(sname, s); });
       row.addEventListener("dblclick", (ev) => {

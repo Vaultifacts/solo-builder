@@ -1,5 +1,16 @@
 # Changelog
 
+## v7.3.0 — 2026-03-13  Dashboard UX Round 41 — status border, row tooltip, animation, goal, Shift+F
+
+- **Card task status border**: Colored top border (green/cyan/yellow) by task status
+- **Subtask row index tooltip**: Hover shows "Subtask N of M"
+- **Branch collapse animation**: Smooth CSS transition on expand/collapse
+- **Detail panel task description**: Shows task goal/description below ID
+- **Keyboard `Shift+F` focus detail search**: Focuses inline search input
+
+### Stats
+- 593 dashboard E2E smoke tests (6 new), 190 UX features across v6.39–v7.3
+
 ## v7.2.0 — 2026-03-13  Bot formatters 91% → 98% — diff, log, stalled, priority edge cases
 
 - `bot_formatters.py` 91% → **98%** — _format_diff with changes/corrupt, _format_log with journal/read error/no entries, stalled filters, priority edge cases, agents verified/pending/review

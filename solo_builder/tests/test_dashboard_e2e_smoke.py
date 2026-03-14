@@ -3929,5 +3929,34 @@ class TestKeyboardShiftX(unittest.TestCase):
         self.assertIn('"X"', js)
         self.assertIn("expandAllBranches", js)
 
+# 185-189: Round 41
+class TestCardStatusBorder(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self):
+        css = self._CSS.read_text(encoding="utf-8")
+        self.assertIn(".task-card.status-complete", css)
+        self.assertIn(".task-card.status-running", css)
+
+class TestSubtaskRowTooltip(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_js(self): self.assertIn("_totalSt", self._JS.read_text(encoding="utf-8"))
+
+class TestBranchAnimation(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".branch-block", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailGoal(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-goal", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-goal", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftF(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"F"', js)
+        self.assertIn("detail-inline-search", js)
+
 if __name__ == "__main__":
     unittest.main()

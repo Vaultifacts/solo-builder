@@ -48,6 +48,7 @@ const _SHORTCUTS = [
   ["Shift+S", "Trigger snapshot"],
   ["Shift+P", "Toggle pause auto-run"],
   ["Shift+X", "Expand all branches"],
+  ["Shift+F", "Focus detail search"],
 ];
 
 function _showShortcuts() {
@@ -269,6 +270,11 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "F" && e.shiftKey) {
+    const ds = document.querySelector(".detail-inline-search");
+    if (ds) { ds.focus(); e.preventDefault(); } else { toast("No detail panel open"); }
     return;
   }
   if (key === "X" && e.shiftKey) {
