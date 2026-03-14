@@ -608,5 +608,234 @@ class TestDispatchTaskProgress(_DispatchBase):
         bot_mod._send.assert_called_once()
 
 
+# ---------------------------------------------------------------------------
+# Edge cases for remaining uncovered lines
+# ---------------------------------------------------------------------------
+
+class TestResetTaskWriteError(_Base):
+    """Lines 90-91: write state exception in reset_task."""
+    def test_reset_task_write_error(self):
+        state = _state({"A1": {"status": "Running", "output": "x"}})
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+            r = cmd_mod._format_reset_task(state, "Task0")
+        self.assertIn("Failed", r)
+
+
+class TestResetBranchWriteError(_Base):
+    """Lines 122-123: write state exception in reset_branch."""
+    def test_reset_branch_write_error(self):
+        state = _state({"A1": {"status": "Running", "output": "x"}})
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+            r = cmd_mod._format_reset_branch(state, "Task0", "BranchA")
+        self.assertIn("Failed", r)
+
+
+class TestResetBranchVerifiedSkip(_Base):
+    """Line 114: skip verified in reset_branch."""
+    def test_reset_branch_skips_verified(self):
+        state = _state({"A1": {"status": "Verified", "output": "x"},
+                        "A2": {"status": "Running", "output": "y"}})
+        self._state_path.write_text("{}", encoding="utf-8")
+        r = cmd_mod._format_reset_branch(state, "Task0", "BranchA")
+        self.assertIn("Verified preserved", r)
+
+
+class TestBulkResetWriteError(_Base):
+    """Lines 154-155: write state exception in bulk_reset."""
+    def test_bulk_reset_write_error(self):
+        state = _state({"A1": {"status": "Running", "output": "x"}})
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+            r = cmd_mod._format_bulk_reset(state, ["A1"])
+        self.assertIn("Failed", r)
+
+
+class TestBulkResetNotFound(_Base):
+    """Line 197: not-found names in bulk_reset."""
+    def test_bulk_reset_partial_not_found(self):
+        state = _state({"A1": {"status": "Running", "output": "x"}})
+        self._state_path.write_text("{}", encoding="utf-8")
+        r = cmd_mod._format_bulk_reset(state, ["A1", "ZZZ"])
+        self.assertIn("not found", r)
+        self.assertIn("ZZZ", r)
+
+
+class TestBulkVerifySkipNonRunning(_Base):
+    """Lines 183-185: skip_non_running in bulk_verify."""
+    def test_bulk_verify_skip_non_running(self):
+        state = _state({"A1": {"status": "Pending", "output": ""}})
+        self._state_path.write_text("{}", encoding="utf-8")
+        r = cmd_mod._format_bulk_verify(state, ["A1"], skip_non_running=True)
+        self.assertIn("skipped", r)
+
+
+class TestBulkVerifyNotFound(_Base):
+    """Line 197 equivalent for bulk_verify."""
+    def test_bulk_verify_not_found(self):
+        state = _state()
+        self._state_path.write_text("{}", encoding="utf-8")
+        r = cmd_mod._format_bulk_verify(state, ["ZZZ"])
+        self.assertIn("not found", r)
+
+
+class TestBulkVerifyWriteError(_Base):
+    """Lines 191-192: write state exception in bulk_verify."""
+    def test_bulk_verify_write_error(self):
+        state = _state({"A1": {"status": "Running", "output": "x"}})
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+            r = cmd_mod._format_bulk_verify(state, ["A1"])
+        self.assertIn("Failed", r)
+
+
+class TestDispatchStatusAutoRunning(_DispatchBase):
+    """Line 260: auto running but not paused."""
+    def test_status_auto_running_not_paused(self):
+        bot_mod._auto_running.return_value = True
+        self._run("status")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Auto-run in progress", args[1])
+
+
+class TestDispatchStopAutoRunning(_DispatchBase):
+    """Line 286: cancel auto task."""
+    def test_stop_cancels_auto(self):
+        bot_mod._auto_running.return_value = True
+        bot_mod._auto_task = MagicMock()
+        self._run("stop")
+        bot_mod._auto_task.cancel.assert_called_once()
+
+
+class TestDispatchExportWithFile(_DispatchBase):
+    """Lines 313-314: export with existing file."""
+    def test_export_with_file(self):
+        bot_mod.OUTPUTS_PATH.write_text("# outputs", encoding="utf-8")
+        self._run("export")
+        bot_mod._send.assert_called_once()
+
+
+class TestDispatchAddBranchEmptySpec(_DispatchBase):
+    """Lines 340-341: add_branch with task but empty spec after strip."""
+    def test_add_branch_empty_spec_whitespace(self):
+        # "add_branch X \t" -> split(None,1) = ["X", "\t"] -> parts[1].strip() = ""
+        self._run("add_branch X \t")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+
+class TestDispatchOutputNotFound(_DispatchBase):
+    """Line 357: output subtask not found."""
+    def test_output_not_found(self):
+        self._run("output ZZZ")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("not found", args[1])
+
+
+class TestDispatchOutputNoText(_DispatchBase):
+    """Line 363: output found but empty."""
+    def test_output_empty(self):
+        bot_mod._load_state.return_value = _state({"A1": {"status": "Verified", "last_update": 0, "output": ""}})
+        self._run("output A1")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("no output", args[1])
+
+
+class TestDispatchSnapshotWithPdf(_DispatchBase):
+    """Lines 411-415: snapshot with existing PDF."""
+    def test_snapshot_with_pdf(self):
+        bot_mod.SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+        (bot_mod.SNAPSHOTS_DIR / "snap.pdf").write_text("fake", encoding="utf-8")
+        self._run("snapshot")
+        self.assertTrue(bot_mod.SNAPSHOT_TRIGGER.exists())
+
+
+class TestDispatchDependsEmptyDag(_DispatchBase):
+    """Lines 462-463: depends graph with empty dag."""
+    def test_depends_empty_dag(self):
+        bot_mod._load_state.return_value = {"dag": {}, "step": 0}
+        self._run("depends")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("No DAG", args[1])
+
+
+class TestDispatchSetEmptyKey(_DispatchBase):
+    """Lines 489-490: set with empty key."""
+    def test_set_empty_key(self):
+        self._run("set =value")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Usage", args[1])
+
+
+class TestDispatchSetReadError(_DispatchBase):
+    """Lines 504-505: set read settings exception."""
+    def test_set_read_error(self):
+        (self._sp / "settings.json").unlink()
+        self._run("set STALL_THRESHOLD")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Could not read", args[1])
+
+
+class TestDispatchPauseWithHeartbeat(_DispatchBase):
+    """Lines 521-523: pause with heartbeat data."""
+    def test_pause_with_heartbeat(self):
+        bot_mod._auto_running.return_value = True
+        bot_mod._read_heartbeat.return_value = (10, 5, 20, 8, 3, 4)
+        self._run("pause")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Step 10", args[1])
+
+
+class TestDispatchResumeWithHeartbeat(_DispatchBase):
+    """Lines 535-537: resume with heartbeat data."""
+    def test_resume_with_heartbeat(self):
+        bot_mod.PAUSE_TRIGGER.write_text("1")
+        bot_mod._read_heartbeat.return_value = (10, 5, 20, 8, 3, 4)
+        self._run("resume")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Resumed", args[1])
+        self.assertIn("Step 10", args[1])
+
+
+class TestDispatchResumeUnlinkOSError(_DispatchBase):
+    """Lines 530-531: resume with OSError on unlink."""
+    def test_resume_unlink_oserror(self):
+        bot_mod.PAUSE_TRIGGER.write_text("1")
+        orig_unlink = Path.unlink
+        def _fail_unlink(self_path, *a, **kw):
+            if "pause" in str(self_path):
+                raise OSError("locked")
+            orig_unlink(self_path, *a, **kw)
+        with patch.object(Path, "unlink", _fail_unlink):
+            self._run("resume")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Resumed", args[1])
+
+
+class TestDispatchConfigReadError(_DispatchBase):
+    """Lines 550-551: config read exception."""
+    def test_config_read_error(self):
+        (self._sp / "settings.json").unlink()
+        self._run("config")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Could not read", args[1])
+
+
+class TestDispatchConfigWithData(_DispatchBase):
+    """Line 547: config with settings data."""
+    def test_config_with_settings(self):
+        (self._sp / "settings.json").write_text(json.dumps({"STALL_THRESHOLD": 5}), encoding="utf-8")
+        self._run("config")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("STALL_THRESHOLD", args[1])
+
+
+class TestDispatchHeartbeatAutoRunning(_DispatchBase):
+    """Line 687: heartbeat with auto running."""
+    def test_heartbeat_auto_running(self):
+        bot_mod._read_heartbeat.return_value = (10, 5, 20, 8, 3, 4)
+        bot_mod._auto_running.return_value = True
+        self._run("heartbeat")
+        args = bot_mod._send.call_args[0]
+        self.assertIn("Auto-run", args[1])
+
+
 if __name__ == "__main__":
     unittest.main()

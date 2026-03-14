@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.86.0 — 2026-03-13  Coverage Push Round 13 — bot_commands 90% → 99%
+
+- **24 new tests** extending `test_bot_commands_coverage.py`
+- `bot_commands.py` 90% → **99%** — all exception handlers, write errors, edge cases, heartbeat/auto/resume/config/snapshot paths
+- Remaining 4 lines: `_bot()` lazy import (always mocked) + dead code in `add_branch` spec check
+
+### Stats
+- 3394 total tests, 0 failures
+
 ## v6.85.0 — 2026-03-13  Coverage Push Round 12 — bot_commands 0% → 90%
 
 - **69 new tests** extending `test_bot_commands_coverage.py`
