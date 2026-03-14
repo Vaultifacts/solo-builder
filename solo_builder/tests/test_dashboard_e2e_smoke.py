@@ -4042,5 +4042,27 @@ class TestKeyboardShiftL(unittest.TestCase):
         self.assertIn('"L"', js)
         self.assertIn("Shift+L", js)
 
+# 210-214: Round 46
+class TestCardCompleteOpacity(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".task-card.status-complete", self._CSS.read_text(encoding="utf-8"))
+
+class TestSubtaskActiveRow(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn('dataset.active', self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn('[data-active="true"]', self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailPanelShadow(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".detail-panel", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftB(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"B"', js)
+        self.assertIn("Shift+B", js)
+
 if __name__ == "__main__":
     unittest.main()

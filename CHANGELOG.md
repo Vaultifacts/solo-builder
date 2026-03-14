@@ -1,5 +1,13 @@
 # Changelog
 
+## v7.13.0 — 2026-03-13  Dashboard UX Round 46 — opacity, active row, shadow, ellipsis, Shift+B — 215 UX
+
+- **Card complete opacity**: Completed cards fade to 70% opacity (hover restores)
+- **Subtask active row highlight**: Running rows get subtle cyan background
+- **Branch name ellipsis**: Long branch names truncated with ellipsis
+- **Detail panel shadow**: Left shadow on detail panel for depth
+- **Keyboard `Shift+B` branches tab**: Toggle branches tab
+
 ## v7.12.0 — 2026-03-13  API versioning + i18n groundwork + PWA manifest
 
 - **API versioning**: X-API-Version: 1 header already in place (confirmed)

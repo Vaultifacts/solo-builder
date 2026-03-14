@@ -1561,6 +1561,7 @@ export function renderDetail(t) {
 
       const row = document.createElement("div");
       row.className = "subtask-row";
+      if (s.status === "Running") row.dataset.active = "true";
       if (rawOutput) row.dataset.preview = rawOutput.substring(0, 200);
       if (!_showAll && _rowNum > _MAX_VISIBLE) row.style.display = "none";
       // Row number
