@@ -1,5 +1,14 @@
 # Changelog
 
+## v6.82.0 — 2026-03-13  Coverage Push Round 9 — anthropic_runner 100%
+
+- **13 new tests** in new test file `test_anthropic_runner.py`
+- `anthropic_runner.py` 81% → **100%** — init with/without API key, run success/exception/cache, arun success/exception/cache
+
+### Stats
+- 3282 total tests, 0 failures
+- 23 source modules now at 100% coverage
+
 ## v6.81.0 — 2026-03-13  Coverage Push Round 8 — dispatcher 100%, cache 100%
 
 - **4 new tests** across 2 existing test files
