@@ -133,6 +133,7 @@ class RepoAnalyzer:
         alerts: List[str],
         budget: StepBudget | None = None,
         force: bool = False,
+        policy=None,
     ) -> int:
         """
         Scan the repo, generate findings, and inject new tasks into *dag*.
@@ -150,7 +151,7 @@ class RepoAnalyzer:
             return 0
 
         self._last_run_step = step
-        findings = self._scan(step)
+        findings = self._scan(step, policy=policy)
 
         if not findings:
             return 0
@@ -174,10 +175,17 @@ class RepoAnalyzer:
         return added
 
     # ── Scanning ─────────────────────────────────────────────────────────
-    def _scan(self, step: int) -> List[Finding]:
+    def _scan(self, step: int, policy=None) -> List[Finding]:
         """Run all scanners and return de-duped findings capped at limits."""
         findings: List[Finding] = []
         py_files = self._collect_py_files()
+
+        # Policy filter: skip files that are policy-blocked
+        if policy is not None:
+            py_files = [
+                fp for fp in py_files
+                if not policy.is_path_blocked(os.path.relpath(fp, self._root))
+            ]
 
         for fpath in py_files:
             rel = os.path.relpath(fpath, self._root)

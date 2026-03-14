@@ -29,5 +29,34 @@
     "MAX_AI_COST_USD_PER_STEP": 0.0,
     "MAX_PATCH_REVIEWS_PER_STEP": 0,
     "MAX_TEST_GENERATIONS_PER_STEP": 0,
-    "MAX_REPO_ANALYZER_FINDINGS_PER_STEP": 0
+    "MAX_REPO_ANALYZER_FINDINGS_PER_STEP": 0,
+    "ALLOWED_AUTONOMOUS_PATHS": [],
+    "BLOCKED_AUTONOMOUS_PATHS": [
+        ".github/workflows/*",
+        ".gitlab-ci*",
+        "Dockerfile*",
+        "docker-compose*",
+        "Makefile",
+        "infrastructure/*",
+        ".env",
+        ".env.*",
+        "*.pem",
+        "*.key"
+    ],
+    "CRITICAL_PATH_PATTERNS": [
+        "*/migrations/*",
+        "requirements*.txt",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "package.json",
+        "package-lock.json",
+        "Pipfile",
+        "Pipfile.lock",
+        "poetry.lock"
+    ],
+    "REQUIRE_HUMAN_REVIEW_FOR_CRITICAL_PATHS": true,
+    "MAX_FILES_MODIFIED_PER_SUBTASK": 10,
+    "MAX_LINES_MODIFIED_PER_SUBTASK": 500,
+    "MAX_PATCH_SIZE": 2000
 }

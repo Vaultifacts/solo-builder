@@ -65,6 +65,7 @@ from utils.repo_index import RepoIndex
 from utils.safety import StepBudget
 from utils.invariants import check_post_phase
 from core.budget import UsageTracker
+from core.policy_engine import PolicyEngine
 from core.persistence import (
     rotate_backups, save_state_to_disk, load_state_from_disk,
     apply_backward_compat_defaults, write_heartbeat,
@@ -781,6 +782,7 @@ class Executor:
         step: int,
         memory_store: Dict,
         budget: "StepBudget | None" = None,
+        policy: "PolicyEngine | None" = None,
     ) -> Dict[str, str]:
         """
         Advance up to max_per_step subtasks.
@@ -962,6 +964,37 @@ class Executor:
                                             f"{st_name}_verified", step)
                         actions[st_name] = "verified"
                         self._roll_up(dag, task_name, branch_name)
+
+        # ── Policy enforcement pass ──────────────────────────────────────────
+        if policy is not None:
+            for task_name, branch_name, st_name, _ in priority_list:
+                if st_name not in actions:
+                    continue
+                action = actions[st_name]
+                if action not in ("verified", "review"):
+                    continue
+                st_data = dag[task_name]["branches"][branch_name]["subtasks"][st_name]
+                output = st_data.get("output", "")
+                if not output:
+                    continue
+                decision = policy.evaluate_patch(output, st_data.get("description", ""))
+                if decision.action == "blocked":
+                    st_data["status"]      = "Review"
+                    st_data["shadow"]      = "Pending"
+                    st_data["last_update"] = step
+                    st_data.setdefault("history", []).append(
+                        {"status": "Review", "step": step,
+                         "note": f"Policy blocked: {decision.reason}"}
+                    )
+                    actions[st_name] = "review"
+                elif decision.action == "requires_review":
+                    st_data["status"]      = "Review"
+                    st_data["last_update"] = step
+                    st_data.setdefault("history", []).append(
+                        {"status": "Review", "step": step,
+                         "note": f"Policy requires review: {decision.reason}"}
+                    )
+                    actions[st_name] = "review"
 
         return actions
 
@@ -1325,6 +1358,7 @@ class SoloBuilderCLI:
         self.repo_analyzer  = RepoAnalyzer(settings=_CFG)
         self.planner        = Planner(stall_threshold=STALL_THRESHOLD,
                                       repo_index=self._repo_index)
+        self.policy_engine  = PolicyEngine(settings=_CFG)
         self.executor       = Executor(max_per_step=EXEC_MAX_PER_STEP,
                                        verify_prob=EXEC_VERIFY_PROB)
         self.patch_reviewer = PatchReviewer(settings=_CFG)
@@ -1406,7 +1440,7 @@ class SoloBuilderCLI:
         #    Fail-open: analysis is advisory; skip on failure
         self._run_phase("RepoAnalyzer", lambda: self.repo_analyzer.analyze(
             self.dag, self.memory_store, self.step, step_alerts,
-            budget=budget,
+            budget=budget, policy=self.policy_engine,
         ), step_alerts, fail_open=True)
 
         # Post-phase invariant check: RepoAnalyzer
@@ -1464,7 +1498,7 @@ class SoloBuilderCLI:
         _pre_exec = (budget.used, budget.tokens_used, budget.cost_usd)
         actions = self._run_phase("Executor", lambda: self.executor.execute_step(
             self.dag, priority, self.step, self.memory_store,
-            budget=budget,
+            budget=budget, policy=self.policy_engine,
         ), step_alerts, fail_open=False) or {}
         _post_exec = (budget.used, budget.tokens_used, budget.cost_usd)
         if _post_exec[0] > _pre_exec[0]:
@@ -1473,6 +1507,20 @@ class SoloBuilderCLI:
                 calls=_post_exec[0] - _pre_exec[0],
                 tokens=_post_exec[1] - _pre_exec[1],
                 cost_usd=_post_exec[2] - _pre_exec[2],
+            )
+
+        # Policy enforcement alerts
+        pe = self.policy_engine
+        if pe.blocked_count > 0 or pe.critical_review_count > 0 or pe.oversized_patch_count > 0:
+            parts = []
+            if pe.blocked_count > 0:
+                parts.append(f"blocked={pe.blocked_count}")
+            if pe.critical_review_count > 0:
+                parts.append(f"critical_review={pe.critical_review_count}")
+            if pe.oversized_patch_count > 0:
+                parts.append(f"oversized={pe.oversized_patch_count}")
+            step_alerts.append(
+                f"  {YELLOW}[Policy]{RESET} {', '.join(parts)}"
             )
 
         # 4b. PatchReviewer: critique Executor output before verification
@@ -1624,6 +1672,7 @@ class SoloBuilderCLI:
             },
             "recovery_state":   self._recovery_state,
             "usage_state":      self._usage_tracker.to_dict(),
+            "policy_state":     self.policy_engine.stats_dict(),
         }
         ok = save_state_to_disk(STATE_PATH, payload, silent=silent)
         if ok and not silent:
@@ -1700,6 +1749,10 @@ class SoloBuilderCLI:
             us = payload.get("usage_state")
             if us:
                 self._usage_tracker = UsageTracker.from_dict(us)
+            # Restore policy engine counters
+            ps = payload.get("policy_state")
+            if ps:
+                self.policy_engine.load_stats(ps)
             if repairs:
                 self._recovery_state["partial_work_repair_count"] = (
                     self._recovery_state.get("partial_work_repair_count", 0)
@@ -3169,6 +3222,15 @@ class SoloBuilderCLI:
             for agent, v in ut.by_agent.items():
                 print(f"  {DIM}  {agent}: calls={v['calls']}  "
                       f"tokens={v['tokens']}  cost=${v['cost_usd']:.4f}{RESET}")
+        # Policy engine stats
+        pe = self.policy_engine
+        ps = pe.stats_dict()
+        if any(ps.values()):
+            print(f"  {'─' * 55}")
+            print(f"  {BOLD}{CYAN}Policy Engine{RESET}")
+            print(f"  {CYAN}Enforcement{RESET}   blocked: {ps['policy_block_count']}  "
+                  f"critical_review: {ps['critical_path_review_count']}  "
+                  f"oversized: {ps['oversized_patch_count']}")
         print(f"  {'─' * 55}\n")
 
     def _cmd_forecast(self) -> None:

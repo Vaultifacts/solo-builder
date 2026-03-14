@@ -150,6 +150,13 @@ def apply_backward_compat_defaults(payload: Dict[str, Any]) -> Dict[str, Any]:
     us.setdefault("total_deferred", 0)
     us.setdefault("by_agent", {})
 
+    # Policy engine state (added for human oversight & policy engine)
+    payload.setdefault("policy_state", {})
+    ps = payload["policy_state"]
+    ps.setdefault("policy_block_count", 0)
+    ps.setdefault("critical_path_review_count", 0)
+    ps.setdefault("oversized_patch_count", 0)
+
     # Recovery metadata (added for runtime reliability hardening)
     payload.setdefault("recovery_state", {})
     rs = payload["recovery_state"]

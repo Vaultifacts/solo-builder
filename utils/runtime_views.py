@@ -301,6 +301,23 @@ def agent_stats(
         },
         "reliability": _reliability_stats(state),
         "usage": _usage_stats(state),
+        "policy": _policy_stats(state),
+    }
+
+
+def _policy_stats(state: Dict) -> Dict[str, Any]:
+    """
+    Extract policy enforcement statistics from persisted state.
+
+    Returns a dict suitable for API/bot consumption.
+    Always returns a valid dict even when policy_state is absent
+    (backward compatibility with older state files).
+    """
+    ps = state.get("policy_state", {})
+    return {
+        "policy_block_count": ps.get("policy_block_count", 0),
+        "critical_path_review_count": ps.get("critical_path_review_count", 0),
+        "oversized_patch_count": ps.get("oversized_patch_count", 0),
     }
 
 
