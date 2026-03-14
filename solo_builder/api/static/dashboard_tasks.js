@@ -5,6 +5,19 @@ export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 
 const _TASKS_LIMIT    = 50;
 
+/* ── Run history ring buffer (verified% per task, last 8 ticks) ── */
+const _HIST_RING_SIZE = 8;
+const _taskVerifiedHistory = {}; // taskId → circular array of {pct, ts}
+function _pushTaskHistory(taskId, pct) {
+  if (!_taskVerifiedHistory[taskId]) _taskVerifiedHistory[taskId] = [];
+  const ring = _taskVerifiedHistory[taskId];
+  // Only push if value changed or ring is empty
+  if (ring.length === 0 || ring[ring.length - 1].pct !== pct) {
+    ring.push({ pct, ts: Date.now() });
+    if (ring.length > _HIST_RING_SIZE) ring.shift();
+  }
+}
+
 /* ── Subtask output hover popup ───────────────────────────── */
 let _outputPopup = null;
 let _outputPopupPinned = false;
@@ -12,9 +25,11 @@ let _outputPopupText = "";
 
 function _dismissOutputPopup() {
   _outputPopupPinned = false;
+  _outputPopupText = "";
   if (_outputPopup) {
     _outputPopup.classList.remove("st-output-popup-pinned");
     _outputPopup.style.display = "none";
+    delete _outputPopup.dataset.subtask;
   }
 }
 
@@ -829,6 +844,31 @@ export function renderGrid(tasks) {
       });
       sparkEl.innerHTML = bars.map(p => `<span class="spark-bar" style="height:${Math.max(2, p * 12 / 100)}px"></span>`).join("");
       sparkEl.title = _bEntries.map(([bn], i) => `${bn}: ${bars[i]}%`).join("\n");
+    }
+
+    // Run history sparkline — last 8 verified% snapshots as colored dots
+    {
+      const allSt = Object.values(t.branches || {}).flatMap(b => Object.values(b.subtasks || {}));
+      const totalSt = allSt.length;
+      const verifiedSt = allSt.filter(s => s.status === "Verified").length;
+      const pct = totalSt > 0 ? Math.round(verifiedSt / totalSt * 100) : 0;
+      _pushTaskHistory(t.id, pct);
+      const ring = _taskVerifiedHistory[t.id] || [];
+      let histEl = card.querySelector(".card-hist-spark");
+      if (ring.length > 1) {
+        if (!histEl) {
+          histEl = document.createElement("div");
+          histEl.className = "card-hist-spark";
+          card.querySelector(".card-counts").after(histEl);
+        }
+        histEl.innerHTML = ring.map(({pct: p}) => {
+          const col = p === 100 ? "var(--green)" : p > 50 ? "var(--cyan)" : p > 0 ? "var(--yellow)" : "var(--dim)";
+          return `<span style="display:inline-block;width:5px;height:${Math.max(2, Math.round(p * 10 / 100))}px;background:${col};border-radius:1px;margin-right:1px;vertical-align:bottom"></span>`;
+        }).join("");
+        histEl.title = `Progress history: ${ring.map(({pct: p}) => p + "%").join(" → ")}`;
+      } else if (histEl) {
+        histEl.remove();
+      }
     }
 
     // Mini heatmap — colored cells showing per-subtask status
@@ -2421,6 +2461,15 @@ if (localStorage.getItem("sb-compact") === "1") {
   const btn = document.getElementById("btn-compact");
   if (btn) btn.textContent = "▤ Expand";
 }
+// Sync collapse-all button label on load
+(function _syncCollapseBtn() {
+  const tbBtn = document.getElementById("btn-collapse-all");
+  if (!tbBtn) return;
+  const collapsed = _getCollapsedTasks();
+  const cards = [...document.querySelectorAll(".task-card")];
+  const allCollapsed = cards.length > 0 && cards.every(c => collapsed.has(c.dataset.id));
+  tbBtn.textContent = allCollapsed ? "⊞ Expand" : "⊟ Collapse";
+}());
 
 /* ── Card context menu ─────────────────────────────────────── */
 function _showCardContextMenu(ev, taskId) {
@@ -2491,6 +2540,8 @@ window.toggleCollapseAll = function () {
   });
   _setCollapsedTasks(collapsed);
   toast(anyExpanded ? "All cards collapsed" : "All cards expanded");
+  const tbBtn = document.getElementById("btn-collapse-all");
+  if (tbBtn) tbBtn.textContent = anyExpanded ? "⊞ Expand" : "⊟ Collapse";
 };
 
 /* ── Branch filter dropdown ───────────────────────────────── */
