@@ -37,6 +37,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 window.switchTab = function (name) {
+  sessionStorage.setItem("sb-active-tab", name);
   document.querySelectorAll(".sidebar-tab").forEach(t => {
     const tabName = t.dataset.tab || t.textContent.toLowerCase();
     const isActive = tabName === name;
@@ -97,3 +98,6 @@ async function _refreshExportHistoryByStatus() {
     if (lbl) lbl.textContent = `\u2265 ${minAge} steps stalled`;
   } catch (_) {}
 }
+
+// Restore saved tab on load
+{ const _savedTab = sessionStorage.getItem("sb-active-tab"); if (_savedTab) window.switchTab(_savedTab); }

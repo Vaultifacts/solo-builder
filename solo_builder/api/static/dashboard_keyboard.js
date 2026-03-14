@@ -58,6 +58,7 @@ const _SHORTCUTS = [
   ["Shift+M", "Toggle metrics tab"],
   ["Shift+A", "Toggle agents tab"],
   ["Shift+W", "Toggle stalled tab"],
+  ["Shift+E", "Toggle export tab"],
 ];
 
 function _showShortcuts() {
@@ -279,6 +280,10 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "E" && e.shiftKey && !e.ctrlKey) {
+    window.switchTab?.("export");
     return;
   }
   if (key === "W" && e.shiftKey) {

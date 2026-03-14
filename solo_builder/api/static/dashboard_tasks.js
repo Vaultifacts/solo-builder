@@ -838,6 +838,7 @@ export function renderGrid(tasks) {
 /* ── Detail panel ────────────────────────────────────────── */
 export async function selectTask(id) {
   state.selectedTask = id;
+  sessionStorage.setItem("sb-selected-task", id);
   window._resetSubtasksFilters?.();
   document.querySelectorAll(".task-card").forEach(c => c.classList.toggle("active", c.dataset.id === id));
   _updateTaskExportLinks(id);

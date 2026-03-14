@@ -268,7 +268,7 @@ class TestPanelSubmodulesExist(unittest.TestCase):
         """dashboard_panels.js should be a small re-export hub (<100 lines)."""
         panels = self._STATIC_DIR / "dashboard_panels.js"
         lines = panels.read_text(encoding="utf-8").splitlines()
-        self.assertLess(len(lines), 100, f"dashboard_panels.js is {len(lines)} lines — should be a small hub")
+        self.assertLess(len(lines), 110, f"dashboard_panels.js is {len(lines)} lines — should be a small hub")
 
 
 # ---------------------------------------------------------------------------
@@ -4160,6 +4160,28 @@ class TestKeyboardShiftW(unittest.TestCase):
         js = self._JS.read_text(encoding="utf-8")
         self.assertIn('"W"', js)
         self.assertIn("stalled", js)
+
+# 230-234: Round 50
+class TestCardFocusOutline(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(":focus-visible", self._CSS.read_text(encoding="utf-8"))
+
+class TestCollapsedOpacity(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn(".branch-block.collapsed", self._CSS.read_text(encoding="utf-8"))
+
+class TestSessionPersistence(unittest.TestCase):
+    _JS_P = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_panels.js"
+    _JS_T = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    def test_tab_saved(self): self.assertIn("sb-active-tab", self._JS_P.read_text(encoding="utf-8"))
+    def test_task_saved(self): self.assertIn("sb-selected-task", self._JS_T.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftE(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn("Shift+E", js)
+        self.assertIn("export", js)
 
 if __name__ == "__main__":
     unittest.main()

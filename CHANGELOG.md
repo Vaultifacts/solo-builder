@@ -1,5 +1,14 @@
 # Changelog
 
+## v8.0.0 — 2026-03-13  Dashboard UX Round 50 — 235 UX milestone! Session persistence, Swagger UI, /health/summary
+
+- **Dashboard UX Round 49**: Theme transition, hover lift, active border, header gradient, Shift+W
+- **Dashboard UX Round 50**: Focus outline, collapsed opacity, session persistence, Shift+E
+- **Session persistence**: Selected task + active tab saved to sessionStorage across reloads
+- **Swagger UI**: /api/docs/ui with CDN-hosted Swagger UI
+- **Health summary**: /health/summary aggregate endpoint
+- **235 UX features** across 50 dashboard rounds — **v8.0.0 major milestone!**
+
 ## v7.20.0 — 2026-03-13  Swagger UI + /health/summary + theme animation
 
 - **GET /api/docs/ui**: Swagger UI page (CDN-hosted) pointing to /api/docs
