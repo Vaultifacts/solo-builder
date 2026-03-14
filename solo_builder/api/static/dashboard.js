@@ -721,6 +721,8 @@ if ("Notification" in window && Notification.permission === "default") {
     _ws.onopen = () => {
       _wsOk = true;
       _reconnectMs = 1000;
+      const dot = document.getElementById("ws-dot");
+      if (dot) { dot.textContent = "● Live"; dot.style.color = "var(--green)"; }
       // Slow down the poll interval to a safety-net heartbeat (30s)
       // so we're not wasting requests while WS is active.
       if (state.pollMs < 30000) {
@@ -739,6 +741,8 @@ if ("Notification" in window && Notification.permission === "default") {
     _ws.onclose = _ws.onerror = () => {
       _wsOk = false;
       _ws = null;
+      const dot = document.getElementById("ws-dot");
+      if (dot) { dot.textContent = "○ Poll"; dot.style.color = "var(--dim)"; }
       // Restore fast polling while WS is down
       if (state._priorPollMs) {
         _setPollInterval(state._priorPollMs);

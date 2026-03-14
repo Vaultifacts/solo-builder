@@ -144,5 +144,73 @@ class TestWsRoute(unittest.TestCase):
         self.assertIn("/ws", routes)
 
 
+class TestBroadcastStep(unittest.TestCase):
+    """broadcast_step() sends change event when clients connected."""
+
+    def setUp(self):
+        import importlib
+        import api.blueprints.ws as ws_mod
+        importlib.reload(ws_mod)
+        self.mod = ws_mod
+
+    def test_broadcast_step_sends_change_event(self):
+        ws = _make_ws()
+        ws.send = MagicMock()
+        self.mod._step_path = MagicMock()
+        self.mod._step_path.read_text.return_value = "55,0,5,5,0,0"
+        with self.mod._clients_lock:
+            self.mod._clients.add(ws)
+        self.mod.broadcast_step()
+        ws.send.assert_called_once()
+        payload = json.loads(ws.send.call_args[0][0])
+        self.assertEqual(payload["type"], "change")
+        self.assertEqual(payload["step"], 55)
+
+    def test_broadcast_step_skips_when_no_clients(self):
+        with self.mod._clients_lock:
+            self.mod._clients.clear()
+        self.mod._step_path = MagicMock()
+        # Should not raise and should not attempt to read step
+        self.mod.broadcast_step()
+        self.mod._step_path.read_text.assert_not_called()
+
+    def test_broadcast_step_skips_when_step_missing(self):
+        ws = _make_ws()
+        self.mod._step_path = MagicMock()
+        self.mod._step_path.read_text.side_effect = FileNotFoundError()
+        with self.mod._clients_lock:
+            self.mod._clients.add(ws)
+        self.mod.broadcast_step()
+        ws.send.assert_not_called()
+
+
+class TestWsPushOnWrite(unittest.TestCase):
+    """ws_push_on_write after_request hook fires on writes only."""
+
+    def _call_after_request(self, method, status_code):
+        from api import app as app_module
+        from flask import Flask
+        # Build a minimal response stub and invoke the hook directly
+        inner_app = Flask(__name__)
+        with inner_app.test_request_context("/", method=method):
+            resp = MagicMock()
+            resp.status_code = status_code
+            with patch("api.app.broadcast_step") as mock_broadcast:
+                app_module.ws_push_on_write(resp)
+                return mock_broadcast.call_count
+
+    def test_post_2xx_calls_broadcast_step(self):
+        count = self._call_after_request("POST", 200)
+        self.assertEqual(count, 1)
+
+    def test_post_4xx_skips_broadcast(self):
+        count = self._call_after_request("POST", 400)
+        self.assertEqual(count, 0)
+
+    def test_get_does_not_call_broadcast_step(self):
+        count = self._call_after_request("GET", 200)
+        self.assertEqual(count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -60,7 +60,7 @@ from .blueprints.debt_scan import debt_scan_bp
 from .blueprints.ci_quality import ci_quality_bp
 from .blueprints.pre_release import pre_release_bp
 from .blueprints.live_summary import live_summary_bp
-from .blueprints.ws import handle_ws
+from .blueprints.ws import handle_ws, broadcast_step
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -106,6 +106,13 @@ def rate_limit():
     write = request.method in ("POST", "DELETE", "PUT", "PATCH")
     if not _rate_limiter.check(ip=ip, is_write=write):
         return jsonify({"error": "Rate limit exceeded. Try again shortly."}), 429
+
+
+@app.after_request
+def ws_push_on_write(resp):
+    if request.method in ("POST", "PUT", "DELETE", "PATCH") and resp.status_code < 300:
+        broadcast_step()
+    return resp
 
 
 @app.after_request

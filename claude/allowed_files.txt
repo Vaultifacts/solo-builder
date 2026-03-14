@@ -283,3 +283,4 @@ solo_builder/api/static/manifest.json
 solo_builder/api/blueprints/ws.py
 solo_builder/tests/test_ws.py
 solo_builder/requirements.txt
+solo_builder/api/static/dashboard.css

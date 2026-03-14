@@ -743,6 +743,11 @@
   /* ── Card star button ────────────────────────────────── */
   .card-star-btn { background: none; border: none; color: var(--yellow); font-size: 12px; cursor: pointer; padding: 0 2px; }
   .card-star-btn:hover { transform: scale(1.2); }
+  /* ── Task card collapse ──────────────────────────────── */
+  .card-collapse-btn { background: none; border: none; color: var(--dim); font-size: 9px; cursor: pointer; padding: 0 2px; opacity: 0.4; transition: opacity 0.15s; }
+  .card-collapse-btn:hover { opacity: 1; }
+  .task-card.card-collapsed > *:not(.card-top) { display: none !important; }
+  .task-card.card-collapsed { min-height: unset; padding-bottom: 4px; }
   /* ── Subtask elapsed time ────────────────────────────── */
   .st-elapsed { font-size: 8px; color: var(--dim); margin-left: 4px; flex-shrink: 0; }
   /* ── Detail task notes ───────────────────────────────── */

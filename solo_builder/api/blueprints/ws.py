@@ -92,3 +92,18 @@ def client_count() -> int:
     """Return number of currently connected WebSocket clients."""
     with _clients_lock:
         return len(_clients)
+
+
+def broadcast_step() -> None:
+    """Read current step and push a change event to all WS clients immediately.
+
+    Called from app.py after_request on write endpoints so clients receive
+    push within milliseconds of a state change rather than waiting up to 0.5s
+    for the broadcaster thread.
+    """
+    with _clients_lock:
+        if not _clients:
+            return
+    step = _read_step()
+    if step >= 0:
+        _broadcast(json.dumps({"type": "change", "step": step}))

@@ -8,6 +8,25 @@ let _tasksPage        = 1;
 let _tasksSearchFilter = "";
 let _tasksSortMode = localStorage.getItem("sb-task-sort") || "default";
 
+/* ── Collapsed tasks persistence ──────────────────────────── */
+function _getCollapsedTasks() {
+  try { return new Set(JSON.parse(localStorage.getItem("sb-collapsed-tasks") || "[]")); } catch (_) { return new Set(); }
+}
+function _setCollapsedTasks(set) {
+  localStorage.setItem("sb-collapsed-tasks", JSON.stringify([...set]));
+}
+function _toggleCollapse(taskId) {
+  const collapsed = _getCollapsedTasks();
+  if (collapsed.has(taskId)) collapsed.delete(taskId); else collapsed.add(taskId);
+  _setCollapsedTasks(collapsed);
+  document.querySelectorAll(`.task-card[data-id="${CSS.escape(taskId)}"]`).forEach(card => {
+    const isCollapsed = collapsed.has(taskId);
+    card.classList.toggle("card-collapsed", isCollapsed);
+    const btn = card.querySelector(".card-collapse-btn");
+    if (btn) btn.textContent = isCollapsed ? "▶" : "▼";
+  });
+}
+
 /* ── Pinned tasks persistence ─────────────────────────────── */
 function _getPinnedTasks() {
   try { return JSON.parse(localStorage.getItem("sb-pinned-tasks") || "[]"); } catch (_) { return []; }
@@ -443,6 +462,15 @@ export function renderGrid(tasks) {
       starBtn.textContent = _getStarredTasks().includes(t.id) ? "★" : "☆";
       starBtn.addEventListener("click", (ev) => { ev.stopPropagation(); _toggleStar(t.id); });
       cardTop.appendChild(starBtn);
+
+      const collapseBtn = document.createElement("button");
+      collapseBtn.className = "card-collapse-btn";
+      collapseBtn.title = "Collapse/expand task card";
+      const _initCollapsed = _getCollapsedTasks().has(t.id);
+      collapseBtn.textContent = _initCollapsed ? "▶" : "▼";
+      if (_initCollapsed) card.classList.add("card-collapsed");
+      collapseBtn.addEventListener("click", (ev) => { ev.stopPropagation(); _toggleCollapse(t.id); });
+      cardTop.appendChild(collapseBtn);
 
       card.addEventListener("contextmenu", (ev) => {
         ev.preventDefault();
