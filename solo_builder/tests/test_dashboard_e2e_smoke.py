@@ -4027,7 +4027,7 @@ class TestCardTransArrow(unittest.TestCase):
 
 class TestRowOutputPreview(unittest.TestCase):
     _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
-    def test_js(self): self.assertIn("data-preview", self._JS.read_text(encoding="utf-8"))
+    def test_js(self): self.assertIn("dataset.preview", self._JS.read_text(encoding="utf-8"))
 
 class TestDetailDepMini(unittest.TestCase):
     _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"

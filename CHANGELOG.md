@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.12.0 — 2026-03-13  API versioning + i18n groundwork + PWA manifest
+
+- **API versioning**: X-API-Version: 1 header already in place (confirmed)
+- **i18n groundwork**: `i18n.js` with 30 externalized strings + `t()` helper
+- **PWA manifest**: `manifest.json` for installable web app (standalone display)
+- Dashboard HTML linked to manifest
+
 ## v7.11.0 — 2026-03-13  Dashboard UX Round 45 — trans arrow, output preview, dep mini, Shift+L — 210 UX
 
 - **Card status transition arrow**: Shows old→new status on recently changed cards (auto-clears 5s)
