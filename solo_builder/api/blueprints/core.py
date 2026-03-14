@@ -130,6 +130,31 @@ def health():
     })
 
 
+@core_bp.get("/perf")
+def perf():
+    """Backend performance metrics — response times and state file size."""
+    _app = _get_app()
+    state = _load_state()
+    dag = state.get("dag", {})
+    subtask_count = sum(
+        len(b.get("subtasks", {}))
+        for t in dag.values()
+        for b in t.get("branches", {}).values()
+    )
+    state_size = 0
+    try:
+        state_size = _app.STATE_PATH.stat().st_size
+    except Exception:
+        pass
+    return jsonify({
+        "state_size_bytes": state_size,
+        "state_size_kb": round(state_size / 1024, 1) if state_size else 0,
+        "task_count": len(dag),
+        "subtask_count": subtask_count,
+        "step": state.get("step", 0),
+    })
+
+
 @core_bp.get("/health/aawo")
 def health_aawo():
     """Lightweight AAWO status endpoint — active agents + outcome stats."""

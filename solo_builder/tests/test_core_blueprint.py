@@ -207,6 +207,20 @@ class TestReadVersionFallback(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /perf
+# ---------------------------------------------------------------------------
+
+class TestPerfEndpoint(_Base):
+    def test_perf_returns_200(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/perf")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("state_size_bytes", d)
+        self.assertIn("subtask_count", d)
+
+
+# ---------------------------------------------------------------------------
 # GET /health/aawo
 # ---------------------------------------------------------------------------
 

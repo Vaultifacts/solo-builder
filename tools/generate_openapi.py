@@ -192,6 +192,10 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "gates": {"type": "array", "items": {"type": "object"}},
      }}},
+    {"path": "/perf",                    "method": "GET", "tag": "Core",   "summary": "Backend performance metrics (state size, task/subtask counts)",
+     "response": {"type": "object", "properties": {
+         "state_size_bytes": {"type": "integer"}, "subtask_count": {"type": "integer"},
+     }}},
     {"path": "/changes",                 "method": "GET", "tag": "Core",   "summary": "Lightweight change detection since a given step (TASK-412)",
      "response": {"type": "object", "properties": {
          "step": {"type": "integer"}, "since": {"type": "integer"},

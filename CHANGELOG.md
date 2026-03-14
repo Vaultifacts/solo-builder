@@ -1,5 +1,10 @@
 # Changelog
 
+## v6.97.0 — 2026-03-13  Performance audit — GET /perf endpoint + OpenAPI update
+
+- **GET /perf**: Backend performance metrics (state file size, task/subtask counts, step)
+- OpenAPI spec updated (95 → 97 routes)
+
 ## v6.96.0 — 2026-03-13  Bot formatters 86% → 89% — 13 new edge case tests
 
 - `bot_formatters.py` 86% → **89%** — filter no-match, truncation, verified durations, cache exception, empty tasks/branches
