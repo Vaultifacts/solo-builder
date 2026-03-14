@@ -949,6 +949,15 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Theme transition ───────────────────────────────────── */
+  body, .task-card, .detail-panel, .sidebar-bottom, header { transition: background-color 0.3s ease, color 0.3s ease; }
+  /* ── Card hover lift ───────────────────────────────────── */
+  .task-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .task-card:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  /* ── Subtask row border-left status ────────────────────── */
+  .subtask-row[data-active="true"] { border-left: 3px solid var(--cyan); padding-left: 1px; }
+  /* ── Header gradient ───────────────────────────────────── */
+  header { background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%); }
   /* ── Card grid gap increase ─────────────────────────────── */
   #task-grid { gap: 8px; }
   /* ── Subtask row min-height ────────────────────────────── */

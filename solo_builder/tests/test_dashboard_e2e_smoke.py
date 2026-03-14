@@ -4137,5 +4137,29 @@ class TestKeyboardShiftA(unittest.TestCase):
         self.assertIn('"A"', js)
         self.assertIn("agents", js)
 
+# 225-229: Round 49
+class TestThemeTransition(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("background-color 0.3s", self._CSS.read_text(encoding="utf-8"))
+
+class TestCardHoverLift(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("translateY(-1px)", self._CSS.read_text(encoding="utf-8"))
+
+class TestActiveRowBorder(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn('border-left: 3px solid var(--cyan)', self._CSS.read_text(encoding="utf-8"))
+
+class TestHeaderGradient(unittest.TestCase):
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_css(self): self.assertIn("linear-gradient", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftW(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"W"', js)
+        self.assertIn("stalled", js)
+
 if __name__ == "__main__":
     unittest.main()

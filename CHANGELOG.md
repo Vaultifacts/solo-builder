@@ -1,5 +1,7 @@
 # Changelog
 
+## v7.19.0 — 2026-03-13  Dashboard UX Round 49 — theme transition, hover lift, active border, gradient, Shift+W — 230 UX
+
 ## v7.18.0 — 2026-03-13  GET /api/docs + perf panel + test optimization review
 
 - **GET /api/docs**: Live OpenAPI 3.0 JSON spec endpoint (90 paths, 15 tags)
