@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.5.0 — 2026-03-13  Dashboard UX Round 42 — emoji icons, actions bar, Shift+G
+
+- **Subtask row status emoji**: ✓/▶/◯/⏸ emoji next to status dot
+- **Detail panel quick actions bar**: Reset/Copy ID/Running buttons below header
+- **Keyboard `Shift+G` go to running**: Jump to first running subtask with highlight
+- 195 UX features across v6.39–v7.5
+
 ## v7.4.0 — 2026-03-13  bot_formatters 100% + bot_commands 99% — complete bot coverage
 
 - `bot_formatters.py` 98% → **100%** — cache delete OSError, forecast all statuses, diff no-changes, priority empty DAG

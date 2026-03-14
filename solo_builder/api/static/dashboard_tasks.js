@@ -1341,7 +1341,23 @@ export function renderDetail(t) {
   notesInput.addEventListener("input", () => _setTaskNote(t.id, notesInput.value));
   notesWrap.appendChild(notesInput);
 
-  const nodes = [breadcrumb, stickyHeader, notesWrap];
+  // Quick actions bar
+  const actionsBar = document.createElement("div");
+  actionsBar.className = "detail-actions-bar";
+  const _actions = [
+    { label: "↺ Reset", action: () => window.resetTask(t.id) },
+    { label: "📋 Copy ID", action: () => navigator.clipboard.writeText(t.id).then(() => toast(`Copied: ${t.id}`)) },
+    { label: "▶ Running", action: () => { const d = document.querySelector("#detail-content .st-dot.dot-cyan"); if (d) d.closest(".subtask-row")?.scrollIntoView({ behavior: "smooth", block: "center" }); } },
+  ];
+  _actions.forEach(a => {
+    const btn = document.createElement("button");
+    btn.className = "toolbar-btn detail-action-btn";
+    btn.textContent = a.label;
+    btn.addEventListener("click", a.action);
+    actionsBar.appendChild(btn);
+  });
+
+  const nodes = [breadcrumb, stickyHeader, actionsBar, notesWrap];
 
   Object.entries(branches).forEach(([bname, bdata]) => {
     const branchBlock = document.createElement("div");
@@ -1529,6 +1545,11 @@ export function renderDetail(t) {
       const dot = document.createElement("div");
       dot.className = `st-dot ${dotClass(s.status)}`;
       dot.title = `${s.status || "Pending"}${s.last_update != null ? ` — step ${s.last_update}` : ""}`;
+      // Status emoji icon
+      const stEmoji = document.createElement("span");
+      stEmoji.className = "st-emoji";
+      const _emojiMap = { Verified: "✓", Running: "▶", Review: "⏸", Pending: "◯" };
+      stEmoji.textContent = _emojiMap[s.status] || "◯";
 
       const statusLabel = document.createElement("span");
       statusLabel.className = "st-status-label";
@@ -1584,7 +1605,7 @@ export function renderDetail(t) {
         }
       }
 
-      row.append(cb, dot, statusLabel, nameSpan, priSpan);
+      row.append(cb, stEmoji, dot, statusLabel, nameSpan, priSpan);
       if (transSpan) row.appendChild(transSpan);
       row.appendChild(stStep);
       row.appendChild(stElapsed);

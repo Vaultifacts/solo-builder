@@ -3958,5 +3958,25 @@ class TestKeyboardShiftF(unittest.TestCase):
         self.assertIn('"F"', js)
         self.assertIn("detail-inline-search", js)
 
+# 190-194: Round 42
+class TestSubtaskEmoji(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("st-emoji", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".st-emoji", self._CSS.read_text(encoding="utf-8"))
+
+class TestDetailActionsBar(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
+    _CSS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.css"
+    def test_js(self): self.assertIn("detail-actions-bar", self._JS.read_text(encoding="utf-8"))
+    def test_css(self): self.assertIn(".detail-actions-bar", self._CSS.read_text(encoding="utf-8"))
+
+class TestKeyboardShiftG(unittest.TestCase):
+    _JS = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_keyboard.js"
+    def test_js(self):
+        js = self._JS.read_text(encoding="utf-8")
+        self.assertIn('"G"', js)
+        self.assertIn("Shift+G", js)
+
 if __name__ == "__main__":
     unittest.main()

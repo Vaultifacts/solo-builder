@@ -934,6 +934,11 @@
   .branch-status-line { font-size: 8px; color: var(--dim); margin-left: 4px; }
   /* ── Detail refresh timer ──────────────────────────────── */
   .detail-refresh-timer { font-size: 8px; color: var(--dim); margin-left: auto; opacity: 0.6; }
+  /* ── Subtask row status emoji ───────────────────────────── */
+  .st-emoji { font-size: 9px; flex-shrink: 0; width: 12px; text-align: center; }
+  /* ── Detail quick actions bar ──────────────────────────── */
+  .detail-actions-bar { display: flex; gap: 4px; margin: 4px 0; flex-wrap: wrap; }
+  .detail-action-btn { font-size: 9px !important; padding: 2px 6px !important; }
   /* ── Card task status border ────────────────────────────── */
   .task-card.status-complete { border-top: 2px solid var(--green); }
   .task-card.status-running { border-top: 2px solid var(--cyan); }

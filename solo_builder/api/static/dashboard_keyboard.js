@@ -49,6 +49,7 @@ const _SHORTCUTS = [
   ["Shift+P", "Toggle pause auto-run"],
   ["Shift+X", "Expand all branches"],
   ["Shift+F", "Focus detail search"],
+  ["Shift+G", "Go to first running subtask"],
 ];
 
 function _showShortcuts() {
@@ -270,6 +271,12 @@ document.addEventListener("keydown", (e) => {
         else toast("Undo failed");
       }).catch(() => toast("Undo failed"));
     } else { toast("No recent verify to undo"); }
+    return;
+  }
+  if (key === "G" && e.shiftKey) {
+    const dot = document.querySelector("#detail-content .st-dot.dot-cyan");
+    if (dot) { const row = dot.closest(".subtask-row"); if (row) { row.scrollIntoView({ behavior: "smooth", block: "center" }); row.style.outline = "2px solid var(--cyan)"; setTimeout(() => { row.style.outline = ""; }, 1500); } }
+    else { toast("No running subtasks"); }
     return;
   }
   if (key === "F" && e.shiftKey) {
