@@ -192,6 +192,11 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "gates": {"type": "array", "items": {"type": "object"}},
      }}},
+    {"path": "/health/summary",          "method": "GET", "tag": "Health", "summary": "Aggregate health summary — state/settings/step/subtask checks",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "passed": {"type": "integer"}, "total": {"type": "integer"},
+     }}},
+    {"path": "/api/docs/ui",             "method": "GET", "tag": "Core",   "summary": "Swagger UI page for interactive API documentation"},
     {"path": "/api/docs",               "method": "GET", "tag": "Core",   "summary": "OpenAPI 3.0 JSON spec for all API routes",
      "response": {"type": "object", "properties": {
          "openapi": {"type": "string"}, "paths": {"type": "object"},

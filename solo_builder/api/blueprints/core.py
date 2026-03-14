@@ -130,6 +130,49 @@ def health():
     })
 
 
+@core_bp.get("/health/summary")
+def health_summary():
+    """Aggregate health summary — runs lightweight checks and returns pass/fail counts."""
+    checks = []
+    # State file
+    _app = _get_app()
+    state_ok = _app.STATE_PATH.exists()
+    checks.append({"name": "state_file", "ok": state_ok})
+    # Settings file
+    settings_ok = _app.SETTINGS_PATH.exists()
+    checks.append({"name": "settings_file", "ok": settings_ok})
+    # Step count
+    state = _load_state()
+    step = state.get("step", 0)
+    checks.append({"name": "step_count", "ok": step >= 0, "value": step})
+    # Subtask count
+    dag = state.get("dag", {})
+    total = sum(len(b.get("subtasks", {})) for t in dag.values() for b in t.get("branches", {}).values())
+    checks.append({"name": "subtask_count", "ok": True, "value": total})
+    passed = sum(1 for c in checks if c["ok"])
+    return jsonify({
+        "ok": all(c["ok"] for c in checks),
+        "passed": passed,
+        "total": len(checks),
+        "checks": checks,
+    })
+
+
+@core_bp.get("/api/docs/ui")
+def api_docs_ui():
+    """Serve a minimal Swagger UI page pointing to /api/docs."""
+    from flask import Response
+    html = """<!DOCTYPE html>
+<html><head><title>Solo Builder API</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+</head><body>
+<div id="swagger-ui"></div>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>SwaggerUIBundle({url:"/api/docs",dom_id:"#swagger-ui",deepLinking:true})</script>
+</body></html>"""
+    return Response(html, mimetype="text/html")
+
+
 @core_bp.get("/api/docs")
 def api_docs():
     """Return OpenAPI 3.0 JSON spec for all API routes."""

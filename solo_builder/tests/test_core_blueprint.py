@@ -278,6 +278,34 @@ class TestChangesEndpoint(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /health/summary
+# ---------------------------------------------------------------------------
+
+class TestHealthSummary(_Base):
+    def test_health_summary_200(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/health/summary")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["passed"], d["total"])
+        self.assertGreater(len(d["checks"]), 0)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/docs/ui
+# ---------------------------------------------------------------------------
+
+class TestApiDocsUi(_Base):
+    def test_docs_ui_returns_html(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/api/docs/ui")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/html", r.content_type)
+        self.assertIn(b"swagger-ui", r.data)
+
+
+# ---------------------------------------------------------------------------
 # GET /api/docs
 # ---------------------------------------------------------------------------
 
