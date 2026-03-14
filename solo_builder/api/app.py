@@ -11,6 +11,7 @@ import hashlib
 import time
 
 from flask import Flask, jsonify, request
+from flask_sock import Sock
 
 from .middleware import SecurityHeadersMiddleware, ApiRateLimiter
 from .constants import (
@@ -59,6 +60,7 @@ from .blueprints.debt_scan import debt_scan_bp
 from .blueprints.ci_quality import ci_quality_bp
 from .blueprints.pre_release import pre_release_bp
 from .blueprints.live_summary import live_summary_bp
+from .blueprints.ws import handle_ws
 
 app.register_blueprint(cache_bp)
 app.register_blueprint(metrics_bp)
@@ -84,6 +86,13 @@ app.register_blueprint(debt_scan_bp)
 app.register_blueprint(ci_quality_bp)
 app.register_blueprint(pre_release_bp)
 app.register_blueprint(live_summary_bp)
+
+_sock = Sock(app)
+
+
+@_sock.route("/ws")
+def ws_endpoint(ws):
+    handle_ws(ws)
 
 
 @app.before_request

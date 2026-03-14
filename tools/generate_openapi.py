@@ -205,6 +205,10 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "state_size_bytes": {"type": "integer"}, "subtask_count": {"type": "integer"},
      }}},
+    {"path": "/ws",                      "method": "GET", "tag": "Core",   "summary": "WebSocket endpoint — real-time step-change push (upgrade required)",
+     "response": {"type": "object", "properties": {
+         "type": {"type": "string"}, "step": {"type": "integer"},
+     }}},
     {"path": "/changes",                 "method": "GET", "tag": "Core",   "summary": "Lightweight change detection since a given step (TASK-412)",
      "response": {"type": "object", "properties": {
          "step": {"type": "integer"}, "since": {"type": "integer"},

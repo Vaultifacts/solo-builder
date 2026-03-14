@@ -704,10 +704,63 @@ if ("Notification" in window && Notification.permission === "default") {
   Notification.requestPermission();
 }
 
-/* ── WebSocket groundwork (future: replace polling with push) ── */
-// To enable: set window._useWebSocket = true and provide WS_URL
-// const ws = new WebSocket(WS_URL);
-// ws.onmessage = (e) => { const d = JSON.parse(e.data); if (d.type === "change") tick(); };
+/* ── WebSocket real-time push ──────────────────────────────── */
+(function _initWebSocket() {
+  const WS_URL = `ws://${location.host}/ws`;
+  let _ws = null;
+  let _wsOk = false;
+  let _reconnectMs = 1000;
+
+  function _connect() {
+    try {
+      _ws = new WebSocket(WS_URL);
+    } catch (_) {
+      return; // WS not supported — polling continues as normal
+    }
+
+    _ws.onopen = () => {
+      _wsOk = true;
+      _reconnectMs = 1000;
+      // Slow down the poll interval to a safety-net heartbeat (30s)
+      // so we're not wasting requests while WS is active.
+      if (state.pollMs < 30000) {
+        state._priorPollMs = state.pollMs;
+        _setPollInterval(30000);
+      }
+    };
+
+    _ws.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.type === "change" || d.type === "hello") tick();
+      } catch (_) {}
+    };
+
+    _ws.onclose = _ws.onerror = () => {
+      _wsOk = false;
+      _ws = null;
+      // Restore fast polling while WS is down
+      if (state._priorPollMs) {
+        _setPollInterval(state._priorPollMs);
+        state._priorPollMs = null;
+      }
+      // Exponential back-off reconnect (cap at 30s)
+      setTimeout(_connect, _reconnectMs);
+      _reconnectMs = Math.min(_reconnectMs * 2, 30000);
+    };
+  }
+
+  function _setPollInterval(ms) {
+    state.pollMs = ms;
+    localStorage.setItem("sb-poll-ms", ms);
+    if (state.pollIntervalId !== null) clearInterval(state.pollIntervalId);
+    state.pollIntervalId = setInterval(() => { tick(); _startCountdown(); }, ms);
+    _startCountdown();
+  }
+
+  window._wsStatus = () => _wsOk;
+  _connect();
+}());
 
 /* ── Poll countdown timer ──────────────────────────────────── */
 let _countdownId = null;

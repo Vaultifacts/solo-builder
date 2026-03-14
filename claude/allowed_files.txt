@@ -280,3 +280,6 @@ solo_builder/tests/test_bot_formatters_coverage.py
 solo_builder/api/static/sw.js
 solo_builder/api/static/i18n.js
 solo_builder/api/static/manifest.json
+solo_builder/api/blueprints/ws.py
+solo_builder/tests/test_ws.py
+solo_builder/requirements.txt
