@@ -1465,13 +1465,14 @@ class TestBranchFilterDropdown(unittest.TestCase):
 class TestSubtaskOutputPreview(unittest.TestCase):
     _JS_PATH = Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard_tasks.js"
 
-    def test_js_output_title_attr(self):
+    def test_js_output_hover_popup(self):
         js = self._JS_PATH.read_text(encoding="utf-8")
-        self.assertIn("outSpan.title", js)
+        self.assertIn("_showOutputPopup", js)
 
     def test_js_output_truncated(self):
         js = self._JS_PATH.read_text(encoding="utf-8")
-        self.assertIn("substring(0, 400)", js)
+        # Popup truncates at 600 chars
+        self.assertIn("substring(0, 600)", js)
 
 
 # ---------------------------------------------------------------------------

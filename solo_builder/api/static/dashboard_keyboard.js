@@ -60,6 +60,7 @@ const _SHORTCUTS = [
   ["Shift+W", "Toggle stalled tab"],
   ["Shift+E", "Toggle export tab"],
   ["Shift+Q", "Toggle priority tab"],
+  ["Shift+Z", "Collapse / expand all task cards"],
 ];
 
 function _showShortcuts() {
@@ -368,6 +369,10 @@ document.addEventListener("keydown", (e) => {
       cbs.forEach(cb => { cb.checked = true; });
       window.detailBulkVerify?.();
     } else { toast("No subtasks to verify"); }
+    return;
+  }
+  if (key === "Z" && e.shiftKey) {
+    window.toggleCollapseAll?.();
     return;
   }
   if (key === "R" && e.shiftKey) {

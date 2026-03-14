@@ -4,6 +4,30 @@ import { svgEl } from "./dashboard_svg.js";
 export { pollJournal, pollDiff, pollStats } from "./dashboard_journal.js";
 
 const _TASKS_LIMIT    = 50;
+
+/* ── Subtask output hover popup ───────────────────────────── */
+let _outputPopup = null;
+function _ensurePopup() {
+  if (!_outputPopup) {
+    _outputPopup = document.createElement("div");
+    _outputPopup.id = "st-output-popup";
+    _outputPopup.className = "st-output-popup";
+    document.body.appendChild(_outputPopup);
+  }
+  return _outputPopup;
+}
+function _showOutputPopup(ev, text) {
+  const popup = _ensurePopup();
+  popup.textContent = text.length > 600 ? text.substring(0, 600) + "…" : text;
+  popup.style.display = "block";
+  const x = Math.min(ev.clientX + 12, window.innerWidth - 340);
+  const y = Math.min(ev.clientY + 16, window.innerHeight - 200);
+  popup.style.left = x + "px";
+  popup.style.top  = y + "px";
+}
+function _hideOutputPopup() {
+  if (_outputPopup) _outputPopup.style.display = "none";
+}
 let _tasksPage        = 1;
 let _tasksSearchFilter = "";
 let _tasksSortMode = localStorage.getItem("sb-task-sort") || "default";
@@ -1825,7 +1849,6 @@ export function renderDetail(t) {
 
         const outSpan = document.createElement("span");
         outSpan.className = "st-output";
-        outSpan.title = rawOutput.substring(0, 400);
         const _flatOut = rawOutput.replace(/\n/g, " ");
         // Syntax highlight keywords in output preview
         const _highlighted = _flatOut.substring(0, 80)
@@ -1834,6 +1857,13 @@ export function renderDetail(t) {
           .replace(/\b(warning|warn|deprecated)\b/gi, '<span class="out-warn">$1</span>');
         outSpan.innerHTML = _highlighted;
         row.appendChild(outSpan);
+
+        // Hover preview popup for full output
+        if (rawOutput.length > 40) {
+          outSpan.addEventListener("mouseenter", (ev) => _showOutputPopup(ev, rawOutput));
+          outSpan.addEventListener("mouseleave", _hideOutputPopup);
+          outSpan.style.cursor = "help";
+        }
 
         // Show more toggle for long output
         if (_flatOut.length > 80) {
@@ -2377,6 +2407,30 @@ window.collapseAllBranches = function () {
     const arrow = bb.querySelector(".branch-collapse-arrow");
     if (arrow) arrow.textContent = "▸";
   });
+};
+
+/* ── Collapse-all task cards (Shift+Z) ───────────────────── */
+window.toggleCollapseAll = function () {
+  const cards = [...document.querySelectorAll(".task-card")];
+  const anyExpanded = cards.some(c => !c.classList.contains("card-collapsed"));
+  const collapsed = _getCollapsedTasks();
+  cards.forEach(card => {
+    const id = card.dataset.id;
+    if (!id) return;
+    if (anyExpanded) {
+      card.classList.add("card-collapsed");
+      const btn = card.querySelector(".card-collapse-btn");
+      if (btn) btn.textContent = "▶";
+      collapsed.add(id);
+    } else {
+      card.classList.remove("card-collapsed");
+      const btn = card.querySelector(".card-collapse-btn");
+      if (btn) btn.textContent = "▼";
+      collapsed.delete(id);
+    }
+  });
+  _setCollapsedTasks(collapsed);
+  toast(anyExpanded ? "All cards collapsed" : "All cards expanded");
 };
 
 /* ── Branch filter dropdown ───────────────────────────────── */

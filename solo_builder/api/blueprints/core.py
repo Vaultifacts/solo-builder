@@ -120,6 +120,11 @@ def health():
         for t in dag.values()
         for b in t.get("branches", {}).values()
     )
+    try:
+        from .ws import client_count as _ws_clients
+        ws_clients = _ws_clients()
+    except Exception:
+        ws_clients = 0
     return jsonify({
         "ok":               True,
         "version":          _read_version(),
@@ -127,6 +132,7 @@ def health():
         "step":             state.get("step", 0),
         "state_file_exists": _app.STATE_PATH.exists(),
         "total_subtasks":   total_subtasks,
+        "ws_clients":       ws_clients,
     })
 
 
