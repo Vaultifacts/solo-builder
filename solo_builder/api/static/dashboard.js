@@ -1,7 +1,7 @@
 import { state } from "./dashboard_state.js";
 import { api, esc, statusClass, toast, flash, updateNotifBadge } from "./dashboard_utils.js";
 import { pollStatus, pollTasks, renderGrid, selectTask, renderDetail, applyTaskSearch, pollJournal, pollDiff, pollStats, pollTaskProgress, updateTabBadges } from "./dashboard_tasks.js";
-import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollCache, pollCacheHistory, pollHealthDetailed, pollGatesDetailed, pollPolicyDetailed, pollContextWindowDetailed, pollThreatModelDetailed, pollSloDetailed, pollPromptRegressionDetailed, pollDebtScanDetailed, pollCiQualityDetailed, pollPreReleaseDetailed, pollLiveSummaryDetailed, pollRepoHealthDetailed } from "./dashboard_panels.js";
+import { pollHistory, historyPageStep, pollBranches, pollSettings, pollPriority, pollStalled, pollSubtasks, pollAgents, pollForecast, pollMetrics, pollPerf, pollCache, pollCacheHistory, pollHealthDetailed, pollGatesDetailed, pollPolicyDetailed, pollContextWindowDetailed, pollThreatModelDetailed, pollSloDetailed, pollPromptRegressionDetailed, pollDebtScanDetailed, pollCiQualityDetailed, pollPreReleaseDetailed, pollLiveSummaryDetailed, pollRepoHealthDetailed } from "./dashboard_panels.js";
 
 /* ── Health / uptime ─────────────────────────────────────── */
 async function pollHealth() {
@@ -59,7 +59,7 @@ async function tick() {
     fast.push(pollHealth(), pollHealthDetailed(), pollGatesDetailed(), pollPolicyDetailed(),
               pollContextWindowDetailed(), pollThreatModelDetailed(), pollSloDetailed(),
               pollPromptRegressionDetailed(), pollDebtScanDetailed(), pollCiQualityDetailed(),
-              pollPreReleaseDetailed(), pollLiveSummaryDetailed(), pollRepoHealthDetailed());
+              pollPreReleaseDetailed(), pollLiveSummaryDetailed(), pollRepoHealthDetailed(), pollPerf());
   }
   await Promise.all(fast);
   // Poll /changes for incremental updates

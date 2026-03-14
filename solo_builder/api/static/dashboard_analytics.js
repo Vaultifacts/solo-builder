@@ -1,4 +1,18 @@
 import { api, STATUS_COL, placeholder } from "./dashboard_utils.js";
+
+/* ── Perf widget ──────────────────────────────────────── */
+export async function pollPerf() {
+  try {
+    const d = await api("/perf");
+    const el = document.getElementById("perf-content");
+    if (!el) return;
+    el.innerHTML = `<div style="font-size:10px;color:var(--dim)">
+      <div>State: <b>${d.state_size_kb}KB</b></div>
+      <div>Tasks: <b>${d.task_count}</b> · Subtasks: <b>${d.subtask_count}</b></div>
+      <div>Step: <b>${d.step}</b></div>
+    </div>`;
+  } catch (_) {}
+}
 import { svgBar, sparklineSvg } from "./dashboard_svg.js";
 
 /* ── Priority panel ─────────────────────────────────────── */

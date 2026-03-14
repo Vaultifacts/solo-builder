@@ -6,7 +6,7 @@ export { pollSettings } from "./dashboard_settings.js";
 export { pollStalled } from "./dashboard_stalled.js";
 export { pollSubtasks, updateSubtasksExportLinks } from "./dashboard_subtasks.js";
 export { pollHistory, historyPageStep, resetHistoryUnread } from "./dashboard_history.js";
-export { pollPriority, pollAgents, pollForecast, pollMetrics } from "./dashboard_analytics.js";
+export { pollPriority, pollAgents, pollForecast, pollMetrics, pollPerf } from "./dashboard_analytics.js";
 import { pollBranches as _pollBranches } from "./dashboard_branches.js";
 import { pollCache as _pollCache, pollCacheHistory as _pollCacheHistory } from "./dashboard_cache.js";
 import { pollStalled as _pollStalled } from "./dashboard_stalled.js";

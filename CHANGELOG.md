@@ -1,5 +1,11 @@
 # Changelog
 
+## v7.0.0 — 2026-03-13  Dashboard /perf widget + perf-content header display
+
+- **pollPerf()**: New slow-tier poller fetches /perf endpoint
+- **perf-content** header span: Shows state size, task/subtask counts inline
+- Re-exported via dashboard_panels.js hub
+
 ## v6.99.0 — 2026-03-13  Bot formatters 89% → 91% — stalled filters, diff, log tests
 
 - `bot_formatters.py` 89% → **91%** — stalled min_age/task/branch filters, agents edge cases, diff with backup, log with journal
