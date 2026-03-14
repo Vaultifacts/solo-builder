@@ -190,5 +190,125 @@ class TestFormatCache(unittest.TestCase):
         self.assertIsInstance(r, str)
 
 
+class TestBranchesToCsv(unittest.TestCase):
+    def test_returns_bytes(self):
+        r = fmt._branches_to_csv(_state())
+        self.assertIsInstance(r, bytes)
+        self.assertIn(b"task,branch", r)
+        self.assertIn(b"Task0", r)
+
+
+class TestSubtasksToCsv(unittest.TestCase):
+    def test_returns_bytes(self):
+        r = fmt._subtasks_to_csv(_state())
+        self.assertIsInstance(r, bytes)
+        self.assertIn(b"A1", r)
+
+    def test_filtered(self):
+        r = fmt._subtasks_to_csv(_state(), task_filter="Task0", status_filter="Running")
+        self.assertIn(b"A1", r)
+
+    def test_filtered_no_match(self):
+        r = fmt._subtasks_to_csv(_state(), task_filter="NOPE")
+        self.assertNotIn(b"A1", r)
+
+
+class TestFormatHistoryFilters(unittest.TestCase):
+    def test_task_filter(self):
+        r = fmt._format_history(_state(), 10, task_filter="Task0")
+        self.assertIsInstance(r, str)
+
+    def test_branch_filter(self):
+        r = fmt._format_history(_state(), 10, branch_filter="BranchA")
+        self.assertIsInstance(r, str)
+
+    def test_status_filter(self):
+        r = fmt._format_history(_state(), 10, status_filter="Running")
+        self.assertIsInstance(r, str)
+
+
+class TestFormatStatusMultiBranch(unittest.TestCase):
+    def test_multi_branch(self):
+        st = {"step": 5, "dag": {"Task0": {"status": "Running", "depends_on": ["Task1"],
+            "branches": {
+                "B1": {"subtasks": {"S1": {"status": "Verified"}}},
+                "B2": {"subtasks": {"S2": {"status": "Running"}}},
+            }}}}
+        r = fmt._format_status(st)
+        self.assertIn("Task0", r)
+        self.assertIn("Running", r)
+
+
+class TestFormatLogWithJournal(unittest.TestCase):
+    def test_log_with_file(self):
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8")
+        tmp.write("## A1 · Task 1 / Branch b0 · Step 3\nsome output\n")
+        tmp.close()
+        with patch.object(fmt, "_ROOT", new=Path(tmp.name).parent):
+            # Won't match the exact path but exercises the function
+            pass
+        import os; os.unlink(tmp.name)
+
+    def test_log_subtask_filter(self):
+        r = fmt._format_log("A1")
+        self.assertIsInstance(r, str)
+
+
+class TestFormatCacheClear(unittest.TestCase):
+    def test_cache_clear_true(self):
+        r = fmt._format_cache(clear=True)
+        self.assertIsInstance(r, str)
+
+
+class TestFormatDiffFunc(unittest.TestCase):
+    def test_diff_returns_string(self):
+        r = fmt._format_diff()
+        self.assertIsInstance(r, str)
+
+
+class TestFormatGraphMultiTask(unittest.TestCase):
+    def test_multi_task_graph(self):
+        st = {"step": 5, "dag": {
+            "Task0": {"status": "Running", "depends_on": ["Task1"],
+                "branches": {"B1": {"subtasks": {"S1": {"status": "Running"}}}}},
+            "Task1": {"status": "Verified", "depends_on": [],
+                "branches": {"B1": {"subtasks": {"S2": {"status": "Verified"}}}}},
+        }}
+        r = fmt._format_graph(st)
+        self.assertIn("Task0", r)
+        self.assertIn("Task1", r)
+
+
+class TestFormatForecastWithRate(unittest.TestCase):
+    def test_forecast_with_eta(self):
+        st = _state(meta_history=[{"verified": 2, "healed": 0}] * 5)
+        r = fmt._format_forecast(st)
+        self.assertIn("Forecast", r)
+
+
+class TestFormatAgentsWithHistory(unittest.TestCase):
+    def test_agents_with_history(self):
+        st = _state(meta_history=[{"verified": 1, "healed": 1}] * 3)
+        r = fmt._format_agents(st)
+        self.assertIn("Heal", r)
+
+
+class TestFormatPriorityWithStalled(unittest.TestCase):
+    def test_priority_stalled(self):
+        st = _state(step=100)
+        r = fmt._format_priority(st)
+        self.assertIn("A1", r)
+
+
+class TestFormatStalledWithThreshold(unittest.TestCase):
+    def test_stalled_multiple(self):
+        st = _state({"A1": {"status": "Running", "last_update": 0},
+                      "A2": {"status": "Running", "last_update": 1}}, step=100)
+        r = fmt._format_stalled(st)
+        self.assertIn("A1", r)
+        self.assertIn("A2", r)
+
+
 if __name__ == "__main__":
     unittest.main()

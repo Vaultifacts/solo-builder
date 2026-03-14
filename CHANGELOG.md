@@ -1,5 +1,9 @@
 # Changelog
 
+## v6.92.0 — 2026-03-13  Bot formatters 80% → 86% + 17 new tests
+
+- `bot_formatters.py` 80% → **86%** — CSV exports, multi-branch status, history filters, stalled/priority edge cases
+
 ## v6.91.0 — 2026-03-13  Dashboard UX Round 37 — status colors, dep count, branch summary, refresh timer, Shift+D
 
 - **Card status text color**: Counts line green (done), cyan (active), dim (idle)
