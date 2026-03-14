@@ -299,6 +299,26 @@ def agent_stats(
             ),
             "patch_threshold_hits": safety.get("patch_threshold_hits", 0),
         },
+        "reliability": _reliability_stats(state),
+    }
+
+
+def _reliability_stats(state: Dict) -> Dict[str, Any]:
+    """
+    Extract reliability/recovery statistics from persisted state.
+
+    Returns a dict suitable for API/bot consumption.
+    Always returns a valid dict even when recovery_state is absent
+    (backward compatibility with older state files).
+    """
+    rs = state.get("recovery_state", {})
+    return {
+        "recovery_count": rs.get("recovery_count", 0),
+        "last_failed_phase": rs.get("last_failed_phase"),
+        "last_recovery_source": rs.get("last_recovery_source"),
+        "malformed_trigger_count": rs.get("malformed_trigger_count", 0),
+        "persistence_fallback_count": rs.get("persistence_fallback_count", 0),
+        "partial_work_repair_count": rs.get("partial_work_repair_count", 0),
     }
 
 

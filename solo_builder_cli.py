@@ -67,6 +67,7 @@ from utils.invariants import check_post_phase
 from core.persistence import (
     rotate_backups, save_state_to_disk, load_state_from_disk,
     apply_backward_compat_defaults, write_heartbeat,
+    check_resume_integrity,
 )
 from core.dag_transitions import (
     record_history, roll_up, update_branch_status, update_task_status,
@@ -1320,6 +1321,18 @@ class SoloBuilderCLI:
                                         stall_threshold=STALL_THRESHOLD)
         self.running  = True
         self._last_budget = StepBudget(max_calls=0)  # observability placeholder
+        self._recovery_state = {
+            "last_completed_step": 0,
+            "last_started_step": 0,
+            "last_save_step": 0,
+            "last_failed_phase": None,
+            "recovery_count": 0,
+            "last_recovery_source": None,
+            "malformed_trigger_count": 0,
+            "persistence_fallback_count": 0,
+            "partial_work_repair_count": 0,
+            "phase_failures": [],
+        }
 
         os.makedirs(PDF_OUTPUT_PATH, exist_ok=True)
 
@@ -1328,82 +1341,132 @@ class SoloBuilderCLI:
         for w in warnings:
             print(f"{YELLOW}[DAG Warning] {w}{RESET}")
 
+    # ── Phase isolation helper ─────────────────────────────────────────────
+    def _run_phase(self, name: str, fn, step_alerts: List[str],
+                   fail_open: bool = True):
+        """
+        Execute a pipeline phase with failure isolation.
+
+        *fail_open* phases log the error and continue; *fail_closed*
+        phases re-raise so the step is aborted.
+        """
+        try:
+            return fn()
+        except Exception as exc:
+            summary = f"{type(exc).__name__}: {exc}"
+            step_alerts.append(
+                f"  {RED}[Phase Failure]{RESET} {name} at step {self.step}: "
+                f"{summary}"
+            )
+            # Record to recovery metadata
+            rs = self._recovery_state
+            rs["last_failed_phase"] = name
+            entry = {
+                "step": self.step,
+                "phase": name,
+                "error": summary[:200],
+            }
+            rs["phase_failures"] = (rs.get("phase_failures", []) + [entry])[-20:]
+            if not fail_open:
+                raise
+            return None
+
     # ── Step ────────────────────────────────────────────────────────────────
     def run_step(self) -> None:
-        """Execute one full agent pipeline step."""
+        """Execute one full agent pipeline step with per-phase isolation."""
         self.step += 1
+        self._recovery_state["last_started_step"] = self.step
         step_alerts: List[str] = []
 
         # Per-step AI budget guard
         budget = StepBudget(max_calls=MAX_AI_CALLS_PER_STEP)
 
         # 0. RepoAnalyzer: scan for tech debt and inject new subtasks
-        ra_added = self.repo_analyzer.analyze(
+        #    Fail-open: analysis is advisory; skip on failure
+        self._run_phase("RepoAnalyzer", lambda: self.repo_analyzer.analyze(
             self.dag, self.memory_store, self.step, step_alerts,
             budget=budget,
-        )
+        ), step_alerts, fail_open=True)
 
         # Post-phase invariant check: RepoAnalyzer
         for _inv in check_post_phase(self.dag, "RepoAnalyzer"):
             step_alerts.append(f"  {YELLOW}[Invariant]{RESET} {_inv}")
 
-        # 1. Planner: prioritize (re-runs every DAG_UPDATE_INTERVAL steps,
-        #    or immediately when a task flips to Verified — which unblocks dependents)
+        # 1. Planner: prioritize
+        #    Fail-open: stale priority cache is acceptable
         verified_tasks = sum(
             1 for t in self.dag.values() if t.get("status") == "Verified"
         )
         if (self.step - self._last_priority_step) >= DAG_UPDATE_INTERVAL \
                 or verified_tasks > self._last_verified_tasks:
-            self._priority_cache     = self.planner.prioritize(self.dag, self.step)
-            self._last_priority_step = self.step
-            self._last_verified_tasks = verified_tasks
+            result = self._run_phase("Planner", lambda: self.planner.prioritize(
+                self.dag, self.step,
+            ), step_alerts, fail_open=True)
+            if result is not None:
+                self._priority_cache = result
+                self._last_priority_step = self.step
+                self._last_verified_tasks = verified_tasks
         priority = self._priority_cache
 
         # 2. ShadowAgent: detect and resolve conflicts
-        conflicts = self.shadow.detect_conflicts(self.dag)
-        for task_name, branch_name, st_name in conflicts:
-            step_alerts.append(
-                f"  {ALERT_CONFLICT} {CYAN}{st_name}{RESET}: "
-                f"shadow/status mismatch → resolving"
-            )
-            self.shadow.resolve_conflict(
-                self.dag, task_name, branch_name, st_name,
-                self.step, self.memory_store,
-            )
+        #    Fail-open: shadow is advisory
+        def _shadow_phase():
+            conflicts = self.shadow.detect_conflicts(self.dag)
+            for task_name, branch_name, st_name in conflicts:
+                step_alerts.append(
+                    f"  {ALERT_CONFLICT} {CYAN}{st_name}{RESET}: "
+                    f"shadow/status mismatch → resolving"
+                )
+                self.shadow.resolve_conflict(
+                    self.dag, task_name, branch_name, st_name,
+                    self.step, self.memory_store,
+                )
+        self._run_phase("ShadowAgent", _shadow_phase, step_alerts, fail_open=True)
 
-        # 3. SelfHealer: detect stalls (alert before healing)
-        stalled = self.healer.find_stalled(self.dag, self.step)
-        for _, _, st_name, age in stalled:
-            step_alerts.append(
-                f"  {ALERT_STALLED} {CYAN}{st_name}{RESET} stalled {age} steps"
+        # 3. SelfHealer: detect stalls
+        #    Fail-open: healing is advisory
+        healed = 0
+        def _healer_phase():
+            nonlocal healed
+            stalled = self.healer.find_stalled(self.dag, self.step)
+            for _, _, st_name, age in stalled:
+                step_alerts.append(
+                    f"  {ALERT_STALLED} {CYAN}{st_name}{RESET} stalled {age} steps"
+                )
+            healed = self.healer.heal(
+                self.dag, stalled, self.step, self.memory_store, step_alerts
             )
-        healed = self.healer.heal(
-            self.dag, stalled, self.step, self.memory_store, step_alerts
-        )
+        self._run_phase("SelfHealer", _healer_phase, step_alerts, fail_open=True)
 
         # 4. Executor: advance subtasks
-        actions = self.executor.execute_step(
+        #    Fail-closed: execution failures must not be silently skipped
+        actions = self._run_phase("Executor", lambda: self.executor.execute_step(
             self.dag, priority, self.step, self.memory_store
-        )
+        ), step_alerts, fail_open=False) or {}
 
         # 4b. PatchReviewer: critique Executor output before verification
-        review_results = self.patch_reviewer.review_step(
+        #    Fail-closed: must not silently verify unsafe work
+        self._run_phase("PatchReviewer", lambda: self.patch_reviewer.review_step(
             self.dag, actions, self.step, self.memory_store, step_alerts,
             budget=budget,
-        )
+        ), step_alerts, fail_open=False)
 
         # 4c. TestGenerator: generate pytest tests for Python output
-        tests_written = self.test_generator.generate_tests(
+        #    Fail-open: tests are supplementary
+        self._run_phase("TestGenerator", lambda: self.test_generator.generate_tests(
             self.dag, actions, self.step, self.memory_store, step_alerts,
             budget=budget,
-        )
+        ), step_alerts, fail_open=True)
 
         # Post-phase invariant check: Executor pipeline
         for _inv in check_post_phase(self.dag, "Executor"):
             step_alerts.append(f"  {YELLOW}[Invariant]{RESET} {_inv}")
 
         # 5. Verifier: fix any status inconsistencies
-        fixes = self.verifier.verify(self.dag)
+        #    Fail-closed: roll-up consistency is critical
+        fixes = self._run_phase("Verifier", lambda: self.verifier.verify(
+            self.dag,
+        ), step_alerts, fail_open=False) or []
         if VERBOSITY == "DEBUG":
             for fix in fixes:
                 step_alerts.append(f"  {DIM}Verifier: {fix}{RESET}")
@@ -1413,25 +1476,35 @@ class SoloBuilderCLI:
             step_alerts.append(f"  {YELLOW}[Invariant]{RESET} {_inv}")
 
         # 6. ShadowAgent: update expected state map
-        self.shadow.update_expected(self.dag)
+        #    Fail-open: shadow is advisory
+        self._run_phase("ShadowAgent.update", lambda: self.shadow.update_expected(
+            self.dag,
+        ), step_alerts, fail_open=True)
 
         # 7. MetaOptimizer: record + maybe adjust weights
-        verified_count = sum(1 for a in actions.values() if a == "verified")
-        self.meta.record(healed, verified_count)
-        opt_note = self.meta.optimize(self.planner)
-        if opt_note and VERBOSITY == "DEBUG":
-            step_alerts.append(f"  {DIM}{opt_note}{RESET}")
+        #    Fail-open: stats are advisory
+        def _meta_phase():
+            verified_count = sum(1 for a in actions.values() if a == "verified")
+            self.meta.record(healed, verified_count)
+            opt_note = self.meta.optimize(self.planner)
+            if opt_note and VERBOSITY == "DEBUG":
+                step_alerts.append(f"  {DIM}{opt_note}{RESET}")
+        self._run_phase("MetaOptimizer", _meta_phase, step_alerts, fail_open=True)
 
-        # 8. Auto-snapshot
+        # 8. Auto-snapshot (fail-open)
         if self.step % SNAPSHOT_INTERVAL == 0:
-            self._take_snapshot(auto=True)
+            self._run_phase("Snapshot", lambda: self._take_snapshot(auto=True),
+                            step_alerts, fail_open=True)
 
-        # 9. Auto-save state
+        # 9. Auto-save state (fail-open — save failure is logged, not fatal)
         if self.step % AUTO_SAVE_INTERVAL == 0:
             self.save_state(silent=True)
 
         # Heartbeat: write live counters every step for Discord bot real-time tracking
-        write_heartbeat(os.path.join(_HERE, "state", "step.txt"), self.step, self.dag)
+        try:
+            write_heartbeat(os.path.join(_HERE, "state", "step.txt"), self.step, self.dag)
+        except Exception:
+            pass
 
         # Budget deferral alert
         if budget.deferred > 0:
@@ -1441,14 +1514,20 @@ class SoloBuilderCLI:
             )
         self._last_budget = budget  # retain for observability
 
+        # Mark step completed in recovery metadata
+        self._recovery_state["last_completed_step"] = self.step
+
         # Accumulate alerts
         self.alerts = (self.alerts + step_alerts)[-MAX_ALERTS:]
 
-        # Render
-        self.display.render(
-            self.dag, self.memory_store, self.step,
-            self.alerts, self.meta.forecast(self.dag),
-        )
+        # Render (fail-open)
+        try:
+            self.display.render(
+                self.dag, self.memory_store, self.step,
+                self.alerts, self.meta.forecast(self.dag),
+            )
+        except Exception:
+            pass
 
     # ── Snapshot ────────────────────────────────────────────────────────────
     def _take_snapshot(self, auto: bool = False) -> None:
@@ -1470,6 +1549,7 @@ class SoloBuilderCLI:
     # ── Persistence ──────────────────────────────────────────────────────────
     def save_state(self, silent: bool = False) -> None:
         """Serialize full runtime state to JSON on disk."""
+        self._recovery_state["last_save_step"] = self.step
         payload = {
             "step":             self.step,
             "snapshot_counter": self.snapshot_counter,
@@ -1484,6 +1564,7 @@ class SoloBuilderCLI:
                 "patch_rejections":        self.patch_reviewer._rejections,
                 "patch_threshold_hits":    self.patch_reviewer.threshold_hits,
             },
+            "recovery_state":   self._recovery_state,
         }
         ok = save_state_to_disk(STATE_PATH, payload, silent=silent)
         if ok and not silent:
@@ -1494,13 +1575,35 @@ class SoloBuilderCLI:
     def load_state(self) -> bool:
         """
         Load state from disk into this instance.
+
+        Automatically falls back to backup files if the current state is
+        corrupt.  Runs resume integrity checks and repairs safe
+        inconsistencies before entering the run loop.
+
         Returns True if loaded successfully, False otherwise.
         """
-        payload = load_state_from_disk(STATE_PATH)
+        payload = load_state_from_disk(STATE_PATH, fallback_to_backup=True)
         if payload is None:
             return False
         try:
+            # Detect backup fallback
+            recovery_source = payload.pop("_recovery_source", None)
+            if recovery_source:
+                print(f"  {YELLOW}Current state corrupt — recovered from "
+                      f"{recovery_source}{RESET}")
+
             apply_backward_compat_defaults(payload)
+
+            # Resume integrity checks (repair safe inconsistencies)
+            issues = check_resume_integrity(payload, repair=True)
+            fatal = [i for i in issues if i.startswith("FATAL:")]
+            if fatal:
+                for f in fatal:
+                    print(f"  {RED}{f}{RESET}")
+                print(f"  {RED}State too corrupt to resume safely.{RESET}")
+                return False
+            repairs = [i for i in issues if not i.startswith("FATAL:")]
+
             self.step             = payload["step"]
             self.snapshot_counter = payload["snapshot_counter"]
             self.healer.healed_total = payload["healed_total"]
@@ -1523,6 +1626,27 @@ class SoloBuilderCLI:
                                                         self.repo_analyzer._last_run_step)
             self.patch_reviewer._rejections = ss["patch_rejections"]
             self.patch_reviewer.threshold_hits = ss["patch_threshold_hits"]
+            # Restore recovery metadata
+            self._recovery_state = payload.get("recovery_state",
+                                                self._recovery_state)
+            if recovery_source:
+                self._recovery_state["recovery_count"] = (
+                    self._recovery_state.get("recovery_count", 0) + 1
+                )
+                self._recovery_state["last_recovery_source"] = recovery_source
+                self._recovery_state["persistence_fallback_count"] = (
+                    self._recovery_state.get("persistence_fallback_count", 0) + 1
+                )
+            if repairs:
+                self._recovery_state["partial_work_repair_count"] = (
+                    self._recovery_state.get("partial_work_repair_count", 0)
+                    + len(repairs)
+                )
+                for r in repairs:
+                    self.alerts.append(
+                        f"  {YELLOW}[Resume Repair]{RESET} {r}"
+                    )
+                self.alerts = self.alerts[-MAX_ALERTS:]
             return True
         except Exception as exc:
             print(f"  {RED}Load failed: {exc}{RESET}")
@@ -1639,7 +1763,17 @@ class SoloBuilderCLI:
         _healtrigger  = trigger_path(_sd, "heal")
         try:
             while True:
-                self.run_step()
+                try:
+                    self.run_step()
+                except Exception as exc:
+                    # Phase-isolated: fail-closed phases re-raise here.
+                    # Save state to protect progress, alert, and continue.
+                    self.alerts.append(
+                        f"  {RED}[Step {self.step} Error]{RESET} "
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    self.alerts = self.alerts[-MAX_ALERTS:]
+                    self.save_state(silent=True)
                 ran += 1
 
                 stats = dag_stats(self.dag)
@@ -1671,70 +1805,82 @@ class SoloBuilderCLI:
                         # Still honour stop during pause
                         if trigger_exists(_stoptrig):
                             break
-                    vdata = self._consume_json_trigger(_vtrigger)
-                    if vdata:
-                        for e in (vdata if isinstance(vdata, list) else [vdata]):
-                            self._cmd_verify(
-                                f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
-                            )
-                    adata = self._consume_json_trigger(_attrigger)
-                    if adata:
-                        spec = adata.get("spec", "").strip()
-                        if spec:
-                            self._cmd_add_task(spec)
-                    abdata = self._consume_json_trigger(_abtrigger)
-                    if abdata:
-                        task_arg = abdata.get("task", "").strip()
-                        spec     = abdata.get("spec", "").strip()
-                        if task_arg and spec:
-                            self._cmd_add_branch(task_arg, spec_override=spec)
-                    pbdata = self._consume_json_trigger(_pbtrigger)
-                    if pbdata:
-                        pb_task   = pbdata.get("task", "").strip()
-                        pb_branch = pbdata.get("branch", "").strip()
-                        if pb_task and pb_branch:
-                            self._cmd_prioritize_branch(pb_task, pb_branch)
-                    ddata = self._consume_json_trigger(_dtrigger)
-                    if ddata:
-                        d_st   = ddata.get("subtask", "").strip().upper()
-                        d_desc = ddata.get("desc", "").strip()
-                        if d_st and d_desc:
-                            self._cmd_describe(f"{d_st} {d_desc}")
-                    rndata = self._consume_json_trigger(_rntrigger)
-                    if rndata:
-                        rn_st   = rndata.get("subtask", "").strip().upper()
-                        rn_desc = rndata.get("desc", "").strip()
-                        if rn_st and rn_desc:
-                            self._cmd_rename(f"{rn_st} {rn_desc}")
-                    tdata = self._consume_json_trigger(_ttrigger)
-                    if tdata:
-                        t_st    = tdata.get("subtask", "").strip().upper()
-                        t_tools = tdata.get("tools", "").strip()
-                        if t_st and t_tools:
-                            self._cmd_tools(f"{t_st} {t_tools}")
-                    sdata = self._consume_json_trigger(_settrigger)
-                    if sdata:
-                        s_key = sdata.get("key", "").strip()
-                        s_val = sdata.get("value", "").strip()
-                        if s_key and s_val:
-                            self._cmd_set(f"{s_key}={s_val}")
-                    healdata = self._consume_json_trigger(_healtrigger)
-                    if healdata:
-                        h_st = healdata.get("subtask", "").strip().upper()
-                        if h_st:
-                            self._cmd_heal(h_st)
-                    depdata = self._consume_json_trigger(_deptrigger)
-                    if depdata:
-                        dep_target = depdata.get("target", "").strip()
-                        dep_dep    = depdata.get("dep", "").strip()
-                        if dep_target and dep_dep:
-                            self._cmd_depends(f"{dep_target} {dep_dep}")
-                    uddata = self._consume_json_trigger(_undeptrigger)
-                    if uddata:
-                        ud_target = uddata.get("target", "").strip()
-                        ud_dep    = uddata.get("dep", "").strip()
-                        if ud_target and ud_dep:
-                            self._cmd_undepends(f"{ud_target} {ud_dep}")
+                    # Process external triggers — each wrapped individually
+                    # so one bad trigger doesn't crash the loop
+                    try:
+                        vdata = self._consume_json_trigger(_vtrigger)
+                        if vdata:
+                            for e in (vdata if isinstance(vdata, list) else [vdata]):
+                                self._cmd_verify(
+                                    f"{e.get('subtask', '')} {e.get('note', 'Discord verify')}"
+                                )
+                        adata = self._consume_json_trigger(_attrigger)
+                        if adata:
+                            spec = adata.get("spec", "").strip()
+                            if spec:
+                                self._cmd_add_task(spec)
+                        abdata = self._consume_json_trigger(_abtrigger)
+                        if abdata:
+                            task_arg = abdata.get("task", "").strip()
+                            spec     = abdata.get("spec", "").strip()
+                            if task_arg and spec:
+                                self._cmd_add_branch(task_arg, spec_override=spec)
+                        pbdata = self._consume_json_trigger(_pbtrigger)
+                        if pbdata:
+                            pb_task   = pbdata.get("task", "").strip()
+                            pb_branch = pbdata.get("branch", "").strip()
+                            if pb_task and pb_branch:
+                                self._cmd_prioritize_branch(pb_task, pb_branch)
+                        ddata = self._consume_json_trigger(_dtrigger)
+                        if ddata:
+                            d_st   = ddata.get("subtask", "").strip().upper()
+                            d_desc = ddata.get("desc", "").strip()
+                            if d_st and d_desc:
+                                self._cmd_describe(f"{d_st} {d_desc}")
+                        rndata = self._consume_json_trigger(_rntrigger)
+                        if rndata:
+                            rn_st   = rndata.get("subtask", "").strip().upper()
+                            rn_desc = rndata.get("desc", "").strip()
+                            if rn_st and rn_desc:
+                                self._cmd_rename(f"{rn_st} {rn_desc}")
+                        tdata = self._consume_json_trigger(_ttrigger)
+                        if tdata:
+                            t_st    = tdata.get("subtask", "").strip().upper()
+                            t_tools = tdata.get("tools", "").strip()
+                            if t_st and t_tools:
+                                self._cmd_tools(f"{t_st} {t_tools}")
+                        sdata = self._consume_json_trigger(_settrigger)
+                        if sdata:
+                            s_key = sdata.get("key", "").strip()
+                            s_val = sdata.get("value", "").strip()
+                            if s_key and s_val:
+                                self._cmd_set(f"{s_key}={s_val}")
+                        healdata = self._consume_json_trigger(_healtrigger)
+                        if healdata:
+                            h_st = healdata.get("subtask", "").strip().upper()
+                            if h_st:
+                                self._cmd_heal(h_st)
+                        depdata = self._consume_json_trigger(_deptrigger)
+                        if depdata:
+                            dep_target = depdata.get("target", "").strip()
+                            dep_dep    = depdata.get("dep", "").strip()
+                            if dep_target and dep_dep:
+                                self._cmd_depends(f"{dep_target} {dep_dep}")
+                        uddata = self._consume_json_trigger(_undeptrigger)
+                        if uddata:
+                            ud_target = uddata.get("target", "").strip()
+                            ud_dep    = uddata.get("dep", "").strip()
+                            if ud_target and ud_dep:
+                                self._cmd_undepends(f"{ud_target} {ud_dep}")
+                    except Exception as exc:
+                        self._recovery_state["malformed_trigger_count"] = (
+                            self._recovery_state.get("malformed_trigger_count", 0) + 1
+                        )
+                        self.alerts.append(
+                            f"  {YELLOW}[Trigger Error]{RESET} "
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        self.alerts = self.alerts[-MAX_ALERTS:]
                     if consume_flag_trigger(_rtrigger):
                         self._cmd_reset()
                     if consume_flag_trigger(_snaptrigger):

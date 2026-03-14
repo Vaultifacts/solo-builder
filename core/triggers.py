@@ -58,21 +58,50 @@ def all_trigger_paths(state_dir: str) -> Dict[str, str]:
 
 # ── Consumption helpers ──────────────────────────────────────────────────────
 
-def consume_json_trigger(path: str) -> Optional[Union[Dict, List]]:
+def consume_json_trigger(
+    path: str,
+    quarantine: bool = True,
+) -> Optional[Union[Dict, List]]:
     """
     Read, parse, and atomically delete a JSON trigger file.
 
     Returns the parsed dict/list on success, or None if the file
     doesn't exist or can't be read/parsed.
+
+    When *quarantine* is True, a malformed trigger file is renamed to
+    ``<path>.bad`` instead of being silently deleted, so it can be
+    inspected later.  Returns None in either case.
     """
     if not os.path.exists(path):
         return None
     try:
         with open(path, encoding="utf-8") as f:
-            data = json.load(f)
+            raw = f.read()
+        data = json.loads(raw)
         os.remove(path)
         return data
+    except (json.JSONDecodeError, ValueError):
+        # Malformed JSON — quarantine or delete
+        if quarantine:
+            bad_path = path + ".bad"
+            try:
+                os.replace(path, bad_path)
+            except OSError:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        else:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        return None
     except Exception:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
         return None
 
 
