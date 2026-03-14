@@ -207,6 +207,22 @@ class TestReadVersionFallback(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /health/aawo
+# ---------------------------------------------------------------------------
+
+class TestHealthAawo(_Base):
+    def test_aawo_returns_200(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/health/aawo")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d["ok"])
+        self.assertIn("active_agents", d)
+        self.assertIn("outcome_stats", d)
+        self.assertIn("agent_configs", d)
+
+
+# ---------------------------------------------------------------------------
 # GET /changes (TASK-412)
 # ---------------------------------------------------------------------------
 

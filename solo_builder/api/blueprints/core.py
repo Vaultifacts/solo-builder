@@ -130,6 +130,37 @@ def health():
     })
 
 
+@core_bp.get("/health/aawo")
+def health_aawo():
+    """Lightweight AAWO status endpoint — active agents + outcome stats."""
+    try:
+        from utils.aawo_bridge import (get_active_agents, get_outcome_stats,
+                                        resolve_executor_config)
+        agents = get_active_agents() or []
+        outcomes = get_outcome_stats() or {}
+        agent_configs = {}
+        for agent_id in set(list(outcomes.keys()) + agents):
+            cfg = resolve_executor_config(agent_id)
+            if cfg:
+                agent_configs[agent_id] = cfg
+        return jsonify({
+            "ok": True,
+            "available": True,
+            "active_agents": agents,
+            "outcome_stats": outcomes,
+            "agent_configs": agent_configs,
+        })
+    except Exception as exc:
+        return jsonify({
+            "ok": True,
+            "available": False,
+            "error": str(exc),
+            "active_agents": [],
+            "outcome_stats": {},
+            "agent_configs": {},
+        })
+
+
 @core_bp.get("/changes")
 def changes():
     """Lightweight change detection endpoint (TASK-412 hybrid).

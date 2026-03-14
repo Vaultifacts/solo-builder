@@ -1,5 +1,10 @@
 # Changelog
 
+## v6.89.0 — 2026-03-13  AAWO expansion — GET /health/aawo standalone endpoint
+
+- **GET /health/aawo**: Standalone AAWO status endpoint with active_agents, outcome_stats, agent_configs
+- Lightweight alternative to `/health/detailed` for AAWO-only status checks
+
 ## v6.88.0 — 2026-03-13  TASK-412 — GET /changes hybrid endpoint for real-time updates
 
 - **GET /changes?since=N**: Lightweight change detection endpoint returning subtask status transitions since step N
