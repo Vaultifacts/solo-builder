@@ -192,6 +192,10 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "gates": {"type": "array", "items": {"type": "object"}},
      }}},
+    {"path": "/api/docs",               "method": "GET", "tag": "Core",   "summary": "OpenAPI 3.0 JSON spec for all API routes",
+     "response": {"type": "object", "properties": {
+         "openapi": {"type": "string"}, "paths": {"type": "object"},
+     }}},
     {"path": "/perf",                    "method": "GET", "tag": "Core",   "summary": "Backend performance metrics (state size, task/subtask counts)",
      "response": {"type": "object", "properties": {
          "state_size_bytes": {"type": "integer"}, "subtask_count": {"type": "integer"},

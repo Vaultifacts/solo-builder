@@ -130,6 +130,25 @@ def health():
     })
 
 
+@core_bp.get("/api/docs")
+def api_docs():
+    """Return OpenAPI 3.0 JSON spec for all API routes."""
+    try:
+        import importlib.util, sys as _sys
+        tools_dir = Path(__file__).resolve().parents[3] / "tools"
+        spec_path = tools_dir / "generate_openapi.py"
+        if "generate_openapi" in _sys.modules:
+            mod = _sys.modules["generate_openapi"]
+        else:
+            _spec = importlib.util.spec_from_file_location("generate_openapi", spec_path)
+            mod = importlib.util.module_from_spec(_spec)
+            _sys.modules["generate_openapi"] = mod
+            _spec.loader.exec_module(mod)
+        return jsonify(mod.build_spec())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 @core_bp.get("/perf")
 def perf():
     """Backend performance metrics — response times and state file size."""

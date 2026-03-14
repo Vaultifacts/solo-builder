@@ -278,6 +278,20 @@ class TestChangesEndpoint(_Base):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/docs
+# ---------------------------------------------------------------------------
+
+class TestApiDocsEndpoint(_Base):
+    def test_api_docs_returns_200(self):
+        self._write_state({"dag": {}, "step": 0})
+        r = self.client.get("/api/docs")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("openapi", d)
+        self.assertIn("paths", d)
+
+
+# ---------------------------------------------------------------------------
 # GET /changes incremental polling
 # ---------------------------------------------------------------------------
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.18.0 — 2026-03-13  GET /api/docs + perf panel + test optimization review
+
+- **GET /api/docs**: Live OpenAPI 3.0 JSON spec endpoint (90 paths, 15 tags)
+- **Perf panel**: Already in header — confirmed sufficient
+- **Test optimization**: 3580+ tests in ~90s — no xdist needed
+- OpenAPI spec updated (98 routes)
+
 ## v7.17.0 — 2026-03-13  Dashboard UX Round 48 — grid gap, min-height, branch border, smooth scroll, Shift+A — 225 UX
 
 ## v7.16.0 — 2026-03-13  i18n full rollout + /changes tests + project summary
