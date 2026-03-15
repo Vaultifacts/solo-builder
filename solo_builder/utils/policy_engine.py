@@ -19,6 +19,7 @@ Decisions are returned as PolicyDecision named tuples with:
     action: "allowed" | "blocked" | "requires_review"
     reason: human-readable explanation (empty when allowed)
 """
+from __future__ import annotations
 
 import fnmatch
 import re

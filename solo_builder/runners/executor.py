@@ -19,6 +19,8 @@ from .hitl_gate import evaluate as _hitl_evaluate, level_name as _hitl_level_nam
 from utils.hitl_policy import load_policy as _load_hitl_policy, evaluate_with_policy as _hitl_policy_evaluate
 from utils.tool_scope_policy import load_scope_policy as _load_scope_policy, evaluate_scope as _scope_evaluate
 from utils.policy_engine import PolicyEngine as _PolicyEngine
+from utils.invariants import check_post_phase
+from utils.budget import UsageTracker
 
 # ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
 _SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -103,6 +105,7 @@ class Executor:
         self._hitl_policy     = _load_hitl_policy()
         self._scope_policy    = _load_scope_policy()
         self._policy_engine   = _PolicyEngine(_CFG)
+        self._usage_tracker   = UsageTracker()
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
         # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
         _cache = make_cache()
@@ -143,6 +146,10 @@ class Executor:
         Advance up to max_per_step subtasks.
         Returns {subtask_name: action} where action ∈ {"started", "verified"}.
         """
+        budget_ok, budget_reason = self._usage_tracker.check_budget()
+        if not budget_ok:
+            logger.warning("budget_exhausted step=%d reason=%s", step, budget_reason)
+
         actions: Dict[str, str] = {}
         advanced = 0
         sdk_tool_jobs: list = []   # SDK tool-use (preferred for tool-bearing subtasks)
@@ -283,6 +290,7 @@ class Executor:
                     if isinstance(result, Exception) else result
                 if success:
                     _sdk_succeeded += 1
+                    # TODO: Wire PatchReviewer here for output quality review — see agents/patch_reviewer.py
                     # Evaluate output against policy engine
                     policy_decision = self._policy_engine.evaluate_patch(output, st_data.get("description", ""))
                     if policy_decision.action == "blocked":
@@ -308,6 +316,7 @@ class Executor:
                         st_name, task_name, branch_name,
                         st_data.get("description", ""), output, step,
                     )
+                    self._usage_tracker.record_usage(step=step, tokens_in=0, tokens_out=len(output), model=ANTHROPIC_MODEL)
                     _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
                                   self._aawo_repo_path)
                 else:
@@ -369,6 +378,7 @@ class Executor:
                             st_name, task_name, branch_name,
                             st_data.get("description", ""), output, step,
                         )
+                        self._usage_tracker.record_usage(step=step, tokens_in=0, tokens_out=len(output), model=ANTHROPIC_MODEL)
                         _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
                                       self._aawo_repo_path)
                     # On failure: stay Running → will retry next step or self-heal
@@ -407,6 +417,7 @@ class Executor:
                     logger.info("subtask_%s step=%d task=%s subtask=%s via=sdk_direct", new_status.lower(), step, task_name, st_name)
                     if new_status == "Verified":
                         self._roll_up(dag, task_name, branch_name)
+                    self._usage_tracker.record_usage(step=step, tokens_in=0, tokens_out=len(output), model=ANTHROPIC_MODEL)
                     _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
                                   self._aawo_repo_path)
                 else:
@@ -426,6 +437,9 @@ class Executor:
         elapsed_ms = round((time.monotonic() - _step_t0) * 1000)
         logger.info("step_complete step=%d elapsed_ms=%d actions=%d",
                     step, elapsed_ms, len(actions))
+        violations = check_post_phase(dag, "Executor")
+        for v in violations:
+            logging.warning(f"Invariant: {v}")
         return actions
 
     @staticmethod

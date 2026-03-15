@@ -1,6 +1,8 @@
 """Verifier agent — enforces DAG status invariants."""
 from typing import Dict, List
 
+from utils.dag_transitions import verify_rollup
+
 
 class Verifier:
     """Enforces DAG invariants: branch/task statuses must reflect subtask states."""
@@ -37,4 +39,5 @@ class Verifier:
                 task_data["status"] = "Running"
                 fixes.append(f"Task {task_name}: → Running")
 
+        verify_rollup(dag)
         return fixes

@@ -10,5 +10,6 @@ from .shadow_agent import ShadowAgent
 from .verifier import Verifier
 from .self_healer import SelfHealer
 from .meta_optimizer import MetaOptimizer
+from .patch_reviewer import PatchReviewer
 
-__all__ = ["Planner", "ShadowAgent", "Verifier", "SelfHealer", "MetaOptimizer"]
+__all__ = ["Planner", "ShadowAgent", "Verifier", "SelfHealer", "MetaOptimizer", "PatchReviewer"]

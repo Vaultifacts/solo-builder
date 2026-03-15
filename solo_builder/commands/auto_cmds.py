@@ -83,6 +83,7 @@ class AutoCommandsMixin:
                 # Honour external triggers (dashboard Run Step, Discord/Telegram verify)
                 # NOTE: check verify_trigger BEFORE breaking on run_trigger so that
                 # external verify requests aren't skipped when auto-mode is running.
+                # TODO: Replace with TriggerRegistry.check_all() — see utils/trigger_registry.py
                 _waited  = 0.0
                 _stopped = False
                 _vtrigger = os.path.join(_HERE, "state", "verify_trigger.json")

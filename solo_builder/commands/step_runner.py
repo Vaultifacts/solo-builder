@@ -1,8 +1,10 @@
 """Step execution and persistence for SoloBuilderCLI — extracted from solo_builder_cli.py."""
+import logging
 import os
 import json
 
 from config.loader import DAG_UPDATE_INTERVAL, MAX_ALERTS
+from utils.state_integrity import check_resume_integrity
 
 
 class StepRunnerMixin:
@@ -162,6 +164,10 @@ class StepRunnerMixin:
                 if attempt_path != STATE_PATH:
                     logger.warning("state_recovered from=%s", attempt_path)
                     print(f"  {YELLOW}Primary state corrupt — recovered from {attempt_path}{RESET}")
+                repairs = check_resume_integrity(payload)
+                if repairs:
+                    for r in repairs:
+                        logging.info(f"State repair: {r}")
                 self.step             = payload["step"]
                 self.snapshot_counter = payload["snapshot_counter"]
                 self.healer.healed_total = payload["healed_total"]
