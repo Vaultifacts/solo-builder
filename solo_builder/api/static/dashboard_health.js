@@ -709,3 +709,96 @@ export async function pollRepoHealthDetailed() {
     el.replaceChildren(...nodes);
   } catch (_) {}
 }
+
+export async function pollPolicyEngineDetailed() {
+  try {
+    const d = await api("/policy/engine");
+    const el = document.getElementById("policy-engine-detailed-content");
+    if (!el) return;
+
+    const mkBadge = (ok) => {
+      const b = document.createElement("span");
+      b.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;font-weight:bold;margin-right:8px;flex-shrink:0;color:#000;background:${ok ? "var(--green)" : "var(--red)"}`;
+      b.textContent = ok ? "OK" : "WARN";
+      return b;
+    };
+
+    const mkCollapsible = (title, items) => {
+      const container = document.createElement("div");
+      const header = document.createElement("div");
+      header.style.cssText = "display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px;font-weight:bold;color:var(--text);cursor:pointer";
+      header.onclick = () => {
+        const content = container.querySelector("[data-content]");
+        const isHidden = content.style.display === "none";
+        content.style.display = isHidden ? "block" : "none";
+        arrow.textContent = isHidden ? "▼" : "▶";
+      };
+      const arrow = document.createElement("span");
+      arrow.style.cssText = "font-size:8px;color:var(--dim);flex-shrink:0";
+      arrow.textContent = items.length > 0 ? "▶" : "•";
+      header.append(arrow);
+      const titleSpan = document.createElement("span");
+      titleSpan.textContent = title;
+      header.append(titleSpan);
+      container.append(header);
+
+      if (items.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.cssText = "font-size:9px;color:var(--dim);padding:2px 0;margin-left:14px";
+        empty.textContent = "none";
+        container.append(empty);
+      } else {
+        const content = document.createElement("div");
+        content.setAttribute("data-content", "");
+        content.style.cssText = "display:none;margin-left:14px";
+        items.forEach(item => {
+          const row = document.createElement("div");
+          row.style.cssText = "font-size:9px;color:var(--dim);padding:2px 0;word-break:break-all";
+          row.textContent = item;
+          content.append(row);
+        });
+        container.append(content);
+      }
+      return container;
+    };
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${d.ok ? "var(--green)" : "var(--red)"}`;
+    hdrText.textContent = "Policy Engine";
+    hdr.append(mkBadge(d.ok), hdrText);
+
+    const nodes = [hdr];
+
+    // Stats summary
+    const stats = d.stats || {};
+    const statsRow = document.createElement("div");
+    statsRow.style.cssText = "display:flex;gap:12px;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px;color:var(--dim)";
+    const bcCount = document.createElement("span");
+    bcCount.textContent = `Blocks: ${stats.policy_block_count || 0}`;
+    const crCount = document.createElement("span");
+    crCount.textContent = `Critical: ${stats.critical_path_review_count || 0}`;
+    const opCount = document.createElement("span");
+    opCount.textContent = `Oversized: ${stats.oversized_patch_count || 0}`;
+    statsRow.append(bcCount, crCount, opCount);
+    nodes.push(statsRow);
+
+    // Limits
+    const cfg = d.config || {};
+    const limitsRow = document.createElement("div");
+    limitsRow.style.cssText = "padding:4px 0;border-bottom:1px solid var(--border);font-size:9px;color:var(--dim)";
+    const limitsText = document.createElement("span");
+    limitsText.textContent = `Limits: ${cfg.max_files || 0} files · ${cfg.max_lines || 0} lines · ${cfg.max_patch_size || 0} bytes${cfg.require_review_for_critical ? " · review critical paths" : ""}`;
+    limitsRow.append(limitsText);
+    nodes.push(limitsRow);
+
+    // Blocked paths
+    nodes.push(mkCollapsible("Blocked Paths", d.blocked_paths || []));
+
+    // Critical patterns
+    nodes.push(mkCollapsible("Critical Patterns", d.critical_patterns || []));
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}

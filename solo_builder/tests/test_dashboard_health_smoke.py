@@ -1,9 +1,9 @@
 """Smoke tests for dashboard_health.js module — TASK-410.
 
 Verifies:
-  1. All 12 health poller functions are exported from dashboard_health.js
-  2. dashboard_panels.js re-exports all 12 via named re-export
-  3. dashboard.js imports all 12 from dashboard_panels.js
+  1. All 13 health poller functions are exported from dashboard_health.js
+  2. dashboard_panels.js re-exports all 13 via named re-export
+  3. dashboard.js imports all 13 from dashboard_panels.js
 """
 from __future__ import annotations
 
@@ -29,11 +29,12 @@ _EXPECTED_POLLERS = sorted([
     "pollCiQualityDetailed",
     "pollPreReleaseDetailed",
     "pollRepoHealthDetailed",
+    "pollPolicyEngineDetailed",
 ])
 
 
 class TestDashboardHealthExports(unittest.TestCase):
-    """All 12 health pollers must be exported from dashboard_health.js."""
+    """All 13 health pollers must be exported from dashboard_health.js."""
 
     def setUp(self):
         self._src = _HEALTH_JS.read_text(encoding="utf-8")
@@ -44,7 +45,7 @@ class TestDashboardHealthExports(unittest.TestCase):
 
     def test_poller_count(self):
         count = len(re.findall(r"export async function ", self._src))
-        self.assertEqual(count, 12)
+        self.assertEqual(count, 13)
 
 
 class TestDashboardPanelsReExport(unittest.TestCase):
