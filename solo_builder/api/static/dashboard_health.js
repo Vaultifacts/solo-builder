@@ -805,10 +805,18 @@ export async function pollPatchReviewDetailed() {
 
     const nodes = [hdr];
 
-    const meta = document.createElement("div");
-    meta.style.cssText = "font-size:9px;color:var(--dim);margin-bottom:6px";
-    meta.textContent = `limit ${d.max_rejections} rejections/subtask`;
-    nodes.push(meta);
+    // SDK availability chip
+    const sdkChip = document.createElement("div");
+    sdkChip.style.cssText = "font-size:9px;margin-bottom:6px;display:flex;gap:6px;align-items:center";
+    const sdkLabel = document.createElement("span");
+    sdkLabel.style.cssText = `padding:1px 5px;border-radius:3px;font-weight:bold;color:#000;background:${d.available ? "var(--green)" : "var(--dim)"}`;
+    sdkLabel.textContent = d.available ? "SDK" : "Heuristic";
+    sdkChip.append(sdkLabel);
+    const limitNote = document.createElement("span");
+    limitNote.style.cssText = "color:var(--dim)";
+    limitNote.textContent = `limit ${d.max_rejections} rejections/subtask`;
+    sdkChip.append(limitNote);
+    nodes.push(sdkChip);
 
     if (rejected.length === 0) {
       const empty = document.createElement("div");
@@ -831,6 +839,33 @@ export async function pollPatchReviewDetailed() {
         const badgeColor = r.count >= (d.max_rejections || 3) ? "var(--red)" : "var(--yellow, #e6a817)";
         row.append(mkBadge(`×${r.count}`, badgeColor), info);
         nodes.push(row);
+      });
+    }
+
+    // Recent reviews table (last 10 steps)
+    const recent = d.recent_reviews || [];
+    if (recent.length > 0) {
+      const tblHdr = document.createElement("div");
+      tblHdr.style.cssText = "font-size:9px;font-weight:bold;color:var(--dim);margin-top:8px;margin-bottom:4px";
+      tblHdr.textContent = "Recent steps";
+      nodes.push(tblHdr);
+      recent.slice().reverse().forEach(rv => {
+        const rrow = document.createElement("div");
+        rrow.style.cssText = "display:flex;gap:8px;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)";
+        const stepEl = document.createElement("span");
+        stepEl.style.cssText = "color:var(--dim);min-width:42px";
+        stepEl.textContent = `step ${rv.step}`;
+        const appr = document.createElement("span");
+        appr.style.cssText = "color:var(--green)";
+        appr.textContent = `✓${rv.approved || 0}`;
+        const rej = document.createElement("span");
+        rej.style.cssText = `color:${rv.rejected > 0 ? "var(--red)" : "var(--dim)"}`;
+        rej.textContent = `✗${rv.rejected || 0}`;
+        const esc = document.createElement("span");
+        esc.style.cssText = `color:${rv.escalated > 0 ? "var(--yellow, #e6a817)" : "var(--dim)"}`;
+        esc.textContent = `⚠${rv.escalated || 0}`;
+        rrow.append(stepEl, appr, rej, esc);
+        nodes.push(rrow);
       });
     }
 

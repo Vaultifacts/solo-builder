@@ -435,6 +435,7 @@ def main() -> None:
             except Exception:
                 pass
         _release_lock(_LOCK_PATH)
+        _cleanup_stale_at_exit(_HERE)
         sys.exit(0)
     _signal.signal(_signal.SIGTERM, _sigterm_handler)
 

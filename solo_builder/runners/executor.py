@@ -87,8 +87,25 @@ def _write_step_metrics(step: int, t0: float, sdk_dispatched: int,
         pass  # never block execution on metrics write failure
 
 
-def _write_patch_stats(reviewer: "_PatchReviewer") -> None:
-    """Write PatchReviewer observability snapshot to state/patch_review_stats.json."""
+def _load_patch_stats() -> dict:
+    """Load persisted PatchReviewer stats; return empty dict on any failure."""
+    try:
+        with open(_PATCH_STATS_PATH, encoding="utf-8") as _pf:
+            return _json.loads(_pf.read())
+    except Exception:
+        return {}
+
+
+def _write_patch_stats(
+    reviewer: "_PatchReviewer",
+    step: int | None = None,
+    pr_results: dict | None = None,
+) -> None:
+    """Write PatchReviewer observability snapshot to state/patch_review_stats.json.
+
+    Appends one entry to ``recent_reviews`` (last 10 kept) when *step* and
+    *pr_results* are provided so the dashboard can show per-step review history.
+    """
     rejected = [
         {
             "name":        name,
@@ -97,18 +114,59 @@ def _write_patch_stats(reviewer: "_PatchReviewer") -> None:
         }
         for name, info in reviewer._rejections.items()
     ]
+
+    # Build updated recent_reviews list (max 10 entries)
+    existing = _load_patch_stats()
+    recent = list(existing.get("recent_reviews", []))
+    if step is not None and pr_results is not None:
+        counts: dict[str, int] = {}
+        for v in pr_results.values():
+            counts[v] = counts.get(v, 0) + 1
+        recent.append({
+            "step":      step,
+            "approved":  counts.get("approved",  0),
+            "rejected":  counts.get("rejected",  0),
+            "escalated": counts.get("escalated", 0),
+            "deferred":  counts.get("deferred",  0),
+        })
+        recent = recent[-10:]
+
     record = {
         "enabled":          reviewer.enabled,
+        "available":        reviewer.available,
+        "use_sdk":          reviewer.use_sdk,
         "threshold_hits":   reviewer.threshold_hits,
         "total_rejections": sum(d.get("count", 0) for d in reviewer._rejections.values()),
         "max_rejections":   reviewer.max_rejections,
         "rejected_subtasks": rejected,
+        "recent_reviews":   recent,
     }
     try:
+        os.makedirs(os.path.dirname(_PATCH_STATS_PATH), exist_ok=True)
         with open(_PATCH_STATS_PATH, "w", encoding="utf-8") as _pf:
             _pf.write(_json.dumps(record) + "\n")
     except OSError:
         pass  # never block execution on stats write failure
+
+
+def _restore_patch_stats(reviewer: "_PatchReviewer") -> None:
+    """Restore threshold_hits and _rejections from persisted stats file.
+
+    Called once after PatchReviewer is instantiated so cumulative stats
+    survive executor restarts.
+    """
+    s = _load_patch_stats()
+    if not s:
+        return
+    reviewer.threshold_hits = s.get("threshold_hits", 0)
+    for entry in s.get("rejected_subtasks", []):
+        name = entry.get("name")
+        count = entry.get("count", 0)
+        if name and count > 0:
+            reviewer._rejections.setdefault(name, {"count": 0, "reasons": []})
+            reviewer._rejections[name]["count"] = max(
+                reviewer._rejections[name]["count"], count
+            )
 
 
 def _fire_outcome(st_data: dict, outcome: str, elapsed_s: float,
@@ -155,6 +213,7 @@ class Executor:
         self._policy_engine   = _PolicyEngine(_CFG)
         self._usage_tracker   = UsageTracker()
         self._patch_reviewer  = _PatchReviewer(_CFG)
+        _restore_patch_stats(self._patch_reviewer)
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
         # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
         _cache = make_cache()
@@ -492,7 +551,7 @@ class Executor:
                 logger.info("patch_review: %s", _alert.strip())
             if pr_results:
                 logger.info("patch_review_step step=%d results=%s", step, pr_results)
-            _write_patch_stats(self._patch_reviewer)
+            _write_patch_stats(self._patch_reviewer, step=step, pr_results=pr_results)
 
         _write_step_metrics(step, _step_t0, _sdk_dispatched, _sdk_succeeded, actions)
         elapsed_ms = round((time.monotonic() - _step_t0) * 1000)

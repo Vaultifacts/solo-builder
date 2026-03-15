@@ -86,6 +86,51 @@ class TestPatchReviewEndpoint(unittest.TestCase):
         self.assertEqual(d["rejected_subtasks"][0]["name"], "A1")
         self.assertEqual(d["rejected_subtasks"][0]["count"], 2)
 
+    def test_reads_available_and_use_sdk(self):
+        import api.blueprints.patch_review as pr_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {
+                "enabled": True, "available": True, "use_sdk": True,
+                "threshold_hits": 0, "total_rejections": 0,
+                "max_rejections": 3, "rejected_subtasks": [],
+                "recent_reviews": [],
+            })
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertTrue(d["available"])
+        self.assertTrue(d["use_sdk"])
+
+    def test_reads_recent_reviews(self):
+        import api.blueprints.patch_review as pr_mod
+        reviews = [{"step": 1, "approved": 3, "rejected": 1, "escalated": 0, "deferred": 0}]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {
+                "enabled": True, "available": False, "use_sdk": True,
+                "threshold_hits": 0, "total_rejections": 1,
+                "max_rejections": 3, "rejected_subtasks": [],
+                "recent_reviews": reviews,
+            })
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertEqual(len(d["recent_reviews"]), 1)
+        self.assertEqual(d["recent_reviews"][0]["approved"], 3)
+
+    def test_missing_stats_available_defaults_false(self):
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertFalse(d["available"])
+
+    def test_missing_stats_recent_reviews_defaults_empty(self):
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertEqual(d["recent_reviews"], [])
+
     def test_reads_enabled_false(self):
         import api.blueprints.patch_review as pr_mod
         with tempfile.TemporaryDirectory() as tmp:
@@ -176,6 +221,8 @@ class TestWritePatchStats(unittest.TestCase):
 
         reviewer = PatchReviewer.__new__(PatchReviewer)
         reviewer.enabled = True
+        reviewer.available = True
+        reviewer.use_sdk = True
         reviewer.threshold_hits = 2
         reviewer.max_rejections = 3
         reviewer._rejections = {
@@ -204,6 +251,8 @@ class TestWritePatchStats(unittest.TestCase):
 
         reviewer = PatchReviewer.__new__(PatchReviewer)
         reviewer.enabled = True
+        reviewer.available = False
+        reviewer.use_sdk = True
         reviewer.threshold_hits = 0
         reviewer.max_rejections = 3
         reviewer._rejections = {
@@ -221,6 +270,55 @@ class TestWritePatchStats(unittest.TestCase):
         entry = data["rejected_subtasks"][0]
         self.assertEqual(entry["last_reason"], "second")
 
+    def test_write_patch_stats_appends_recent_reviews(self):
+        from runners.executor import _write_patch_stats
+        from agents.patch_reviewer import PatchReviewer
+
+        reviewer = PatchReviewer.__new__(PatchReviewer)
+        reviewer.enabled = True
+        reviewer.available = True
+        reviewer.use_sdk = True
+        reviewer.threshold_hits = 0
+        reviewer.max_rejections = 3
+        reviewer._rejections = {}
+
+        import runners.executor as ex_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            stats_path = os.path.join(tmp, "patch_review_stats.json")
+            with patch.object(ex_mod, "_PATCH_STATS_PATH", stats_path):
+                _write_patch_stats(reviewer, step=5, pr_results={"A1": "approved", "B2": "rejected"})
+                with open(stats_path, encoding="utf-8") as f:
+                    data = json.loads(f.read())
+
+        self.assertEqual(len(data["recent_reviews"]), 1)
+        rv = data["recent_reviews"][0]
+        self.assertEqual(rv["step"], 5)
+        self.assertEqual(rv["approved"], 1)
+        self.assertEqual(rv["rejected"], 1)
+
+    def test_write_patch_stats_keeps_max_10_recent(self):
+        from runners.executor import _write_patch_stats
+        from agents.patch_reviewer import PatchReviewer
+
+        reviewer = PatchReviewer.__new__(PatchReviewer)
+        reviewer.enabled = True
+        reviewer.available = False
+        reviewer.use_sdk = True
+        reviewer.threshold_hits = 0
+        reviewer.max_rejections = 3
+        reviewer._rejections = {}
+
+        import runners.executor as ex_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            stats_path = os.path.join(tmp, "patch_review_stats.json")
+            with patch.object(ex_mod, "_PATCH_STATS_PATH", stats_path):
+                for i in range(12):
+                    _write_patch_stats(reviewer, step=i, pr_results={"X": "approved"})
+                with open(stats_path, encoding="utf-8") as f:
+                    data = json.loads(f.read())
+
+        self.assertLessEqual(len(data["recent_reviews"]), 10)
+
     def test_write_patch_stats_ioerror_is_silent(self):
         """OSError on write must not propagate."""
         from runners.executor import _write_patch_stats
@@ -228,6 +326,8 @@ class TestWritePatchStats(unittest.TestCase):
 
         reviewer = PatchReviewer.__new__(PatchReviewer)
         reviewer.enabled = True
+        reviewer.available = False
+        reviewer.use_sdk = False
         reviewer.threshold_hits = 0
         reviewer.max_rejections = 3
         reviewer._rejections = {}
@@ -237,6 +337,71 @@ class TestWritePatchStats(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(ex_mod, "_PATCH_STATS_PATH", tmp):
                 _write_patch_stats(reviewer)  # must not raise
+
+
+class TestRestorePatchStats(unittest.TestCase):
+
+    def test_restore_loads_threshold_hits(self):
+        from runners.executor import _restore_patch_stats, _write_patch_stats
+        from agents.patch_reviewer import PatchReviewer
+
+        # Write a stats file with known values
+        import runners.executor as ex_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            stats_path = os.path.join(tmp, "patch_review_stats.json")
+            Path(stats_path).write_text(json.dumps({
+                "enabled": True, "available": False, "use_sdk": True,
+                "threshold_hits": 7, "total_rejections": 4,
+                "max_rejections": 3,
+                "rejected_subtasks": [
+                    {"name": "Z1", "count": 2, "last_reason": "bad"},
+                ],
+                "recent_reviews": [],
+            }), encoding="utf-8")
+            with patch.object(ex_mod, "_PATCH_STATS_PATH", stats_path):
+                reviewer = PatchReviewer.__new__(PatchReviewer)
+                reviewer.threshold_hits = 0
+                reviewer._rejections = {}
+                _restore_patch_stats(reviewer)
+
+        self.assertEqual(reviewer.threshold_hits, 7)
+        self.assertIn("Z1", reviewer._rejections)
+        self.assertEqual(reviewer._rejections["Z1"]["count"], 2)
+
+    def test_restore_missing_file_is_safe(self):
+        from runners.executor import _restore_patch_stats
+        from agents.patch_reviewer import PatchReviewer
+        import runners.executor as ex_mod
+
+        reviewer = PatchReviewer.__new__(PatchReviewer)
+        reviewer.threshold_hits = 0
+        reviewer._rejections = {}
+        with patch.object(ex_mod, "_PATCH_STATS_PATH", "/nonexistent/x.json"):
+            _restore_patch_stats(reviewer)  # must not raise
+
+        self.assertEqual(reviewer.threshold_hits, 0)
+
+    def test_restore_does_not_decrease_existing_count(self):
+        """Restore uses max() so in-memory counts are never reduced."""
+        from runners.executor import _restore_patch_stats
+        from agents.patch_reviewer import PatchReviewer
+        import runners.executor as ex_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            stats_path = os.path.join(tmp, "x.json")
+            Path(stats_path).write_text(json.dumps({
+                "threshold_hits": 0, "rejected_subtasks": [
+                    {"name": "A1", "count": 1, "last_reason": "old"},
+                ],
+            }), encoding="utf-8")
+            reviewer = PatchReviewer.__new__(PatchReviewer)
+            reviewer.threshold_hits = 0
+            reviewer._rejections = {"A1": {"count": 3, "reasons": ["x"]}}
+            with patch.object(ex_mod, "_PATCH_STATS_PATH", stats_path):
+                _restore_patch_stats(reviewer)
+
+        # File had count=1, in-memory had count=3 — should keep 3
+        self.assertEqual(reviewer._rejections["A1"]["count"], 3)
 
 
 if __name__ == "__main__":
