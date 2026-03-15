@@ -181,6 +181,12 @@ solo_builder/utils/safety.py
 solo_builder/tests/test_safety.py
 solo_builder/utils/repo_index.py
 solo_builder/tests/test_repo_index.py
+solo_builder/utils/budget.py
+solo_builder/tests/test_budget.py
+solo_builder/utils/dag_transitions.py
+solo_builder/tests/test_dag_transitions.py
+solo_builder/utils/trigger_registry.py
+solo_builder/tests/test_trigger_registry.py
 tools/pre_release_check.py
 solo_builder/tests/test_pre_release_check.py
 solo_builder/utils/tool_scope_policy.py
