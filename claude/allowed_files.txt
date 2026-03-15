@@ -165,6 +165,12 @@ solo_builder/tests/test_hitl_policy.py
 solo_builder/utils/policy_engine.py
 solo_builder/tests/test_policy_engine.py
 solo_builder/tests/test_executor_policy_wiring.py
+solo_builder/utils/state_integrity.py
+solo_builder/tests/test_state_integrity.py
+solo_builder/utils/runtime_views.py
+solo_builder/tests/test_runtime_views.py
+solo_builder/utils/invariants.py
+solo_builder/tests/test_invariants.py
 tools/pre_release_check.py
 solo_builder/tests/test_pre_release_check.py
 solo_builder/utils/tool_scope_policy.py
