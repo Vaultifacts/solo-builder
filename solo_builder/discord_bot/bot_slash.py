@@ -738,15 +738,17 @@ def register_slash_commands(bot: discord.Client) -> None:
         enabled   = s.get("enabled", True)
         available = s.get("available", False)
         use_sdk   = s.get("use_sdk", True)
-        hits      = s.get("threshold_hits", 0)
-        total_rej = s.get("total_rejections", 0)
-        max_rej   = s.get("max_rejections", 3)
-        rejected  = s.get("rejected_subtasks", [])
-        recent    = s.get("recent_reviews", [])
+        hits          = s.get("threshold_hits", 0)
+        total_rej     = s.get("total_rejections", 0)
+        max_rej       = s.get("max_rejections", 3)
+        max_per_step  = s.get("max_reviews_per_step", 0)
+        rejected      = s.get("rejected_subtasks", [])
+        recent        = s.get("recent_reviews", [])
 
         sdk_mode = "SDK" if available else ("heuristic-only" if enabled else "disabled")
+        cap_str = f" · cap {max_per_step}/step" if max_per_step > 0 else ""
         lines = [
-            f"**PatchReviewer** · {sdk_mode}",
+            f"**PatchReviewer** · {sdk_mode}{cap_str}",
             f"⚠ {hits} escalated · ✗ {total_rej} rejected (limit {max_rej}/subtask)",
         ]
 

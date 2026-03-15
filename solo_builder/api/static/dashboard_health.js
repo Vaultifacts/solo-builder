@@ -505,7 +505,12 @@ export async function pollHealthDetailed() {
       : `${ma.alert_count || 0} alert(s) active`;
     const sloResults = slo.results || [];
     const sloDetail = sloResults.length
-      ? sloResults.map(r => `${r.slo} ${r.status}`).join(" · ")
+      ? sloResults.map(r => {
+          const v = r.value != null
+            ? (r.slo === "SLO-003" ? `${(r.value * 100).toFixed(1)}%` : `${r.value.toFixed(2)}s`)
+            : "—";
+          return `${r.slo} ${v} ${r.status === "ok" ? "✓" : "✗"}`;
+        }).join(" · ")
       : `${slo.records || 0} records (insufficient data)`;
 
     const hdr = document.createElement("div");
@@ -810,11 +815,21 @@ export async function pollPatchReviewDetailed() {
     const hdr = document.createElement("div");
     hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
     const hdrText = document.createElement("span");
-    const noRejections = d.total_rejections === 0;
-    hdrText.style.cssText = `font-size:12px;font-weight:bold;color:${noRejections ? "var(--green)" : "var(--yellow, #e6a817)"}`;
+    hdrText.style.cssText = `font-size:12px;font-weight:bold;flex:1;color:${d.total_rejections === 0 ? "var(--green)" : "var(--yellow, #e6a817)"}`;
     hdrText.textContent = `PatchReview: ${d.threshold_hits || 0} escalated · ${d.total_rejections || 0} rejected`;
     if (!d.enabled) hdrText.textContent += " [disabled]";
-    hdr.append(hdrText);
+    const resetBtn = document.createElement("button");
+    resetBtn.textContent = "Reset";
+    resetBtn.title = "Clear PatchReviewer stats";
+    resetBtn.style.cssText = "font-size:9px;padding:1px 7px;border-radius:3px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer";
+    resetBtn.onclick = async () => {
+      try {
+        await fetch("/health/patch-review/reset", { method: "POST" });
+        el._prHistPage = 1;
+        window._prPollFn && window._prPollFn();
+      } catch (_) {}
+    };
+    hdr.append(hdrText, resetBtn);
 
     const nodes = [hdr];
 

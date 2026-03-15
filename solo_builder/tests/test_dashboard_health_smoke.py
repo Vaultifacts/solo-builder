@@ -75,5 +75,32 @@ class TestDashboardJsImports(unittest.TestCase):
             self.assertIn(name, self._src, f"{name} missing from dashboard.js imports")
 
 
+class TestPatchReviewEndpointFields(unittest.TestCase):
+    """Live /health/patch-review response includes all documented fields."""
+
+    def setUp(self):
+        import sys
+        sys.path.insert(0, str(_REPO_ROOT / "solo_builder"))
+        import api.app as _app_mod
+        _app_mod.app.config["TESTING"] = True
+        self._client = _app_mod.app.test_client()
+
+    def test_patch_review_fields_present(self):
+        resp = self._client.get("/health/patch-review")
+        import json
+        d = json.loads(resp.data)
+        for field in ("ok", "enabled", "available", "use_sdk", "threshold_hits",
+                      "total_rejections", "max_rejections", "max_reviews_per_step",
+                      "alert_threshold", "rejected_subtasks", "recent_reviews"):
+            self.assertIn(field, d, f"missing field: {field}")
+
+    def test_patch_review_history_fields_present(self):
+        resp = self._client.get("/health/patch-review/history")
+        import json
+        d = json.loads(resp.data)
+        for field in ("ok", "total", "page", "pages", "limit", "items"):
+            self.assertIn(field, d, f"missing field: {field}")
+
+
 if __name__ == "__main__":
     unittest.main()
