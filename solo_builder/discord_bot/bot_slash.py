@@ -58,7 +58,7 @@ def register_slash_commands(bot: discord.Client) -> None:
             "`/task_progress task_id`            — per-branch progress for a single task\n"
             "`/heartbeat`                        — live counters from step.txt\n"
             "`/cache [clear:yes]`                — response cache disk stats (optional wipe)\n"
-            "`/patch_review`                     — PatchReviewer stats (rejections, escalations, SDK mode)\n"
+            "`/patch_review [action:reset]`       — PatchReviewer stats; action=reset clears stats\n"
             "`/help`                             — this message"
         )
 
@@ -707,11 +707,24 @@ def register_slash_commands(bot: discord.Client) -> None:
             f"CLI will apply at the next step boundary."
         )
 
-    @bot.tree.command(name="patch_review", description="Show PatchReviewer stats (rejections, escalations, SDK mode)")
-    async def patch_review_cmd(interaction: discord.Interaction) -> None:
+    @bot.tree.command(name="patch_review", description="Show PatchReviewer stats (rejections, escalations, SDK mode); action=reset clears stats")
+    async def patch_review_cmd(interaction: discord.Interaction, action: str = "") -> None:
         if not _b._allowed(interaction):
             await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
             return
+
+        # Handle reset action
+        if action.strip().lower() == "reset":
+            try:
+                from api.constants import PATCH_REVIEW_STATS_PATH
+                PATCH_REVIEW_STATS_PATH.unlink(missing_ok=True)
+                await interaction.response.send_message(
+                    "🗑 PatchReviewer stats reset — counters will accumulate fresh from the next step."
+                )
+            except Exception as exc:
+                await interaction.response.send_message(f"⚠ Reset failed: {exc}", ephemeral=True)
+            return
+
         try:
             from api.constants import PATCH_REVIEW_STATS_PATH
             stats_path = PATCH_REVIEW_STATS_PATH

@@ -153,25 +153,40 @@ def health_detailed():
         repo_health_check = {"ok": True, "available": False, "error": str(exc),
                              "active_agents": [], "outcome_stats": {}}
 
-    # --- patch_review (informational — escalations indicate quality issues) ---
+    # --- patch_review (configurable threshold via PATCH_REVIEW_ALERT_THRESHOLD) ---
     try:
+        import json as _json
+        _cfg_path = Path(__file__).resolve().parents[3] / "config" / "settings.json"
+        try:
+            with open(_cfg_path, encoding="utf-8") as _cf:
+                _settings = _json.load(_cf)
+        except Exception:
+            _settings = {}
+        _pr_alert_threshold = int(_settings.get("PATCH_REVIEW_ALERT_THRESHOLD", 0))
+
         from .patch_review import _load_stats as _pr_load
         pr = _pr_load()
+        _hits = pr.get("threshold_hits", 0)
+        _pr_ok = (_pr_alert_threshold <= 0) or (_hits < _pr_alert_threshold)
         patch_review_check = {
-            "ok":             True,
-            "enabled":        pr.get("enabled", True),
-            "available":      pr.get("available", False),
-            "threshold_hits": pr.get("threshold_hits", 0),
+            "ok":               _pr_ok,
+            "enabled":          pr.get("enabled", True),
+            "available":        pr.get("available", False),
+            "threshold_hits":   _hits,
             "total_rejections": pr.get("total_rejections", 0),
+            "alert_threshold":  _pr_alert_threshold,
         }
     except Exception as exc:
+        _pr_ok = True
         patch_review_check = {"ok": True, "enabled": True, "available": False,
                                "threshold_hits": 0, "total_rejections": 0,
-                               "error": str(exc)}
+                               "alert_threshold": 0, "error": str(exc)}
 
     overall_ok = (state_check["ok"] and drift_check["ok"]
-                  and alert_check["ok"] and slo_check_result["ok"])
-    # repo_health and patch_review are informational — excluded from overall_ok
+                  and alert_check["ok"] and slo_check_result["ok"]
+                  and _pr_ok)
+    # repo_health is informational — excluded from overall_ok
+    # patch_review is included when PATCH_REVIEW_ALERT_THRESHOLD > 0
 
     return jsonify({
         "ok": overall_ok,

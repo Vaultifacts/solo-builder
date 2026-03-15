@@ -473,6 +473,7 @@ export async function pollHealthDetailed() {
     const cd  = checks.config_drift   || {};
     const ma  = checks.metrics_alerts || {};
     const slo = checks.slo_status     || {};
+    const pr  = checks.patch_review   || {};
 
     const mkBadge = (ok) => {
       const b = document.createElement("span");
@@ -527,10 +528,19 @@ export async function pollHealthDetailed() {
     wsRow.querySelector("span[style*='background']").style.color = "var(--dim)";
     wsRow.querySelector("span[style*='background']").textContent = wsClients > 0 ? `${wsClients}` : "0";
 
+    const prOk = pr.ok !== false;
+    const prDetail = (() => {
+      const hits = pr.threshold_hits || 0;
+      const rej  = pr.total_rejections || 0;
+      const mode = pr.available ? "SDK" : (pr.enabled !== false ? "heuristic" : "disabled");
+      return `${hits} escalated · ${rej} rejected · ${mode}`;
+    })();
+
     const nodes = [hdr, mkRow("State Valid", sv.ok, svDetail),
                         mkRow("Config Drift", cd.ok, cdDetail),
                         mkRow("Metrics Alerts", ma.ok, maDetail),
                         mkRow("SLO Status", slo.ok !== false, sloDetail),
+                        mkRow("Patch Review", prOk, prDetail),
                         wsRow];
 
     if (sloResults.length) {

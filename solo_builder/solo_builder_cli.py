@@ -424,6 +424,18 @@ def main() -> None:
     _LOCK_PATH = _clear_stale_triggers(_HERE, _LOG_PATH)
     logger.info("startup version=2.1.50 headless=%s auto=%s", args.headless, args.auto)
     _acquire_lock(_LOCK_PATH)
+
+    # Fresh pipeline: clear stale triggers and patch-review stats so the new run
+    # starts with clean history rather than inheriting stale rejection counts.
+    if args.no_resume:
+        _cleanup_stale_at_exit(_HERE)
+        try:
+            from api.constants import PATCH_REVIEW_STATS_PATH as _PR_STATS_PATH
+            _PR_STATS_PATH.unlink(missing_ok=True)
+            logger.info("no_resume: patch_review_stats cleared")
+        except Exception:
+            pass
+
     cli = None
 
     # Graceful SIGTERM handler — save state then exit cleanly

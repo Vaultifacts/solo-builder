@@ -244,6 +244,23 @@ class TestPatchReviewEndpoint(unittest.TestCase):
         self.assertIn("ok", pr)
         self.assertIn("threshold_hits", pr)
         self.assertIn("total_rejections", pr)
+        self.assertIn("alert_threshold", pr)
+
+    def test_health_detailed_patch_review_ok_when_threshold_zero(self):
+        """When PATCH_REVIEW_ALERT_THRESHOLD=0 (default), patch_review is always ok."""
+        import api.blueprints.health_detailed as hd_mod
+        import api.blueprints.patch_review as pr_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {
+                "threshold_hits": 99, "total_rejections": 50,
+                "enabled": True, "available": False, "use_sdk": True,
+                "max_rejections": 3, "rejected_subtasks": [], "recent_reviews": [],
+            })
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/detailed")
+        d = json.loads(resp.data)
+        # threshold=0 → patch_review ok=True even with many hits
+        self.assertTrue(d["checks"]["patch_review"]["ok"])
 
     def test_patch_review_div_in_dashboard_html(self):
         html = (
