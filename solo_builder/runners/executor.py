@@ -145,7 +145,7 @@ def _write_patch_stats(
         "threshold_hits":       reviewer.threshold_hits,
         "total_rejections":     sum(d.get("count", 0) for d in reviewer._rejections.values()),
         "max_rejections":       reviewer.max_rejections,
-        "max_reviews_per_step": reviewer.max_reviews_per_step,
+        "max_reviews_per_step": getattr(reviewer, "max_reviews_per_step", 0),
         "rejected_subtasks":    rejected,
         "recent_reviews":       recent,
     }

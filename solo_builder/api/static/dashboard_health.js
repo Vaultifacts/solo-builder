@@ -852,31 +852,70 @@ export async function pollPatchReviewDetailed() {
       });
     }
 
-    // Recent reviews table (last 10 steps)
-    const recent = d.recent_reviews || [];
-    if (recent.length > 0) {
+    // History table from /health/patch-review/history
+    let histItems = [];
+    let histTotal = 0;
+    try {
+      const h = await api("/health/patch-review/history?limit=20");
+      histItems = h.items || [];
+      histTotal = h.total || 0;
+    } catch (_) {}
+
+    if (histItems.length > 0) {
       const tblHdr = document.createElement("div");
-      tblHdr.style.cssText = "font-size:9px;font-weight:bold;color:var(--dim);margin-top:8px;margin-bottom:4px";
-      tblHdr.textContent = "Recent steps";
+      tblHdr.style.cssText = "font-size:9px;font-weight:bold;color:var(--dim);margin-top:8px;margin-bottom:4px;display:flex;justify-content:space-between";
+      const tblTitle = document.createElement("span");
+      tblTitle.textContent = "Review history";
+      const tblCount = document.createElement("span");
+      tblCount.style.cssText = "font-weight:normal;color:var(--dim)";
+      tblCount.textContent = histTotal > histItems.length ? `${histItems.length} of ${histTotal}` : `${histTotal} total`;
+      tblHdr.append(tblTitle, tblCount);
       nodes.push(tblHdr);
-      recent.slice().reverse().forEach(rv => {
+
+      // column header row
+      const colHdr = document.createElement("div");
+      colHdr.style.cssText = "display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;font-size:8px;color:var(--dim);padding:2px 0;border-bottom:2px solid var(--border);font-weight:bold";
+      ["Step", "✓ appr", "✗ rej", "⚠ esc", "⊞ def"].forEach(h => {
+        const c = document.createElement("span");
+        c.textContent = h;
+        colHdr.append(c);
+      });
+      nodes.push(colHdr);
+
+      histItems.slice().reverse().forEach(rv => {
         const rrow = document.createElement("div");
-        rrow.style.cssText = "display:flex;gap:8px;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)";
+        rrow.style.cssText = "display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)";
         const stepEl = document.createElement("span");
-        stepEl.style.cssText = "color:var(--dim);min-width:42px";
+        stepEl.style.cssText = "color:var(--dim)";
         stepEl.textContent = `step ${rv.step}`;
         const appr = document.createElement("span");
         appr.style.cssText = "color:var(--green)";
-        appr.textContent = `✓${rv.approved || 0}`;
+        appr.textContent = rv.approved || 0;
         const rej = document.createElement("span");
-        rej.style.cssText = `color:${rv.rejected > 0 ? "var(--red)" : "var(--dim)"}`;
-        rej.textContent = `✗${rv.rejected || 0}`;
+        rej.style.cssText = `color:${(rv.rejected || 0) > 0 ? "var(--red)" : "var(--dim)"}`;
+        rej.textContent = rv.rejected || 0;
         const esc = document.createElement("span");
-        esc.style.cssText = `color:${rv.escalated > 0 ? "var(--yellow, #e6a817)" : "var(--dim)"}`;
-        esc.textContent = `⚠${rv.escalated || 0}`;
-        rrow.append(stepEl, appr, rej, esc);
+        esc.style.cssText = `color:${(rv.escalated || 0) > 0 ? "var(--yellow, #e6a817)" : "var(--dim)"}`;
+        esc.textContent = rv.escalated || 0;
+        const def = document.createElement("span");
+        def.style.cssText = "color:var(--dim)";
+        def.textContent = rv.deferred || 0;
+        rrow.append(stepEl, appr, rej, esc, def);
         nodes.push(rrow);
       });
+    } else {
+      const noHist = document.createElement("div");
+      noHist.style.cssText = "font-size:10px;color:var(--dim);margin-top:6px;padding:4px 0";
+      noHist.textContent = "No review history yet.";
+      nodes.push(noHist);
+    }
+
+    // alert_threshold footer if set
+    if ((d.alert_threshold || 0) > 0) {
+      const thresh = document.createElement("div");
+      thresh.style.cssText = "font-size:9px;color:var(--dim);margin-top:6px";
+      thresh.textContent = `Alert threshold: ${d.alert_threshold} escalations`;
+      nodes.push(thresh);
     }
 
     el.replaceChildren(...nodes);

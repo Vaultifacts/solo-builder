@@ -821,6 +821,22 @@ def register_slash_commands(bot: discord.Client) -> None:
             ma_ok, ma_detail = False, str(exc)[:60]
         lines.append(f"{'✅' if ma_ok else '❌'} Metrics Alerts — {ma_detail}")
 
+        # --- slo_check ---
+        try:
+            sc = _load_tool("slo_check")
+            _sr = sc._load_records(sc.METRICS_PATH)
+            if len(_sr) >= sc.DEFAULT_MIN_RECORDS:
+                _slo_results = [sc._check_slo003(_sr), sc._check_slo005(_sr)]
+                slo_ok = all(r["status"] == "ok" for r in _slo_results)
+                slo_detail = " · ".join(
+                    f"{r['slo']} {r['status']}({r['value']})" for r in _slo_results
+                )
+            else:
+                slo_ok, slo_detail = True, f"insufficient data ({len(_sr)} records)"
+        except Exception as exc:
+            slo_ok, slo_detail = False, str(exc)[:60]
+        lines.append(f"{'✅' if slo_ok else '❌'} SLO Check — {slo_detail}")
+
         # --- patch_review ---
         try:
             from api.constants import PATCH_REVIEW_STATS_PATH
@@ -842,7 +858,7 @@ def register_slash_commands(bot: discord.Client) -> None:
             pr_ok, pr_detail = True, str(exc)[:60]
         lines.append(f"{'✅' if pr_ok else '❌'} Patch Review — {pr_detail}")
 
-        overall = sv_ok and cd_ok and ma_ok and pr_ok
+        overall = sv_ok and cd_ok and ma_ok and slo_ok and pr_ok
         lines.insert(1, f"**{'✅ OK' if overall else '❌ DEGRADED'}**")
         await interaction.response.send_message("\n".join(lines))
 

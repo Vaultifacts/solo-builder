@@ -49,6 +49,14 @@ class TestPatchReviewEndpoint(unittest.TestCase):
         d = json.loads(resp.data)
         self.assertEqual(d["max_rejections"], 3)
 
+    def test_get_includes_alert_threshold(self):
+        """GET /health/patch-review always returns alert_threshold field."""
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertIn("alert_threshold", d)
+
     # ── Real stats file ──────────────────────────────────────────────────
 
     def _write_stats(self, tmp: str, data: dict) -> Path:

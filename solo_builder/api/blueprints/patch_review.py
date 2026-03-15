@@ -8,14 +8,25 @@ from __future__ import annotations
 
 import json
 
+import json as _json
+
 from flask import Blueprint, jsonify, request
 
-from ..constants import PATCH_REVIEW_STATS_PATH
+from ..constants import PATCH_REVIEW_STATS_PATH, _PROJECT_ROOT
 
 patch_review_bp = Blueprint("patch_review", __name__)
 
 # Expose for test patching
-_STATS_PATH = PATCH_REVIEW_STATS_PATH
+_STATS_PATH   = PATCH_REVIEW_STATS_PATH
+_SETTINGS_PATH = _PROJECT_ROOT / "config" / "settings.json"
+
+
+def _alert_threshold() -> int:
+    try:
+        cfg = _json.loads(_SETTINGS_PATH.read_text(encoding="utf-8"))
+        return int(cfg.get("PATCH_REVIEW_ALERT_THRESHOLD", 0))
+    except Exception:
+        return 0
 
 
 def _load_stats() -> dict:
@@ -38,6 +49,7 @@ def health_patch_review():
         "total_rejections":    s.get("total_rejections", 0),
         "max_rejections":      s.get("max_rejections", 3),
         "max_reviews_per_step": s.get("max_reviews_per_step", 0),
+        "alert_threshold":     _alert_threshold(),
         "rejected_subtasks":   s.get("rejected_subtasks", []),
         "recent_reviews":      s.get("recent_reviews", []),
     })
