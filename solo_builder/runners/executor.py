@@ -139,14 +139,15 @@ def _write_patch_stats(
         recent = recent[-10:]
 
     record = {
-        "enabled":          reviewer.enabled,
-        "available":        reviewer.available,
-        "use_sdk":          reviewer.use_sdk,
-        "threshold_hits":   reviewer.threshold_hits,
-        "total_rejections": sum(d.get("count", 0) for d in reviewer._rejections.values()),
-        "max_rejections":   reviewer.max_rejections,
-        "rejected_subtasks": rejected,
-        "recent_reviews":   recent,
+        "enabled":              reviewer.enabled,
+        "available":            reviewer.available,
+        "use_sdk":              reviewer.use_sdk,
+        "threshold_hits":       reviewer.threshold_hits,
+        "total_rejections":     sum(d.get("count", 0) for d in reviewer._rejections.values()),
+        "max_rejections":       reviewer.max_rejections,
+        "max_reviews_per_step": reviewer.max_reviews_per_step,
+        "rejected_subtasks":    rejected,
+        "recent_reviews":       recent,
     }
     try:
         os.makedirs(os.path.dirname(_PATCH_STATS_PATH), exist_ok=True)

@@ -236,6 +236,12 @@ _ROUTES: list[dict] = [
          "threshold_hits": {"type": "integer"}, "total_rejections": {"type": "integer"},
          "max_rejections": {"type": "integer"}, "rejected_subtasks": {"type": "array"},
      }}},
+    {"path": "/health/patch-review/history", "method": "GET", "tag": "Health", "summary": "Paginated recent_reviews history (limit/page query params)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "total": {"type": "integer"},
+         "page": {"type": "integer"}, "pages": {"type": "integer"},
+         "limit": {"type": "integer"}, "items": {"type": "array"},
+     }}},
     {"path": "/health/patch-review/reset", "method": "POST", "tag": "Health", "summary": "Reset PatchReviewer stats (deletes stats snapshot file)",
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "reset": {"type": "boolean"},

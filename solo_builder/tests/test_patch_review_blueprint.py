@@ -201,6 +201,76 @@ class TestPatchReviewEndpoint(unittest.TestCase):
         src = dash.read_text(encoding="utf-8")
         self.assertIn("pollPatchReviewDetailed", src)
 
+    # ── /history endpoint ────────────────────────────────────────────────
+
+    def test_history_route_registered(self):
+        rules = [r.rule for r in app.url_map.iter_rules()]
+        self.assertIn("/health/patch-review/history", rules)
+
+    def test_history_empty_when_no_stats(self):
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.get("/health/patch-review/history")
+        self.assertEqual(resp.status_code, 200)
+        d = json.loads(resp.data)
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["total"], 0)
+        self.assertEqual(d["items"], [])
+        self.assertEqual(d["page"], 1)
+        self.assertEqual(d["pages"], 1)
+
+    def test_history_returns_all_items(self):
+        import api.blueprints.patch_review as pr_mod
+        reviews = [{"step": i, "approved": 1} for i in range(5)]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {"recent_reviews": reviews})
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review/history")
+        d = json.loads(resp.data)
+        self.assertEqual(d["total"], 5)
+        self.assertEqual(len(d["items"]), 5)
+
+    def test_history_pagination(self):
+        import api.blueprints.patch_review as pr_mod
+        reviews = [{"step": i} for i in range(10)]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {"recent_reviews": reviews})
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review/history?limit=3&page=2")
+        d = json.loads(resp.data)
+        self.assertEqual(d["limit"], 3)
+        self.assertEqual(d["page"], 2)
+        self.assertEqual(len(d["items"]), 3)
+        self.assertEqual(d["items"][0]["step"], 3)
+
+    def test_history_limit_capped_at_100(self):
+        import api.blueprints.patch_review as pr_mod
+        reviews = [{"step": i} for i in range(20)]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {"recent_reviews": reviews})
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review/history?limit=9999")
+        d = json.loads(resp.data)
+        self.assertEqual(d["limit"], 100)
+
+    def test_history_invalid_params_use_defaults(self):
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.get("/health/patch-review/history?limit=bad&page=nope")
+        d = json.loads(resp.data)
+        self.assertEqual(d["limit"], 10)
+        self.assertEqual(d["page"], 1)
+
+    def test_history_pages_count(self):
+        import api.blueprints.patch_review as pr_mod
+        reviews = [{"step": i} for i in range(10)]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {"recent_reviews": reviews})
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review/history?limit=3")
+        d = json.loads(resp.data)
+        self.assertEqual(d["pages"], 4)  # ceil(10/3)
+
     # ── Reset endpoint ───────────────────────────────────────────────────
 
     def test_reset_returns_ok(self):
@@ -262,6 +332,27 @@ class TestPatchReviewEndpoint(unittest.TestCase):
         # threshold=0 → patch_review ok=True even with many hits
         self.assertTrue(d["checks"]["patch_review"]["ok"])
 
+    def test_reads_max_reviews_per_step(self):
+        import api.blueprints.patch_review as pr_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {
+                "enabled": True, "available": True, "use_sdk": True,
+                "threshold_hits": 0, "total_rejections": 0,
+                "max_rejections": 3, "max_reviews_per_step": 4,
+                "rejected_subtasks": [], "recent_reviews": [],
+            })
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertEqual(d["max_reviews_per_step"], 4)
+
+    def test_missing_stats_max_reviews_per_step_defaults_zero(self):
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.get("/health/patch-review")
+        d = json.loads(resp.data)
+        self.assertEqual(d["max_reviews_per_step"], 0)
+
     def test_patch_review_div_in_dashboard_html(self):
         html = (
             Path(__file__).resolve().parents[1]
@@ -286,6 +377,7 @@ class TestWritePatchStats(unittest.TestCase):
         reviewer.use_sdk = True
         reviewer.threshold_hits = 2
         reviewer.max_rejections = 3
+        reviewer.max_reviews_per_step = 0
         reviewer._rejections = {
             "A1": {"count": 1, "reasons": ["bad output"]},
             "B2": {"count": 3, "reasons": ["danger", "still bad", "too short"]},
@@ -316,6 +408,7 @@ class TestWritePatchStats(unittest.TestCase):
         reviewer.use_sdk = True
         reviewer.threshold_hits = 0
         reviewer.max_rejections = 3
+        reviewer.max_reviews_per_step = 0
         reviewer._rejections = {
             "C1": {"count": 2, "reasons": ["first", "second"]},
         }
@@ -341,6 +434,7 @@ class TestWritePatchStats(unittest.TestCase):
         reviewer.use_sdk = True
         reviewer.threshold_hits = 0
         reviewer.max_rejections = 3
+        reviewer.max_reviews_per_step = 0
         reviewer._rejections = {}
 
         import runners.executor as ex_mod
@@ -367,6 +461,7 @@ class TestWritePatchStats(unittest.TestCase):
         reviewer.use_sdk = True
         reviewer.threshold_hits = 0
         reviewer.max_rejections = 3
+        reviewer.max_reviews_per_step = 0
         reviewer._rejections = {}
 
         import runners.executor as ex_mod
@@ -391,6 +486,7 @@ class TestWritePatchStats(unittest.TestCase):
         reviewer.use_sdk = False
         reviewer.threshold_hits = 0
         reviewer.max_rejections = 3
+        reviewer.max_reviews_per_step = 0
         reviewer._rejections = {}
 
         import runners.executor as ex_mod

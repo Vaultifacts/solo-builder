@@ -1,36 +1,14 @@
-"""PatchReviewer stats endpoint — GET /health/patch-review + POST /health/patch-review/reset.
+"""PatchReviewer stats endpoints.
 
-Reads the stats snapshot written by executor.py after each review_step()
-call.  Returns current threshold_hits, per-subtask rejection counts,
-SDK availability, and per-step review history so the dashboard can surface
-review quality metrics.
-
-Response shape (GET):
-  {
-    "ok":               bool,
-    "enabled":          bool,
-    "available":        bool,   // SDK client initialised successfully
-    "use_sdk":          bool,   // configured to use Claude SDK
-    "threshold_hits":   int,    // times rejection limit was reached
-    "total_rejections": int,    // total rejection events across all subtasks
-    "max_rejections":   int,    // configured per-subtask limit
-    "rejected_subtasks": [      // subtasks with at least one rejection
-      {"name": str, "count": int, "last_reason": str}
-    ],
-    "recent_reviews":   [       // last 10 step summaries
-      {"step": int, "approved": int, "rejected": int,
-       "escalated": int, "deferred": int}
-    ]
-  }
-
-Response shape (POST reset):
-  {"ok": bool, "reset": bool}
+GET  /health/patch-review         — current stats snapshot
+GET  /health/patch-review/history — paginated recent_reviews list
+POST /health/patch-review/reset   — delete stats file (fresh counters)
 """
 from __future__ import annotations
 
 import json
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from ..constants import PATCH_REVIEW_STATS_PATH
 
@@ -52,15 +30,51 @@ def _load_stats() -> dict:
 def health_patch_review():
     s = _load_stats()
     return jsonify({
-        "ok":               True,
-        "enabled":          s.get("enabled", True),
-        "available":        s.get("available", False),
-        "use_sdk":          s.get("use_sdk", True),
-        "threshold_hits":   s.get("threshold_hits", 0),
-        "total_rejections": s.get("total_rejections", 0),
-        "max_rejections":   s.get("max_rejections", 3),
-        "rejected_subtasks": s.get("rejected_subtasks", []),
-        "recent_reviews":   s.get("recent_reviews", []),
+        "ok":                  True,
+        "enabled":             s.get("enabled", True),
+        "available":           s.get("available", False),
+        "use_sdk":             s.get("use_sdk", True),
+        "threshold_hits":      s.get("threshold_hits", 0),
+        "total_rejections":    s.get("total_rejections", 0),
+        "max_rejections":      s.get("max_rejections", 3),
+        "max_reviews_per_step": s.get("max_reviews_per_step", 0),
+        "rejected_subtasks":   s.get("rejected_subtasks", []),
+        "recent_reviews":      s.get("recent_reviews", []),
+    })
+
+
+@patch_review_bp.get("/health/patch-review/history")
+def history_patch_review():
+    """Paginated recent_reviews list.
+
+    Query params:
+      limit  int  max entries to return (default 10, max 100)
+      page   int  1-based page number (default 1)
+    """
+    s = _load_stats()
+    all_reviews = s.get("recent_reviews", [])
+
+    try:
+        limit = min(int(request.args.get("limit", 10)), 100)
+    except (ValueError, TypeError):
+        limit = 10
+    try:
+        page = max(int(request.args.get("page", 1)), 1)
+    except (ValueError, TypeError):
+        page = 1
+
+    total = len(all_reviews)
+    start = (page - 1) * limit
+    items = all_reviews[start: start + limit]
+    pages = max((total + limit - 1) // limit, 1) if total else 1
+
+    return jsonify({
+        "ok":     True,
+        "total":  total,
+        "page":   page,
+        "pages":  pages,
+        "limit":  limit,
+        "items":  items,
     })
 
 

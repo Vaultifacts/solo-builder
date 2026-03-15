@@ -770,3 +770,79 @@ def register_slash_commands(bot: discord.Client) -> None:
             lines.append("_(no stats file — executor not yet run)_")
 
         await interaction.response.send_message("\n".join(lines))
+
+    @bot.tree.command(name="health", description="System health summary (state, config, metrics, patch review)")
+    async def health_cmd(interaction: discord.Interaction) -> None:
+        if not _b._allowed(interaction):
+            await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+            return
+
+        lines = ["**System Health**"]
+
+        # --- state_valid ---
+        try:
+            import importlib.util as _ilu
+            import sys as _sys
+            _tools = _b.STATE_PATH.parent.parent / "tools"
+            def _load_tool(name):
+                if name in _sys.modules:
+                    return _sys.modules[name]
+                spec = _ilu.spec_from_file_location(name, _tools / f"{name}.py")
+                mod = _ilu.module_from_spec(spec)
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+            sv = _load_tool("state_validator")
+            rep = sv.validate(state_path=str(_b.STATE_PATH))
+            sv_ok = rep.is_valid
+            sv_detail = "valid" if sv_ok else f"{len(rep.errors)} error(s)"
+        except Exception as exc:
+            sv_ok, sv_detail = False, str(exc)[:60]
+        lines.append(f"{'✅' if sv_ok else '❌'} State Valid — {sv_detail}")
+
+        # --- config_drift ---
+        try:
+            cd = _load_tool("config_drift")
+            _cfg = _b.STATE_PATH.parent.parent / "config" / "settings.json"
+            dr = cd.detect_drift(settings_path=str(_cfg))
+            cd_ok = not dr.has_drift
+            cd_detail = "no drift" if cd_ok else f"{len(dr.unknown_keys)} unknown · {len(dr.overridden_keys)} overridden"
+        except Exception as exc:
+            cd_ok, cd_detail = False, str(exc)[:60]
+        lines.append(f"{'✅' if cd_ok else '❌'} Config Drift — {cd_detail}")
+
+        # --- metrics_alerts ---
+        try:
+            mac = _load_tool("metrics_alert_check")
+            ar = mac.check_alerts()
+            ma_ok = not ar.has_alerts
+            ma_detail = "no alerts" if ma_ok else f"{len(ar.alerts)} alert(s)"
+        except Exception as exc:
+            ma_ok, ma_detail = False, str(exc)[:60]
+        lines.append(f"{'✅' if ma_ok else '❌'} Metrics Alerts — {ma_detail}")
+
+        # --- patch_review ---
+        try:
+            from api.constants import PATCH_REVIEW_STATS_PATH
+            _ps = {}
+            if PATCH_REVIEW_STATS_PATH.exists():
+                _ps = json.loads(PATCH_REVIEW_STATS_PATH.read_text(encoding="utf-8"))
+            _hits = _ps.get("threshold_hits", 0)
+            _rej  = _ps.get("total_rejections", 0)
+            _mode = "SDK" if _ps.get("available") else ("heuristic" if _ps.get("enabled", True) else "disabled")
+            _cfg_path = PATCH_REVIEW_STATS_PATH.parent.parent / "config" / "settings.json"
+            _thresh = 0
+            try:
+                _thresh = int(json.loads(_cfg_path.read_text(encoding="utf-8")).get("PATCH_REVIEW_ALERT_THRESHOLD", 0))
+            except Exception:
+                pass
+            pr_ok = (_thresh <= 0) or (_hits < _thresh)
+            pr_detail = f"{_hits} escalated · {_rej} rejected · {_mode}"
+        except Exception as exc:
+            pr_ok, pr_detail = True, str(exc)[:60]
+        lines.append(f"{'✅' if pr_ok else '❌'} Patch Review — {pr_detail}")
+
+        overall = sv_ok and cd_ok and ma_ok and pr_ok
+        lines.insert(1, f"**{'✅ OK' if overall else '❌ DEGRADED'}**")
+        await interaction.response.send_message("\n".join(lines))
+
