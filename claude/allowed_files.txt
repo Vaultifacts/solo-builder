@@ -171,6 +171,16 @@ solo_builder/utils/runtime_views.py
 solo_builder/tests/test_runtime_views.py
 solo_builder/utils/invariants.py
 solo_builder/tests/test_invariants.py
+solo_builder/agents/patch_reviewer.py
+solo_builder/tests/test_patch_reviewer.py
+solo_builder/agents/repo_analyzer.py
+solo_builder/tests/test_repo_analyzer.py
+solo_builder/agents/test_generator.py
+solo_builder/tests/test_test_generator.py
+solo_builder/utils/safety.py
+solo_builder/tests/test_safety.py
+solo_builder/utils/repo_index.py
+solo_builder/tests/test_repo_index.py
 tools/pre_release_check.py
 solo_builder/tests/test_pre_release_check.py
 solo_builder/utils/tool_scope_policy.py
