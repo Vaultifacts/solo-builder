@@ -846,6 +846,28 @@ export async function pollPatchReviewDetailed() {
     sdkChip.append(limitNote);
     nodes.push(sdkChip);
 
+    // Rejection trend sparkline (recent_reviews bars)
+    const sparkData = (d.recent_reviews || []).slice(-10);
+    if (sparkData.length > 0) {
+      const spark = document.createElement("div");
+      spark.title = "Rejection trend (last steps, left=oldest)";
+      spark.style.cssText = "display:flex;align-items:flex-end;gap:2px;height:20px;margin-bottom:6px";
+      const maxRej = Math.max(1, ...sparkData.map(r => r.rejected || 0));
+      sparkData.forEach(r => {
+        const bar = document.createElement("div");
+        const rejCount = r.rejected || 0;
+        const h = rejCount === 0 ? 2 : Math.max(3, Math.round((rejCount / maxRej) * 18));
+        bar.style.cssText = `width:6px;height:${h}px;border-radius:1px;flex-shrink:0;background:${rejCount > 0 ? "var(--red)" : "var(--dim)"}`;
+        bar.title = `step ${r.step}: ${rejCount} rejected`;
+        spark.append(bar);
+      });
+      const sparkLabel = document.createElement("span");
+      sparkLabel.style.cssText = "font-size:8px;color:var(--dim);margin-left:4px;align-self:center";
+      sparkLabel.textContent = "rej trend";
+      spark.append(sparkLabel);
+      nodes.push(spark);
+    }
+
     if (rejected.length === 0) {
       const empty = document.createElement("div");
       empty.style.cssText = "font-size:10px;color:var(--dim);padding:4px 0";

@@ -3907,6 +3907,59 @@ class TestHandleTextCommandDispatch(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Snapshot", mock_send.call_args[0][1])
 
 
+# ---------------------------------------------------------------------------
+# Slash command tests — /patch_review cap display
+# ---------------------------------------------------------------------------
+
+class TestSlashPatchReviewCap(unittest.IsolatedAsyncioTestCase):
+    """Tests for /patch_review cap display (max_reviews_per_step)."""
+
+    def setUp(self):
+        self._cmds = _make_slash_cmds()
+
+    def _make_interaction_with_state(self, stats: dict, allowed=True):
+        iact = _make_interaction(allowed=allowed)
+        return iact
+
+    async def test_patch_review_cap_shown_when_set(self):
+        """When max_reviews_per_step > 0, header shows 'cap N/step'."""
+        import discord_bot.bot as _b_mod
+        stats = {
+            "enabled": True, "available": False, "use_sdk": True,
+            "threshold_hits": 0, "total_rejections": 0, "max_rejections": 3,
+            "max_reviews_per_step": 4, "rejected_subtasks": [], "recent_reviews": [],
+        }
+        iact = _make_interaction()
+        import tempfile, json as _json
+        with tempfile.TemporaryDirectory() as tmp:
+            stats_path = Path(tmp) / "patch_review_stats.json"
+            stats_path.write_text(_json.dumps(stats), encoding="utf-8")
+            with patch("api.constants.PATCH_REVIEW_STATS_PATH", stats_path):
+                with patch.object(_b_mod, "_allowed", return_value=True):
+                    await self._cmds["patch_review"](iact)
+        msg = iact.response.send_message.call_args[0][0]
+        self.assertIn("cap 4/step", msg)
+
+    async def test_patch_review_no_cap_when_zero(self):
+        """When max_reviews_per_step == 0, no cap string in header."""
+        import discord_bot.bot as _b_mod
+        stats = {
+            "enabled": True, "available": True, "use_sdk": True,
+            "threshold_hits": 1, "total_rejections": 2, "max_rejections": 3,
+            "max_reviews_per_step": 0, "rejected_subtasks": [], "recent_reviews": [],
+        }
+        iact = _make_interaction()
+        import tempfile, json as _json
+        with tempfile.TemporaryDirectory() as tmp:
+            stats_path = Path(tmp) / "patch_review_stats.json"
+            stats_path.write_text(_json.dumps(stats), encoding="utf-8")
+            with patch("api.constants.PATCH_REVIEW_STATS_PATH", stats_path):
+                with patch.object(_b_mod, "_allowed", return_value=True):
+                    await self._cmds["patch_review"](iact)
+        msg = iact.response.send_message.call_args[0][0]
+        self.assertNotIn("cap", msg)
+
+
 # Entry point
 # ---------------------------------------------------------------------------
 

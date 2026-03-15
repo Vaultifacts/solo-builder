@@ -866,6 +866,28 @@ def register_slash_commands(bot: discord.Client) -> None:
             pr_ok, pr_detail = True, str(exc)[:60]
         lines.append(f"{'✅' if pr_ok else '❌'} Patch Review — {pr_detail}")
 
+        # --- aawo ---
+        try:
+            import sys as _sys
+            _utils = _b.STATE_PATH.parent.parent / "utils"
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location("aawo_bridge", _utils / "aawo_bridge.py")
+            _ab = _ilu.module_from_spec(_spec)
+            _sys.modules.setdefault("aawo_bridge", _ab)
+            _spec.loader.exec_module(_ab)
+            _active = _ab.get_active_agents()
+            _outcomes = _ab.get_outcome_stats()
+            if _active is None and _outcomes is None:
+                aawo_detail = "not configured"
+            else:
+                _n = len(_active) if _active else 0
+                _total_ok = sum(v.get("success", 0) for v in (_outcomes or {}).values())
+                _total_fail = sum(v.get("fail", 0) for v in (_outcomes or {}).values())
+                aawo_detail = f"{_n} active · {_total_ok} success · {_total_fail} fail"
+        except Exception as exc:
+            aawo_detail = str(exc)[:60]
+        lines.append(f"ℹ️ AAWO — {aawo_detail}")
+
         overall = sv_ok and cd_ok and ma_ok and slo_ok and pr_ok
         lines.insert(1, f"**{'✅ OK' if overall else '❌ DEGRADED'}**")
         await interaction.response.send_message("\n".join(lines))
