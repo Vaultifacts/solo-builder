@@ -91,3 +91,62 @@ def policy_scope():
             "policy":   {},
             "warnings": [],
         })
+
+
+# ---------------------------------------------------------------------------
+# /policy/engine
+# ---------------------------------------------------------------------------
+
+@policy_bp.get("/policy/engine")
+def policy_engine():
+    """Return the currently-loaded PolicyEngine as JSON.
+
+    Response shape:
+      {
+        "ok":               bool,
+        "config":           {max_files, max_lines, max_patch_size, require_review_for_critical},
+        "stats":            {policy_block_count, critical_path_review_count, oversized_patch_count},
+        "blocked_paths":    [...],
+        "critical_patterns": [...],
+        "settings_path":    str
+      }
+    """
+    try:
+        import json as _json
+        from utils.policy_engine import PolicyEngine as _PolicyEngine
+        _app = _get_app()
+        settings_path = str(getattr(_app, "SETTINGS_PATH", ""))
+        from pathlib import Path
+
+        # Load settings from file
+        settings = {}
+        if settings_path:
+            try:
+                with open(settings_path, encoding="utf-8") as _f:
+                    settings = _json.load(_f)
+            except Exception:
+                pass
+
+        engine = _PolicyEngine(settings)
+        return jsonify({
+            "ok":                True,
+            "config": {
+                "max_files":                      engine.max_files,
+                "max_lines":                      engine.max_lines,
+                "max_patch_size":                 engine.max_patch_size,
+                "require_review_for_critical":    engine.require_review_for_critical,
+            },
+            "stats":            engine.stats_dict(),
+            "blocked_paths":    engine.blocked_paths,
+            "critical_patterns": engine.critical_patterns,
+            "settings_path":    settings_path,
+        })
+    except Exception as exc:
+        return jsonify({
+            "ok":       False,
+            "error":    str(exc),
+            "config":   {},
+            "stats":    {},
+            "blocked_paths": [],
+            "critical_patterns": [],
+        })

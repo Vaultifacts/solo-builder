@@ -233,6 +233,12 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "rules": {"type": "array", "items": {"type": "object"}},
      }}},
+    {"path": "/policy/engine",           "method": "GET", "tag": "Policy", "summary": "Policy engine config and statistics",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "config": {"type": "object"},
+         "stats": {"type": "object"}, "blocked_paths": {"type": "array"},
+         "critical_patterns": {"type": "array"}, "settings_path": {"type": "string"},
+     }}},
     # Cache (extended)
     {"path": "/cache",                   "method": "GET",    "tag": "Cache",    "summary": "Priority cache contents",
      "response": {"type": "object", "properties": {

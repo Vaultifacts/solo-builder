@@ -18,6 +18,7 @@ from .sdk_tool_runner import SdkToolRunner, validate_tools as _validate_tools
 from .hitl_gate import evaluate as _hitl_evaluate, level_name as _hitl_level_name
 from utils.hitl_policy import load_policy as _load_hitl_policy, evaluate_with_policy as _hitl_policy_evaluate
 from utils.tool_scope_policy import load_scope_policy as _load_scope_policy, evaluate_scope as _scope_evaluate
+from utils.policy_engine import PolicyEngine as _PolicyEngine
 
 # ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
 _SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -101,6 +102,7 @@ class Executor:
         self._aawo_repo_path  = aawo_repo_path  # None = AAWO enrichment disabled
         self._hitl_policy     = _load_hitl_policy()
         self._scope_policy    = _load_scope_policy()
+        self._policy_engine   = _PolicyEngine(_CFG)
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
         # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
         _cache = make_cache()
@@ -281,7 +283,16 @@ class Executor:
                     if isinstance(result, Exception) else result
                 if success:
                     _sdk_succeeded += 1
-                    new_status             = "Review" if self.review_mode else "Verified"
+                    # Evaluate output against policy engine
+                    policy_decision = self._policy_engine.evaluate_patch(output, st_data.get("description", ""))
+                    if policy_decision.action == "blocked":
+                        logger.warning("policy_blocked step=%d task=%s subtask=%s reason=%s",
+                                       step, task_name, st_name, policy_decision.reason)
+                        continue  # subtask stays Running
+                    elif policy_decision.action == "requires_review":
+                        new_status = "Review"
+                    else:
+                        new_status = "Review" if self.review_mode else "Verified"
                     st_data["status"]      = new_status
                     st_data["shadow"]      = "Done"
                     st_data["output"]      = output[:400]
@@ -289,9 +300,9 @@ class Executor:
                     self._record_history(st_data, new_status, step)
                     add_memory_snapshot(memory_store, branch_name,
                                         f"{st_name}_sdktool_verified", step)
-                    actions[st_name] = "review" if self.review_mode else "verified"
+                    actions[st_name] = "review" if new_status == "Review" else "verified"
                     logger.info("subtask_%s step=%d task=%s subtask=%s via=sdk_tool", new_status.lower(), step, task_name, st_name)
-                    if not self.review_mode:
+                    if new_status == "Verified":
                         self._roll_up(dag, task_name, branch_name)
                     self._append_journal(
                         st_name, task_name, branch_name,
@@ -334,16 +345,25 @@ class Executor:
                     task_name, branch_name, st_name, st_data = futures[future]
                     success, output = future.result()
                     if success:
-                        new_status             = "Review" if self.review_mode else "Verified"
+                        # Evaluate output against policy engine
+                        policy_decision = self._policy_engine.evaluate_patch(output, st_data.get("description", ""))
+                        if policy_decision.action == "blocked":
+                            logger.warning("policy_blocked step=%d task=%s subtask=%s reason=%s",
+                                           step, task_name, st_name, policy_decision.reason)
+                            continue  # subtask stays Running
+                        elif policy_decision.action == "requires_review":
+                            new_status = "Review"
+                        else:
+                            new_status = "Review" if self.review_mode else "Verified"
                         st_data["status"]      = new_status
                         st_data["shadow"]      = "Done"
                         st_data["output"]      = output
                         st_data["last_update"] = step
                         self._record_history(st_data, new_status, step)
                         add_memory_snapshot(memory_store, branch_name, f"{st_name}_claude_verified", step)
-                        actions[st_name] = "review" if self.review_mode else "verified"
+                        actions[st_name] = "review" if new_status == "Review" else "verified"
                         logger.info("subtask_%s step=%d task=%s subtask=%s via=claude_subprocess", new_status.lower(), step, task_name, st_name)
-                        if not self.review_mode:
+                        if new_status == "Verified":
                             self._roll_up(dag, task_name, branch_name)
                         self._append_journal(
                             st_name, task_name, branch_name,
@@ -366,7 +386,16 @@ class Executor:
                     if isinstance(result, Exception) else result
                 if success:
                     _sdk_succeeded += 1
-                    new_status             = "Review" if self.review_mode else "Verified"
+                    # Evaluate output against policy engine
+                    policy_decision = self._policy_engine.evaluate_patch(output, st_data.get("description", ""))
+                    if policy_decision.action == "blocked":
+                        logger.warning("policy_blocked step=%d task=%s subtask=%s reason=%s",
+                                       step, task_name, st_name, policy_decision.reason)
+                        continue  # subtask stays Running
+                    elif policy_decision.action == "requires_review":
+                        new_status = "Review"
+                    else:
+                        new_status = "Review" if self.review_mode else "Verified"
                     st_data["status"]      = new_status
                     st_data["shadow"]      = "Done"
                     st_data["output"]      = output[:400]
@@ -374,9 +403,9 @@ class Executor:
                     self._record_history(st_data, new_status, step)
                     add_memory_snapshot(memory_store, branch_name,
                                         f"{st_name}_sdk_verified", step)
-                    actions[st_name] = "review" if self.review_mode else "verified"
+                    actions[st_name] = "review" if new_status == "Review" else "verified"
                     logger.info("subtask_%s step=%d task=%s subtask=%s via=sdk_direct", new_status.lower(), step, task_name, st_name)
-                    if not self.review_mode:
+                    if new_status == "Verified":
                         self._roll_up(dag, task_name, branch_name)
                     _fire_outcome(st_data, "success", time.monotonic() - _step_t0,
                                   self._aawo_repo_path)
