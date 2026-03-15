@@ -310,3 +310,6 @@ solo_builder/api/blueprints/ws.py
 solo_builder/tests/test_ws.py
 solo_builder/requirements.txt
 solo_builder/api/static/dashboard.css
+solo_builder/api/blueprints/budget.py
+solo_builder/tests/test_budget_blueprint.py
+solo_builder/tests/test_patch_reviewer_wiring.py

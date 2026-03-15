@@ -710,6 +710,75 @@ export async function pollRepoHealthDetailed() {
   } catch (_) {}
 }
 
+export async function pollBudgetDetailed() {
+  try {
+    const d = await api("/health/budget");
+    const el = document.getElementById("budget-detailed-content");
+    if (!el) return;
+
+    const mkRow = (label, value, dim) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;gap:6px";
+      const lbl = document.createElement("span");
+      lbl.style.cssText = "color:var(--dim);min-width:110px;flex-shrink:0";
+      lbl.textContent = label;
+      const val = document.createElement("span");
+      val.style.color = dim ? "var(--dim)" : "var(--text)";
+      val.textContent = value;
+      row.append(lbl, val);
+      return row;
+    };
+
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)";
+    const hdrText = document.createElement("span");
+    hdrText.style.cssText = "font-size:12px;font-weight:bold;color:var(--text)";
+    hdrText.textContent = `Budget${d.has_limits ? "" : " — unlimited"}`;
+    hdr.append(hdrText);
+
+    const nodes = [hdr];
+
+    const rateStr = d.sdk_success_rate != null
+      ? `${Math.round(d.sdk_success_rate * 100)}%`
+      : "—";
+    nodes.push(mkRow("Steps run:",     `${d.total_steps || 0}`));
+    nodes.push(mkRow("API calls:",     `${d.total_api_calls || 0} (${d.total_succeeded || 0} succeeded · ${rateStr})`));
+
+    if (d.has_limits) {
+      const costStr   = d.max_cost_usd           > 0 ? `$${d.max_cost_usd}` : "—";
+      const tokStr    = d.max_total_tokens        > 0 ? `${d.max_total_tokens}` : "—";
+      const callsStr  = d.max_api_calls_per_step  > 0 ? `${d.max_api_calls_per_step}/step` : "—";
+      nodes.push(mkRow("Max cost:",    costStr,  costStr  === "—"));
+      nodes.push(mkRow("Max tokens:",  tokStr,   tokStr   === "—"));
+      nodes.push(mkRow("Max calls:",   callsStr, callsStr === "—"));
+    } else {
+      nodes.push(mkRow("Limits:", "none configured", true));
+    }
+
+    if ((d.recent_steps || []).length > 0) {
+      const recHdr = document.createElement("div");
+      recHdr.style.cssText = "font-size:10px;font-weight:bold;color:var(--dim);padding:5px 0 2px 0";
+      recHdr.textContent = "Recent steps";
+      nodes.push(recHdr);
+      d.recent_steps.forEach(s => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;gap:10px;font-size:9px;color:var(--dim);padding:1px 0";
+        const stepEl = document.createElement("span");
+        stepEl.style.minWidth = "50px";
+        stepEl.textContent = `step ${s.step}`;
+        const calls = document.createElement("span");
+        calls.textContent = `${s.dispatched}→${s.succeeded}`;
+        const elapsed = document.createElement("span");
+        elapsed.textContent = s.elapsed_s != null ? `${s.elapsed_s}s` : "";
+        row.append(stepEl, calls, elapsed);
+        nodes.push(row);
+      });
+    }
+
+    el.replaceChildren(...nodes);
+  } catch (_) {}
+}
+
 export async function pollPolicyEngineDetailed() {
   try {
     const d = await api("/policy/engine");

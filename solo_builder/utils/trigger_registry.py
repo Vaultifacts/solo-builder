@@ -269,6 +269,7 @@ def get_default_registry() -> TriggerRegistry:
     reg.register("prioritize_branch", "prioritize_branch_trigger.json", "json")
     reg.register("depends", "depends_trigger.json", "json")
     reg.register("undepends", "undepends_trigger.json", "json")
+    reg.register("dag_import", "dag_import_trigger.json", "json")
 
     _DEFAULT_REGISTRY = reg
     return reg

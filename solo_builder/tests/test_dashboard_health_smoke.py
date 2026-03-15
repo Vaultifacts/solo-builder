@@ -29,6 +29,7 @@ _EXPECTED_POLLERS = sorted([
     "pollCiQualityDetailed",
     "pollPreReleaseDetailed",
     "pollRepoHealthDetailed",
+    "pollBudgetDetailed",
     "pollPolicyEngineDetailed",
 ])
 
@@ -45,7 +46,7 @@ class TestDashboardHealthExports(unittest.TestCase):
 
     def test_poller_count(self):
         count = len(re.findall(r"export async function ", self._src))
-        self.assertEqual(count, 13)
+        self.assertEqual(count, 14)
 
 
 class TestDashboardPanelsReExport(unittest.TestCase):

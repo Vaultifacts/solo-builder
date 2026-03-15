@@ -60,6 +60,7 @@ from .blueprints.debt_scan import debt_scan_bp
 from .blueprints.ci_quality import ci_quality_bp
 from .blueprints.pre_release import pre_release_bp
 from .blueprints.live_summary import live_summary_bp
+from .blueprints.budget import budget_bp
 from .blueprints.ws import handle_ws, broadcast_step
 
 app.register_blueprint(cache_bp)
@@ -86,6 +87,7 @@ app.register_blueprint(debt_scan_bp)
 app.register_blueprint(ci_quality_bp)
 app.register_blueprint(pre_release_bp)
 app.register_blueprint(live_summary_bp)
+app.register_blueprint(budget_bp)
 
 _sock = Sock(app)
 

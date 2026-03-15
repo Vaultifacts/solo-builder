@@ -186,25 +186,20 @@ class TestCmdAuto(unittest.TestCase):
         self.assertFalse(os.path.exists(runtrig))
 
     def test_verify_trigger_calls_cmd_verify(self):
+        import json as _json
         os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
-        def _consume(path):
-            if "verify_trigger" in path:
-                return {"subtask": "A1", "note": "done"}
-            return None
-        self.cli._consume_json_trigger = _consume
+        trigger_file = os.path.join(self._tmp, "state", "verify_trigger.json")
+        Path(trigger_file).write_text(_json.dumps({"subtask": "A1", "note": "done"}), encoding="utf-8")
         with patch("builtins.print"), patch("time.sleep"):
             self.cli._cmd_auto("2")
         self.cli._cmd_verify.assert_called()
 
     def test_dag_import_trigger_updates_dag(self):
-        os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
         import json as _json
+        os.makedirs(os.path.join(self._tmp, "state"), exist_ok=True)
         new_dag = {"Task X": {"status": "Pending", "depends_on": [], "branches": {}}}
-        def _consume(path):
-            if "dag_import_trigger" in path:
-                return {"dag": new_dag, "exported_step": 5}
-            return None
-        self.cli._consume_json_trigger = _consume
+        trigger_file = os.path.join(self._tmp, "state", "dag_import_trigger.json")
+        Path(trigger_file).write_text(_json.dumps({"dag": new_dag, "exported_step": 5}), encoding="utf-8")
         with patch("builtins.print"), patch("time.sleep"):
             self.cli._cmd_auto("2")
         self.assertIn("Task X", self.cli.dag)
@@ -229,11 +224,9 @@ class TestCmdAutoTriggers(unittest.TestCase):
 
     def _run_one_step_with_trigger_data(self, trigger_name, data):
         """Run 2 auto steps so the inner wait loop fires after step 1."""
-        def _consume(path):
-            if trigger_name in path:
-                return data
-            return None
-        self.cli._consume_json_trigger = _consume
+        import json as _json
+        trigger_file = os.path.join(self._tmp, "state", f"{trigger_name}.json")
+        Path(trigger_file).write_text(_json.dumps(data), encoding="utf-8")
         with patch("builtins.print"), patch("time.sleep"):
             self.cli._cmd_auto("2")
 

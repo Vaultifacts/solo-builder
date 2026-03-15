@@ -21,6 +21,7 @@ from utils.tool_scope_policy import load_scope_policy as _load_scope_policy, eva
 from utils.policy_engine import PolicyEngine as _PolicyEngine
 from utils.invariants import check_post_phase
 from utils.budget import UsageTracker
+from agents.patch_reviewer import PatchReviewer as _PatchReviewer
 
 # ── Read config from settings.json (same defaults as solo_builder_cli.py) ─────
 _SOLO     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -106,6 +107,7 @@ class Executor:
         self._scope_policy    = _load_scope_policy()
         self._policy_engine   = _PolicyEngine(_CFG)
         self._usage_tracker   = UsageTracker()
+        self._patch_reviewer  = _PatchReviewer(_CFG)
         # Response cache: keyed by SHA-256(prompt); persists across sessions.
         # Disable with NOCACHE=1 env var. Location: claude/cache/ (default).
         _cache = make_cache()
@@ -290,7 +292,6 @@ class Executor:
                     if isinstance(result, Exception) else result
                 if success:
                     _sdk_succeeded += 1
-                    # TODO: Wire PatchReviewer here for output quality review — see agents/patch_reviewer.py
                     # Evaluate output against policy engine
                     policy_decision = self._policy_engine.evaluate_patch(output, st_data.get("description", ""))
                     if policy_decision.action == "blocked":
@@ -432,6 +433,17 @@ class Executor:
                                             f"{st_name}_verified", step)
                         actions[st_name] = "verified"
                         self._roll_up(dag, task_name, branch_name)
+
+        # PatchReviewer: review output quality for subtasks advanced this step
+        if actions:
+            _pr_alerts: List[str] = []
+            pr_results = self._patch_reviewer.review_step(
+                dag, actions, step, memory_store, _pr_alerts
+            )
+            for _alert in _pr_alerts:
+                logger.info("patch_review: %s", _alert.strip())
+            if pr_results:
+                logger.info("patch_review_step step=%d results=%s", step, pr_results)
 
         _write_step_metrics(step, _step_t0, _sdk_dispatched, _sdk_succeeded, actions)
         elapsed_ms = round((time.monotonic() - _step_t0) * 1000)

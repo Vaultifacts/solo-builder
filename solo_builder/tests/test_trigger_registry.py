@@ -388,7 +388,7 @@ class TestDefaultRegistry(unittest.TestCase):
         self.assertIs(reg1, reg2)
 
     def test_default_registry_has_all_standard_triggers(self):
-        """Default registry has all 17 standard triggers."""
+        """Default registry has all 18 standard triggers."""
         reg = get_default_registry()
         expected_triggers = {
             # Presence
@@ -396,7 +396,7 @@ class TestDefaultRegistry(unittest.TestCase):
             # JSON
             "verify", "describe", "tools", "set", "rename", "heal",
             "add_task", "add_branch", "prioritize_branch",
-            "depends", "undepends",
+            "depends", "undepends", "dag_import",
         }
         for name in expected_triggers:
             self.assertIn(name, reg._triggers,

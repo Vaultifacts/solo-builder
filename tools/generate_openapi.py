@@ -224,6 +224,12 @@ _ROUTES: list[dict] = [
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "checks": {"type": "object"},
      }}},
+    {"path": "/health/budget",           "method": "GET", "tag": "Health", "summary": "Budget limits and API call activity from settings + metrics.jsonl",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "has_limits": {"type": "boolean"},
+         "total_api_calls": {"type": "integer"}, "total_steps": {"type": "integer"},
+         "sdk_success_rate": {"type": "number"}, "recent_steps": {"type": "array"},
+     }}},
     # Policy
     {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json",
      "response": {"type": "object", "properties": {
