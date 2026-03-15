@@ -61,6 +61,7 @@ from .blueprints.ci_quality import ci_quality_bp
 from .blueprints.pre_release import pre_release_bp
 from .blueprints.live_summary import live_summary_bp
 from .blueprints.budget import budget_bp
+from .blueprints.patch_review import patch_review_bp
 from .blueprints.ws import handle_ws, broadcast_step
 
 app.register_blueprint(cache_bp)
@@ -88,6 +89,7 @@ app.register_blueprint(ci_quality_bp)
 app.register_blueprint(pre_release_bp)
 app.register_blueprint(live_summary_bp)
 app.register_blueprint(budget_bp)
+app.register_blueprint(patch_review_bp)
 
 _sock = Sock(app)
 

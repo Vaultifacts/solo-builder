@@ -173,6 +173,7 @@ try:
     from .cli_utils import (
         _setup_logging, _splash, _acquire_lock, _release_lock,
         _handle_status_subcommand, _handle_watch_subcommand,
+        _cleanup_stale_at_exit,
     )
 except ImportError:
     from dag_definition import INITIAL_DAG
@@ -188,6 +189,7 @@ except ImportError:
         _setup_logging, _splash, _acquire_lock, _release_lock,
         _handle_status_subcommand, _handle_watch_subcommand,
         _load_dotenv, _build_arg_parser, _clear_stale_triggers, _emit_json_result,
+        _cleanup_stale_at_exit,
     )
 
 
@@ -454,6 +456,7 @@ def main() -> None:
         if args.export and cli is not None:
             _export_path, _export_count = cli._cmd_export()
         _release_lock(_LOCK_PATH)
+        _cleanup_stale_at_exit(_HERE)
         if cli is not None:
             _append_cache_session_stats(
                 getattr(cli.executor.anthropic, "cache", None),

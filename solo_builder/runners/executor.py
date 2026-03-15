@@ -40,7 +40,8 @@ REVIEW_MODE          : bool = bool(_CFG.get("REVIEW_MODE", False))
 
 logger = logging.getLogger("solo_builder")
 
-_METRICS_PATH = os.path.join(_SOLO, "metrics.jsonl")
+_METRICS_PATH     = os.path.join(_SOLO, "metrics.jsonl")
+_PATCH_STATS_PATH = os.path.join(_SOLO, "state", "patch_review_stats.json")
 
 
 class _BudgetAdapter:
@@ -84,6 +85,30 @@ def _write_step_metrics(step: int, t0: float, sdk_dispatched: int,
             _mf.write(_json.dumps(record) + "\n")
     except OSError:
         pass  # never block execution on metrics write failure
+
+
+def _write_patch_stats(reviewer: "_PatchReviewer") -> None:
+    """Write PatchReviewer observability snapshot to state/patch_review_stats.json."""
+    rejected = [
+        {
+            "name":        name,
+            "count":       info.get("count", 0),
+            "last_reason": (info.get("reasons") or [""])[-1],
+        }
+        for name, info in reviewer._rejections.items()
+    ]
+    record = {
+        "enabled":          reviewer.enabled,
+        "threshold_hits":   reviewer.threshold_hits,
+        "total_rejections": sum(d.get("count", 0) for d in reviewer._rejections.values()),
+        "max_rejections":   reviewer.max_rejections,
+        "rejected_subtasks": rejected,
+    }
+    try:
+        with open(_PATCH_STATS_PATH, "w", encoding="utf-8") as _pf:
+            _pf.write(_json.dumps(record) + "\n")
+    except OSError:
+        pass  # never block execution on stats write failure
 
 
 def _fire_outcome(st_data: dict, outcome: str, elapsed_s: float,
@@ -467,6 +492,7 @@ class Executor:
                 logger.info("patch_review: %s", _alert.strip())
             if pr_results:
                 logger.info("patch_review_step step=%d results=%s", step, pr_results)
+            _write_patch_stats(self._patch_reviewer)
 
         _write_step_metrics(step, _step_t0, _sdk_dispatched, _sdk_succeeded, actions)
         elapsed_ms = round((time.monotonic() - _step_t0) * 1000)

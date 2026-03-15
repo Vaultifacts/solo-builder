@@ -181,6 +181,16 @@ def _clear_stale_triggers(here: str, log_path: str) -> str:
     return os.path.join(state_dir, "solo_builder.lock")
 
 
+def _cleanup_stale_at_exit(here: str) -> None:
+    """Remove all stale trigger files at session end (no exclusions).
+
+    Called from the finally block in main() on clean exit so verify_trigger.json
+    is also cleaned up and does not linger between sessions.
+    """
+    state_dir = os.path.join(here, "state")
+    _get_default_registry().cleanup_stale(state_dir, exclude=[])
+
+
 def _emit_json_result(cli, args, export_path, export_count) -> None:
     """Print final run stats as JSON to stdout (json-mode only)."""
     stats = dag_stats(cli.dag)

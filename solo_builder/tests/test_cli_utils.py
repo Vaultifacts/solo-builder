@@ -342,6 +342,65 @@ def _tmp_cleanup(tmp: str) -> None:
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_clear_stale_triggers_renames_trigger_cleaned():
+    """rename_trigger.json must be removed at startup (not excluded)."""
+    import tempfile, os
+    tmp = tempfile.mkdtemp()
+    try:
+        state_dir = os.path.join(tmp, "state")
+        os.makedirs(state_dir)
+        trigger = os.path.join(state_dir, "rename_trigger.json")
+        open(trigger, "w").close()
+        cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
+        assert not os.path.exists(trigger), "rename_trigger.json should be cleaned at startup"
+    finally:
+        _close_sb_log_handlers()
+        _tmp_cleanup(tmp)
+
+
+def test_clear_stale_triggers_preserves_verify_trigger():
+    """verify_trigger.json must NOT be removed at startup (excluded from cleanup)."""
+    import tempfile, os, json as _json
+    tmp = tempfile.mkdtemp()
+    try:
+        state_dir = os.path.join(tmp, "state")
+        os.makedirs(state_dir)
+        trigger = os.path.join(state_dir, "verify_trigger.json")
+        Path(trigger).write_text(_json.dumps({"subtask": "A1"}), encoding="utf-8")
+        cli_utils._clear_stale_triggers(tmp, os.path.join(tmp, "logs", "sb.log"))
+        assert os.path.exists(trigger), "verify_trigger.json should survive startup cleanup"
+    finally:
+        _close_sb_log_handlers()
+        _tmp_cleanup(tmp)
+
+
+def test_cleanup_stale_at_exit_cleans_verify_trigger():
+    """_cleanup_stale_at_exit removes verify_trigger.json (no exclusions on clean exit)."""
+    import tempfile, os, json as _json
+    tmp = tempfile.mkdtemp()
+    try:
+        state_dir = os.path.join(tmp, "state")
+        os.makedirs(state_dir)
+        trigger = os.path.join(state_dir, "verify_trigger.json")
+        Path(trigger).write_text(_json.dumps({"subtask": "A1"}), encoding="utf-8")
+        cli_utils._cleanup_stale_at_exit(tmp)
+        assert not os.path.exists(trigger), "verify_trigger.json should be cleaned at exit"
+    finally:
+        _tmp_cleanup(tmp)
+
+
+def test_cleanup_stale_at_exit_ok_with_empty_state_dir():
+    """_cleanup_stale_at_exit is safe when state/ has no trigger files."""
+    import tempfile
+    tmp = tempfile.mkdtemp()
+    try:
+        import os
+        os.makedirs(os.path.join(tmp, "state"), exist_ok=True)
+        cli_utils._cleanup_stale_at_exit(tmp)  # must not raise
+    finally:
+        _tmp_cleanup(tmp)
+
+
 def test_clear_stale_triggers_creates_state_dir():
     import tempfile, os
     tmp = tempfile.mkdtemp()

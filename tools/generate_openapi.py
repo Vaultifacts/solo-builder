@@ -230,6 +230,12 @@ _ROUTES: list[dict] = [
          "total_api_calls": {"type": "integer"}, "total_steps": {"type": "integer"},
          "sdk_success_rate": {"type": "number"}, "recent_steps": {"type": "array"},
      }}},
+    {"path": "/health/patch-review",     "method": "GET", "tag": "Health", "summary": "PatchReviewer stats: threshold_hits, rejection counts, per-subtask details",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "enabled": {"type": "boolean"},
+         "threshold_hits": {"type": "integer"}, "total_rejections": {"type": "integer"},
+         "max_rejections": {"type": "integer"}, "rejected_subtasks": {"type": "array"},
+     }}},
     # Policy
     {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json",
      "response": {"type": "object", "properties": {

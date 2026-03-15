@@ -313,3 +313,5 @@ solo_builder/api/static/dashboard.css
 solo_builder/api/blueprints/budget.py
 solo_builder/tests/test_budget_blueprint.py
 solo_builder/tests/test_patch_reviewer_wiring.py
+solo_builder/api/blueprints/patch_review.py
+solo_builder/tests/test_patch_review_blueprint.py

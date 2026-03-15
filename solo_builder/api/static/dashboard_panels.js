@@ -1,7 +1,7 @@
 import { api, STATUS_COL } from "./dashboard_utils.js";
 export { pollBranches } from "./dashboard_branches.js";
 export { pollCache, pollCacheHistory } from "./dashboard_cache.js";
-export { pollGatesDetailed, pollDebtScanDetailed, pollPromptRegressionDetailed, pollSloDetailed, pollThreatModelDetailed, pollContextWindowDetailed, pollPolicyDetailed, pollLiveSummaryDetailed, pollHealthDetailed, pollCiQualityDetailed, pollPreReleaseDetailed, pollRepoHealthDetailed, pollBudgetDetailed, pollPolicyEngineDetailed } from "./dashboard_health.js";
+export { pollGatesDetailed, pollDebtScanDetailed, pollPromptRegressionDetailed, pollSloDetailed, pollThreatModelDetailed, pollContextWindowDetailed, pollPolicyDetailed, pollLiveSummaryDetailed, pollHealthDetailed, pollCiQualityDetailed, pollPreReleaseDetailed, pollRepoHealthDetailed, pollBudgetDetailed, pollPatchReviewDetailed, pollPolicyEngineDetailed } from "./dashboard_health.js";
 export { pollSettings } from "./dashboard_settings.js";
 export { pollStalled } from "./dashboard_stalled.js";
 export { pollSubtasks, updateSubtasksExportLinks } from "./dashboard_subtasks.js";
