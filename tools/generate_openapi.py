@@ -233,8 +233,11 @@ _ROUTES: list[dict] = [
     {"path": "/health/patch-review",     "method": "GET", "tag": "Health", "summary": "PatchReviewer stats: threshold_hits, rejection counts, per-subtask details",
      "response": {"type": "object", "properties": {
          "ok": {"type": "boolean"}, "enabled": {"type": "boolean"},
+         "available": {"type": "boolean"}, "use_sdk": {"type": "boolean"},
          "threshold_hits": {"type": "integer"}, "total_rejections": {"type": "integer"},
-         "max_rejections": {"type": "integer"}, "rejected_subtasks": {"type": "array"},
+         "max_rejections": {"type": "integer"}, "max_reviews_per_step": {"type": "integer"},
+         "alert_threshold": {"type": "integer"}, "rejected_subtasks": {"type": "array"},
+         "recent_reviews": {"type": "array"},
      }}},
     {"path": "/health/patch-review/history", "method": "GET", "tag": "Health", "summary": "Paginated recent_reviews history (limit/page query params)",
      "response": {"type": "object", "properties": {

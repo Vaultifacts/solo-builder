@@ -530,10 +530,12 @@ export async function pollHealthDetailed() {
 
     const prOk = pr.ok !== false;
     const prDetail = (() => {
-      const hits = pr.threshold_hits || 0;
-      const rej  = pr.total_rejections || 0;
-      const mode = pr.available ? "SDK" : (pr.enabled !== false ? "heuristic" : "disabled");
-      return `${hits} escalated · ${rej} rejected · ${mode}`;
+      const hits   = pr.threshold_hits || 0;
+      const rej    = pr.total_rejections || 0;
+      const mode   = pr.available ? "SDK" : (pr.enabled !== false ? "heuristic" : "disabled");
+      const thresh = pr.alert_threshold || 0;
+      const threshStr = thresh > 0 ? ` (limit ${thresh})` : "";
+      return `${hits} escalated${threshStr} · ${rej} rejected · ${mode}`;
     })();
 
     const nodes = [hdr, mkRow("State Valid", sv.ok, svDetail),
@@ -790,6 +792,7 @@ export async function pollBudgetDetailed() {
 }
 
 export async function pollPatchReviewDetailed() {
+  window._prPollFn = pollPatchReviewDetailed;
   try {
     const d = await api("/health/patch-review");
     const el = document.getElementById("patch-review-detailed-content");
@@ -852,32 +855,34 @@ export async function pollPatchReviewDetailed() {
       });
     }
 
-    // History table from /health/patch-review/history
-    let histItems = [];
-    let histTotal = 0;
+    // History table from /health/patch-review/history (paginated)
+    const HIST_LIMIT = 10;
+    const histPage = el._prHistPage || 1;
+    let histItems = [], histTotal = 0, histPages = 1;
     try {
-      const h = await api("/health/patch-review/history?limit=20");
+      const h = await api(`/health/patch-review/history?limit=${HIST_LIMIT}&page=${histPage}`);
       histItems = h.items || [];
       histTotal = h.total || 0;
+      histPages = h.pages || 1;
     } catch (_) {}
 
-    if (histItems.length > 0) {
+    if (histTotal > 0) {
       const tblHdr = document.createElement("div");
-      tblHdr.style.cssText = "font-size:9px;font-weight:bold;color:var(--dim);margin-top:8px;margin-bottom:4px;display:flex;justify-content:space-between";
+      tblHdr.style.cssText = "font-size:9px;font-weight:bold;color:var(--dim);margin-top:8px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center";
       const tblTitle = document.createElement("span");
       tblTitle.textContent = "Review history";
       const tblCount = document.createElement("span");
       tblCount.style.cssText = "font-weight:normal;color:var(--dim)";
-      tblCount.textContent = histTotal > histItems.length ? `${histItems.length} of ${histTotal}` : `${histTotal} total`;
+      tblCount.textContent = `${histTotal} total`;
       tblHdr.append(tblTitle, tblCount);
       nodes.push(tblHdr);
 
       // column header row
       const colHdr = document.createElement("div");
       colHdr.style.cssText = "display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;font-size:8px;color:var(--dim);padding:2px 0;border-bottom:2px solid var(--border);font-weight:bold";
-      ["Step", "✓ appr", "✗ rej", "⚠ esc", "⊞ def"].forEach(h => {
+      ["Step", "✓ appr", "✗ rej", "⚠ esc", "⊞ def"].forEach(lbl => {
         const c = document.createElement("span");
-        c.textContent = h;
+        c.textContent = lbl;
         colHdr.append(c);
       });
       nodes.push(colHdr);
@@ -903,6 +908,29 @@ export async function pollPatchReviewDetailed() {
         rrow.append(stepEl, appr, rej, esc, def);
         nodes.push(rrow);
       });
+
+      // Prev / Next pagination controls
+      if (histPages > 1) {
+        const pgBar = document.createElement("div");
+        pgBar.style.cssText = "display:flex;align-items:center;gap:6px;margin-top:4px;font-size:9px";
+        const mkPgBtn = (label, disabled, onclick) => {
+          const btn = document.createElement("button");
+          btn.textContent = label;
+          btn.disabled = disabled;
+          btn.style.cssText = `font-size:9px;padding:1px 6px;border-radius:3px;border:1px solid var(--border);background:var(--surface);color:${disabled ? "var(--dim)" : "var(--text)"};cursor:${disabled ? "default" : "pointer"}`;
+          if (!disabled) btn.onclick = onclick;
+          return btn;
+        };
+        const pgLabel = document.createElement("span");
+        pgLabel.style.cssText = "color:var(--dim)";
+        pgLabel.textContent = `${histPage} / ${histPages}`;
+        pgBar.append(
+          mkPgBtn("◀ Prev", histPage <= 1, () => { el._prHistPage = histPage - 1; window._prPollFn && window._prPollFn(); }),
+          pgLabel,
+          mkPgBtn("Next ▶", histPage >= histPages, () => { el._prHistPage = histPage + 1; window._prPollFn && window._prPollFn(); }),
+        );
+        nodes.push(pgBar);
+      }
     } else {
       const noHist = document.createElement("div");
       noHist.style.cssText = "font-size:10px;color:var(--dim);margin-top:6px;padding:4px 0";

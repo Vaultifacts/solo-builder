@@ -828,9 +828,15 @@ def register_slash_commands(bot: discord.Client) -> None:
             if len(_sr) >= sc.DEFAULT_MIN_RECORDS:
                 _slo_results = [sc._check_slo003(_sr), sc._check_slo005(_sr)]
                 slo_ok = all(r["status"] == "ok" for r in _slo_results)
-                slo_detail = " · ".join(
-                    f"{r['slo']} {r['status']}({r['value']})" for r in _slo_results
-                )
+                def _fmt_slo(r):
+                    v = r["value"]
+                    ok_sym = "✓" if r["status"] == "ok" else "✗"
+                    if r["slo"] == "SLO-003":
+                        val_str = f"{v:.1%}" if v is not None else "n/a"
+                    else:
+                        val_str = f"{v:.2f}s" if v is not None else "n/a"
+                    return f"{r['slo']} {val_str} {ok_sym}"
+                slo_detail = " · ".join(_fmt_slo(r) for r in _slo_results)
             else:
                 slo_ok, slo_detail = True, f"insufficient data ({len(_sr)} records)"
         except Exception as exc:
