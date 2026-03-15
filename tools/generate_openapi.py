@@ -236,6 +236,10 @@ _ROUTES: list[dict] = [
          "threshold_hits": {"type": "integer"}, "total_rejections": {"type": "integer"},
          "max_rejections": {"type": "integer"}, "rejected_subtasks": {"type": "array"},
      }}},
+    {"path": "/health/patch-review/reset", "method": "POST", "tag": "Health", "summary": "Reset PatchReviewer stats (deletes stats snapshot file)",
+     "response": {"type": "object", "properties": {
+         "ok": {"type": "boolean"}, "reset": {"type": "boolean"},
+     }}},
     # Policy
     {"path": "/policy/hitl",             "method": "GET", "tag": "Policy", "summary": "HITL policy rules from settings.json",
      "response": {"type": "object", "properties": {

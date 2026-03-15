@@ -153,9 +153,25 @@ def health_detailed():
         repo_health_check = {"ok": True, "available": False, "error": str(exc),
                              "active_agents": [], "outcome_stats": {}}
 
+    # --- patch_review (informational — escalations indicate quality issues) ---
+    try:
+        from .patch_review import _load_stats as _pr_load
+        pr = _pr_load()
+        patch_review_check = {
+            "ok":             True,
+            "enabled":        pr.get("enabled", True),
+            "available":      pr.get("available", False),
+            "threshold_hits": pr.get("threshold_hits", 0),
+            "total_rejections": pr.get("total_rejections", 0),
+        }
+    except Exception as exc:
+        patch_review_check = {"ok": True, "enabled": True, "available": False,
+                               "threshold_hits": 0, "total_rejections": 0,
+                               "error": str(exc)}
+
     overall_ok = (state_check["ok"] and drift_check["ok"]
                   and alert_check["ok"] and slo_check_result["ok"])
-    # repo_health is intentionally excluded from overall_ok — AAWO absence is informational
+    # repo_health and patch_review are informational — excluded from overall_ok
 
     return jsonify({
         "ok": overall_ok,
@@ -165,5 +181,6 @@ def health_detailed():
             "metrics_alerts": alert_check,
             "slo_status":     slo_check_result,
             "repo_health":    repo_health_check,
+            "patch_review":   patch_review_check,
         },
     })

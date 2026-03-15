@@ -58,6 +58,7 @@ def register_slash_commands(bot: discord.Client) -> None:
             "`/task_progress task_id`            — per-branch progress for a single task\n"
             "`/heartbeat`                        — live counters from step.txt\n"
             "`/cache [clear:yes]`                — response cache disk stats (optional wipe)\n"
+            "`/patch_review`                     — PatchReviewer stats (rejections, escalations, SDK mode)\n"
             "`/help`                             — this message"
         )
 
@@ -705,3 +706,54 @@ def register_slash_commands(bot: discord.Client) -> None:
             f"✅ Undepends queued: Task {target} no longer depends on Task {dep}\n"
             f"CLI will apply at the next step boundary."
         )
+
+    @bot.tree.command(name="patch_review", description="Show PatchReviewer stats (rejections, escalations, SDK mode)")
+    async def patch_review_cmd(interaction: discord.Interaction) -> None:
+        if not _b._allowed(interaction):
+            await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
+            return
+        try:
+            from api.constants import PATCH_REVIEW_STATS_PATH
+            stats_path = PATCH_REVIEW_STATS_PATH
+            if stats_path.exists():
+                s = json.loads(stats_path.read_text(encoding="utf-8"))
+            else:
+                s = {}
+        except Exception:
+            s = {}
+
+        enabled   = s.get("enabled", True)
+        available = s.get("available", False)
+        use_sdk   = s.get("use_sdk", True)
+        hits      = s.get("threshold_hits", 0)
+        total_rej = s.get("total_rejections", 0)
+        max_rej   = s.get("max_rejections", 3)
+        rejected  = s.get("rejected_subtasks", [])
+        recent    = s.get("recent_reviews", [])
+
+        sdk_mode = "SDK" if available else ("heuristic-only" if enabled else "disabled")
+        lines = [
+            f"**PatchReviewer** · {sdk_mode}",
+            f"⚠ {hits} escalated · ✗ {total_rej} rejected (limit {max_rej}/subtask)",
+        ]
+
+        if rejected:
+            lines.append("**Rejections by subtask:**")
+            for r in rejected[:8]:
+                lines.append(f"  `{r['name']}` ×{r['count']} — {r.get('last_reason', '')[:60]}")
+            if len(rejected) > 8:
+                lines.append(f"  … and {len(rejected) - 8} more")
+
+        if recent:
+            lines.append("**Recent steps:**")
+            for rv in recent[-5:]:
+                lines.append(
+                    f"  step {rv['step']}: "
+                    f"✓{rv.get('approved',0)} ✗{rv.get('rejected',0)} "
+                    f"⚠{rv.get('escalated',0)}"
+                )
+
+        if not s:
+            lines.append("_(no stats file — executor not yet run)_")
+
+        await interaction.response.send_message("\n".join(lines))

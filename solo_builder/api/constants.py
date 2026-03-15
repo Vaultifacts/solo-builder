@@ -31,8 +31,9 @@ OUTPUTS_PATH  = _PROJECT_ROOT / "solo_builder_outputs.md"
 CACHE_DIR     = Path(os.environ.get("CACHE_DIR",
                      str(_PROJECT_ROOT.parent / "claude" / "cache")))
 
-DAG_EXPORT_PATH    = _PROJECT_ROOT / "dag_export.json"
-DAG_IMPORT_TRIGGER = _PROJECT_ROOT / "state" / "dag_import_trigger.json"
+DAG_EXPORT_PATH         = _PROJECT_ROOT / "dag_export.json"
+DAG_IMPORT_TRIGGER      = _PROJECT_ROOT / "state" / "dag_import_trigger.json"
+PATCH_REVIEW_STATS_PATH = _PROJECT_ROOT / "state" / "patch_review_stats.json"
 
 _CONFIG_DEFAULTS = {
     "STALL_THRESHOLD": 5,

@@ -40,8 +40,15 @@ REVIEW_MODE          : bool = bool(_CFG.get("REVIEW_MODE", False))
 
 logger = logging.getLogger("solo_builder")
 
-_METRICS_PATH     = os.path.join(_SOLO, "metrics.jsonl")
-_PATCH_STATS_PATH = os.path.join(_SOLO, "state", "patch_review_stats.json")
+_METRICS_PATH = os.path.join(_SOLO, "metrics.jsonl")
+
+# Single source of truth: api/constants.py defines the canonical path.
+# Import as a string to keep executor independent of the Flask layer.
+try:
+    from api.constants import PATCH_REVIEW_STATS_PATH as _PR_STATS
+    _PATCH_STATS_PATH = str(_PR_STATS)
+except Exception:
+    _PATCH_STATS_PATH = os.path.join(_SOLO, "state", "patch_review_stats.json")
 
 
 class _BudgetAdapter:

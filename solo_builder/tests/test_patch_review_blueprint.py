@@ -201,6 +201,50 @@ class TestPatchReviewEndpoint(unittest.TestCase):
         src = dash.read_text(encoding="utf-8")
         self.assertIn("pollPatchReviewDetailed", src)
 
+    # ── Reset endpoint ───────────────────────────────────────────────────
+
+    def test_reset_returns_ok(self):
+        resp = self.client.post("/health/patch-review/reset")
+        self.assertEqual(resp.status_code, 200)
+        d = json.loads(resp.data)
+        self.assertTrue(d["ok"])
+
+    def test_reset_deletes_stats_file(self):
+        import api.blueprints.patch_review as pr_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            p = self._write_stats(tmp, {"threshold_hits": 5, "total_rejections": 2,
+                                        "enabled": True, "available": True, "use_sdk": True,
+                                        "max_rejections": 3, "rejected_subtasks": [],
+                                        "recent_reviews": []})
+            with patch.object(pr_mod, "_STATS_PATH", p):
+                resp = self.client.post("/health/patch-review/reset")
+        d = json.loads(resp.data)
+        self.assertTrue(d["reset"])
+        self.assertFalse(p.exists())
+
+    def test_reset_missing_file_still_returns_ok(self):
+        import api.blueprints.patch_review as pr_mod
+        with patch.object(pr_mod, "_STATS_PATH", Path("/nonexistent/x.json")):
+            resp = self.client.post("/health/patch-review/reset")
+        d = json.loads(resp.data)
+        self.assertTrue(d["ok"])
+
+    def test_reset_route_in_app(self):
+        rules = [r.rule for r in app.url_map.iter_rules()]
+        self.assertIn("/health/patch-review/reset", rules)
+
+    # ── /health/detailed includes patch_review ───────────────────────────
+
+    def test_health_detailed_includes_patch_review(self):
+        resp = self.client.get("/health/detailed")
+        self.assertEqual(resp.status_code, 200)
+        d = json.loads(resp.data)
+        self.assertIn("patch_review", d["checks"])
+        pr = d["checks"]["patch_review"]
+        self.assertIn("ok", pr)
+        self.assertIn("threshold_hits", pr)
+        self.assertIn("total_rejections", pr)
+
     def test_patch_review_div_in_dashboard_html(self):
         html = (
             Path(__file__).resolve().parents[1]
