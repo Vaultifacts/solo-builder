@@ -43,6 +43,28 @@ logger = logging.getLogger("solo_builder")
 _METRICS_PATH = os.path.join(_SOLO, "metrics.jsonl")
 
 
+class _BudgetAdapter:
+    """Thin adapter making UsageTracker compatible with PatchReviewer's budget interface."""
+
+    def __init__(self, tracker: "UsageTracker", step: int, model: str) -> None:
+        self._tracker = tracker
+        self._step    = step
+        self._model   = model
+
+    @property
+    def exhausted(self) -> bool:
+        ok, _ = self._tracker.check_budget()
+        return not ok
+
+    def consume(self, n: int) -> None:
+        pass  # usage already tracked via record_usage
+
+    def record_usage(self, tokens: int = 0, agent: str = "") -> None:
+        self._tracker.record_usage(
+            step=self._step, tokens_out=tokens, model=self._model, agent=agent
+        )
+
+
 def _write_step_metrics(step: int, t0: float, sdk_dispatched: int,
                         sdk_succeeded: int, actions: dict) -> None:
     """Append one JSONL metrics record for this execute_step call (TD-OPS-001)."""
@@ -438,7 +460,8 @@ class Executor:
         if actions:
             _pr_alerts: List[str] = []
             pr_results = self._patch_reviewer.review_step(
-                dag, actions, step, memory_store, _pr_alerts
+                dag, actions, step, memory_store, _pr_alerts,
+                budget=_BudgetAdapter(self._usage_tracker, step, ANTHROPIC_MODEL),
             )
             for _alert in _pr_alerts:
                 logger.info("patch_review: %s", _alert.strip())

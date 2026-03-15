@@ -7,6 +7,7 @@ import logging
 import logging.handlers
 
 from utils.helper_functions import BOLD, CYAN, GREEN, RESET, YELLOW, dag_stats  # noqa: dag_stats used by _handle_watch/_status
+from utils.trigger_registry import get_default_registry as _get_default_registry
 from solo_builder.utils.log_formatter import JsonLogFormatter
 
 
@@ -175,19 +176,8 @@ def _clear_stale_triggers(here: str, log_path: str) -> str:
     state_dir = os.path.join(here, "state")
     os.makedirs(state_dir, exist_ok=True)
     _setup_logging(log_path)
-    for name in (
-        "stop_trigger", "run_trigger",
-        "add_task_trigger.json", "add_branch_trigger.json",
-        "prioritize_branch_trigger.json", "describe_trigger.json",
-        "tools_trigger.json", "reset_trigger", "snapshot_trigger",
-        "set_trigger.json", "depends_trigger.json", "undepends_trigger.json",
-        "undo_trigger", "pause_trigger", "heal_trigger.json",
-        "dag_import_trigger.json",
-    ):
-        try:
-            os.remove(os.path.join(state_dir, name))
-        except FileNotFoundError:
-            pass
+    # verify_trigger.json is intentionally excluded: pending verifications survive restarts.
+    _get_default_registry().cleanup_stale(state_dir, exclude=["verify"])
     return os.path.join(state_dir, "solo_builder.lock")
 
 
